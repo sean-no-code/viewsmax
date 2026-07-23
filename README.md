@@ -1,10 +1,50 @@
-# ViewsMax
+<div align="center">
 
-Social posting and link-tracking for creators. Compose a post once, publish it
-to several platforms, and see which content actually drives clicks and sales.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="frontend/src/assets/logo-lockup-dark.svg">
+  <img src="frontend/src/assets/logo-lockup-light.svg" alt="ViewsMax" width="260">
+</picture>
 
-- **frontend/** — React + Vite single-page app
-- **backend/** — Laravel 12 API (PHP 8.3)
+### Post everywhere. Track every click. See what actually sells.
+
+Views are vanity — revenue is the score. ViewsMax lets you compose a post once,
+publish it across every major platform, and trace each click and sale back to
+the exact post that earned it.
+
+<br>
+
+<img alt="YouTube" src="https://img.shields.io/badge/YouTube-FF0000?logo=youtube&logoColor=white">
+<img alt="TikTok" src="https://img.shields.io/badge/TikTok-000000?logo=tiktok&logoColor=white">
+<img alt="Instagram" src="https://img.shields.io/badge/Instagram-E4405F?logo=instagram&logoColor=white">
+<img alt="X" src="https://img.shields.io/badge/X-000000?logo=x&logoColor=white">
+<img alt="LinkedIn" src="https://img.shields.io/badge/LinkedIn-0A66C2">
+<img alt="Threads" src="https://img.shields.io/badge/Threads-000000?logo=threads&logoColor=white">
+<img alt="Facebook" src="https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white">
+<img alt="Bluesky" src="https://img.shields.io/badge/Bluesky-0285FF?logo=bluesky&logoColor=white">
+
+<img alt="Laravel 12" src="https://img.shields.io/badge/Laravel_12-FF2D20?logo=laravel&logoColor=white">
+<img alt="React" src="https://img.shields.io/badge/React_+_Vite-087EA4?logo=react&logoColor=white">
+<img alt="PHP 8.3" src="https://img.shields.io/badge/PHP_8.3-777BB4?logo=php&logoColor=white">
+<img alt="Docker" src="https://img.shields.io/badge/One--command_setup-2496ED?logo=docker&logoColor=white">
+
+<br>
+
+<img src="frontend/public/og-image.png" alt="ViewsMax dashboard — views, clicks, revenue and conversion rate per post and platform" width="720">
+
+</div>
+
+## Why ViewsMax?
+
+- **✍️ Compose once, publish everywhere** — one editor, eight platforms,
+  scheduled or instant, with per-platform caption rules handled for you.
+- **💰 Revenue attribution, not vanity metrics** — tracked links and offers
+  tie every click, conversion, and dollar back to the post that drove it.
+- **📊 One dashboard for everything** — views, clicks, conversion rate, and
+  revenue-per-click across all your channels, side by side.
+- **🤖 AI where it helps** — caption and thumbnail generation, plus agent
+  access over MCP so your AI tools can post and pull stats for you.
+- **🏠 Yours to run** — the whole stack (React + Vite frontend, Laravel 12
+  API) self-hosts with a single `docker compose up`.
 
 ---
 
