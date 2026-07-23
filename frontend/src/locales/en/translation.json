@@ -1,0 +1,33 @@
+{
+  "nav": {
+    "post": "Post",
+    "newPost": "New Post",
+    "drafts": "Drafts",
+    "scheduled": "Scheduled",
+    "history": "History",
+    "calendar": "Calendar",
+    "monetization": "Monetization",
+    "offers": "Offers",
+    "analytics": "Analytics",
+    "boosts": "Boosts",
+    "connections": "Connections",
+    "settings": "Settings",
+    "requestFeature": "Request a feature"
+  },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "description": "Choose the language ViewsMax uses.",
+      "label": "Interface language"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Choose when ViewsMax emails you.",
+      "postFailures": "Email me when a post fails to publish",
+      "postFailuresHint": "One email per failed post listing every platform that failed, with a link to retry.",
+      "saveFailed": "Couldn't save the notification setting. Please try again.",
+      "enabled": "You'll be emailed when a post fails.",
+      "disabled": "Publish-failure emails turned off."
+    }
+  }
+}

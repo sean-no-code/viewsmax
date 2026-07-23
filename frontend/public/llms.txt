@@ -1,0 +1,38 @@
+# ViewsMax
+
+> ViewsMax is a social posting + link tracking/analytics SaaS for creators and
+> marketers. Compose and schedule posts to YouTube, TikTok, X, LinkedIn,
+> Threads, Instagram, and Bluesky; create offers and tracked links; see which
+> posts and platforms drive clicks, conversions, and revenue. User data is
+> private — AI agents act on a user's behalf via an authenticated MCP server
+> (OAuth 2.1 + PKCE, or a per-user API key) or the REST API.
+
+## AI & Agent Access
+
+- [Connect your AI](https://viewsmax.com/ai.md): copy-paste setup for Claude, ChatGPT, Claude Code, Cursor, OpenClaw, Hermes Agent, and raw REST
+- [Capability discovery (JSON)](https://api.viewsmax.com/api/ai): MCP endpoint, auth modes, full tool list, rate limits
+- MCP endpoint: https://api.viewsmax.com/api/mcp (Streamable HTTP; Bearer auth — OAuth 2.1 + PKCE with dynamic client registration, or a `vmx_` API key from Settings → AI Assistant Access)
+- [OpenAPI spec](https://api.viewsmax.com/docs.openapi) · [REST API reference](https://api.viewsmax.com/docs)
+- OAuth discovery: https://api.viewsmax.com/.well-known/oauth-authorization-server
+- [OpenClaw skill](https://viewsmax.com/skills/viewsmax/SKILL.md)
+
+## Product
+
+- [Home](https://viewsmax.com/): make content that makes sales — cross-platform posting with revenue attribution
+- [About](https://viewsmax.com/about.md): how posts, offers, tracked links, and attribution fit together
+- [Pricing](https://viewsmax.com/pricing.md): free to start; Starter $29, Creator $59, Pro $99, Agency $149 per month
+
+## Free Tools
+
+- [YouTube monetization calculator](https://viewsmax.com/youtube-monetization-calculator)
+- [Thumbnail preview](https://viewsmax.com/thumbnail-preview)
+
+## Policies
+
+- [Privacy](https://viewsmax.com/privacy)
+- [Terms](https://viewsmax.com/terms)
+
+## Optional
+
+- [Blog](https://blog.viewsmax.com/)
+- [Full inlined docs](https://viewsmax.com/llms-full.txt)

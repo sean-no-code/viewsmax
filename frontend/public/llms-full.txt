@@ -1,0 +1,234 @@
+# ViewsMax
+
+> ViewsMax is a social posting + link tracking/analytics SaaS for creators and
+> marketers. Compose and schedule posts to YouTube, TikTok, X, LinkedIn,
+> Threads, Instagram, and Bluesky; create offers and tracked links; see which
+> posts and platforms drive clicks, conversions, and revenue. User data is
+> private — AI agents act on a user's behalf via an authenticated MCP server
+> (OAuth 2.1 + PKCE, or a per-user API key) or the REST API.
+
+## AI & Agent Access
+
+- [Connect your AI](https://viewsmax.com/ai.md): copy-paste setup for Claude, ChatGPT, Claude Code, Cursor, OpenClaw, Hermes Agent, and raw REST
+- [Capability discovery (JSON)](https://api.viewsmax.com/api/ai): MCP endpoint, auth modes, full tool list, rate limits
+- MCP endpoint: https://api.viewsmax.com/api/mcp (Streamable HTTP; Bearer auth — OAuth 2.1 + PKCE with dynamic client registration, or a `vmx_` API key from Settings → AI Assistant Access)
+- [OpenAPI spec](https://api.viewsmax.com/docs.openapi) · [REST API reference](https://api.viewsmax.com/docs)
+- OAuth discovery: https://api.viewsmax.com/.well-known/oauth-authorization-server
+- [OpenClaw skill](https://viewsmax.com/skills/viewsmax/SKILL.md)
+
+## Product
+
+- [Home](https://viewsmax.com/): make content that makes sales — cross-platform posting with revenue attribution
+- [About](https://viewsmax.com/about.md): how posts, offers, tracked links, and attribution fit together
+- [Pricing](https://viewsmax.com/pricing.md): free to start; Starter $29, Creator $59, Pro $99, Agency $149 per month
+
+## Free Tools
+
+- [YouTube monetization calculator](https://viewsmax.com/youtube-monetization-calculator)
+- [Thumbnail preview](https://viewsmax.com/thumbnail-preview)
+
+## Policies
+
+- [Privacy](https://viewsmax.com/privacy)
+- [Terms](https://viewsmax.com/terms)
+
+## Optional
+
+- [Blog](https://blog.viewsmax.com/)
+- [Full inlined docs](https://viewsmax.com/llms-full.txt)
+
+---
+
+# Connect your AI to ViewsMax
+
+ViewsMax exposes an MCP server and a REST API so AI assistants and agents can
+post to a user's connected social accounts (YouTube, TikTok, X, LinkedIn,
+Threads, Instagram, Bluesky), manage offers and tracked links, and read
+click/conversion/revenue analytics — on the user's behalf, with their
+permission. User data is private; all access is authenticated.
+
+- **MCP endpoint:** `https://api.viewsmax.com/api/mcp` (Streamable HTTP)
+- **Capability discovery (JSON):** `https://api.viewsmax.com/api/ai`
+- **REST API:** `https://api.viewsmax.com/api` — [OpenAPI spec](https://api.viewsmax.com/docs.openapi) · [API reference](https://api.viewsmax.com/docs)
+
+## Credentials
+
+Two options, both sent as a Bearer token:
+
+1. **OAuth (recommended for chat apps).** Point an MCP client at the endpoint
+   above; the user signs in and approves in the browser (OAuth 2.1 + PKCE,
+   dynamic client registration supported). The consent screen offers
+   read-only or full access. No key handling.
+2. **API key (for headless agents and scripts).** In the ViewsMax app:
+   **Settings → AI Assistant Access → generate key** (`vmx_...`). Choose
+   read-only or full access. The key is shown once; rotating it invalidates
+   the old one. The same key works on the REST API (posts, offers, tracking,
+   stats — read-only keys are limited to GET).
+
+## Claude (claude.ai / Claude Desktop)
+
+Settings → Connectors → **Add custom connector** → URL
+`https://api.viewsmax.com/api/mcp` → complete the sign-in approval.
+
+## Claude Code
+
+```bash
+claude mcp add --transport http viewsmax https://api.viewsmax.com/api/mcp
+```
+
+or in `.mcp.json`:
+
+```json
+{ "mcpServers": { "viewsmax": { "type": "http", "url": "https://api.viewsmax.com/api/mcp" } } }
+```
+
+OAuth prompts on first use. For headless use add
+`"headers": { "Authorization": "Bearer vmx_YOUR_KEY" }`.
+
+## ChatGPT
+
+Settings → Apps & Connectors → enable **Developer mode** → add a connector
+with the MCP URL above and complete OAuth. ViewsMax is an *action* connector
+(create/schedule posts, read stats) — use it from regular chats with
+connectors enabled; it is not a deep-research search/fetch source.
+
+## Cursor
+
+`.cursor/mcp.json`:
+
+```json
+{ "mcpServers": { "viewsmax": {
+  "url": "https://api.viewsmax.com/api/mcp",
+  "headers": { "Authorization": "Bearer vmx_YOUR_KEY" } } } }
+```
+
+## OpenClaw
+
+Install the ViewsMax skill (SKILL.md drives the REST API):
+download it from <https://viewsmax.com/skills/viewsmax/SKILL.md> into your
+agent's skills directory, then set `VIEWSMAX_API_KEY` in the agent's
+environment (full-access key). Alternatively point OpenClaw's MCP support at
+the MCP endpoint above.
+
+## Hermes Agent
+
+Add to your MCP servers config:
+
+```json
+{ "viewsmax": { "transport": "http",
+  "url": "https://api.viewsmax.com/api/mcp",
+  "headers": { "Authorization": "Bearer vmx_YOUR_KEY" } } }
+```
+
+## Plain REST / curl
+
+```bash
+curl -H "Authorization: Bearer vmx_YOUR_KEY" https://api.viewsmax.com/api/posts
+```
+
+Responses use a `{ success, message, data }` envelope. Full reference:
+<https://api.viewsmax.com/docs>.
+
+## What agents can do (18 MCP tools)
+
+`list_connected_accounts`, `upload_media`, `create_post`, `list_posts`,
+`get_post`, `update_post`, `delete_post`, `list_offers`, `create_offer`,
+`get_offer`, `update_offer`, `delete_offer`, `create_tracking_link`,
+`get_offer_stats`, `get_stats_timeseries`, `disconnect_account`,
+`get_connect_url`, `create_feature_request`.
+
+Typical posting flow: `list_connected_accounts` → `upload_media` (TikTok /
+Instagram / YouTube need a video or image) → `create_post` (status `draft`,
+`posted`, or `scheduled` + `scheduled_at`) → publishing is asynchronous, so
+poll `get_post` for per-platform results.
+
+`create_post`/`update_post` accept an `options` object keyed by platform for
+per-platform publish settings — e.g. `options.tiktok.privacy_level` and
+`options.tiktok.auto_add_music` (boolean, default `false`) which lets TikTok
+auto-add its recommended music to a photo slideshow (ignored for video; there
+is no music option for Instagram).
+
+Typical analytics flow: `list_offers` → `get_offer_stats` /
+`get_stats_timeseries` (clicks + conversions bucketed by hour or day).
+
+## Security & limits
+
+- Read-only credentials cannot write, anywhere.
+- Every AI tool call is recorded in the user's audit log (Settings → AI
+  Assistant Access → activity).
+- Rate limits: 120 MCP requests/min per token; 180 `create_post`/hour;
+  40 `upload_media`/hour. HTTP 429 = back off.
+- Rotate the API key any time to revoke access instantly.
+
+---
+
+# About ViewsMax
+
+ViewsMax (https://viewsmax.com) is a social posting + sales tracking SaaS for
+creators and marketers: make content that makes sales.
+
+## What it does
+
+- **Post everywhere from one place.** Compose once, publish or schedule to
+  YouTube, TikTok, X (Twitter), LinkedIn, Threads, Instagram, and Bluesky.
+  Drafts, a content calendar, and automatic retries per platform.
+- **Track what sells.** Create an *offer* (a product or campaign you promote),
+  generate *tracked links* for it, and place them in videos, posts, emails, or
+  bios. ViewsMax records clicks, conversions, and revenue per link.
+- **Attribution, not vanity metrics.** See which platform, which post, and
+  which time of day actually drives sales — funnels, customer journeys,
+  first-touch vs last-touch comparison, time-to-convert, and a
+  revenue-per-view leaderboard.
+- **AI-agent ready.** An MCP server and REST API let AI assistants (Claude,
+  ChatGPT, Cursor, OpenClaw, Hermes, …) post and read analytics on a user's
+  behalf. See [Connect your AI](https://viewsmax.com/ai.md).
+
+## Core concepts
+
+| Concept | Meaning |
+|---|---|
+| Post | One piece of content fanned out to one or more platforms; each platform target reports its own publish status. |
+| Offer | A product/campaign being promoted, with an offer URL and conversion value. |
+| Tracked link | A short link tied to an offer; records clicks and attributes conversions. |
+| Conversion | A sale or goal completion attributed back to the link/post that drove it. |
+
+## Who it's for
+
+Creators, solo marketers, and agencies who publish on several platforms and
+want to know which content generates revenue — not just views.
+
+## Links
+
+- Home: https://viewsmax.com/
+- Pricing: https://viewsmax.com/pricing.md
+- Connect your AI: https://viewsmax.com/ai.md
+- Blog: https://blog.viewsmax.com/
+- Privacy: https://viewsmax.com/privacy · Terms: https://viewsmax.com/terms
+
+---
+
+# ViewsMax Pricing
+
+Free to start (no card required). Paid plans are monthly, in USD.
+Sign up at https://viewsmax.com/auth — plan checkout at https://viewsmax.com/checkout.
+
+| Plan | Price | Channels | Offers | Posts / month |
+|---|---|---|---|---|
+| Free | $0 | — | — | — (content review & topic tools) |
+| Starter | $29/mo | 5 | 1 | 400 |
+| Creator (most popular) | $59/mo | 30 | 5 | Unlimited |
+| Pro | $99/mo | Unlimited | 10 | Unlimited |
+| Agency | $149/mo | Unlimited | Unlimited | Unlimited |
+
+- **Starter** — "Launch your first offer." For creators just getting started.
+- **Creator** — "For brands that sell." Growing creators running multiple offers.
+- **Pro** — "Scale every channel." Professionals scaling their reach.
+- **Agency** — "For teams & agencies." Unlimited everything.
+
+All paid plans include cross-platform posting/scheduling (YouTube, TikTok, X,
+LinkedIn, Threads, Instagram, Bluesky), tracked links with click/conversion/
+revenue attribution, analytics dashboards, and AI agent access (MCP + API
+key — see https://viewsmax.com/ai.md).
+
+Limits are enforced per account; current values are always available from the
+authenticated API (`GET /api/plans`).

@@ -1,0 +1,308 @@
+{
+    "9": {
+        "inputs": {
+            "filename_prefix": "Flux2_dev",
+            "images": ["104", 0]
+        },
+        "class_type": "SaveImage",
+        "_meta": {
+            "title": "Save Image"
+        }
+    },
+    "100": {
+        "inputs": {
+            "guidance": 4,
+            "conditioning": ["118", 0]
+        },
+        "class_type": "FluxGuidance",
+        "_meta": {
+            "title": "FluxGuidance"
+        }
+    },
+    "102": {
+        "inputs": {
+            "vae_name": "flux2-vae.safetensors"
+        },
+        "class_type": "VAELoader",
+        "_meta": {
+            "title": "Load VAE"
+        }
+    },
+    "104": {
+        "inputs": {
+            "samples": ["156", 0],
+            "vae": ["102", 0]
+        },
+        "class_type": "VAEDecode",
+        "_meta": {
+            "title": "VAE Decode"
+        }
+    },
+    "107": {
+        "inputs": {
+            "text": "head_swap: Use image 1 as the base image, preserving its environment, background, camera perspective, framing, exposure, contrast, and lighting. Remove the head from image 1 and seamlessly replace it with the head and hair from image 2 (VERY IMPORTANT).\n\nMatch the original head size, face-to-body ratio, neck thickness, shoulder alignment, and camera distance so proportions remain natural and unchanged.\n\nAdapt the inserted head to the lighting of image 1 by matching light direction, intensity, softness, color temperature, shadows, and highlights, with no independent relighting.\nPreserve the identity of image 2, including hair texture, eye color, nose structure, facial proportions, and skin details.\nMatch the pose and expression from image 1, including head tilt, rotation, eye direction, and lip position and match gaze, micro-expressions with image 1.\nEnsure seamless neck and jaw blending, consistent skin tone, realistic shadow contact, natural skin texture, and uniform sharpness.\nPhotorealistic, high quality, sharp details, 4K.",
+            "clip": ["146", 0]
+        },
+        "class_type": "CLIPTextEncode",
+        "_meta": {
+            "title": "CLIP Text Encode (Positive Prompt)"
+        }
+    },
+    "112": {
+        "inputs": {
+            "conditioning": ["107", 0],
+            "latent": ["150", 0]
+        },
+        "class_type": "ReferenceLatent",
+        "_meta": {
+            "title": "ReferenceLatent"
+        }
+    },
+    "115": {
+        "inputs": {
+            "upscale_method": "lanczos",
+            "megapixels": ["135", 0],
+            "resolution_steps": 1,
+            "image": ["151", 0]
+        },
+        "class_type": "ImageScaleToTotalPixels",
+        "_meta": {
+            "title": "ImageScaleToTotalPixels"
+        }
+    },
+    "118": {
+        "inputs": {
+            "conditioning": ["112", 0],
+            "latent": ["119", 0]
+        },
+        "class_type": "ReferenceLatent",
+        "_meta": {
+            "title": "ReferenceLatent"
+        }
+    },
+    "119": {
+        "inputs": {
+            "pixels": ["120", 0],
+            "vae": ["102", 0]
+        },
+        "class_type": "VAEEncode",
+        "_meta": {
+            "title": "VAE Encode"
+        }
+    },
+    "120": {
+        "inputs": {
+            "upscale_method": "lanczos",
+            "megapixels": ["135", 0],
+            "resolution_steps": 2,
+            "image": ["121", 0]
+        },
+        "class_type": "ImageScaleToTotalPixels",
+        "_meta": {
+            "title": "ImageScaleToTotalPixels"
+        }
+    },
+    "121": {
+        "inputs": {
+            "image": "example.jpeg"
+        },
+        "class_type": "LoadImage",
+        "_meta": {
+            "title": "Load Reference Image"
+        }
+    },
+    "125": {
+        "inputs": {
+            "pixels": ["115", 0],
+            "vae": ["102", 0]
+        },
+        "class_type": "VAEEncode",
+        "_meta": {
+            "title": "VAE Encode"
+        }
+    },
+    "126": {
+        "inputs": {
+            "unet_name": "flux-2-klein-9b.safetensors",
+            "weight_dtype": "default"
+        },
+        "class_type": "UNETLoader",
+        "_meta": {
+            "title": "Load Diffusion Model"
+        }
+    },
+    "135": {
+        "inputs": {
+            "value": 0.3
+        },
+        "class_type": "PrimitiveFloat",
+        "_meta": {
+            "title": "Float (Set Megapixels)"
+        }
+    },
+    "136": {
+        "inputs": {
+            "conditioning": ["107", 0]
+        },
+        "class_type": "ConditioningZeroOut",
+        "_meta": {
+            "title": "ConditioningZeroOut"
+        }
+    },
+    "146": {
+        "inputs": {
+            "clip_name": "qwen_3_8b_fp8mixed.safetensors",
+            "type": "flux2",
+            "device": "default"
+        },
+        "class_type": "CLIPLoader",
+        "_meta": {
+            "title": "Load CLIP"
+        }
+    },
+    "147": {
+        "inputs": {
+            "samples": ["125", 0],
+            "vae": ["102", 0]
+        },
+        "class_type": "VAEDecode",
+        "_meta": {
+            "title": "VAE Decode"
+        }
+    },
+    "148": {
+        "inputs": {
+            "image": ["147", 0]
+        },
+        "class_type": "GetImageSize",
+        "_meta": {
+            "title": "Get Image Size"
+        }
+    },
+    "149": {
+        "inputs": {
+            "upscale_method": "lanczos",
+            "width": ["148", 0],
+            "height": ["148", 1],
+            "crop": "center",
+            "image": ["151", 0]
+        },
+        "class_type": "ImageScale",
+        "_meta": {
+            "title": "Upscale Image"
+        }
+    },
+    "150": {
+        "inputs": {
+            "pixels": ["149", 0],
+            "vae": ["102", 0]
+        },
+        "class_type": "VAEEncode",
+        "_meta": {
+            "title": "VAE Encode"
+        }
+    },
+    "151": {
+        "inputs": {
+            "image": "Robert_Downey_Jr.webp"
+        },
+        "class_type": "LoadImage",
+        "_meta": {
+            "title": "Load Base Image"
+        }
+    },
+    "152": {
+        "inputs": {
+            "samples": ["150", 0],
+            "mask": ["153", 0]
+        },
+        "class_type": "SetLatentNoiseMask",
+        "_meta": {
+            "title": "Set Latent Noise Mask"
+        }
+    },
+    "153": {
+        "inputs": {
+            "resize_type": "scale dimensions",
+            "resize_type.width": ["148", 0],
+            "resize_type.height": ["148", 1],
+            "resize_type.crop": "center",
+            "scale_method": "bicubic",
+            "input": ["151", 1]
+        },
+        "class_type": "ResizeImageMaskNode",
+        "_meta": {
+            "title": "Resize Image/Mask"
+        }
+    },
+    "156": {
+        "inputs": {
+            "seed": 161074199802716,
+            "steps": 4,
+            "cfg": 1,
+            "sampler_name": "euler",
+            "scheduler": "simple",
+            "denoise": 1,
+            "LanPaint_NumSteps": 2,
+            "LanPaint_PromptMode": "Image First",
+            "LanPaint_Info": "LanPaint KSampler. For more info, visit https://github.com/scraed/LanPaint. If you find it useful, please give a star ⭐️!",
+            "Inpainting_mode": "🖼️ Image Inpainting",
+            "model": ["161", 0],
+            "positive": ["100", 0],
+            "negative": ["136", 0],
+            "latent_image": ["162", 0]
+        },
+        "class_type": "LanPaint_KSampler",
+        "_meta": {
+            "title": "LanPaint KSampler"
+        }
+    },
+    "161": {
+        "inputs": {
+            "lora_name": "bfs_head_v1_flux-klein_9b_step3500_rank128.safetensors",
+            "strength_model": 1,
+            "model": ["126", 0]
+        },
+        "class_type": "LoraLoaderModelOnly",
+        "_meta": {
+            "title": "LoraLoaderModelOnly"
+        }
+    },
+    "162": {
+        "inputs": {
+            "switch": true,
+            "on_false": ["152", 0],
+            "on_true": ["163", 0]
+        },
+        "class_type": "ComfySwitchNode",
+        "_meta": {
+            "title": "Switch (Disable Inpainting)"
+        }
+    },
+    "163": {
+        "inputs": {
+            "width": 1280,
+            "height": 720,
+            "batch_size": 1
+        },
+        "class_type": "EmptyFlux2LatentImage",
+        "_meta": {
+            "title": "Empty Flux 2 Latent"
+        }
+    },
+    "185": {
+        "inputs": {
+            "mode": "always",
+            "webhook_url": "",
+            "verify_ssl": false,
+            "notification_text": "Image generation complete",
+            "json_format": "{\"prompt_id\":\"<notification_text>\",\"image_id\":\"44\",\"status\":\"completed\"}",
+            "timeout": 10,
+            "any": ["104", 0]
+        },
+        "class_type": "Notif-Webhook",
+        "_meta": {
+            "title": "Webhook"
+        }
+    }
+}

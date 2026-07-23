@@ -1,0 +1,61 @@
+{
+  "1": {
+    "inputs": {
+      "image": "Robert_Downey_Jr.webp"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "2": {
+    "inputs": {
+      "model": "gokaygokay/Florence-2-Flux-Large",
+      "precision": "fp16",
+      "attention": "sdpa",
+      "convert_to_safetensors": false
+    },
+    "class_type": "DownloadAndLoadFlorence2Model",
+    "_meta": {
+      "title": "DownloadAndLoadFlorence2Model"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text_input": "",
+      "task": "more_detailed_caption",
+      "fill_mask": true,
+      "keep_model_loaded": false,
+      "max_new_tokens": 1024,
+      "num_beams": 3,
+      "do_sample": true,
+      "output_mask_select": "",
+      "seed": 389337895685518,
+      "image": [
+        "1",
+        0
+      ],
+      "florence2_model": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "Florence2Run",
+    "_meta": {
+      "title": "Florence2Run"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text_0": "A man is smiling and looking directly into the camera. He has dark hair and a slight smile on his face. His eyes are brown and his eyebrows are slightly furrowed. His eyebrows appear to be slightly raised. He is wearing a dark blue collared shirt and a dark grey suit jacket with a silver tie. His hair is dark brown and slicked back, and his facial hair is neatly trimmed and trimmed along his chin and beard. Behind him is a red curtain.",
+      "text": [
+        "3",
+        2
+      ]
+    },
+    "class_type": "ShowText|pysssss",
+    "_meta": {
+      "title": "Show Text 🐍"
+    }
+  }
+}

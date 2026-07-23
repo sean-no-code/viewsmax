@@ -1,0 +1,33 @@
+{
+  "nav": {
+    "post": "Publier",
+    "newPost": "Nouvelle publication",
+    "drafts": "Brouillons",
+    "scheduled": "Programmées",
+    "history": "Historique",
+    "calendar": "Calendrier",
+    "monetization": "Monétisation",
+    "offers": "Offres",
+    "analytics": "Analytique",
+    "boosts": "Boosts",
+    "connections": "Connexions",
+    "settings": "Paramètres",
+    "requestFeature": "Suggérer une fonctionnalité"
+  },
+  "settings": {
+    "language": {
+      "title": "Langue",
+      "description": "Choisissez la langue de ViewsMax.",
+      "label": "Langue de l'interface"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Choisissez quand ViewsMax vous envoie des e-mails.",
+      "postFailures": "M'envoyer un e-mail si une publication échoue",
+      "postFailuresHint": "Un e-mail par publication échouée listant chaque plateforme concernée, avec un lien pour réessayer.",
+      "saveFailed": "Impossible d'enregistrer le réglage. Veuillez réessayer.",
+      "enabled": "Vous recevrez un e-mail si une publication échoue.",
+      "disabled": "E-mails d'échec de publication désactivés."
+    }
+  }
+}

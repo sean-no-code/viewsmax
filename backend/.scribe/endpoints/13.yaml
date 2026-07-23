@@ -1,0 +1,77 @@
+name: 'Post Media'
+description: |-
+
+  Upload media (images / video) used by composed posts. Files are stored on the
+  configured default disk (S3 in production) and returned as a public URL that
+  the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/posts/media
+    metadata:
+      custom: []
+      groupName: 'Post Media'
+      groupDescription: |-
+
+        Upload media (images / video) used by composed posts. Files are stored on the
+        configured default disk (S3 in production) and returned as a public URL that
+        the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Upload a single post media file.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      type:
+        custom: []
+        name: type
+        description: 'image|video. Required.'
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      file:
+        custom: []
+        name: file
+        description: 'Image or video file. Required.'
+        required: false
+        example: null
+        type: file
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null

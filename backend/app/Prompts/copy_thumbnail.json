@@ -1,0 +1,814 @@
+{
+  "175": {
+    "inputs": {
+      "width": 768,
+      "height": [
+        "399",
+        2
+      ],
+      "interpolation": "lanczos",
+      "method": "keep proportion",
+      "condition": "always",
+      "multiple_of": 0,
+      "image": [
+        "437",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "181": {
+    "inputs": {
+      "direction": "right",
+      "match_image_size": true,
+      "image1": [
+        "182",
+        0
+      ],
+      "image2": [
+        "184",
+        0
+      ]
+    },
+    "class_type": "ImageConcanate",
+    "_meta": {
+      "title": "Image Concatenate"
+    }
+  },
+  "182": {
+    "inputs": {
+      "mask": [
+        "402",
+        0
+      ]
+    },
+    "class_type": "MaskToImage",
+    "_meta": {
+      "title": "Convert Mask to Image"
+    }
+  },
+  "184": {
+    "inputs": {
+      "width": [
+        "175",
+        1
+      ],
+      "height": [
+        "175",
+        2
+      ],
+      "batch_size": 1,
+      "color": 0
+    },
+    "class_type": "EmptyImage",
+    "_meta": {
+      "title": "EmptyImage"
+    }
+  },
+  "185": {
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "181",
+        0
+      ]
+    },
+    "class_type": "ImageToMask",
+    "_meta": {
+      "title": "Convert Image to Mask"
+    }
+  },
+  "214": {
+    "inputs": {
+      "samples": [
+        "346",
+        0
+      ],
+      "vae": [
+        "338",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "221": {
+    "inputs": {
+      "noise_mask": true,
+      "positive": [
+        "345",
+        0
+      ],
+      "negative": [
+        "404",
+        0
+      ],
+      "vae": [
+        "338",
+        0
+      ],
+      "pixels": [
+        "323",
+        0
+      ],
+      "mask": [
+        "403",
+        0
+      ]
+    },
+    "class_type": "InpaintModelConditioning",
+    "_meta": {
+      "title": "InpaintModelConditioning"
+    }
+  },
+  "228": {
+    "inputs": {
+      "width": [
+        "399",
+        1
+      ],
+      "height": [
+        "399",
+        2
+      ],
+      "x": 0,
+      "y": 0,
+      "image": [
+        "214",
+        0
+      ]
+    },
+    "class_type": "ImageCrop",
+    "_meta": {
+      "title": "Image Crop"
+    }
+  },
+  "323": {
+    "inputs": {
+      "direction": "right",
+      "match_image_size": true,
+      "image1": [
+        "399",
+        0
+      ],
+      "image2": [
+        "175",
+        0
+      ]
+    },
+    "class_type": "ImageConcanate",
+    "_meta": {
+      "title": "Image Concatenate"
+    }
+  },
+  "337": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "comfyui_portrait_lora64.safetensors",
+        "strength": 0.4
+      },
+      "lora_2": {
+        "on": true,
+        "lora": "FLUX.1-Turbo-Alpha.safetensors",
+        "strength": 0.5
+      },
+      "lora_3": {
+        "on": true,
+        "lora": "test-model-shirish-8.safetensors",
+        "strength": 1.5
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "340",
+        0
+      ],
+      "clip": [
+        "341",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "338": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "340": {
+    "inputs": {
+      "unet_name": "flux1-dev-fp8.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "341": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "t5xxl_fp16.safetensors",
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "345": {
+    "inputs": {
+      "guidance": 3.5,
+      "conditioning": [
+        "468",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "346": {
+    "inputs": {
+      "seed": 499181380859338,
+      "steps": 25,
+      "cfg": 1,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 0.9,
+      "model": [
+        "416",
+        0
+      ],
+      "positive": [
+        "221",
+        0
+      ],
+      "negative": [
+        "221",
+        1
+      ],
+      "latent_image": [
+        "221",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "382": {
+    "inputs": {
+      "images": [
+        "214",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "385": {
+    "inputs": {
+      "mask_opacity": 0.5,
+      "mask_color": "255, 0, 255",
+      "pass_through": false,
+      "image": [
+        "323",
+        0
+      ],
+      "mask": [
+        "403",
+        0
+      ]
+    },
+    "class_type": "ImageAndMaskPreview",
+    "_meta": {
+      "title": "ImageAndMaskPreview"
+    }
+  },
+  "399": {
+    "inputs": {
+      "width": 768,
+      "height": 768,
+      "interpolation": "lanczos",
+      "method": "keep proportion",
+      "condition": "downscale if bigger",
+      "multiple_of": 0,
+      "image": [
+        "420",
+        1
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "402": {
+    "inputs": {
+      "width": [
+        "399",
+        1
+      ],
+      "height": [
+        "399",
+        2
+      ],
+      "keep_proportions": true,
+      "upscale_method": "nearest-exact",
+      "crop": "disabled",
+      "mask": [
+        "420",
+        2
+      ]
+    },
+    "class_type": "ResizeMask",
+    "_meta": {
+      "title": "Resize Mask"
+    }
+  },
+  "403": {
+    "inputs": {
+      "kernel_size": 15,
+      "sigma": 5,
+      "mask": [
+        "185",
+        0
+      ]
+    },
+    "class_type": "ImpactGaussianBlurMask",
+    "_meta": {
+      "title": "Gaussian Blur Mask"
+    }
+  },
+  "404": {
+    "inputs": {
+      "text": "HAIR, hairy, wig, toupee, flowing hair, styled hair, hairline, bangs, curly hair, straight hair, long hair, short hair, hair strands, receding hairline, full head of hair, thick hair, thin hair",
+      "clip": [
+        "341",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "NEGATIVE PROMPT - NO HAIR"
+    }
+  },
+  "416": {
+    "inputs": {
+      "model_type": "flux",
+      "rel_l1_thresh": 0.2,
+      "start_percent": 0,
+      "end_percent": 1,
+      "cache_device": "cuda",
+      "model": [
+        "337",
+        0
+      ]
+    },
+    "class_type": "TeaCache",
+    "_meta": {
+      "title": "TeaCache"
+    }
+  },
+  "420": {
+    "inputs": {
+      "downscale_algorithm": "bilinear",
+      "upscale_algorithm": "bicubic",
+      "preresize": false,
+      "preresize_mode": "ensure minimum resolution",
+      "preresize_min_width": 1024,
+      "preresize_min_height": 1024,
+      "preresize_max_width": 16384,
+      "preresize_max_height": 16384,
+      "mask_fill_holes": false,
+      "mask_expand_pixels": 0,
+      "mask_invert": false,
+      "mask_blend_pixels": 16,
+      "mask_hipass_filter": 0.1,
+      "extend_for_outpainting": false,
+      "extend_up_factor": 1,
+      "extend_down_factor": 1,
+      "extend_left_factor": 1,
+      "extend_right_factor": 1,
+      "context_from_mask_extend_factor": 1.2,
+      "output_resize_to_target_size": true,
+      "output_target_width": 768,
+      "output_target_height": 768,
+      "output_padding": "32",
+      "image": [
+        "437",
+        0
+      ],
+      "mask": [
+        "434",
+        0
+      ]
+    },
+    "class_type": "InpaintCropImproved",
+    "_meta": {
+      "title": "✂️ Inpaint Crop (Improved)"
+    }
+  },
+  "421": {
+    "inputs": {
+      "stitcher": [
+        "420",
+        0
+      ],
+      "inpainted_image": [
+        "228",
+        0
+      ]
+    },
+    "class_type": "InpaintStitchImproved",
+    "_meta": {
+      "title": "✂️ Inpaint Stitch (Improved)"
+    }
+  },
+  "423": {
+    "inputs": {
+      "model_name": "sam_vit_b_01ec64.pth",
+      "device_mode": "Prefer GPU"
+    },
+    "class_type": "SAMLoader",
+    "_meta": {
+      "title": "SAMLoader (Impact)"
+    }
+  },
+  "424": {
+    "inputs": {
+      "model_name": "segm/hair_yolov8n-seg_60.pt"
+    },
+    "class_type": "UltralyticsDetectorProvider",
+    "_meta": {
+      "title": "UltralyticsDetectorProvider"
+    }
+  },
+  "425": {
+    "inputs": {
+      "invert_mask": true,
+      "Preview": "none",
+      "image": [
+        "437",
+        0
+      ],
+      "mask": [
+        "428",
+        0
+      ]
+    },
+    "class_type": "Preview_Mask_Plus",
+    "_meta": {
+      "title": "PREVIEW HAIR"
+    }
+  },
+  "426": {
+    "inputs": {
+      "invert_mask": true,
+      "Preview": "none",
+      "image": [
+        "437",
+        0
+      ],
+      "mask": [
+        "434",
+        0
+      ]
+    },
+    "class_type": "Preview_Mask_Plus",
+    "_meta": {
+      "title": "PREVIEW FINAL"
+    }
+  },
+  "427": {
+    "inputs": {
+      "threshold": 0.5000000000000001,
+      "dilation": 8,
+      "crop_factor": 1,
+      "drop_size": 10,
+      "labels": "face",
+      "bbox_detector": [
+        "432",
+        0
+      ],
+      "image": [
+        "437",
+        0
+      ]
+    },
+    "class_type": "BboxDetectorSEGS",
+    "_meta": {
+      "title": "BBOX Detector (SEGS) FACE"
+    }
+  },
+  "428": {
+    "inputs": {
+      "amount": 12,
+      "device": "gpu",
+      "mask": [
+        "435",
+        0
+      ]
+    },
+    "class_type": "MaskBlur+",
+    "_meta": {
+      "title": "🔧 Mask Blur"
+    }
+  },
+  "429": {
+    "inputs": {
+      "amount": 12,
+      "device": "gpu",
+      "mask": [
+        "431",
+        0
+      ]
+    },
+    "class_type": "MaskBlur+",
+    "_meta": {
+      "title": "🔧 Mask Blur"
+    }
+  },
+  "430": {
+    "inputs": {
+      "invert_mask": true,
+      "Preview": "none",
+      "image": [
+        "437",
+        0
+      ],
+      "mask": [
+        "429",
+        0
+      ]
+    },
+    "class_type": "Preview_Mask_Plus",
+    "_meta": {
+      "title": "PREVIEW FACE"
+    }
+  },
+  "431": {
+    "inputs": {
+      "detection_hint": "center-1",
+      "dilation": 22,
+      "threshold": 0.93,
+      "bbox_expansion": 0,
+      "mask_hint_threshold": 0.7,
+      "mask_hint_use_negative": "False",
+      "sam_model": [
+        "423",
+        0
+      ],
+      "segs": [
+        "427",
+        0
+      ],
+      "image": [
+        "437",
+        0
+      ]
+    },
+    "class_type": "SAMDetectorSegmented",
+    "_meta": {
+      "title": "SAMDetector (segmented)"
+    }
+  },
+  "432": {
+    "inputs": {
+      "model_name": "bbox/face_yolov8m.pt"
+    },
+    "class_type": "UltralyticsDetectorProvider",
+    "_meta": {
+      "title": "UltralyticsDetectorProvider"
+    }
+  },
+  "433": {
+    "inputs": {
+      "threshold": 0.5,
+      "dilation": 8,
+      "crop_factor": 1,
+      "drop_size": 10,
+      "labels": "hair",
+      "bbox_detector": [
+        "424",
+        0
+      ],
+      "image": [
+        "437",
+        0
+      ]
+    },
+    "class_type": "BboxDetectorSEGS",
+    "_meta": {
+      "title": "BBOX Detector (SEGS) HAIR"
+    }
+  },
+  "434": {
+    "inputs": {
+      "x": 0,
+      "y": 0,
+      "operation": "or",
+      "destination": [
+        "428",
+        0
+      ],
+      "source": [
+        "429",
+        0
+      ]
+    },
+    "class_type": "MaskComposite",
+    "_meta": {
+      "title": "MaskComposite"
+    }
+  },
+  "435": {
+    "inputs": {
+      "detection_hint": "center-1",
+      "dilation": 22,
+      "threshold": 0.93,
+      "bbox_expansion": 0,
+      "mask_hint_threshold": 0.7,
+      "mask_hint_use_negative": "False",
+      "sam_model": [
+        "423",
+        0
+      ],
+      "segs": [
+        "433",
+        0
+      ],
+      "image": [
+        "437",
+        0
+      ]
+    },
+    "class_type": "SAMDetectorSegmented",
+    "_meta": {
+      "title": "SAMDetector (segmented)"
+    }
+  },
+  "436": {
+    "inputs": {
+      "image": "733885_v9_bc.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "437": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 1,
+      "image": [
+        "436",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "Upscale Image By"
+    }
+  },
+  "468": {
+    "inputs": {
+      "text": "1-8, completely bald head, no hair whatsoever, hairless scalp, shiny bald head, bald man with smooth scalp, white guy, same head shape and proportions, portrait photograph, natural lighting, high quality, photorealistic, detailed face, preserve original head size and angle\n\nMATCH ONLY THE FACIAL EXPRESSION from the reference: Extract the emotion (smiling/frowning/neutral), eye direction (looking at camera/away), mouth position (open/closed/smiling), and head tilt from this description. IGNORE clothing, background, hair, and body descriptions:\n\n",
+      "clip": [
+        "337",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "485": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 1024,
+      "seed": 0,
+      "steps": 16,
+      "cfg": 8,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.5,
+      "feather": 15,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3,
+      "sam_detection_hint": "center-1",
+      "sam_dilation": 0,
+      "sam_threshold": 0.93,
+      "sam_bbox_expansion": 0,
+      "sam_mask_hint_threshold": 0.7,
+      "sam_mask_hint_use_negative": "False",
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "tiled_encode": false,
+      "tiled_decode": false,
+      "image": [
+        "421",
+        0
+      ],
+      "model": [
+        "340",
+        0
+      ],
+      "clip": [
+        "337",
+        1
+      ],
+      "vae": [
+        "338",
+        0
+      ],
+      "positive": [
+        "468",
+        0
+      ],
+      "negative": [
+        "404",
+        0
+      ],
+      "bbox_detector": [
+        "432",
+        0
+      ],
+      "sam_model_opt": [
+        "423",
+        0
+      ],
+      "segm_detector_opt": [
+        "487",
+        1
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer"
+    }
+  },
+  "487": {
+    "inputs": {
+      "model_name": "segm/person_yolov8m-seg.pt"
+    },
+    "class_type": "UltralyticsDetectorProvider",
+    "_meta": {
+      "title": "UltralyticsDetectorProvider"
+    }
+  },
+  "488": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "485",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "489": {
+    "inputs": {
+      "images": [
+        "485",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  }
+}

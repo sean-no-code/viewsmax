@@ -1,0 +1,33 @@
+{
+  "nav": {
+    "post": "Publicar",
+    "newPost": "Nueva publicación",
+    "drafts": "Borradores",
+    "scheduled": "Programadas",
+    "history": "Historial",
+    "calendar": "Calendario",
+    "monetization": "Monetización",
+    "offers": "Ofertas",
+    "analytics": "Analítica",
+    "boosts": "Boosts",
+    "connections": "Conexiones",
+    "settings": "Ajustes",
+    "requestFeature": "Pedir una función"
+  },
+  "settings": {
+    "language": {
+      "title": "Idioma",
+      "description": "Elige el idioma que usa ViewsMax.",
+      "label": "Idioma de la interfaz"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "description": "Elige cuándo te escribe ViewsMax por correo.",
+      "postFailures": "Avisarme por correo si una publicación falla",
+      "postFailuresHint": "Un correo por publicación fallida con cada plataforma afectada y un enlace para reintentar.",
+      "saveFailed": "No se pudo guardar el ajuste. Inténtalo de nuevo.",
+      "enabled": "Te avisaremos por correo si una publicación falla.",
+      "disabled": "Correos de fallo de publicación desactivados."
+    }
+  }
+}

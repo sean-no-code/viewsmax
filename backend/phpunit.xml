@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <!-- The full suite (350+ tests, per-test in-memory migrations) has
+             outgrown PHP's 128M default; without this it dies mid-run. -->
+        <ini name="memory_limit" value="1G"/>
+        <!-- force="true" is load-bearing, not decorative: without it PHPUnit
+             leaves any variable already present in the environment untouched.
+             Under Docker or CI, where DB_CONNECTION and friends are exported,
+             the suite would otherwise run against the real Postgres instead of
+             in-memory sqlite and fail en masse. -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <!-- The auxiliary "outlier_db" connection is Postgres in prod/Docker; use
+             sqlite in tests so the suite runs without an external Postgres host. -->
+        <env name="DB_OUTLIERS_DRIVER" value="sqlite" force="true"/>
+        <env name="DB_OUTLIERS_DATABASE" value=":memory:" force="true"/>
+        <env name="DB_OUTLIERS_URL" value="" force="true"/>
+        <env name="DB_OUTLIERS_HOST" value="" force="true"/>
+        <env name="DB_OUTLIERS_PORT" value="" force="true"/>
+        <env name="DB_OUTLIERS_USERNAME" value="" force="true"/>
+        <env name="DB_OUTLIERS_PASSWORD" value="" force="true"/>
+        <!-- A dummy value, but a required one: tracking:refresh-reach only calls
+             YouTube when a key is configured, so without this the reach tests
+             pass on a machine whose .env happens to have a key and fail
+             everywhere else. The service itself is mocked in those tests. -->
+        <env name="YOUTUBE_API_KEY" value="testing-youtube-key" force="true"/>
+        <!-- Same reason: the Instagram auth-url builder throws when no client_id
+             is configured, so this test only passed on a machine whose .env had
+             one. No network call is made. -->
+        <env name="INSTAGRAM_CLIENT_ID" value="testing-instagram-id" force="true"/>
+        <env name="INSTAGRAM_CLIENT_SECRET" value="testing-instagram-secret" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

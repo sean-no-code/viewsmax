@@ -1,0 +1,72 @@
+name: Deploy React Site to S3
+
+# Manual trigger only. This deploys to a live S3 bucket + CloudFront, so it must
+# never fire automatically from a public repository — a merged PR would push
+# straight to production. Run it deliberately from the Actions tab (requires
+# write access), with the AWS_* and VITE_* repository secrets configured.
+# Left here as a working reference for self-hosted deployments.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v7
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Run Tests
+      # A failing step aborts the job, so nothing deploys unless the suite is green.
+      run: npm run test:run
+
+    - name: Build Project
+      run: npm run build
+      env:
+        # VITE_* vars are baked into the bundle at build time. Provide them
+        # here from repo secrets or the production build ships with them undefined.
+        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+        VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        VITE_TIKTOK_CLIENT_KEY: ${{ secrets.VITE_TIKTOK_CLIENT_KEY }}
+        VITE_INSTAGRAM_CLIENT_ID: ${{ secrets.VITE_INSTAGRAM_CLIENT_ID }}
+        VITE_PAYPAL_CLIENT_ID: ${{ secrets.VITE_PAYPAL_CLIENT_ID }}
+        VITE_YOUTUBE_API_KEY: ${{ secrets.VITE_YOUTUBE_API_KEY }}
+        # Never serve the mock API in production.
+        VITE_USE_MOCK_API: 'false'
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-1  # Must match the S3 bucket's region
+
+    - name: Deploy to S3 Bucket
+      # Vite builds to ./dist (not ./build). Hashed assets are immutable, so
+      # cache them forever; everything else (index.html, ai.md, llms*.txt) must
+      # revalidate on every request or CloudFront serves the previous deploy
+      # for its default TTL (~24h). Assets upload first so index.html never
+      # references a bundle that isn't on S3 yet.
+      run: |
+        aws s3 sync ./dist/assets s3://${{ secrets.AWS_S3_BUCKET_NAME }}/assets --delete \
+          --cache-control "public,max-age=31536000,immutable"
+        aws s3 sync ./dist s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete --exclude "assets/*" \
+          --cache-control "no-cache"
+
+    - name: Invalidate CloudFront Cache
+      # Without this, CloudFront keeps serving the previous bundle (index.html
+      # and hashed assets) until the TTL expires — deploys looked like no-ops.
+      run: |
+        aws cloudfront create-invalidation \
+          --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} \
+          --paths "/*"

@@ -1,0 +1,12 @@
+Create a complete video script for this project: {project}
+
+Write a compelling, engaging script that includes:
+- A strong hook to grab attention
+- Clear talking points with valuable content
+- A compelling closing with call-to-action
+
+Return ONLY the script text. No commentary, no explanations, no formatting instructions. Just the raw script content.
+
+
+
+

@@ -1,0 +1,11 @@
+# ViewsMax API
+
+> Machine endpoint host for ViewsMax (https://viewsmax.com), a social posting +
+> link tracking/analytics SaaS. Canonical llms.txt: https://viewsmax.com/llms.txt
+
+- Capability discovery (JSON): https://api.viewsmax.com/api/ai
+- MCP endpoint: https://api.viewsmax.com/api/mcp (Streamable HTTP; OAuth 2.1 + PKCE or `vmx_` API key as Bearer)
+- OAuth discovery: https://api.viewsmax.com/.well-known/oauth-authorization-server
+- REST API reference: https://api.viewsmax.com/docs
+- OpenAPI spec: https://api.viewsmax.com/docs.openapi
+- Agent setup guide: https://viewsmax.com/ai.md

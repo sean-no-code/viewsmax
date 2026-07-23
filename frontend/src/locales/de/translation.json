@@ -1,0 +1,33 @@
+{
+  "nav": {
+    "post": "Posten",
+    "newPost": "Neuer Post",
+    "drafts": "Entwürfe",
+    "scheduled": "Geplant",
+    "history": "Verlauf",
+    "calendar": "Kalender",
+    "monetization": "Monetarisierung",
+    "offers": "Angebote",
+    "analytics": "Analytics",
+    "boosts": "Boosts",
+    "connections": "Verbindungen",
+    "settings": "Einstellungen",
+    "requestFeature": "Funktion vorschlagen"
+  },
+  "settings": {
+    "language": {
+      "title": "Sprache",
+      "description": "Wähle die Sprache von ViewsMax.",
+      "label": "Oberflächensprache"
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "description": "Lege fest, wann ViewsMax dir E-Mails schickt.",
+      "postFailures": "E-Mail senden, wenn ein Post fehlschlägt",
+      "postFailuresHint": "Eine E-Mail pro fehlgeschlagenem Post mit allen betroffenen Plattformen und einem Link zum erneuten Versuch.",
+      "saveFailed": "Einstellung konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "enabled": "Du bekommst eine E-Mail, wenn ein Post fehlschlägt.",
+      "disabled": "Fehlschlag-E-Mails deaktiviert."
+    }
+  }
+}

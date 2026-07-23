@@ -1,0 +1,163 @@
+<?php
+
+namespace App\Services\Social\Providers;
+
+use App\Models\SocialAccount;
+use App\Models\SocialPost;
+use App\Models\User;
+use App\Services\Social\Data\OAuthResult;
+use App\Services\Social\Data\PublishResult;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
+
+/**
+ * TikTok publishing via the Content Posting API (direct post, PULL_FROM_URL).
+ * TikTok is media-first: a post must include a video (or photos).
+ */
+class TikTokProvider extends AbstractSocialProvider
+{
+    protected string $platform = 'tiktok';
+
+    protected const TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
+
+    public function getAuthorizationUrl(string $redirectUri, string $state, array $options = []): string
+    {
+        return 'https://www.tiktok.com/v2/auth/authorize/?'.http_build_query([
+            'client_key' => $this->clientId(),
+            'scope' => $this->scopeString(','),
+            'response_type' => 'code',
+            'redirect_uri' => $redirectUri,
+            'state' => $state,
+        ]);
+    }
+
+    public function connectFromCode(User $user, string $code, string $redirectUri, array $options = []): Collection
+    {
+        $response = Http::asForm()->post(self::TOKEN_URL, [
+            'client_key' => $this->clientId(),
+            'client_secret' => $this->clientSecret(),
+            'code' => $code,
+            'grant_type' => 'authorization_code',
+            'redirect_uri' => $redirectUri,
+        ]);
+
+        if (! $response->successful()) {
+            $this->fail('token exchange', $response->status(), $response->body());
+        }
+
+        $data = $response->json();
+        $accessToken = $data['access_token'] ?? null;
+        $openId = $data['open_id'] ?? null;
+
+        $profile = Http::withToken($accessToken)
+            ->get('https://open.tiktokapis.com/v2/user/info/', [
+                'fields' => 'open_id,union_id,avatar_url,display_name',
+            ])->json('data.user');
+
+        $account = $this->storeAccount($user, [
+            'platform_account_id' => $openId,
+            'name' => $profile['display_name'] ?? null,
+            'username' => $profile['display_name'] ?? null,
+            'avatar_url' => $profile['avatar_url'] ?? null,
+            'access_token' => $accessToken,
+            'refresh_token' => $data['refresh_token'] ?? null,
+            'token_expires_at' => isset($data['expires_in']) ? now()->addSeconds((int) $data['expires_in']) : null,
+            'scopes' => isset($data['scope']) ? explode(',', $data['scope']) : $this->config('scopes', []),
+            'metadata' => [
+                'open_id' => $openId,
+                'union_id' => $data['union_id'] ?? null,
+            ],
+        ]);
+
+        return collect([$account]);
+    }
+
+    public function ensureFreshToken(SocialAccount $account): SocialAccount
+    {
+        if ($account->hasValidToken() || empty($account->refresh_token)) {
+            return $account;
+        }
+
+        $response = Http::asForm()->post(self::TOKEN_URL, [
+            'client_key' => $this->clientId(),
+            'client_secret' => $this->clientSecret(),
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $account->refresh_token,
+        ]);
+
+        if (! $response->successful()) {
+            $account->markNeedsReauth('TikTok token refresh failed.');
+
+            return $account;
+        }
+
+        return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+    }
+
+    public function publish(SocialAccount $account, SocialPost $post): PublishResult
+    {
+        $video = $this->firstVideoUrl($post);
+        $images = $this->mediaItems($post, 'image');
+        $caption = (string) $post->content;
+
+        if ($video) {
+            return $this->publishVideo($account, $video, $caption);
+        }
+
+        if (! empty($images)) {
+            return $this->publishPhotos($account, $images, $caption);
+        }
+
+        return PublishResult::failure('TikTok requires a video or photos to publish.');
+    }
+
+    protected function publishVideo(SocialAccount $account, string $videoUrl, string $caption): PublishResult
+    {
+        $response = Http::withToken($account->access_token)
+            ->post('https://open.tiktokapis.com/v2/post/publish/video/init/', [
+                'post_info' => [
+                    'title' => mb_substr($caption, 0, 2200),
+                    'privacy_level' => 'SELF_ONLY',
+                ],
+                'source_info' => [
+                    'source' => 'PULL_FROM_URL',
+                    'video_url' => $videoUrl,
+                ],
+            ]);
+
+        if (! $response->successful() || $response->json('error.code', 'ok') !== 'ok') {
+            return PublishResult::failure('TikTok video publish failed: '.$response->body(), $response->json() ?? []);
+        }
+
+        $publishId = $response->json('data.publish_id');
+
+        return PublishResult::success($publishId, null, $response->json());
+    }
+
+    protected function publishPhotos(SocialAccount $account, array $images, string $caption): PublishResult
+    {
+        $response = Http::withToken($account->access_token)
+            ->post('https://open.tiktokapis.com/v2/post/publish/content/init/', [
+                'post_info' => [
+                    'title' => mb_substr($caption, 0, 90),
+                    'description' => mb_substr($caption, 0, 2200),
+                    'privacy_level' => 'SELF_ONLY',
+                ],
+                'source_info' => [
+                    'source' => 'PULL_FROM_URL',
+                    'photo_cover_index' => 0,
+                    'photo_images' => array_map(fn ($i) => $i['url'], $images),
+                ],
+                'post_mode' => 'DIRECT_POST',
+                'media_type' => 'PHOTO',
+            ]);
+
+        if (! $response->successful() || $response->json('error.code', 'ok') !== 'ok') {
+            return PublishResult::failure('TikTok photo publish failed: '.$response->body(), $response->json() ?? []);
+        }
+
+        $publishId = $response->json('data.publish_id');
+
+        return PublishResult::success($publishId, null, $response->json());
+    }
+}
