@@ -87,23 +87,39 @@ class ThreadsProvider extends AbstractSocialProvider implements SupportsComments
 
     public function ensureFreshToken(SocialAccount $account): SocialAccount
     {
-        if ($account->hasValidToken()) {
+        // Meta-family long-lived tokens can only be refreshed while STILL
+        // VALID (and ≥24h old) — waiting until expiry makes the refresh
+        // itself fail and strands the account. Refresh early instead.
+        $stillFresh = fn (SocialAccount $a) => $a->hasValidToken()
+            && ! ($a->token_expires_at !== null && $a->token_expires_at->lt(now()->addDays(7)));
+        if ($stillFresh($account)) {
             return $account;
         }
 
-        // Long-lived Threads tokens are refreshed (not re-exchanged).
-        $response = Http::get('https://graph.threads.net/refresh_access_token', [
-            'grant_type' => 'th_refresh_token',
-            'access_token' => $account->access_token,
-        ]);
+        return $this->refreshingSafely($account, isFresh: $stillFresh, refresh: function (SocialAccount $account) {
+            // Long-lived Threads tokens are refreshed (not re-exchanged).
+            $response = Http::get('https://graph.threads.net/refresh_access_token', [
+                'grant_type' => 'th_refresh_token',
+                'access_token' => $account->access_token,
+            ]);
 
-        if ($response->successful()) {
-            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
-        }
+            if ($response->successful()) {
+                return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+            }
 
-        $account->markNeedsReauth('Threads token refresh failed.');
+            // Only a definitive rejection ON AN EXPIRED token means the user
+            // must reconnect; anything else (5xx/429, or an early-refresh
+            // hiccup on a still-valid token) must not brick the account.
+            if ($this->isDefinitiveAuthFailure($response->status()) && ! $account->hasValidToken()) {
+                $account->markNeedsReauth('Threads token expired — reconnect the account.');
+            } else {
+                Log::warning('Threads token refresh failed transiently', [
+                    'account_id' => $account->id, 'status' => $response->status(),
+                ]);
+            }
 
-        return $account;
+            return $account;
+        });
     }
 
     public function publish(SocialAccount $account, SocialPost $post): PublishResult

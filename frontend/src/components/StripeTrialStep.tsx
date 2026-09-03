@@ -17,7 +17,8 @@ import { toast } from "sonner";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 // Created once at module scope. Null if the key is missing (guarded below).
-const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
+// Exported so the onboarding Trial Checkout screen can reuse the same instance.
+export const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 
 interface StripeTrialStepProps {
   onSubscribed: (result: {
@@ -32,7 +33,8 @@ interface StripeTrialStepProps {
 
 // Shared: create the trial subscription, persist it in the shape useUserRole
 // expects, and notify the parent. Returns true on success.
-const activateSubscription = async (
+// Exported for reuse by the onboarding Trial Checkout screen.
+export const activateSubscription = async (
   paymentMethodId: string,
   onSubscribed: StripeTrialStepProps["onSubscribed"],
   priceId?: string

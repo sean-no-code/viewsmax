@@ -77,27 +77,27 @@ class AiModelSeeder extends Seeder
         }
 
         // Check if AI model already exists with this name
-        $existingModel = AiModel::where('name', 'Demo Model')
+        $existingModel = AiModel::where('name', 'Sean')
             ->where('user_id', $adminUser->id)
             ->first();
 
         if ($existingModel) {
-            Log::info("AI model 'Demo Model' already exists, skipping creation", [
+            Log::info("AI model 'Sean' already exists, skipping creation", [
                 'ai_model_id' => $existingModel->id
             ]);
-            $this->command->info("AI model 'Demo Model' already exists (ID: {$existingModel->id})");
+            $this->command->info("AI model 'Sean' already exists (ID: {$existingModel->id})");
             return;
         }
 
         // Create the AI model
         $aiModel = AiModel::create([
-            'name' => 'Demo Model',
+            'name' => 'Sean',
             'user_id' => $adminUser->id,
             'status' => 'completed',
-            'huggingface_model_id' => 'viewsmax/ai-model-1-5-1762250624',
-            'huggingface_model_url' => 'https://huggingface.co/viewsmax/ai-model-1-5-1762250624',
-            'replicate_model_name' => 'viewsmax/ai-model-1-5-1762250624',
-            'replicate_model_url' => 'https://replicate.com/viewsmax/ai-model-1-5-1762250624',
+            'huggingface_model_id' => 'iclicksee/ai-model-1-5-1762250624',
+            'huggingface_model_url' => 'https://huggingface.co/iclicksee/ai-model-1-5-1762250624',
+            'replicate_model_name' => 'iclicksee/ai-model-1-5-1762250624',
+            'replicate_model_url' => 'https://replicate.com/iclicksee/ai-model-1-5-1762250624',
             'bald' => true,
             'age' => 39,
             'ethnicity_id' => $ethnicity->id,
@@ -164,7 +164,7 @@ class AiModelSeeder extends Seeder
         ]);
 
         // Display results
-        $this->command->info("Created AI model 'Demo Model' (ID: {$aiModel->id}) for admin user {$adminUser->email}");
+        $this->command->info("Created AI model 'Sean' (ID: {$aiModel->id}) for admin user {$adminUser->email}");
         $this->command->info("  - Status: {$aiModel->status}");
         $this->command->info("  - HuggingFace Model ID: {$aiModel->huggingface_model_id}");
         $this->command->info("  - HuggingFace Model URL: {$aiModel->huggingface_model_url}");

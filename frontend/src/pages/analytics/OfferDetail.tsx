@@ -68,7 +68,7 @@ function CopyLink({ url }: { url: string }) {
 // their own event name (stored verbatim as event_type).
 const CUSTOM_GOAL_VALUE = "custom";
 
-type SortKey = "label" | "views" | "clicks" | "viewCr" | "rev";
+type SortKey = "label" | "views" | "clicks" | "viewCr" | "rev" | "created";
 
 /* ---------- install-tracking modal ---------- */
 function InstallModal({ page, snippet, onClose }: { page: PageMetric; snippet: string; onClose: () => void }) {
@@ -226,6 +226,7 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
   const [ytVideos, setYtVideos] = useState<{ id: string; title: string; views?: number }[] | null>(null);
   const [xPosts, setXPosts] = useState<XPublishedPost[] | null>(null);
   const [loadingContent, setLoadingContent] = useState(false);
+  const [refreshingYt, setRefreshingYt] = useState(false);
 
   // Load a content picker whenever its platform joins the selection. Loads
   // never reset the selected id — resets happen on chip toggle — so
@@ -268,6 +269,27 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasVideo, hasBeehiiv, hasX, session?.token]);
+
+  // Pull the newest uploads from YouTube into the DB, then re-read the list.
+  // getChannelVideos is a pure DB read (populated at connect-time / daily sync),
+  // so a video published just now only appears after this on-demand import.
+  const refreshYtVideos = async () => {
+    if (!session?.token || refreshingYt) return;
+    const token = session.token;
+    setRefreshingYt(true);
+    try {
+      const ch = await viewsMaxApi.getChannels(token);
+      if (!ch.success || !ch.data?.length) { setYtVideos([]); return; }
+      await Promise.all(ch.data.map((c) => viewsMaxApi.fetchChannelVideosFromYouTube(token, c.id)));
+      const lists = await Promise.all(ch.data.map((c) => viewsMaxApi.getChannelVideos(token, c.id, 100)));
+      setYtVideos(lists.flatMap((l) => (l.success && l.data ? l.data.videos : [])).map((v) => ({ id: v.youtube_video_id, title: v.title, views: v.view_count })));
+      toast.success("Pulled your latest videos from YouTube.");
+    } catch {
+      toast.error("Couldn't refresh videos from YouTube.");
+    } finally {
+      setRefreshingYt(false);
+    }
+  };
 
   const xPostLabel = (p: XPublishedPost) => {
     const when = p.posted_at ? new Date(p.posted_at).toLocaleDateString() : "";
@@ -320,17 +342,33 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
         </div>
       </div>
       {hasVideo && (
-        <Field label="YouTube video" hint="type to search your videos — pulls in views as reach">
+        /* Not wrapped in <Field>: its <label> would hijack the refresh button's
+           click and accessible name (same reason the Platforms block avoids it). */
+        <div style={{ display: "block", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 7 }}>
+            <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap" }}>YouTube video</span>
+            <button
+              type="button"
+              onClick={refreshYtVideos}
+              disabled={refreshingYt}
+              title="Fetch your newest uploads from YouTube"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", padding: 0, cursor: refreshingYt ? "default" : "pointer", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--vm-red-deep)", opacity: refreshingYt ? 0.6 : 1, whiteSpace: "nowrap" }}
+            >
+              <Icon name="rotate-cw" size={12} stroke="var(--vm-red-deep)" />
+              {refreshingYt ? "Refreshing…" : "Refresh from YouTube"}
+            </button>
+          </div>
           <SearchSelect
             options={(ytVideos || []).map((v) => ({ id: v.id, label: fmtViews(v.views) ? `${v.title} · ${fmtViews(v.views)}` : v.title }))}
             value={value.ytVideoId}
             onChange={(id) => set({ ytVideoId: id })}
-            loading={loadingContent}
+            loading={loadingContent || refreshingYt}
             placeholder={ytVideos && ytVideos.length ? "Search your videos…" : "No videos found"}
             emptyLabel="No videos found"
             clearLabel="— No video —"
           />
-        </Field>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", marginTop: 6 }}>type to search your videos — pulls in views as reach</div>
+        </div>
       )}
       {hasBeehiiv && (
         <Field label="Beehiiv post" hint="type to search your posts — pulls in views as reach">
@@ -510,22 +548,28 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
       && matchesMulti(l.platform, v.platforms)
       && matchesDateRange(l.createdAt, v.created_from, v.created_to)
       && matchesRange(l.rev, v.revenue_min, v.revenue_max));
+    const created = (l: LinkMetric) => (l.createdAt ? Date.parse(l.createdAt) : 0);
     const get = (l: LinkMetric): number | string =>
-      sortKey === "label" ? (l.contentTitle || l.label).toLowerCase() : sortKey === "views" ? l.viewsSince : sortKey === "clicks" ? l.clicks : sortKey === "viewCr" ? (l.viewCr ?? -1) : l.rev;
+      sortKey === "label" ? (l.contentTitle || l.label).toLowerCase() : sortKey === "views" ? l.viewsSince : sortKey === "clicks" ? l.clicks : sortKey === "viewCr" ? (l.viewCr ?? -1) : sortKey === "created" ? created(l) : l.rev;
     return [...filtered].sort((a, b) => {
       const av = get(a), bv = get(b);
-      if (typeof av === "string" && typeof bv === "string") return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-      return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
+      const cmp = typeof av === "string" && typeof bv === "string"
+        ? (sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av))
+        : (sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number));
+      // Ties (e.g. several 0-click links) break newest-first so a link you just
+      // created is never buried below older dead links.
+      return cmp !== 0 ? cmp : created(b) - created(a);
     });
   }, [pageLinks, filters.values, sortKey, sortDir]);
 
   const columns: { key: SortKey | null; head: string; align: "left" | "right" }[] = [
     { key: "label", head: "Name", align: "left" },
     { key: null, head: "Link", align: "left" },
-    { key: "views", head: "Content Views", align: "right" },
+    { key: "views", head: "Views", align: "right" },
     { key: "clicks", head: "Clicks", align: "right" },
     { key: "viewCr", head: "Conv. rate", align: "right" },
     { key: "rev", head: "Revenue", align: "right" },
+    { key: "created", head: "Created", align: "right" },
     { key: null, head: "Last click", align: "right" },
     { key: null, head: "", align: "right" },
   ];
@@ -561,7 +605,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1040 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 940 }}>
             <thead>
               <tr>
                 {columns.map((c, i) => {
@@ -569,7 +613,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                   const arrow = active ? (sortDir === "asc" ? " ↑" : " ↓") : "";
                   return (
                     <th key={i} onClick={c.key ? () => toggleSort(c.key as SortKey) : undefined}
-                      style={{ textAlign: c.align, padding: c.align === "left" ? "11px 22px" : "11px 16px", fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap", color: active ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", cursor: c.key ? "pointer" : "default", userSelect: "none" }}>
+                      style={{ textAlign: c.align, padding: c.align === "left" ? "11px 12px" : "11px 10px", fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap", color: active ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", cursor: c.key ? "pointer" : "default", userSelect: "none" }}>
                       {c.head}{arrow}
                     </th>
                   );
@@ -582,13 +626,13 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                 <tr onClick={() => navigate(`/dashboard/monetization/links/${l.id}`)}
                   style={{ borderTop: i ? "1px solid var(--paper-2)" : "1px solid var(--line-1)", cursor: "pointer" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--paper-1)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                  <td style={{ padding: "14px 22px" }}>
+                  <td style={{ padding: "14px 12px" }}>
                     {(() => {
                       const href = placementUrl(l.raw.description);
                       // The linked content's actual title leads; the user's own
                       // link label drops to a second line when both exist.
                       const primary = l.contentTitle || l.label;
-                      const base = { fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 320 } as const;
+                      const base = { fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 280 } as const;
                       return (
                         <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
                           <span title={platformMeta(l.platform).name} style={{ flexShrink: 0 }}><PlacementIcon placement={l.platform} size={30} /></span>
@@ -601,20 +645,21 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                               <div style={{ ...base, color: "var(--ink-on-paper-1)" }}>{primary}</div>
                             )}
                             {l.contentTitle && l.label && l.contentTitle !== l.label && (
-                              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 320, marginTop: 2 }}>{l.label}</div>
+                              <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 280, marginTop: 2 }}>{l.label}</div>
                             )}
                           </div>
                         </div>
                       );
                     })()}
                   </td>
-                  <td style={{ padding: "14px 16px" }}><CopyLink url={l.short} /></td>
-                  <td title={l.viewsSince > 0 ? `${fmtFull(l.viewsSince)} views since this link was created (${fmtFull(l.totalViews)} total on the linked content)` : l.platform === "x" ? "View tracking isn't available for X posts (the X API plan doesn't allow reads)." : "No content-view data for this link (views show for YouTube and Beehiiv-backed links)."} style={{ padding: "14px 16px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 15, color: l.viewsSince > 0 ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>{l.viewsSince > 0 ? fmtNum(l.viewsSince) : "—"}</td>
-                  <td style={{ padding: "14px 16px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 15, color: "var(--ink-on-paper-1)" }}>{fmtFull(l.clicks)}</td>
-                  <td title={l.viewCr == null ? "No view data for this link's content — reach-based rate needs views since the link was created." : undefined} style={{ padding: "14px 16px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, color: l.viewCr == null ? "var(--ink-on-paper-3)" : "var(--vm-volt-deep)" }}>{l.viewCr == null ? "—" : fmtPct(l.viewCr)}</td>
-                  <td style={{ padding: "14px 16px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 14, color: "var(--ink-on-paper-3)" }}>{fmtMoney(l.rev)}</td>
-                  <td style={{ padding: "14px 16px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{timeAgo(l.lastClickAt)}</td>
-                  <td style={{ padding: "12px 22px", textAlign: "right" }}>
+                  <td style={{ padding: "14px 10px" }}><CopyLink url={l.short} /></td>
+                  <td title={l.viewsSince > 0 ? `${fmtFull(l.viewsSince)} views since this link was created (${fmtFull(l.totalViews)} total on the linked content)` : l.platform === "x" ? "View tracking isn't available for X posts (the X API plan doesn't allow reads)." : "No content-view data for this link (views show for YouTube and Beehiiv-backed links)."} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 15, color: l.viewsSince > 0 ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>{l.viewsSince > 0 ? fmtNum(l.viewsSince) : "—"}</td>
+                  <td style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 15, color: "var(--ink-on-paper-1)" }}>{fmtFull(l.clicks)}</td>
+                  <td title={l.viewCr == null ? "No view data for this link's content — reach-based rate needs views since the link was created." : undefined} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, color: l.viewCr == null ? "var(--ink-on-paper-3)" : "var(--vm-volt-deep)" }}>{l.viewCr == null ? "—" : fmtPct(l.viewCr)}</td>
+                  <td style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 14, color: "var(--ink-on-paper-3)" }}>{fmtMoney(l.rev)}</td>
+                  <td title={l.createdAt ? new Date(l.createdAt).toLocaleString() : undefined} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—"}</td>
+                  <td style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{timeAgo(l.lastClickAt)}</td>
+                  <td style={{ padding: "12px 12px", textAlign: "right" }}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                       <button onClick={(e) => { e.stopPropagation(); setEditLink(l); }} title="Edit link"
                         style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center" }}>
@@ -634,7 +679,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                 </tr>
                 {expanded.has(l.id) && (
                   <tr>
-                    <td colSpan={8} style={{ padding: "0 22px 16px", background: "var(--paper-1)", borderTop: "1px dashed var(--line-1)" }}>
+                    <td colSpan={9} style={{ padding: "0 12px 16px", background: "var(--paper-1)", borderTop: "1px dashed var(--line-1)" }}>
                       <div style={{ display: "flex", gap: 32, flexWrap: "wrap", padding: "14px 4px 2px" }}>
                         {/* Clicks by platform (from each click's referrer classification) */}
                         <div style={{ minWidth: 240 }}>
@@ -696,7 +741,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
 
       {modal === "install" && <InstallModal page={page} snippet={snippet} onClose={() => setModal(null)} />}
       {modal === "conversions" && <ConversionEventsModal page={page} goalTypes={goalTypes} onClose={() => setModal(null)} onSaved={reload} />}
-      {modal === "newlink" && <NewLinkModal page={page} onClose={() => setModal(null)} onCreated={() => { setModal(null); reload(); }} />}
+      {modal === "newlink" && <NewLinkModal page={page} onClose={() => setModal(null)} onCreated={() => { setModal(null); setSortKey("created"); setSortDir("desc"); reload(); }} />}
       {editLink && <EditLinkModal link={editLink} onClose={() => setEditLink(null)} onSaved={() => { setEditLink(null); reload(); }} />}
     </>
   );

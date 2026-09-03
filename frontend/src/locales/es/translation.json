@@ -9,10 +9,18 @@
     "monetization": "Monetización",
     "offers": "Ofertas",
     "analytics": "Analítica",
+    "analyticsOverview": "Resumen",
+    "analyticsSources": "Fuentes",
+    "revenueGrowth": "Crecimiento de ingresos",
+    "audienceGrowth": "Crecimiento de audiencia",
     "boosts": "Boosts",
     "connections": "Conexiones",
     "settings": "Ajustes",
-    "requestFeature": "Pedir una función"
+    "requestFeature": "Pedir una función",
+    "seo": "SEO",
+    "scripts": "Guiones",
+    "scriptsCreate": "Crear",
+    "scriptsLibrary": "Biblioteca"
   },
   "settings": {
     "language": {

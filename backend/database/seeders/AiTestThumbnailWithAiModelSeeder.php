@@ -6,7 +6,7 @@ namespace Database\Seeders;
  * AiTestThumbnailWithAiModelSeeder
  * 
  * NOTE: This seeder creates a thumbnail record that will be processed via AI.
- * The thumbnail will be generated using the seeded AI model (Demo Model).
+ * The thumbnail will be generated using the seeded AI model (Sean).
  * This thumbnail is created with status 'pending' and will be processed
  * by the GenerateThumbnailsJob when the queue worker runs.
  */
@@ -46,14 +46,14 @@ class AiTestThumbnailWithAiModelSeeder extends Seeder
             return;
         }
 
-        // Find the seeded AI model (Demo Model)
-        $aiModel = AiModel::where('name', 'Demo Model')
+        // Find the seeded AI model (Sean)
+        $aiModel = AiModel::where('name', 'Sean')
             ->where('user_id', $adminUser->id)
             ->first();
         
         if (!$aiModel) {
-            Log::warning("AI model 'Demo Model' not found, skipping thumbnail seeding");
-            $this->command->warn("AI model 'Demo Model' not found. Please run AiModelSeeder first.");
+            Log::warning("AI model 'Sean' not found, skipping thumbnail seeding");
+            $this->command->warn("AI model 'Sean' not found. Please run AiModelSeeder first.");
             return;
         }
 

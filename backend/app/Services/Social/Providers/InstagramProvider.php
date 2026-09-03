@@ -127,36 +127,39 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         // Refresh proactively while the token is still valid (IG only allows
         // refreshing unexpired tokens that are ≥24h old) — waiting until it
         // has expired makes the refresh itself fail and strands the account.
-        $expiresSoon = $account->token_expires_at !== null
-            && $account->token_expires_at->lt(now()->addDays(7));
-        if ($account->hasValidToken() && ! $expiresSoon) {
+        $stillFresh = fn (SocialAccount $a) => $a->hasValidToken()
+            && ! ($a->token_expires_at !== null && $a->token_expires_at->lt(now()->addDays(7)));
+        if ($stillFresh($account)) {
             return $account;
         }
 
-        // Long-lived Instagram tokens are refreshed (not re-exchanged).
-        $response = Http::get('https://graph.instagram.com/refresh_access_token', [
-            'grant_type' => 'ig_refresh_token',
-            'access_token' => $account->access_token,
-        ]);
-
-        if ($response->successful()) {
-            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
-        }
-
-        // A failed proactive refresh isn't fatal while the token still works —
-        // keep publishing with it and retry the refresh next time.
-        if ($account->hasValidToken()) {
-            Log::warning('[Instagram] proactive token refresh failed; token still valid', [
-                'account_id' => $account->id,
-                'body' => $response->body(),
+        return $this->refreshingSafely($account, isFresh: $stillFresh, refresh: function (SocialAccount $account) {
+            // Long-lived Instagram tokens are refreshed (not re-exchanged).
+            $response = Http::get('https://graph.instagram.com/refresh_access_token', [
+                'grant_type' => 'ig_refresh_token',
+                'access_token' => $account->access_token,
             ]);
 
+            if ($response->successful()) {
+                return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+            }
+
+            // A failed proactive refresh isn't fatal while the token still
+            // works; and a transient (5xx/429) failure on an expired token
+            // must not brick the account either — only a definitive rejection
+            // of a dead token forces a reconnect.
+            if ($this->isDefinitiveAuthFailure($response->status()) && ! $account->hasValidToken()) {
+                $account->markNeedsReauth('Instagram token expired — reconnect the account.');
+            } else {
+                Log::warning('[Instagram] token refresh failed transiently', [
+                    'account_id' => $account->id,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
+
             return $account;
-        }
-
-        $account->markNeedsReauth('Instagram token refresh failed.');
-
-        return $account;
+        });
     }
 
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
@@ -339,6 +342,57 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         Log::warning('[Instagram] media insights returned no view metric', ['media_id' => $mediaId]);
 
         return null;
+    }
+
+    /**
+     * Follower count via the IG user node. Gated behind the reach/insights flag
+     * (same scope requirement as media insights); null when off or on failure.
+     */
+    public function fetchFollowerCount(SocialAccount $account): ?int
+    {
+        if (! $this->config('reach_enabled')) {
+            return null;
+        }
+
+        $account = $this->ensureFreshToken($account);
+
+        $response = Http::get($this->graphBase().'/me', [
+            'fields' => 'followers_count',
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $response->successful()) {
+            Log::warning('[Instagram] follower lookup failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return null;
+        }
+
+        $count = $response->json('followers_count');
+
+        return $count === null ? null : (int) $count;
+    }
+
+    /**
+     * Per-media engagement. IG insights on this integration expose views/reach
+     * only (no likes/comments), so those stay 0. Gated behind the reach flag.
+     */
+    public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
+    {
+        if (! $this->config('reach_enabled') || empty($remotePostIds)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($remotePostIds as $id) {
+            $views = $this->fetchMediaViews($account, (string) $id);
+            if ($views !== null) {
+                $out[(string) $id] = ['likes' => 0, 'comments' => 0, 'shares' => 0, 'views' => $views];
+            }
+        }
+
+        return $out;
     }
 
     /**

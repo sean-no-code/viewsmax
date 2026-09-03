@@ -70,16 +70,30 @@ class PublishToTikTokJobTest extends TestCase
             'status' => PostTarget::STATUS_PENDING,
         ]);
 
+        // Video now goes to TikTok as a pull URL (Technical Consideration 2d), so
+        // the disk this regression is about is the one encoded into that URL.
+        $pulled = null;
         $tiktok = Mockery::mock(TikTokPublishService::class);
-        $tiktok->shouldReceive('publishVideoFromStream')
+        $tiktok->shouldReceive('publishVideoFromUrl')
             ->once()
-            ->andReturn(['publish_id' => 'pub-123', 'mode' => 'inbox', 'log' => []]);
+            ->andReturnUsing(function ($account, $caption, $url) use (&$pulled) {
+                $pulled = $url;
+
+                return ['publish_id' => 'pub-123', 'mode' => 'direct', 'log' => []];
+            });
 
         (new PublishToTikTokJob($target->id))->handle($tiktok);
 
         $target->refresh();
         $this->assertNotSame(PostTarget::STATUS_FAILED, $target->status, (string) $target->error);
         $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->status);
+
+        // The proxy ref carries disk + path; it must name the media disk, not the
+        // default one the old bug reached for.
+        parse_str((string) parse_url($pulled, PHP_URL_QUERY), $query);
+        $ref = basename((string) parse_url($pulled, PHP_URL_PATH));
+        $this->assertSame(['r2test', $path], \App\Support\MediaProxy::decode($ref));
+        $this->assertArrayHasKey('signature', $query, 'The pull URL must stay signed.');
     }
 
     /**

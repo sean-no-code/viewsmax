@@ -29,7 +29,7 @@ class CheckHuggingFaceModelAccess extends Command
     public function handle()
     {
         $modelName = $this->argument('model_name');
-        $namespace = $this->option('namespace') ?: config('services.huggingface.namespace', 'viewsmax');
+        $namespace = $this->option('namespace') ?: config('services.huggingface.namespace', 'iclicksee');
         
         $this->info("Checking Hugging Face model access...");
         $this->line("Model: {$namespace}/{$modelName}");

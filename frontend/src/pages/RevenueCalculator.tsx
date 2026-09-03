@@ -18,6 +18,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts";
 import { TrendingUp, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 
 interface CategoryRPM {
   category: string;
@@ -183,7 +184,9 @@ const RevenueCalculator = () => {
   const finalMonthAggressive = projections[projections.length - 1]?.aggressive || 0;
 
   return (
-    <div className="min-h-screen bg-background py-12">
+    <div className="min-h-screen bg-background flex flex-col">
+      <LandingNav />
+      <div className="flex-1 py-12">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">YouTube Revenue Calculator</h1>
@@ -375,6 +378,8 @@ const RevenueCalculator = () => {
           </Card>
         )}
       </div>
+      </div>
+      <LandingFooter />
     </div>
   );
 };

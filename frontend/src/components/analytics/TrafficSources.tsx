@@ -1,9 +1,10 @@
 // GA-style acquisition tables: WHERE visitors came from. Two cards side by
-// side — Sources (traffic grouped by classified platform: google, x,
-// direct, …) with grouped visitor counts, and Referrers (the full referring
-// URLs). Pageview-based; until a site has pageview beacons the backend falls
-// back to tracking-link click data and says so.
+// side — Sources (traffic grouped by classified platform: google, x, direct, …)
+// and Referrers (the exact referring URLs). Both show visitor counts only.
+// Pageview-based; until a site has pageview beacons the backend falls back to
+// tracking-link click data and says so.
 import { type CSSProperties } from "react";
+import { Link } from "react-router-dom";
 import { fmtFull, platformMeta } from "@/lib/analytics-model";
 import type { TrafficSourcesData } from "@/lib/api-service";
 import { PlacementIcon } from "@/components/analytics/PlacementIcon";
@@ -27,8 +28,10 @@ function sourceLabel(key: string): string {
   return GENERIC_SOURCE_LABELS[key] ?? platformMeta(key).name;
 }
 
-function TableShell({ title, caption, columns, children, empty }: {
+function TableShell({ title, caption, columns, children, empty, moreHref, shownCount = 0, totalCount = 0 }: {
   title: string; caption: string; columns: string[]; children: React.ReactNode; empty: boolean;
+  /** When set (and rows were truncated), a "View all" footer links to the full index. */
+  moreHref?: string; shownCount?: number; totalCount?: number;
 }) {
   const grid = `minmax(0,2.4fr) repeat(${columns.length - 1}, minmax(76px,1fr))`;
   return (
@@ -45,12 +48,21 @@ function TableShell({ title, caption, columns, children, empty }: {
           No traffic in this period yet.
         </div>
       ) : children}
+      {!empty && moreHref && totalCount > shownCount && (
+        <Link to={moreHref} style={{ display: "block", padding: "10px 18px", borderTop: "1px solid var(--paper-2)", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12.5, color: "var(--vm-volt-deep)", textDecoration: "none" }}>
+          View all ({totalCount}) →
+        </Link>
+      )}
     </div>
   );
 }
 
-export function TrafficSources({ data, loading }: { data: TrafficSourcesData | null; loading: boolean }) {
-  const grid3 = "minmax(0,2.4fr) repeat(2, minmax(76px,1fr))";
+export function TrafficSources({ data, loading, limit, moreHref }: {
+  data: TrafficSourcesData | null; loading: boolean;
+  /** Show only the top N rows per table (widget mode); omit for the full index. */
+  limit?: number; moreHref?: string;
+}) {
+  const grid2 = "minmax(0,2.4fr) minmax(76px,1fr)";
 
   if (loading) {
     return (
@@ -60,25 +72,29 @@ export function TrafficSources({ data, loading }: { data: TrafficSourcesData | n
     );
   }
 
-  const sources = data?.sources ?? [];
-  const referrers = data?.referrers ?? [];
+  const allSources = data?.sources ?? [];
+  const allReferrers = data?.referrers ?? [];
+  const sources = limit ? allSources.slice(0, limit) : allSources;
+  const referrers = limit ? allReferrers.slice(0, limit) : allReferrers;
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
       <TableShell
         title="Sources"
         caption={data?.basis === "clicks" ? "Where link clicks came from (site-wide visitor data appears once your pages report views)." : "Where your visitors came from."}
-        columns={["Source", "Visitors", data?.basis === "clicks" ? "Clicks" : "Views"]}
+        columns={["Source", "Visitors"]}
         empty={sources.length === 0}
+        moreHref={moreHref}
+        shownCount={sources.length}
+        totalCount={allSources.length}
       >
         {sources.map((s, idx) => (
-          <div key={s.source} style={{ display: "grid", gridTemplateColumns: grid3, alignItems: "center", padding: "10px 18px", background: idx % 2 === 1 ? "var(--paper-1)" : "transparent" }}>
+          <div key={s.source} style={{ display: "grid", gridTemplateColumns: grid2, alignItems: "center", padding: "10px 18px", background: idx % 2 === 1 ? "var(--paper-1)" : "transparent" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
               <PlacementIcon placement={s.source} size={20} />
               <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 13, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{sourceLabel(s.source)}</span>
             </div>
             <div style={{ ...numCell, fontWeight: 700, color: "var(--ink-on-paper-1)" }}>{fmtFull(s.visitors)}</div>
-            <div style={numCell}>{fmtFull(s.views)}</div>
           </div>
         ))}
       </TableShell>
@@ -86,11 +102,14 @@ export function TrafficSources({ data, loading }: { data: TrafficSourcesData | n
       <TableShell
         title="Referrers"
         caption="The exact URLs that sent the traffic."
-        columns={["Referrer URL", "Visitors", data?.basis === "clicks" ? "Clicks" : "Views"]}
+        columns={["Referrer URL", "Visitors"]}
         empty={referrers.length === 0}
+        moreHref={moreHref}
+        shownCount={referrers.length}
+        totalCount={allReferrers.length}
       >
         {referrers.map((r, idx) => (
-          <div key={r.referrer} style={{ display: "grid", gridTemplateColumns: grid3, alignItems: "center", padding: "10px 18px", background: idx % 2 === 1 ? "var(--paper-1)" : "transparent" }}>
+          <div key={r.referrer} style={{ display: "grid", gridTemplateColumns: grid2, alignItems: "center", padding: "10px 18px", background: idx % 2 === 1 ? "var(--paper-1)" : "transparent" }}>
             <a
               href={r.referrer}
               target="_blank"
@@ -101,7 +120,6 @@ export function TrafficSources({ data, loading }: { data: TrafficSourcesData | n
               {r.referrer}
             </a>
             <div style={{ ...numCell, fontWeight: 700, color: "var(--ink-on-paper-1)" }}>{fmtFull(r.visitors)}</div>
-            <div style={numCell}>{fmtFull(r.views)}</div>
           </div>
         ))}
       </TableShell>

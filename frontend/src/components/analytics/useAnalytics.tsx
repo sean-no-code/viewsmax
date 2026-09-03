@@ -1,6 +1,6 @@
 // Data hooks + page shell for the Analytics feature.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { viewsMaxApi, type TrackingEvent, type TrackingTimeseriesPoint, type TrafficSourcesData } from "@/lib/api-service";
+import { viewsMaxApi, type TrackingEvent, type TrackingTimeseriesPoint, type TrafficSourcesData, type AudiencePlatformSeries, type TopPost } from "@/lib/api-service";
 import { toFunnlModel, type FunnlModel } from "@/lib/analytics-model";
 
 export type Range = "7d" | "28d" | "90d";
@@ -84,6 +84,46 @@ export function useTrafficSources(range: Range, eventId?: number | string) {
   }, [range, eventId]);
 
   return { sources: data, loading };
+}
+
+/** Per-platform follower-growth series for a range (Audience Growth page). */
+export function useAudienceGrowth(range: Range) {
+  const [platforms, setPlatforms] = useState<AudiencePlatformSeries[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const { from, to } = rangeToDates(range);
+    viewsMaxApi.getAudienceGrowth({ from, to }).then((res) => {
+      if (!active) return;
+      setPlatforms(res.success && res.data ? res.data.platforms : []);
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [range]);
+
+  return { platforms, loading };
+}
+
+/** Engagement-ranked posts for a range, optionally filtered to one platform. */
+export function useTopPosts(range: Range, platform?: string) {
+  const [posts, setPosts] = useState<TopPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const { from, to } = rangeToDates(range);
+    viewsMaxApi.getTopPosts({ from, to, platform }).then((res) => {
+      if (!active) return;
+      setPosts(res.success && res.data ? res.data : []);
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [range, platform]);
+
+  return { posts, loading };
 }
 
 /** Warm full-bleed canvas that matches the design (paper-1 ground). */

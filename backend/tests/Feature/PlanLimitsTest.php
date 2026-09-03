@@ -11,8 +11,7 @@ use Tests\TestCase;
 /**
  * Covers the Pricing + Features ticket: numeric plan limits, the offers cap
  * (with soft-delete), and downgrade-over-cap blocking. Channels/posts limits
- * are stored in plan data but intentionally left dormant — CheckPlan gates by
- * plan name rather than by these numeric limits.
+ * are stored in plan data but intentionally left dormant (see CLAUDE.md).
  */
 class PlanLimitsTest extends TestCase
 {
@@ -391,7 +390,7 @@ class PlanLimitsTest extends TestCase
             $mock->shouldReceive('attachPaymentMethod')->once();
             $mock->shouldReceive('createTrialSubscription')
                 ->once()
-                ->with(\Mockery::any(), 'price_agency', \Mockery::any())
+                ->with(\Mockery::any(), 'price_agency', \Mockery::any(), \Mockery::any())
                 ->andReturn([
                     'id' => 'sub_agency_test',
                     'status' => 'trialing',

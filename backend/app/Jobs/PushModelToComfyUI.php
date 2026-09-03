@@ -165,7 +165,7 @@ class PushModelToComfyUI implements ShouldQueue
             }
 
             // Generate the target filename using ComfyUIService naming convention
-            // Format: {name}-{id}.safetensors (e.g., example-8.safetensors)
+            // Format: {name}-{id}.safetensors (e.g., sean-8.safetensors)
             $comfyUIService = app(ComfyUIService::class);
             $targetFilename = $comfyUIService->getLoraFilename($aiModel);
             $remoteFilePath = rtrim($remotePath, '/') . '/' . $targetFilename;

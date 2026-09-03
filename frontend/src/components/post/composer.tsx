@@ -128,7 +128,13 @@ export function usePostComposer() {
   const privacyTouched = useRef(false);
   const setPrivacyLevel = (level: string) => {
     privacyTouched.current = true;
-    patchTiktok({ privacy_level: level });
+    // Content Sharing Guidelines, Required UX 3(b): branded content can only be
+    // public/friends. Selecting "only me" while it is ticked would create the
+    // combination TikTok forbids, so drop the branded flag rather than leaving
+    // an invalid pair.
+    patchTiktok(level === "SELF_ONLY" && tiktok.branded_content
+      ? { privacy_level: level, branded_content: false }
+      : { privacy_level: level });
   };
 
   // YouTube publish options. Default to public to match the "Post now" intent.
@@ -161,10 +167,15 @@ export function usePostComposer() {
   const [creatorInfo, setCreatorInfo] = useState<TikTokCreatorInfo | null>(null);
   const [creatorInfoError, setCreatorInfoError] = useState<string | null>(null);
   const [creatorInfoLoading, setCreatorInfoLoading] = useState(false);
+  // Content Sharing Guidelines, Required UX 1(b): "creator can't post right now"
+  // is not a generic outage — publishing must stop and the user must be told to
+  // try again later.
+  const [creatorCannotPost, setCreatorCannotPost] = useState<string | null>(null);
 
   const loadCreatorInfo = async () => {
     setCreatorInfoLoading(true);
     setCreatorInfoError(null);
+    setCreatorCannotPost(null);
     const res = await viewsMaxApi.getTikTokCreatorInfo(accountSel["tiktok"]?.[0]);
     setCreatorInfoLoading(false);
     if (res.success && res.data) {
@@ -176,6 +187,10 @@ export function usePostComposer() {
       if (opts.length) {
         setTiktok((t) => (t.privacy_level && !opts.includes(t.privacy_level) ? { ...t, privacy_level: "" } : t));
       }
+    } else if (res.code === "creator_cannot_post") {
+      // Stop the attempt and surface TikTok's reason, per Required UX 1(b).
+      setCreatorInfo(null);
+      setCreatorCannotPost(res.error || "You can't post to TikTok right now — try again later.");
     } else {
       setCreatorInfoError(res.error || "Couldn't load TikTok options.");
     }
@@ -400,7 +415,7 @@ export function usePostComposer() {
     comments, setComments,
     shortenLinks, setShortenLinks,
     mode, setMode, date, setDate, time, setTime,
-    tiktok, patchTiktok, setPrivacyLevel, creatorInfo, creatorInfoError, creatorInfoLoading, loadCreatorInfo,
+    tiktok, patchTiktok, setPrivacyLevel, creatorInfo, creatorInfoError, creatorInfoLoading, creatorCannotPost, loadCreatorInfo,
     youtube, patchYoutube,
     linkedin, patchLinkedin,
     cover, uploadCover, removeCover, coverUploading, coverError, tiktokCoverSec, setTiktokCoverSec,
@@ -617,8 +632,10 @@ function XThreadPreview({ segments, media, compact }: { segments: string[]; medi
 }
 
 /* ---------------- Live feed preview ---------------- */
-export function PostPreview({ id, text, media, compact }: { id: string; text: string; media: MediaItem[]; compact?: boolean }) {
-  const p = PMAP[id];
+export function PostPreview({ id, text, media, compact, handle }: { id: string; text: string; media: MediaItem[]; compact?: boolean; handle?: string }) {
+  // `handle` overrides the catalog placeholder with the real connected account,
+  // so the preview names the profile the post is actually going to.
+  const p = handle ? { ...PMAP[id], handle } : PMAP[id];
   // Carousel slide index for multi-image slideshows. Derived `active` is clamped
   // to the current length so removing/reordering media can't strand the view.
   const [slide, setSlide] = useState(0);

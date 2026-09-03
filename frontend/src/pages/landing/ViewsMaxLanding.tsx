@@ -1,19 +1,18 @@
 // ViewsMax marketing landing page.
 // Ported from the Claude Design project "ViewsMax landing page" (Landing Page.html).
-// Production assembly = Nav → Hero A (light "connect your socials") → Dashboard
-// showcase → Features → Monetize → Pricing → CTA → Footer. Uses the design-system
+// Production assembly = Nav → Hero A (light "connect your socials") → Feature
+// demos (tabbed videos) → Features → Monetize → Pricing → CTA → Footer. Uses the design-system
 // tokens already in index.css (--vm-*, --ink-*, --paper-*, fonts) + lucide-react.
 // The prototype's per-hero switcher is dropped; Hero A is the production hero.
 // Pricing keeps the real 4-tier plan (not the design's placeholder tiers).
-import { useState, type CSSProperties, type ReactNode, type ComponentType } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, type CSSProperties, type ReactNode, type ComponentType } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarClock, LineChart, Repeat2, Sparkles, Play, Clapperboard, Check, Link2,
   Send, BadgeDollarSign, ChevronRight, ChevronLeft, ChevronDown, Filter, Target,
-  Code2, RefreshCw, type LucideProps,
+  Code2, RefreshCw, TrendingUp, type LucideProps,
 } from "lucide-react";
-import logoLight from "@/assets/logo-lockup-light.svg";
-import logoDark from "@/assets/logo-lockup-dark.svg";
+import { Btn, LandingNav, LandingFooter, type Variant } from "./LandingChrome";
 
 const AUTH = "/auth";
 const SIGNUP = "/auth?tab=signup";
@@ -25,36 +24,11 @@ const ICONS: Record<string, ComponentType<LucideProps>> = {
   "repeat-2": Repeat2, sparkles: Sparkles, play: Play, clapperboard: Clapperboard, check: Check,
   send: Send, "badge-dollar-sign": BadgeDollarSign, "chevron-right": ChevronRight,
   "chevron-left": ChevronLeft, "chevron-down": ChevronDown, filter: Filter, target: Target,
-  "code-xml": Code2, "refresh-cw": RefreshCw,
+  "code-xml": Code2, "refresh-cw": RefreshCw, "trending-up": TrendingUp,
 };
 function Ico({ name, size = 20, stroke }: { name: string; size?: number; stroke?: string }) {
   const C = ICONS[name];
   return C ? <C size={size} color={stroke} style={{ display: "block" }} /> : null;
-}
-
-/* ---------- Button ---------- */
-type Variant = "primary" | "aqua" | "dark" | "outline" | "ghost";
-function Btn({ children, variant = "primary", size = "md", onClick, style }: {
-  children: ReactNode; variant?: Variant; size?: "sm" | "md" | "lg"; onClick?: () => void; style?: CSSProperties;
-}) {
-  const base: CSSProperties = { fontFamily: "var(--font-body)", fontWeight: 700, border: "none", borderRadius: 999, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "transform var(--dur-fast), background var(--dur), box-shadow var(--dur)", whiteSpace: "nowrap" };
-  const sizes: Record<string, CSSProperties> = { sm: { padding: "9px 16px", fontSize: 13.5 }, md: { padding: "13px 22px", fontSize: 15 }, lg: { padding: "16px 30px", fontSize: 17 } };
-  const variants: Record<Variant, CSSProperties> = {
-    primary: { background: "var(--vm-red)", color: "#fff" },
-    aqua: { background: "var(--vm-volt)", color: "var(--fg-on-volt)" },
-    dark: { background: "var(--ink-900)", color: "#fff" },
-    outline: { background: "transparent", color: "var(--ink-on-paper-1)", boxShadow: "inset 0 0 0 1.5px var(--line-2)" },
-    ghost: { background: "transparent", color: "var(--ink-on-paper-1)" },
-  };
-  const hover: Record<Variant, string> = { primary: "var(--vm-red-hot)", aqua: "var(--vm-volt)", dark: "var(--ink-850)", outline: "transparent", ghost: "transparent" };
-  const solid = variant !== "outline" && variant !== "ghost";
-  return (
-    <button onClick={onClick} style={{ ...base, ...sizes[size], ...variants[variant], ...style }}
-      onMouseEnter={(e) => { if (solid) e.currentTarget.style.background = hover[variant]; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.background = String(variants[variant].background); }}
-      onMouseDown={(e) => { e.currentTarget.style.transform = "translateY(1px)"; }}
-      onMouseUp={(e) => { e.currentTarget.style.transform = "none"; }}>{children}</button>
-  );
 }
 
 function Eyebrow({ children, color = "var(--vm-red)" }: { children: ReactNode; color?: string }) {
@@ -73,26 +47,6 @@ function Heading({ eyebrow, title, sub, align = "center", eyebrowColor }: {
   );
 }
 
-/* ---------- Nav ---------- */
-function Nav() {
-  const navigate = useNavigate();
-  const links: [string, string][] = [["Analytics", "dashboard"], ["Channels", "channels"], ["Pricing", "pricing"]];
-  return (
-    <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,250,248,.82)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--line-1)" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", gap: 24 }}>
-        <img src={logoLight} alt="ViewsMax" style={{ height: 30 }} />
-        <div className="nav-links" style={{ display: "flex", gap: 28, marginLeft: 16 }}>
-          {links.map(([l, id]) => <a key={l} href={`#${id}`} onClick={(e) => { e.preventDefault(); scrollToId(id); }} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5 }}>{l}</a>)}
-        </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
-          <a href={AUTH} onClick={(e) => { e.preventDefault(); navigate(AUTH); }} style={{ color: "var(--ink-on-paper-1)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14.5, whiteSpace: "nowrap" }}>Log in</a>
-          <Btn size="sm" onClick={() => navigate(AUTH)}>Start for $0</Btn>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
 /* ---------- Hero (direction A — light, centered + connect widget) ---------- */
 function HeroBg() {
   return (
@@ -103,19 +57,10 @@ function HeroBg() {
   );
 }
 
-function HeroChip({ children }: { children: ReactNode }) {
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 999, padding: "6px 14px 6px 8px", marginBottom: 26, boxShadow: "var(--shadow-sm)" }}>
-      <span style={{ background: "var(--vm-volt)", color: "var(--fg-on-volt)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 10.5, padding: "2px 7px", borderRadius: 999 }}>NEW</span>
-      <span style={{ fontSize: 13, color: "var(--ink-on-paper-2)", fontFamily: "var(--font-body)" }}>{children}</span>
-    </div>
-  );
-}
-
-function Headline({ size = "clamp(44px,7.5vw,88px)" }: { size?: string }) {
+function Headline({ size = "clamp(40px,6vw,68px)" }: { size?: string }) {
   return (
     <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: size, lineHeight: .94, letterSpacing: "-.035em", margin: "0 auto", textAlign: "center", color: "var(--ink-on-paper-1)" }}>
-      Make content<br /><span style={{ color: "var(--vm-red)" }}>that makes sales.</span>
+      Build a content engine<br /><span style={{ color: "var(--vm-red)" }}>that drives revenue.</span>
     </h1>
   );
 }
@@ -126,11 +71,18 @@ function Hero() {
   return (
     <section style={{ background: "var(--paper-1)", color: "var(--ink-on-paper-1)", position: "relative", overflow: "hidden" }}>
       <HeroBg />
-      <div style={{ position: "relative", maxWidth: 920, margin: "0 auto", padding: "84px 24px 96px", textAlign: "center" }}>
-        <HeroChip>Schedule everywhere · track every sale</HeroChip>
+      <div style={{ position: "relative", maxWidth: 920, margin: "0 auto", padding: "84px 24px 40px", textAlign: "center" }}>
+        {/* Supported-platform icons (reuses the Channels section's brand glyphs) */}
+        <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 10, marginBottom: 28 }}>
+          {CHANNELS.map((c) => (
+            <span key={c.name} title={c.name} style={{ width: 34, height: 34, borderRadius: 10, background: c.bg, display: "grid", placeItems: "center", boxShadow: "var(--shadow-sm)" }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" style={{ display: "block" }}>{c.glyph}</svg>
+            </span>
+          ))}
+        </div>
         <Headline />
         <p style={{ fontFamily: "var(--font-body)", fontWeight: 500, fontSize: "clamp(17px,2vw,21px)", color: "var(--ink-on-paper-2)", lineHeight: 1.5, maxWidth: 580, margin: "24px auto 0" }}>
-          ViewsMax shows you exactly which posts and platforms drive real sales, so you can do more of what works.
+          Spot winning content, post to every platform and track what converts (with human support from Sean).
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", maxWidth: 540, margin: "34px auto 0", flexWrap: "wrap" }}>
           <div onClick={goSignup} style={{ flex: 1, minWidth: 260, display: "flex", alignItems: "center", gap: 10, background: "var(--paper-0)", border: "1px solid var(--line-2)", borderRadius: 999, padding: "6px 6px 6px 18px", boxShadow: "var(--shadow-sm)", cursor: "pointer" }}>
@@ -140,179 +92,6 @@ function Hero() {
           </div>
         </div>
         <div style={{ marginTop: 34 }}><Btn size="lg" onClick={() => navigate(AUTH)}>Start for $0</Btn></div>
-      </div>
-    </section>
-  );
-}
-
-/* ====================================================================== */
-/* Dashboard showcase — sales-attribution dashboard, floated over the hero */
-/* ====================================================================== */
-
-/* platform badge (brand glyphs hand-drawn to avoid missing lucide brand marks) */
-function PlatformBadge({ type, x, y, size = 22 }: { type: "youtube" | "x" | "facebook"; x: number; y: number; size?: number }) {
-  const r = 6, s = size;
-  const bg = { youtube: "#FF0000", x: "#0A0A0C", facebook: "#1877F2" }[type];
-  return (
-    <g transform={`translate(${x - s / 2}, ${y})`}>
-      <rect width={s} height={s} rx={r} fill={bg} />
-      {type === "youtube" && <path d={`M${s * 0.4} ${s * 0.34} L${s * 0.4} ${s * 0.66} L${s * 0.66} ${s * 0.5} Z`} fill="#fff" />}
-      {type === "x" && <path d={`M${s * 0.32} ${s * 0.3} L${s * 0.68} ${s * 0.7} M${s * 0.68} ${s * 0.3} L${s * 0.32} ${s * 0.7}`} stroke="#fff" strokeWidth={2.1} strokeLinecap="round" />}
-      {type === "facebook" && <text x={s * 0.5} y={s * 0.74} textAnchor="middle" fontFamily="Georgia, serif" fontWeight="700" fontSize={s * 0.66} fill="#fff">f</text>}
-    </g>
-  );
-}
-
-function RevenueChart() {
-  const clicks = [690, 545, 455, 440, 300, 330, 355, 400, 360, 355, 330, 330, 310, 300, 330, 375, 395, 290, 420, 410, 300, 355, 310, 340, 460, 420, 365, 370, 355, 300];
-  const revenue = [445, 180, 120, 300, 330, 260, 300, 290, 1180, 360, 150, 300, 330, 300, 300, 360, 1230, 330, 300, 360, 1240, 360, 300, 360, 1250, 420, 330, 460, 360, 150];
-  const markers: { i: number; types: ("youtube" | "x" | "facebook")[] }[] = [
-    { i: 0, types: ["x"] },
-    { i: 3, types: ["youtube"] },
-    { i: 8, types: ["youtube", "x", "facebook"] },
-    { i: 12, types: ["x"] },
-    { i: 16, types: ["youtube", "x"] },
-    { i: 20, types: ["facebook"] },
-    { i: 24, types: ["facebook", "youtube"] },
-    { i: 28, types: ["x"] },
-  ];
-
-  const W = 1120, H = 420, padL = 38, padR = 64, padT = 92, padB = 42;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = clicks.length;
-  const slot = plotW / n;
-  const barW = slot * 0.42;
-  const clickMax = 700, revMax = 1300;
-  const x = (i: number) => padL + slot * (i + 0.5);
-  const yBar = (v: number) => padT + plotH * (1 - v / clickMax);
-  const yLine = (v: number) => padT + plotH * (1 - v / revMax);
-
-  const pts = revenue.map((v, i) => [x(i), yLine(v)] as [number, number]);
-  let line = `M ${pts[0][0]} ${pts[0][1]}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    line += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2[0]} ${p2[1]}`;
-  }
-  const area = `${line} L ${pts[pts.length - 1][0]} ${padT + plotH} L ${pts[0][0]} ${padT + plotH} Z`;
-
-  const leftTicks = [0, 200, 400, 600];
-  const rightTicks: [number, string][] = [[0, "$0"], [650, "$650"], [1300, "$1.3k"]];
-  const xTicks = [0, 4, 8, 12, 16, 20, 24, 28];
-  const months = ["01 Jun", "05 Jun", "09 Jun", "13 Jun", "17 Jun", "21 Jun", "25 Jun", "29 Jun"];
-
-  return (
-    <div style={{ marginTop: 22, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, padding: "22px 24px 18px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 19, letterSpacing: "-.02em", color: "var(--ink-on-paper-1)", margin: 0 }}>Revenue</h3>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--vm-volt-tint-l)", color: "var(--vm-volt-deep)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 12.5, padding: "5px 11px", borderRadius: 999, whiteSpace: "nowrap" }}>▲ Up 19%</span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", marginTop: 6 }} preserveAspectRatio="xMidYMid meet">
-        {leftTicks.map((t) => (
-          <g key={"g" + t}>
-            <line x1={padL} y1={yBar(t)} x2={W - padR} y2={yBar(t)} stroke="var(--line-1)" strokeWidth="1" strokeDasharray={t === 0 ? "0" : "3 5"} />
-            <text x={padL - 8} y={yBar(t) + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="12" fill="var(--ink-on-paper-3)">{t}</text>
-          </g>
-        ))}
-        {rightTicks.map(([v, lbl]) => (
-          <text key={"r" + v} x={W - padR + 10} y={yLine(v) + 4} textAnchor="start" fontFamily="var(--font-mono)" fontSize="12" fill="var(--ink-on-paper-3)">{lbl}</text>
-        ))}
-        {clicks.map((v, i) => (
-          <rect key={"b" + i} x={x(i) - barW / 2} y={yBar(v)} width={barW} height={padT + plotH - yBar(v)} rx={3} fill="var(--vm-volt)" fillOpacity="0.4" />
-        ))}
-        <path d={area} fill="var(--vm-red)" fillOpacity="0.10" />
-        <path d={line} fill="none" stroke="var(--vm-red)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-        {pts.map(([px, py], i) => (
-          <circle key={"d" + i} cx={px} cy={py} r="3.4" fill="var(--paper-0)" stroke="var(--vm-red)" strokeWidth="2" />
-        ))}
-        {markers.map((m) => {
-          const px = x(m.i), peakY = yLine(revenue[m.i]);
-          const stackTop = padT - 8 - (m.types.length - 1) * 26;
-          return (
-            <g key={"m" + m.i}>
-              <line x1={px} y1={peakY} x2={px} y2={padT - 6} stroke="var(--line-2)" strokeWidth="1.5" />
-              {m.types.map((t, k) => <PlatformBadge key={k} type={t} x={px} y={stackTop + k * 26} />)}
-            </g>
-          );
-        })}
-        {xTicks.map((ti, k) => (
-          <text key={"x" + ti} x={x(ti)} y={H - 12} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="12" fill="var(--ink-on-paper-3)">{months[k]}</text>
-        ))}
-      </svg>
-      <div style={{ display: "flex", gap: 22, justifyContent: "center", marginTop: 4 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--ink-on-paper-2)" }}><span style={{ width: 13, height: 13, borderRadius: 3, background: "var(--vm-volt)", opacity: .55 }} />Clicks</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--ink-on-paper-2)" }}><span style={{ width: 16, height: 3, borderRadius: 2, background: "var(--vm-red)" }} />Revenue</span>
-      </div>
-    </div>
-  );
-}
-
-function FilterPill({ icon, label, dark, caret = true, children }: { icon?: string; label: string; dark?: boolean; caret?: boolean; children?: ReactNode }) {
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: dark ? "var(--ink-900)" : "var(--paper-0)", color: dark ? "#fff" : "var(--ink-on-paper-1)", border: dark ? "none" : "1px solid var(--line-2)", borderRadius: 999, padding: dark ? "7px 12px 7px 7px" : "8px 13px", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 13.5, whiteSpace: "nowrap" }}>
-      {children}
-      {icon && <Ico name={icon} size={15} stroke={dark ? "#fff" : "var(--ink-on-paper-3)"} />}
-      <span>{label}</span>
-      {caret && <Ico name="chevron-down" size={14} stroke={dark ? "rgba(255,255,255,.6)" : "var(--ink-on-paper-3)"} />}
-    </div>
-  );
-}
-
-function FilterBar() {
-  const pills = [
-    { icon: "filter", label: "All channels" },
-    { icon: "target", label: "All events" },
-    { icon: "link-2", label: "All links" },
-  ];
-  return (
-    <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: ".12em", color: "var(--ink-on-paper-3)", textTransform: "uppercase" }}>Filters</span>
-      <FilterPill dark label="seannocode.com">
-        <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--ink-700)", display: "grid", placeItems: "center", flexShrink: 0 }}><Ico name="code-xml" size={13} stroke="#fff" /></span>
-      </FilterPill>
-      {pills.map((p) => <FilterPill key={p.label} icon={p.icon} label={p.label} />)}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--paper-0)", border: "1px solid var(--line-2)", borderRadius: 999, padding: 4 }}>
-          <span style={{ width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center", cursor: "pointer" }}><Ico name="chevron-left" size={15} stroke="var(--ink-on-paper-3)" /></span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 13.5, color: "var(--ink-on-paper-1)", padding: "0 4px", whiteSpace: "nowrap" }}>Last 30 days <Ico name="chevron-down" size={14} stroke="var(--ink-on-paper-3)" /></span>
-          <span style={{ width: 26, height: 26, borderRadius: "50%", display: "grid", placeItems: "center", cursor: "pointer" }}><Ico name="chevron-right" size={15} stroke="var(--ink-on-paper-3)" /></span>
-        </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--paper-0)", border: "1px solid var(--line-2)", borderRadius: 999, padding: "8px 13px", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 13.5, color: "var(--ink-on-paper-1)" }}>Daily <Ico name="chevron-down" size={14} stroke="var(--ink-on-paper-3)" /></div>
-        <span style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid var(--line-2)", display: "grid", placeItems: "center", cursor: "pointer" }}><Ico name="refresh-cw" size={15} stroke="var(--ink-on-paper-2)" /></span>
-      </div>
-    </div>
-  );
-}
-
-function MetricRow() {
-  const metrics: [string, string, string, boolean][] = [
-    ["Views", "24.8K", "12%", true],
-    ["Clicks", "8,392", "5%", false],
-    ["Revenue", "$8,852", "19%", true],
-    ["Conversion rate", "0.45%", "43%", true],
-    ["Revenue/click", "$1.05", "25%", true],
-  ];
-  return (
-    <div className="vm-metrics" style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, display: "grid", gridTemplateColumns: "repeat(5,1fr)", overflow: "hidden" }}>
-      {metrics.map(([label, val, delta, up], i) => (
-        <div key={label} style={{ padding: "22px 24px", borderLeft: i === 0 ? "none" : "1px solid var(--line-1)" }}>
-          <div style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 13.5, color: "var(--ink-on-paper-2)" }}>{label}</div>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(26px,2.6vw,34px)", letterSpacing: "-.02em", color: "var(--ink-on-paper-1)", margin: "6px 0 8px", lineHeight: 1 }}>{val}</div>
-          <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, color: up ? "var(--up)" : "var(--down)" }}>{up ? "▲" : "▼"} {delta}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Dashboard() {
-  return (
-    <section id="dashboard" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", position: "relative", zIndex: 5, scrollMarginTop: 80 }}>
-      <div className="vm-dashboard" style={{ marginTop: -52, background: "var(--paper-1)", border: "1px solid var(--line-1)", borderRadius: 26, padding: 18, boxShadow: "0 30px 70px -28px rgba(10,10,12,.28), 0 8px 24px -16px rgba(10,10,12,.18)", display: "flex", flexDirection: "column", gap: 14 }}>
-        <FilterBar />
-        <MetricRow />
-        <RevenueChart />
       </div>
     </section>
   );
@@ -339,6 +118,130 @@ function Features() {
             <p style={{ fontFamily: "var(--font-body)", fontSize: 14.5, color: "var(--ink-on-paper-2)", lineHeight: 1.5, margin: "12px 0 0" }}>{it.d}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Feature demos (tabbed video walkthroughs) ---------- */
+type Demo = {
+  id: string; label: string; icon: string; title: string; desc: string;
+  // Video source: drop `<id>.mp4` (+ optional `<id>.jpg` poster) into public/demos/,
+  // or set youtubeId to embed from YouTube instead. Until a source exists the tab
+  // shows a designed "demo coming soon" frame — nothing breaks.
+  mp4?: string; youtubeId?: string; poster?: string;
+};
+
+const DEMOS: Demo[] = [
+  {
+    id: "outliers", label: "Outliers", icon: "trending-up",
+    title: "Find outliers worth copying",
+    desc: "Search millions of videos across YouTube, TikTok and Instagram to surface posts massively outperforming their channel — then break down why they worked and remake them for your niche.",
+    youtubeId: "34HuCTCEw4k", poster: "https://i.ytimg.com/vi/34HuCTCEw4k/maxresdefault.jpg",
+  },
+  {
+    id: "tracking", label: "Tracking", icon: "line-chart",
+    title: "See which posts make sales",
+    desc: "Every click and conversion is tied back to the exact post and platform it came from, so you know which content actually drives revenue — not just views.",
+    youtubeId: "36mZkfMaFrM", poster: "https://i.ytimg.com/vi/36mZkfMaFrM/maxresdefault.jpg",
+  },
+  {
+    id: "scheduling", label: "Scheduling", icon: "calendar-clock",
+    title: "Post everywhere from one calendar",
+    desc: "Compose once and publish to YouTube, TikTok, Instagram, X, LinkedIn and Threads on your schedule — ViewsMax posts for you at the time you pick.",
+    youtubeId: "tUKTMHU9mY4", poster: "https://i.ytimg.com/vi/tUKTMHU9mY4/maxresdefault.jpg",
+  },
+];
+
+function DemoFrame({ demo }: { demo: Demo }) {
+  const [playing, setPlaying] = useState(false);
+  const [posterOk, setPosterOk] = useState(true);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const hasSource = Boolean(demo.mp4 || demo.youtubeId);
+
+  // Preflight the mp4 so tabs without a real file show "coming soon" instead of
+  // a play button that errors. SPA hosting serves index.html for missing paths,
+  // so a 200 alone isn't enough — require a video/* content-type.
+  useEffect(() => {
+    if (!demo.mp4 || demo.youtubeId) return;
+    let cancelled = false;
+    fetch(demo.mp4, { method: "HEAD" })
+      .then((r) => {
+        if (!cancelled && (!r.ok || !(r.headers.get("content-type") || "").startsWith("video/"))) setVideoFailed(true);
+      })
+      .catch(() => { if (!cancelled) setVideoFailed(true); });
+    return () => { cancelled = true; };
+  }, [demo.mp4, demo.youtubeId]);
+
+  return (
+    <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: "var(--ink-900)", display: "grid", placeItems: "center", overflow: "hidden" }}>
+      {playing && !videoFailed && demo.youtubeId ? (
+        <iframe
+          src={`https://www.youtube.com/embed/${demo.youtubeId}?autoplay=1`}
+          title={`${demo.label} demo`}
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+        />
+      ) : playing && !videoFailed && demo.mp4 ? (
+        <video
+          src={demo.mp4} poster={posterOk ? demo.poster : undefined}
+          autoPlay controls playsInline
+          onError={() => setVideoFailed(true)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      ) : (
+        <>
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(80% 100% at 50% 0%, rgba(255,31,61,.22), transparent 65%)" }} />
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.10) 1px, transparent 1px)", backgroundSize: "24px 24px", opacity: .5 }} />
+          {demo.poster && posterOk && (
+            <img src={demo.poster} alt={`${demo.label} demo`} onError={() => setPosterOk(false)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          )}
+          {hasSource && !videoFailed ? (
+            <button onClick={() => setPlaying(true)} aria-label={`Play ${demo.label} demo`} style={{ position: "relative", width: 64, height: 64, borderRadius: "50%", background: "var(--vm-red)", display: "grid", placeItems: "center", border: "none", cursor: "pointer", boxShadow: "0 10px 30px -8px rgba(255,31,61,.6)" }}>
+              <Ico name="play" size={28} stroke="#fff" />
+            </button>
+          ) : (
+            <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <span style={{ width: 56, height: 56, borderRadius: 16, background: "var(--ink-750)", border: "1px solid var(--ink-600)", display: "grid", placeItems: "center" }}><Ico name={demo.icon} size={26} stroke="var(--vm-volt)" /></span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: "var(--fg-3)", textTransform: "uppercase" }}>Demo video coming soon</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function FeatureDemos() {
+  const navigate = useNavigate();
+  const [active, setActive] = useState(DEMOS[0].id);
+  const demo = DEMOS.find((d) => d.id === active) ?? DEMOS[0];
+  return (
+    <section id="demos" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 0", scrollMarginTop: 80 }}>
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <div role="tablist" aria-label="Feature demos" className="vm-demo-tabs" style={{ display: "inline-flex", gap: 4, background: "var(--paper-0)", border: "1px solid var(--line-2)", borderRadius: 999, padding: 5, boxShadow: "var(--shadow-sm)", maxWidth: "100%" }}>
+          {DEMOS.map((d) => {
+            const on = d.id === active;
+            return (
+              <button key={d.id} role="tab" aria-selected={on} onClick={() => { setActive(d.id); document.getElementById("demos")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: on ? "var(--ink-900)" : "transparent", color: on ? "#fff" : "var(--ink-on-paper-2)", border: "none", borderRadius: 999, padding: "10px 18px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14.5, cursor: "pointer", transition: "background var(--dur), color var(--dur)", whiteSpace: "nowrap" }}>
+                <Ico name={d.icon} size={16} stroke={on ? "var(--vm-volt)" : "var(--ink-on-paper-3)"} />{d.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ maxWidth: 960, margin: "34px auto 0", background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 24, overflow: "hidden", boxShadow: "0 30px 70px -28px rgba(10,10,12,.28), 0 8px 24px -16px rgba(10,10,12,.14)" }}>
+        {/* key remounts the frame on tab switch so playback state resets */}
+        <DemoFrame key={demo.id} demo={demo} />
+        <div className="vm-demo-caption" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, padding: "20px 24px" }}>
+          <div>
+            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, letterSpacing: "-.02em", color: "var(--ink-on-paper-1)", margin: 0 }}>{demo.title}</h3>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 14.5, color: "var(--ink-on-paper-2)", lineHeight: 1.5, margin: "8px 0 0", maxWidth: 620 }}>{demo.desc}</p>
+          </div>
+          <Btn onClick={() => navigate(SIGNUP)} style={{ flexShrink: 0 }}>Try it free</Btn>
+        </div>
       </div>
     </section>
   );
@@ -517,44 +420,10 @@ function CTA() {
   );
 }
 
-/* ---------- Footer ---------- */
-function Footer() {
-  const cols: [string, string[]][] = [
-    ["Product", ["Scheduler", "Sales tracking", "Analytics", "Channels", "Pricing"]],
-    ["Company", ["About", "Careers", "Blog", "Contact"]],
-    ["Resources", ["Help center", "Guides", "API docs", "Status"]],
-  ];
-  return (
-    <footer style={{ background: "var(--ink-900)", color: "var(--fg-2)" }}>
-      <div className="vm-foot-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 40px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 32 }}>
-        <div>
-          <img src={logoDark} alt="ViewsMax" style={{ height: 30 }} />
-          <p style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--fg-3)", lineHeight: 1.5, marginTop: 16, maxWidth: 240 }}>Make content that makes sales.</p>
-        </div>
-        {cols.map(([h, links]) => (
-          <div key={h}>
-            <div style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, color: "var(--fg-1)", marginBottom: 14 }}>{h}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {links.map((l) => <a key={l} href="#" style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--fg-3)", textDecoration: "none" }}>{l}</a>)}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ borderTop: "1px solid var(--ink-700)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--fg-3)" }}>
-          <span>© 2026 ViewsMax. Not affiliated with the social platforms shown.</span>
-          <span style={{ display: "flex", gap: 20 }}><a href="#" style={{ color: "var(--fg-3)", textDecoration: "none" }}>Privacy</a><a href="#" style={{ color: "var(--fg-3)", textDecoration: "none" }}>Terms</a></span>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 /* ---------- Landing-scoped CSS (keyframes, hover, responsive) ---------- */
 const LANDING_CSS = `
 .vm-landing a { transition: color var(--dur); }
 .vm-landing a:hover { color: var(--vm-red); }
-.vm-landing .nav-links a:hover { color: var(--ink-on-paper-1); }
 .vm-landing input::placeholder { color: var(--fg-4); }
 .vm-landing .vm-feature:hover { transform: translateY(-3px); box-shadow: 6px 6px 0 0 var(--vm-red) !important; }
 @keyframes vmrise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -562,8 +431,6 @@ const LANDING_CSS = `
 @media (max-width: 860px) {
   .vm-landing .vm-split { grid-template-columns: 1fr !important; }
   .vm-landing .vm-grid3 { grid-template-columns: 1fr !important; }
-  .vm-landing .vm-foot-grid { grid-template-columns: 1fr 1fr !important; }
-  .vm-landing .nav-links { display: none !important; }
 }
 @media (max-width: 720px) {
   .vm-landing .vm-metrics { grid-template-columns: repeat(2,1fr) !important; }
@@ -571,22 +438,29 @@ const LANDING_CSS = `
 }
 @media (max-width: 640px) {
   .vm-landing .vm-pricing-grid { grid-template-columns: 1fr !important; }
+  .vm-landing .vm-demo-tabs { width: 100%; }
+  .vm-landing .vm-demo-tabs button { flex: 1; justify-content: center; padding: 10px 8px !important; }
+  .vm-landing .vm-demo-caption { flex-direction: column; align-items: flex-start !important; }
 }
 `;
 
 export default function ViewsMaxLanding() {
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) scrollToId(hash.slice(1));
+  }, [hash]);
   return (
     <div className="vm-landing" style={{ background: "var(--paper-1)" }}>
       <style>{LANDING_CSS}</style>
-      <Nav />
+      <LandingNav />
       <Hero />
-      <Dashboard />
+      <FeatureDemos />
       <Features />
       <Channels />
       <Monetize />
       <Pricing />
       <CTA />
-      <Footer />
+      <LandingFooter />
     </div>
   );
 }

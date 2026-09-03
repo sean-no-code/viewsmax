@@ -7,6 +7,7 @@ namespace App\Models;
 use Bavix\Wallet\Interfaces\Wallet;
 use Bavix\Wallet\Traits\HasWallet;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -20,7 +21,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements Wallet
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, HasWallet, Notifiable;
+    use HasApiTokens, HasFactory, HasWallet, Notifiable, SoftDeletes;
 
     /**
      * The "booted" method of the model.
@@ -91,6 +92,16 @@ class User extends Authenticatable implements Wallet
             'marketing_consented_at' => 'datetime',
             'notify_post_failures' => 'boolean',
         ];
+    }
+
+    /**
+     * Users who have never started a subscription (no user_plans row carrying a
+     * Stripe subscription id) — i.e. abandoned-cart / never-added-card users.
+     * Shared by the kit:*-abandoned-carts commands and the scheduled tagger.
+     */
+    public function scopeNeverSubscribed($query)
+    {
+        return $query->whereDoesntHave('plans', fn ($q) => $q->whereNotNull('user_plans.stripe_subscription_id'));
     }
 
     /**
@@ -245,6 +256,7 @@ class User extends Authenticatable implements Wallet
             'onboarding_completed_at' => optional($this->onboarding_completed_at)->toIso8601String(),
             'connections_count' => $this->connections()->count(),
             'has_active_subscription' => $this->hasActiveSubscription(),
+            'is_admin' => $this->isAdmin(),
             // Legacy extras retained for backward compatibility.
             'roles' => $this->roles,
             'active_plan' => $this->activePlan(),
@@ -270,6 +282,14 @@ class User extends Authenticatable implements Wallet
         ]);
 
         return $raw;
+    }
+
+    /**
+     * Check if the user is an admin.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
     }
 
     /**

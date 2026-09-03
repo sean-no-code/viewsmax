@@ -2,9 +2,43 @@
 <html lang="en">
 
 <head>
+  <!-- Tracking gate: production domain only, and never for admin users.
+       Mirrored by src/lib/tracking.ts — keep the two in sync. -->
+  <script>
+    window.__vmxTrackingAllowed = (function () {
+      if (window.location.hostname !== 'viewsmax.com') return false;
+      try {
+        var s = JSON.parse(localStorage.getItem('auth_session') || 'null');
+        if (s && s.user && s.user.is_admin === true) return false;
+      } catch (e) { }
+      return true;
+    })();
+  </script>
+
+  <!-- Meta Pixel Code -->
+  <script>
+    if (window.__vmxTrackingAllowed) {
+      !function (f, b, e, v, n, t, s) {
+        if (f.fbq) return; n = f.fbq = function () {
+          n.callMethod ?
+          n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+        };
+        if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
+        n.queue = []; t = b.createElement(e); t.async = !0;
+        t.src = v; s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s)
+      }(window, document, 'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', '913180045201624');
+      fbq('track', 'PageView');
+    }
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=913180045201624&ev=PageView&noscript=1" /></noscript>
+  <!-- End Meta Pixel Code -->
   <!-- Google Tag Manager -->
   <script>
-    if (window.location.hostname === 'viewsmax.com') {
+    if (window.__vmxTrackingAllowed) {
       (function (w, d, s, l, i) {
         w[l] = w[l] || []; w[l].push({
           'gtm.start':
@@ -19,7 +53,7 @@
 
   <!-- Google tag (gtag.js) -->
   <script>
-    if (window.location.hostname === 'viewsmax.com') {
+    if (window.__vmxTrackingAllowed) {
       var script = document.createElement('script');
       script.async = true;
       script.src = 'https://www.googletagmanager.com/gtag/js?id=G-4PSTL2CRK5';
@@ -34,7 +68,7 @@
 
   <!-- Microsoft Clarity -->
   <script type="text/javascript">
-    if (window.location.hostname === 'viewsmax.com') {
+    if (window.__vmxTrackingAllowed) {
       (function (c, l, a, r, i, t, y) {
         c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
         t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
@@ -43,9 +77,28 @@
     }
   </script>
 
+  <!-- Rewardful (affiliate tracking) -->
+  <script>(function (w, r) { w._rwq = r; w[r] = w[r] || function () { (w[r].q = w[r].q || []).push(arguments) } })(window, 'rewardful');</script>
+  <script>
+    if (window.__vmxTrackingAllowed) {
+      var rw = document.createElement('script');
+      rw.async = true;
+      rw.src = 'https://r.wdfl.co/rw.js';
+      rw.setAttribute('data-rewardful', 'c70e5d');
+      document.head.appendChild(rw);
+    }
+  </script>
+
   <!-- ViewsMax Universal Tracking -->
   <meta name="viewsmax-user" content="cefa1539-2c9e-4280-ac4f-b00edd2d6652">
-  <script src="https://api.viewsmax.com/tracker.js" defer></script>
+  <script>
+    if (window.__vmxTrackingAllowed) {
+      var vmx = document.createElement('script');
+      vmx.src = 'https://api.viewsmax.com/tracker.js';
+      vmx.defer = true;
+      document.head.appendChild(vmx);
+    }
+  </script>
   <!-- End ViewsMax -->
 
   <meta charset="UTF-8" />
@@ -111,7 +164,7 @@
 <body>
   <!-- Google Tag Manager (noscript) -->
   <script>
-    if (window.location.hostname === 'viewsmax.com') {
+    if (window.__vmxTrackingAllowed) {
       document.write('<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-P6XJZMLH" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>');
     }
   </script>

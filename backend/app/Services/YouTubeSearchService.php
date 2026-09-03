@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Video;
 use Carbon\Carbon;
 use App\Models\SearchResult;
+use App\Jobs\ClassifyOutlierVideoFormatsJob;
 use App\Jobs\ProcessYouTubeSearchTermJob;
 use App\Traits\LogsYouTubeRequests;
 use Illuminate\Support\Facades\Http;
@@ -20,6 +21,13 @@ class YouTubeSearchService
 {
     use LogsYouTubeRequests;
     private const API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
+    /** ISO-8601 duration → seconds, Postgres only (regex SUBSTRING + ::INTEGER casts). */
+    private const DURATION_SECONDS_SQL = "(
+        COALESCE(NULLIF(SUBSTRING(videos.duration FROM '(\\d+)H'), '')::INTEGER, 0) * 3600
+        + COALESCE(NULLIF(SUBSTRING(videos.duration FROM '(\\d+)M'), '')::INTEGER, 0) * 60
+        + COALESCE(NULLIF(SUBSTRING(videos.duration FROM '(\\d+)S'), '')::INTEGER, 0)
+    )";
+
     private string $apiKey;
 
     public function __construct(
@@ -35,39 +43,23 @@ class YouTubeSearchService
     public function getResults(string $term, User $user, array $filters = []): array
     {
         $term = strtolower(trim($term));
-        $words = explode(' ', $term);
-        
-        // When "exact keyword match" is requested, only look up the full phrase term.
-        // Otherwise, aggregate results from the full term AND each individual word.
-        $isExactMatch = !empty($filters['keyword_match']);
-        
-        if ($isExactMatch) {
-            $searchTermsToCheck = [$term];
-        } else {
-            $searchTermsToCheck = array_unique(array_merge([$term], $words));
-        }
-        
-        $termModels = SearchTerm::whereIn('term', $searchTermsToCheck)->get();
-        
+
+        // Only the full phrase's results count. Aggregating each individual
+        // word's results (the old behavior) flooded multi-word searches with
+        // unrelated videos — "ai app builder" pulled in everything ever
+        // fetched for "ai" alone.
+        $termModels = SearchTerm::whereIn('term', [$term])->get();
+
         $page    = (int) ($filters['page'] ?? 1);
         $perPage = (int) ($filters['per_page'] ?? 20);
-
-        if ($termModels->isEmpty()) {
-            return [
-                'data'         => collect(),
-                'status'       => 'queued',
-                'current_page' => $page,
-                'per_page'     => $perPage,
-                'total'        => 0,
-                'last_page'    => 1,
-            ];
-        }
 
         // --- COMPOSITE STATUS LOGIC ---
         // Status is 'done' only if ALL terms are done/failed.
         // If ANY is in_progress or queued, overall status is in_progress.
         // We prioritize 'in_progress' over 'queued'.
-        
+        // No term row yet (scrape not even queued) → 'queued'; the DB-first
+        // union below still returns already-ingested title matches immediately.
+
         $statuses = [];
         foreach ($termModels as $tm) {
             $fetch = $tm->termsDataFetch;
@@ -75,9 +67,11 @@ class YouTubeSearchService
         }
 
         $compositeStatus = TermsDataFetch::STATUS_DONE;
-        if (in_array(TermsDataFetch::STATUS_IN_PROGRESS, $statuses)) {
+        if ($termModels->isEmpty()) {
+            $compositeStatus = TermsDataFetch::STATUS_QUEUED;
+        } elseif (in_array(TermsDataFetch::STATUS_IN_PROGRESS, $statuses)) {
             $compositeStatus = TermsDataFetch::STATUS_IN_PROGRESS;
-        } elseif (in_array(TermsDataFetch::STATUS_QUEUED, $statuses)) { 
+        } elseif (in_array(TermsDataFetch::STATUS_QUEUED, $statuses)) {
              $compositeStatus = TermsDataFetch::STATUS_QUEUED;
              //if we have mix of done and queued, we should say in_progress to keep polling.
              if (in_array(TermsDataFetch::STATUS_DONE, $statuses)) {
@@ -92,29 +86,23 @@ class YouTubeSearchService
         }
 
         // --- AGGREGATE RESULTS ---
-        $termIds = $termModels->pluck('id');
-        
-        // Get SearchResults (video IDs) from the search database
-        $searchResults = SearchResult::whereIn('term_id', $termIds)->get();
-        
-        if ($searchResults->isEmpty()) {
-            return [
-                'data'         => collect(),
-                'status'       => $compositeStatus,
-                'current_page' => $page,
-                'per_page'     => $perPage,
-                'total'        => 0,
-                'last_page'    => 1,
-            ];
-        }
-
-        $uniqueResults = $searchResults->unique('video_youtube_id');
-        
-        $videoIds = $uniqueResults->pluck('video_youtube_id');
+        // DB first: everything we've EVER ingested whose title carries the phrase,
+        // unioned with this term's scraped SearchResult set. The scrape rebuilds
+        // its SearchResults on every re-fetch (delete + reinsert), so counts used
+        // to shrink mid-refresh and old finds vanished when YouTube stopped
+        // returning them — the title union keeps them, and gives instant results
+        // while a first-time scrape is still running.
+        $videoIds = SearchResult::whereIn('term_id', $termModels->pluck('id'))
+            ->pluck('video_youtube_id')->unique()->values();
 
         $query = OutlierVideo::query()->with('channel')
-            ->whereIn('youtube_video_id', $videoIds)
-            ->join('channels', 'videos.channel_id', '=', 'channels.id');
+            ->join('channels', 'videos.channel_id', '=', 'channels.id')
+            ->where(function ($q) use ($videoIds, $term) {
+                $this->applyTitlePhraseMatch($q, $term);
+                if ($videoIds->isNotEmpty()) {
+                    $q->orWhereIn('youtube_video_id', $videoIds->all());
+                }
+            });
 
         $this->applyFilters($query, $filters);
         $this->applySorting($query, $filters['sort_by'] ?? 'score');
@@ -144,8 +132,29 @@ class YouTubeSearchService
         $perPage = min(max($perPage, 1), 100);
 
         $query = OutlierVideo::query()->with('channel')
-            ->join('channels', 'videos.channel_id', '=', 'channels.id')
-            ->where('outlier_score', '>=', $filters['min_score'] ?? OutlierVideo::minScore());
+            ->join('channels', 'videos.channel_id', '=', 'channels.id');
+
+        // Instagram videos have no views and no views-based outlier_score, so the
+        // score gate would exclude them all — skip it for that platform. With no
+        // platform filter (blended browse) the gate applies to non-IG rows only.
+        // Manually-added videos (pasted URLs) are deliberate — never score-gated.
+        // Featured (admin-curated) requests skip the gate entirely: curation wins.
+        $platform = $filters['platform'] ?? null;
+        if ($platform !== 'instagram' && empty($filters['featured'])) {
+            $minScore = $filters['min_score'] ?? OutlierVideo::minScore();
+            if ($platform === null) {
+                $query->where(function ($q) use ($minScore) {
+                    $q->where('videos.platform', 'instagram')
+                        ->orWhere('outlier_score', '>=', $minScore)
+                        ->orWhere('videos.manually_added', true);
+                });
+            } else {
+                $query->where(function ($q) use ($minScore) {
+                    $q->where('outlier_score', '>=', $minScore)
+                        ->orWhere('videos.manually_added', true);
+                });
+            }
+        }
 
         $this->applyFilters($query, $filters, true);
         $this->applySorting($query, $filters['sort_by'] ?? 'recent');
@@ -162,6 +171,20 @@ class YouTubeSearchService
             'total'        => $videos->total(),
             'last_page'    => $videos->lastPage(),
         ];
+    }
+
+    /**
+     * Whole-phrase title match for keyword search. Postgres gets word boundaries
+     * (\m…\M — "seo" can't match "Seoul"); other drivers (SQLite tests) fall back
+     * to a plain substring LIKE.
+     */
+    private function applyTitlePhraseMatch($q, string $term): void
+    {
+        if ($q->getConnection()->getDriverName() === 'pgsql') {
+            $q->whereRaw("videos.title ~* ('\\m' || ? || '\\M')", [preg_quote($term)]);
+        } else {
+            $q->whereRaw('LOWER(videos.title) LIKE ?', ['%'.$term.'%']);
+        }
     }
 
     /**
@@ -193,23 +216,74 @@ class YouTubeSearchService
         if (isset($filters['published_before'])) {
             $query->where('videos.published_at', '<=', $filters['published_before']);
         }
-        if (isset($filters['duration_type'])) {
-            $maxSeconds = OutlierVideo::SHORTS_MAX_SECONDS;
-            $durationExpr = "(
-                COALESCE(NULLIF(SUBSTRING(videos.duration FROM '(\\d+)H'), '')::INTEGER, 0) * 3600
-                + COALESCE(NULLIF(SUBSTRING(videos.duration FROM '(\\d+)M'), '')::INTEGER, 0) * 60
-                + COALESCE(NULLIF(SUBSTRING(videos.duration FROM '(\\d+)S'), '')::INTEGER, 0)
-            )";
-            if ($filters['duration_type'] === OutlierVideo::DURATION_TYPE_SHORTS) {
-                $query->whereNotNull('videos.duration')
-                    ->whereRaw("{$durationExpr} <= ?", [$maxSeconds]);
-            } elseif ($filters['duration_type'] === OutlierVideo::DURATION_TYPE_LONG) {
-                $query->where(function ($q) use ($durationExpr, $maxSeconds) {
-                    $q->whereNull('videos.duration')
-                        ->orWhereRaw("{$durationExpr} > ?", [$maxSeconds]);
-                });
-            }
+        if (isset($filters['platform'])) {
+            $query->where('videos.platform', $filters['platform']);
         }
+        if (! empty($filters['featured'])) {
+            $query->where('videos.featured', true);
+        }
+        if (! empty($filters['channels'])) {
+            $query->whereIn('channels.youtube_channel_id', (array) $filters['channels']);
+        }
+        if (! empty($filters['countries'])) {
+            // Channel country is stored uppercase (ISO 3166-1 alpha-2); NULL-country
+            // channels (incl. all TikTok/Instagram) don't match while this is active.
+            $query->whereIn('channels.country', array_map('strtoupper', (array) $filters['countries']));
+        }
+        if (isset($filters['duration_type'])) {
+            $wantShorts = $filters['duration_type'] === OutlierVideo::DURATION_TYPE_SHORTS;
+            // Classified rows are authoritative (is_short comes from YouTube's own
+            // /shorts/ URL, or the platform rule for TikTok/Instagram). Rows not yet
+            // classified fall back to the legacy platform + duration rule.
+            $query->where(function ($q) use ($wantShorts) {
+                $q->whereRaw('videos.is_short IS '.($wantShorts ? 'TRUE' : 'FALSE'))
+                    ->orWhere(function ($qq) use ($wantShorts) {
+                        $qq->whereNull('videos.is_short');
+                        $this->applyDurationFallback($qq, $wantShorts);
+                    });
+            });
+        }
+    }
+
+    /**
+     * Legacy rule for rows without a classification: TikTok/Instagram are shorts;
+     * YouTube goes by duration (≤ SHORTS_MAX_SECONDS = short; null, > max, or the
+     * 0s of live streams/premieres = long). The duration parsing is Postgres-only,
+     * so on other drivers (SQLite tests) unclassified YouTube rows count as long.
+     */
+    private function applyDurationFallback($q, bool $wantShorts): void
+    {
+        $maxSeconds = OutlierVideo::SHORTS_MAX_SECONDS;
+        $alwaysShort = ['tiktok', 'instagram'];
+
+        if ($wantShorts) {
+            $q->where(function ($w) use ($alwaysShort, $maxSeconds) {
+                $w->whereIn('videos.platform', $alwaysShort);
+                if ($this->supportsDurationSql($w)) {
+                    $w->orWhere(function ($yt) use ($maxSeconds) {
+                        $yt->where('videos.platform', 'youtube')
+                            ->whereNotNull('videos.duration')
+                            ->whereRaw(self::DURATION_SECONDS_SQL.' between 1 and ?', [$maxSeconds]);
+                    });
+                }
+            });
+
+            return;
+        }
+
+        $q->where('videos.platform', 'youtube');
+        if ($this->supportsDurationSql($q)) {
+            $q->where(function ($yt) use ($maxSeconds) {
+                $yt->whereNull('videos.duration')
+                    ->orWhereRaw(self::DURATION_SECONDS_SQL.' > ?', [$maxSeconds])
+                    ->orWhereRaw(self::DURATION_SECONDS_SQL.' < 1'); // P0D live streams / premieres
+            });
+        }
+    }
+
+    private function supportsDurationSql($q): bool
+    {
+        return $q->getConnection()->getDriverName() === 'pgsql';
     }
 
     /**
@@ -217,18 +291,20 @@ class YouTubeSearchService
      */
     private function applySorting($query, string $sortBy): void
     {
+        // NULLS LAST: in a blended (all-platform) feed Instagram rows have null
+        // score/views, and Postgres would otherwise float them to the top on DESC.
         switch ($sortBy) {
             case 'date':
             case 'recent':
                 $query->orderByRaw('DATE(videos.published_at) DESC')
-                    ->orderByDesc('videos.outlier_score');
+                    ->orderByRaw('videos.outlier_score DESC NULLS LAST');
                 break;
             case 'views':
-                $query->orderByDesc('videos.views');
+                $query->orderByRaw('videos.views DESC NULLS LAST');
                 break;
             case 'score':
             default:
-                $query->orderByDesc('videos.outlier_score');
+                $query->orderByRaw('videos.outlier_score DESC NULLS LAST');
                 break;
         }
     }
@@ -377,6 +453,7 @@ class YouTubeSearchService
             Log::info('Batch fetching channel details for ' . count($channelIds) . ' unique channels');
             $channelsMap = $this->channelService->getChannelsBatch($channelIds);
 
+            $savedIds = [];
             foreach ($videosData as $videoItem) {
                 $idData  = $videoItem['id'] ?? null;
                 $videoId = is_array($idData) ? ($idData['videoId'] ?? null) : $idData;
@@ -390,6 +467,7 @@ class YouTubeSearchService
                 $saved = $this->processOutlierVideo($videoDbData, $channelId, $channelsMap[$channelId] ?? null);
 
                 if ($saved) {
+                    $savedIds[] = $videoId;
                     SearchResult::create([
                         'term_id'          => $searchTerm->id,
                         'video_youtube_id' => $videoId,
@@ -406,6 +484,12 @@ class YouTubeSearchService
                 ['term_id' => $searchTerm->id],
                 ['status' => TermsDataFetch::STATUS_DONE, 'fetched_at' => now()]
             );
+
+            // Shorts/long classification runs as a follow-up job (one /shorts/ probe
+            // per saved video) so it never eats into this job's time budget.
+            if ($savedIds !== []) {
+                ClassifyOutlierVideoFormatsJob::dispatch($savedIds);
+            }
 
             // Dispatch sub-term jobs for multi-word terms (only when not exact match)
             if (!$exactMatch) {
@@ -450,39 +534,77 @@ class YouTubeSearchService
      */
     private function searchVideosWithApiKey(string $query, int $maxResults): array
     {
-        $params = [
-            'part' => 'snippet',
-            'q' => $query,
-            'type' => 'video',
-            'videoDuration' => 'long',
-            'order' => 'viewCount',
-            'maxResults' => $maxResults,
-            'key' => $this->apiKey,
-        ];
+        // Discover both long-form and short-form (Shorts) candidates. YouTube's
+        // videoDuration=short means < 4 min (broader than true Shorts); the ≤180s
+        // Shorts classification is applied at query time in applyFilters().
+        $videoIds = array_merge(
+            $this->searchVideoIds($query, $maxResults, 'long'),
+            $this->searchVideoIds($query, $maxResults, 'short'),
+        );
+        $videoIds = array_values(array_unique($videoIds));
 
-        $response = Http::get(self::API_BASE_URL . '/search', $params);
-
-        if (!$response->successful()) {
-            throw new \Exception('Failed to search videos: ' . $response->body());
-        }
-
-        $items = $response->json()['items'] ?? [];
-        if (empty($items)) {
+        if (empty($videoIds)) {
             return [];
         }
 
+        return $this->channelService->getVideoDetailsWithApiKey($videoIds);
+    }
+
+    /**
+     * Run search.list for the given duration bucket, following page tokens up to
+     * services.youtube.search_pages pages (each page = 100 quota units). One page
+     * caps discovery at ~50 candidates per bucket, which is why result sets felt
+     * thin next to vidIQ's index.
+     */
+    private function searchVideoIds(string $query, int $maxResults, string $videoDuration): array
+    {
+        $pages = max(1, (int) config('services.youtube.search_pages', 2));
         $videoIds = [];
-        foreach ($items as $item) {
-            $vId = $item['id']['videoId'] ?? ($item['id'] ?? null);
-            if (is_array($vId)) {
-                $vId = $vId['videoId'] ?? null;
+        $pageToken = null;
+
+        for ($i = 0; $i < $pages; $i++) {
+            $params = [
+                'part' => 'snippet',
+                'q' => $query,
+                'type' => 'video',
+                'videoDuration' => $videoDuration,
+                'order' => 'viewCount',
+                'maxResults' => $maxResults,
+                'key' => $this->apiKey,
+            ];
+            if ($pageToken !== null) {
+                $params['pageToken'] = $pageToken;
             }
-            if ($vId && is_string($vId)) {
-                $videoIds[] = $vId;
+
+            $response = Http::get(self::API_BASE_URL . '/search', $params);
+
+            if (!$response->successful()) {
+                // First page failing is a real failure; a broken deeper page
+                // shouldn't throw away what earlier pages already found.
+                if ($i === 0) {
+                    throw new \Exception('Failed to search videos: ' . $response->body());
+                }
+                Log::warning("YouTube search page ".($i + 1)." failed for \"{$query}\" — keeping earlier pages", ['status' => $response->status()]);
+                break;
+            }
+
+            foreach ($response->json()['items'] ?? [] as $item) {
+                $vId = $item['id']['videoId'] ?? ($item['id'] ?? null);
+                if (is_array($vId)) {
+                    $vId = $vId['videoId'] ?? null;
+                }
+                if ($vId && is_string($vId)) {
+                    $videoIds[] = $vId;
+                }
+            }
+
+            $pageToken = $response->json('nextPageToken');
+            if (!$pageToken) {
+                break;
             }
         }
 
-        return $this->channelService->getVideoDetailsWithApiKey($videoIds);
+        return $videoIds;
     }
 
 

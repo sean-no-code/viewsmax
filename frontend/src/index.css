@@ -129,6 +129,12 @@ All colors MUST be HSL.
 @keyframes fnlPulse { 0% { transform: scale(.8); opacity: .4; } 100% { transform: scale(2.2); opacity: 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Outliers breakdown loader (from the Shorts Breakdown design) */
+@keyframes vm-spin { to { transform: rotate(360deg); } }
+@keyframes vm-pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: .85; } }
+@keyframes vm-step-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vm-page-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -251,4 +257,49 @@ All colors MUST be HSL.
   h1, h2, h3, h4 {
     font-family: var(--font-display);
   }
+}
+
+/* Sonner's close button, on the product's own tokens. Its defaults are a stark
+   bordered circle overhanging the toast edge, which reads as browser chrome
+   rather than part of the UI.
+
+   These rules are inert for every existing toast: Sonner only renders a close
+   button when a toast asks for one, and the only toast that does is the TikTok
+   publish notice, which has to stay on screen for Required UX 5(d). Nothing else
+   in the product gains a close button or changes appearance. */
+.vm-toast-close {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  transform: none !important;
+  width: 22px !important;
+  height: 22px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: var(--ink-on-paper-3) !important;
+  opacity: 0;
+  transition: opacity var(--dur, .18s) ease, background var(--dur, .18s) ease, color var(--dur, .18s) ease;
+}
+
+/* Reveal on hover or keyboard focus, so a resting toast stays clean. */
+.toaster .toast:hover .vm-toast-close,
+.vm-toast-close:focus-visible {
+  opacity: 1;
+}
+
+.vm-toast-close:hover {
+  background: var(--paper-2, rgba(10, 10, 12, .06)) !important;
+  color: var(--ink-on-paper-1) !important;
+}
+
+.vm-toast-close:focus-visible {
+  outline: 2px solid var(--vm-volt-deep, #07B79B);
+  outline-offset: 1px;
+}
+
+/* Keep the text clear of the button. */
+.toaster .toast:has(.vm-toast-close) [data-title] {
+  padding-right: 20px;
 }

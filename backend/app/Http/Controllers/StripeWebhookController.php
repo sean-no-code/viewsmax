@@ -114,7 +114,13 @@ class StripeWebhookController extends Controller
     private function handleCheckoutCompleted(array $session): void
     {
         $subscriptionId = $session['subscription'] ?? null;
-        $userId = $session['client_reference_id'] ?? $session['metadata']['user_id'] ?? null;
+        // metadata.user_id is authoritative. client_reference_id now carries
+        // the Rewardful referral UUID when the signup came through an
+        // affiliate link — only trust it as a user id when it's numeric
+        // (sessions created before the Rewardful integration).
+        $clientRef = $session['client_reference_id'] ?? null;
+        $userId = $session['metadata']['user_id']
+            ?? (is_numeric($clientRef) ? $clientRef : null);
         $customerId = $session['customer'] ?? null;
 
         if (! $subscriptionId || ! $userId) {

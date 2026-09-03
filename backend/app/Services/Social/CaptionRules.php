@@ -6,7 +6,7 @@ namespace App\Services\Social;
  * Single source of truth for per-platform caption limits and X text rules:
  * t.co-aware length weighting and `---` thread splitting.
  *
- * The frontend mirrors this logic in frontend/src/lib/text-metrics.ts —
+ * The frontend mirrors this logic in tube-trend-tool/src/lib/text-metrics.ts —
  * any change to the counting algorithm, URL regex, or split regex must be made
  * in BOTH files or the composer and the API will disagree about validity.
  */

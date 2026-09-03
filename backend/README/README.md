@@ -1,6 +1,6 @@
-# ViewsMax Backend Documentation
+# TubeMaster Backend Documentation
 
-Welcome to the ViewsMax Backend API documentation. This Laravel-based backend provides comprehensive thumbnail generation and management services for video content creators.
+Welcome to the TubeMaster Backend API documentation. This Laravel-based backend provides comprehensive thumbnail generation and management services for video content creators.
 
 ## 📋 Table of Contents
 
@@ -30,7 +30,7 @@ Welcome to the ViewsMax Backend API documentation. This Laravel-based backend pr
 
 ### Service Overview
 
-The ViewsMax Backend supports multiple thumbnail generation services that can be easily swapped based on your needs and preferences.
+The TubeMaster Backend supports multiple thumbnail generation services that can be easily swapped based on your needs and preferences.
 
 **Current Status:**
 - ✅ **OpenAI (DALL-E)**: Fully functional
@@ -93,7 +93,7 @@ Complete examples in cURL, JavaScript, and PHP for downloading thumbnails.
 
 ### Brevo Integration
 
-The ViewsMax Backend integrates with Brevo (formerly Sendinblue) for reliable email delivery, particularly for password reset functionality.
+The TubeMaster Backend integrates with Brevo (formerly Sendinblue) for reliable email delivery, particularly for password reset functionality.
 
 ### Configuration Steps
 

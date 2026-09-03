@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -92,25 +93,33 @@ class BlueskyProvider extends AbstractSocialProvider
             return $account;
         }
 
-        $response = Http::withToken($account->refresh_token)
-            ->post($this->serviceUrl().'/xrpc/com.atproto.server.refreshSession');
+        return $this->refreshingSafely($account, function (SocialAccount $account) {
+            $response = Http::withToken($account->refresh_token)
+                ->post($this->serviceUrl().'/xrpc/com.atproto.server.refreshSession');
 
-        if (! $response->successful()) {
-            $account->markNeedsReauth('Bluesky session refresh failed.');
+            if (! $response->successful()) {
+                if ($this->isDefinitiveAuthFailure($response->status())) {
+                    $account->markNeedsReauth('Bluesky session was rejected — reconnect with your app password.');
+                } else {
+                    Log::warning('Bluesky session refresh failed transiently', [
+                        'account_id' => $account->id, 'status' => $response->status(),
+                    ]);
+                }
 
-            return $account;
-        }
+                return $account;
+            }
 
-        $data = $response->json();
-        $account->update([
-            'access_token' => $data['accessJwt'] ?? $account->access_token,
-            'refresh_token' => $data['refreshJwt'] ?? $account->refresh_token,
-            'token_expires_at' => now()->addHours(1),
-            'status' => SocialAccount::STATUS_CONNECTED,
-            'last_error' => null,
-        ]);
+            $data = $response->json();
+            $account->update([
+                'access_token' => $data['accessJwt'] ?? $account->access_token,
+                'refresh_token' => $data['refreshJwt'] ?? $account->refresh_token,
+                'token_expires_at' => now()->addHours(1),
+                'status' => SocialAccount::STATUS_CONNECTED,
+                'last_error' => null,
+            ]);
 
-        return $account->refresh();
+            return $account->refresh();
+        });
     }
 
     public function publish(SocialAccount $account, SocialPost $post): PublishResult

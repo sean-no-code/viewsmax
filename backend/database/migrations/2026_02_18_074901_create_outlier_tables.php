@@ -13,6 +13,13 @@ return new class extends Migration
     {
         $schema = Schema::connection('outlier_db');
 
+        // Idempotent: the outlier DB may already be provisioned — and these
+        // tables may exist under their RENAMED names (channels/videos) if the
+        // follow-up rename migration already ran there. Either way: skip.
+        if ($schema->hasTable('outlier_channels') || $schema->hasTable('channels')) {
+            return;
+        }
+
         $schema->create('outlier_channels', function (Blueprint $table) {
             $table->id();
             $table->string('youtube_channel_id')->unique()->index();

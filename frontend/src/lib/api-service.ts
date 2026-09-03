@@ -2,8 +2,28 @@
 // Handles all communication with api.viewsmax.ai backend
 
 import { isMockApi, mockApi } from "@/lib/mock-api";
+import {
+  putWithProgress,
+  uploadMultipartParts,
+  type DirectUploadSession,
+  type UploadedPart,
+} from "@/lib/direct-upload";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Rewardful affiliate tracking (loaded in index.html). When the visitor came
+// through an affiliate link, Rewardful exposes their referral UUID here — we
+// forward it with checkout/subscribe calls so the backend can attribute the
+// conversion in Stripe.
+declare global {
+  interface Window {
+    Rewardful?: { referral?: string };
+  }
+}
+
+export function rewardfulReferral(): string | null {
+  return (typeof window !== "undefined" && window.Rewardful?.referral) || null;
+}
 
 // App-served media (Laravel's `/storage/{path}` route) is stored as an absolute
 // URL built from the backend host. In dev that host drifts (e.g. ngrok tunnels
@@ -27,6 +47,8 @@ interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  /** Machine-readable failure tag, when the endpoint sends one. */
+  code?: string;
   message?: string;
   user_credits?: number;
   count?: number;
@@ -480,6 +502,43 @@ export interface TrafficSourcesData {
   referrers: TrafficReferrer[];
 }
 
+// Audience Growth — per-platform follower series from /api/analytics/audience.
+export interface AudiencePoint {
+  date: string;
+  followers: number;
+}
+
+export interface AudiencePlatformSeries {
+  platform: string;
+  account_id: number;
+  account_name: string | null;
+  // Whether the platform can supply a follower count under current config;
+  // false → the UI shows a "not supported" state.
+  supported: boolean;
+  current: number | null;
+  delta: number;
+  points: AudiencePoint[];
+}
+
+export interface AudienceGrowthData {
+  platforms: AudiencePlatformSeries[];
+}
+
+// One engagement-ranked post from /api/analytics/posts.
+export interface TopPost {
+  platform: string;
+  remote_post_id: string;
+  url: string | null;
+  caption: string | null;
+  published_at: string | null;
+  likes: number;
+  comments: number;
+  shares: number;
+  views: number;
+  engagement_total: number;
+  engagement_delta: number;
+}
+
 export interface PostMediaItem {
   type: "image" | "video";
   g?: string; // gradient placeholder (until real upload)
@@ -554,12 +613,12 @@ export interface PostTarget {
   error?: string | null;
   published_at?: string | null;
   options?: Record<string, unknown> | null;
-  // How the platform accepted the post (extracted from meta.mode).
-  // "inbox" = TikTok inbox upload — the video sits in the creator's
+  // How the platform accepted the post (admin list payload; extracted from
+  // meta.mode). "inbox" = TikTok inbox upload — the video sits in the creator's
   // TikTok app awaiting manual finish, and no caption could be attached.
   delivery_mode?: "direct" | "inbox" | null;
   // Audit trail of the platform exchange (publish_id, mode, raw request/response
-  // log, last_status).
+  // log, last_status). Only present on the admin detail (show) endpoint.
   meta?: {
     publish_id?: string;
     mode?: "direct" | "inbox";
@@ -598,6 +657,105 @@ export interface Post {
   updated_at: string;
 }
 
+export interface AdminPost extends Post {
+  user?: { id: number; name: string; email: string } | null;
+}
+
+export interface AdminPostStats {
+  published: number;
+  failed: number;
+  publishing: number;
+  pending: number;
+  posts: number;
+}
+
+/* ---- SEO engine (per-user, per-offer) ---- */
+export interface SeoProfileRow {
+  id: number;
+  tracking_event_id: number;
+  competitors: string[];
+  wp_url: string | null;
+  wp_username: string | null;
+  has_wp_password: boolean;
+  articles_per_week: number;
+  auto_publish: boolean;
+  enabled: boolean;
+}
+
+export interface SeoKeywordRow {
+  id: number;
+  keyword: string;
+  competitor_domain: string | null;
+  competitor_url: string | null;
+  search_volume: number;
+  difficulty: number;
+  cpc: string | number;
+  intent_score: number;
+  status: 'discovered' | 'drafted' | 'published' | 'skipped';
+  created_at: string;
+}
+
+export type SeoArticleCategory = 'Guide: Explainer' | 'Guide: How-to' | 'List: Round-up' | 'List: Resources' | 'List: Examples';
+
+export interface SeoArticleRow {
+  id: number;
+  title: string;
+  slug: string;
+  meta_description: string | null;
+  category: SeoArticleCategory | null;
+  html?: string;
+  featured_image_url: string | null;
+  status: 'review' | 'queued' | 'published' | 'failed';
+  published_url: string | null;
+  published_at: string | null;
+  error: string | null;
+  created_at: string;
+  keyword?: SeoKeywordRow | null;
+}
+
+export interface SeoProspectRow {
+  id: number;
+  url: string;
+  domain: string;
+  competitor_domain: string | null;
+  anchor: string | null;
+  domain_rank: number;
+  dofollow: boolean;
+  status: 'new' | 'contacted' | 'won' | 'rejected';
+  created_at: string;
+}
+
+export interface AdminOfferRow {
+  id: number;
+  name: string | null;
+  url: string;
+  user: { id: number; name: string | null; email: string } | null;
+  links_count: number;
+  views: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  view_conversion_rate: number | null;
+  click_conversion_rate: number | null;
+  created_at: string | null;
+}
+
+export interface AdminLinkRow {
+  id: number;
+  name: string | null;
+  placement: string;
+  parameter_id: string;
+  offer: { id: number; name: string | null; url: string } | null;
+  user: { id: number; name: string | null; email: string } | null;
+  views: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  view_conversion_rate: number | null;
+  click_conversion_rate: number | null;
+  created_at: string | null;
+}
+
 export interface BeehiivConnectionStatus {
   connected: boolean;
   status?: string;
@@ -607,6 +765,113 @@ export interface BeehiivConnectionStatus {
   last_validated_at?: string | null;
   last_error?: string | null;
   publications?: { id: string; name: string | null }[];
+}
+
+export interface AdminReconcileReport {
+  stuck_targets: number;
+  requeueable: number;
+  already_on_platform: number;
+  overdue_scheduled: number;
+  affected_post_ids: number[];
+}
+
+export interface AdminRequeueResult {
+  post_id: number;
+  status: string;
+  requeued: number;
+  healed: number;
+  skipped: number;
+  targets: PostTarget[];
+}
+
+export interface AdminUser {
+  id: number;
+  name: string | null;
+  email: string;
+  created_at: string | null;
+  last_login_at: string | null;
+  last_login_country: string | null;
+  last_login_country_code: string | null;
+  has_card: boolean;
+  subscribed: boolean;
+  plan: string | null;
+  onboarded: boolean;
+  posts_count: number;
+  posts_posted_count: number;
+  // Sum of both connection stores (legacy connections + social accounts).
+  accounts_count: number;
+  offers_count: number;
+  // When they first created a post or an offer — null if never.
+  first_action_at: string | null;
+  // cancelled_at of the LATEST subscription row — null if not cancelled
+  // (a re-subscribe clears it).
+  subscription_cancelled_at: string | null;
+}
+
+export interface AdminUsersPage {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  per_page: number;
+  last_page: number;
+}
+
+// One connected account, normalized across both stores ('social-*' = social_accounts,
+// 'legacy-*' = the old connections table).
+export interface AdminUserAccount {
+  id: string;
+  platform: string;
+  name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  // Best public URL for the account (stored profile_url or built from
+  // platform + username / account id); null when nothing linkable exists.
+  url: string | null;
+  status: string | null;
+  connected_at: string | null;
+}
+
+export interface AdminRole {
+  id: number;
+  name: string;
+  display_name: string | null;
+}
+
+export interface AdminUserDetail {
+  user: { id: number; name: string | null; email: string; created_at: string | null; roles: string[] };
+  roles: AdminRole[];
+}
+
+export interface AdminUserStatsPoint {
+  date: string;
+  signups: number;
+  added_card: number;
+  subscribed: number;
+}
+
+export interface AdminUserStats {
+  from: string;
+  to: string;
+  totals: { signups: number; added_card: number; subscribed: number };
+  series: AdminUserStatsPoint[];
+}
+
+export type AdminUserSort =
+  | "name" | "email" | "created_at" | "has_card" | "plan" | "last_login_at"
+  | "posts_count" | "accounts_count" | "offers_count" | "first_action_at" | "subscription_cancelled_at";
+
+export interface AdminUsersFilters {
+  from?: string;
+  to?: string;
+  name?: string;
+  email?: string;
+  card?: string[]; // subset of ["yes","no"]
+  plan?: string[];
+  cancelled?: string[]; // subset of ["yes","no"]
+  sort?: AdminUserSort;
+  dir?: "asc" | "desc";
+  page?: number;
+  per_page?: number;
 }
 
 // One composed follow-up comment: posted to each supporting target after it
@@ -916,6 +1181,49 @@ class ViewsMaxApiService {
     }
   }
 
+  // Audience Growth: per-platform follower series over a date range.
+  async getAudienceGrowth(filters?: { from?: Date; to?: Date }): Promise<ApiResponse<AudienceGrowthData>> {
+    if (isMockApi()) return { success: true, data: { platforms: [] } };
+    try {
+      const params = new URLSearchParams();
+      const formatDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (filters?.from) params.append('from', formatDate(filters.from));
+      if (filters?.to) params.append('to', formatDate(filters.to));
+
+      const response = await fetch(`${this.baseUrl}/api/analytics/audience?${params.toString()}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) return { success: false, error: `Failed to fetch audience growth: ${response.status}` };
+      const result = await response.json();
+      return { success: true, data: result.data };
+    } catch (error) {
+      return { success: false, error: `Network error: ${error.message}` };
+    }
+  }
+
+  // Audience Growth: posts ranked by engagement (optional platform filter).
+  async getTopPosts(filters?: { from?: Date; to?: Date; platform?: string }): Promise<ApiResponse<TopPost[]>> {
+    if (isMockApi()) return { success: true, data: [] };
+    try {
+      const params = new URLSearchParams();
+      const formatDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (filters?.from) params.append('from', formatDate(filters.from));
+      if (filters?.to) params.append('to', formatDate(filters.to));
+      if (filters?.platform) params.append('platform', filters.platform);
+
+      const response = await fetch(`${this.baseUrl}/api/analytics/posts?${params.toString()}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) return { success: false, error: `Failed to fetch top posts: ${response.status}` };
+      const result = await response.json();
+      return { success: true, data: result.data?.posts || [] };
+    } catch (error) {
+      return { success: false, error: `Network error: ${error.message}` };
+    }
+  }
+
   // Posts (multi-platform composer)
   async getPosts(filters?: { status?: string; from?: Date; to?: Date }): Promise<ApiResponse<Post[]>> {
     try {
@@ -929,6 +1237,115 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
       });
       if (!response.ok) throw new Error(`Failed to fetch posts: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: Array.isArray(result) ? result : (result.data || []) };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // Admin-only: all clients' posts with owner + per-platform targets.
+  async getAdminPosts(filters?: { status?: string; post_status?: string; platform?: string; overdue?: boolean; q?: string }): Promise<ApiResponse<AdminPost[]>> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.post_status) params.append('post_status', filters.post_status);
+      if (filters?.platform) params.append('platform', filters.platform);
+      if (filters?.overdue) params.append('overdue', '1');
+      if (filters?.q) params.append('q', filters.q);
+      const response = await fetch(`${this.baseUrl}/api/admin/posts?${params.toString()}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to fetch admin posts: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: Array.isArray(result) ? result : (result.data || []) };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async getAdminPost(id: number): Promise<ApiResponse<AdminPost>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/posts/${id}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to fetch admin post: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: result.data || result };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async getAdminPostStats(): Promise<ApiResponse<AdminPostStats>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/posts/stats`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to fetch admin stats: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: result.data || result };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /* ---- SEO engine (per-user, per-offer profiles) ---- */
+
+  private async seoRequest<T>(path: string, method = 'GET', body?: Record<string, unknown>): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/seo/${path}`, {
+        method,
+        headers: { ...this.getAuthHeaders(), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.message || `seo ${path} failed: ${response.status}`);
+      }
+      const result = await response.json();
+      return { success: true, data: result.data ?? null };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  getSeoProfiles() { return this.seoRequest<SeoProfileRow[]>('profiles'); }
+  saveSeoProfile(offerId: number, profile: Partial<SeoProfileRow> & { wp_app_password?: string }) {
+    return this.seoRequest<SeoProfileRow>(`profiles/offer/${offerId}`, 'PUT', profile);
+  }
+  getSeoKeywords(profileId: number) { return this.seoRequest<SeoKeywordRow[]>(`profiles/${profileId}/keywords`); }
+  getSeoArticles(profileId: number) { return this.seoRequest<SeoArticleRow[]>(`profiles/${profileId}/articles`); }
+  getSeoProspects(profileId: number) { return this.seoRequest<SeoProspectRow[]>(`profiles/${profileId}/prospects`); }
+  updateSeoKeyword(id: number, status: 'discovered' | 'skipped') { return this.seoRequest<null>(`keywords/${id}`, 'PATCH', { status }); }
+  updateSeoArticle(id: number, patch: { status?: 'review' | 'queued'; title?: string; meta_description?: string | null; category?: SeoArticleCategory | null; html?: string; featured_image_url?: string | null }) {
+    return this.seoRequest<SeoArticleRow>(`articles/${id}`, 'PATCH', patch);
+  }
+  updateSeoProspect(id: number, patch: { status?: string }) { return this.seoRequest<null>(`prospects/${id}`, 'PATCH', patch); }
+  bulkUpdateSeoProspects(ids: number[], status: string) { return this.seoRequest<{ updated: number }>('prospects', 'PATCH', { ids, status }); }
+
+  async getAdminOffers(q?: string): Promise<ApiResponse<AdminOfferRow[]>> {
+    try {
+      const params = new URLSearchParams();
+      if (q) params.append('q', q);
+      const response = await fetch(`${this.baseUrl}/api/admin/offers?${params.toString()}`, { method: 'GET', headers: this.getAuthHeaders() });
+      if (!response.ok) throw new Error(`Failed to fetch admin offers: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: Array.isArray(result) ? result : (result.data || []) };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async getAdminLinks(q?: string): Promise<ApiResponse<AdminLinkRow[]>> {
+    try {
+      const params = new URLSearchParams();
+      if (q) params.append('q', q);
+      const response = await fetch(`${this.baseUrl}/api/admin/links?${params.toString()}`, { method: 'GET', headers: this.getAuthHeaders() });
+      if (!response.ok) throw new Error(`Failed to fetch admin links: ${response.status}`);
       const result = await response.json();
       return { success: true, data: Array.isArray(result) ? result : (result.data || []) };
     } catch (error) {
@@ -967,6 +1384,170 @@ class ViewsMaxApiService {
       const response = await fetch(`${this.baseUrl}/api/beehiiv/connection`, { method: 'DELETE', headers: this.getAuthHeaders() });
       if (!response.ok) throw new Error(`Failed to disconnect Beehiiv: ${response.status}`);
       return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // Read-only scan for publishing stuck by a worker/scheduler outage.
+  async reconcileAdminPosts(): Promise<ApiResponse<AdminReconcileReport>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/posts/reconcile`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to reconcile: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: result.data || result };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // Re-drive one post's unfinished platform targets (double-post safe server-side).
+  async requeueAdminPost(id: number): Promise<ApiResponse<AdminRequeueResult>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/posts/${id}/requeue`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to requeue: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: result.data || result };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // Admin-only: paginated index of users, filterable by search + created_at range.
+  async getAdminUsers(filters?: AdminUsersFilters): Promise<ApiResponse<AdminUsersPage>> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.from) params.append('from', filters.from);
+      if (filters?.to) params.append('to', filters.to);
+      if (filters?.name) params.append('name', filters.name);
+      if (filters?.email) params.append('email', filters.email);
+      if (filters?.card?.length) params.append('card', filters.card.join(','));
+      if (filters?.plan?.length) params.append('plan', filters.plan.join(','));
+      if (filters?.cancelled?.length) params.append('cancelled', filters.cancelled.join(','));
+      if (filters?.sort) params.append('sort', filters.sort);
+      if (filters?.dir) params.append('dir', filters.dir);
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.per_page) params.append('per_page', String(filters.per_page));
+      const response = await fetch(`${this.baseUrl}/api/admin/users?${params.toString()}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to fetch admin users: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: result.data || result };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // Admin-only: typeahead values for the users-table filters (name/email/plan).
+  async getTranscript(
+    platform: "youtube" | "tiktok" | "instagram",
+    url: string,
+  ): Promise<ApiResponse<{ platform: string; url: string; text: string; segments: { text: string; startMs: number; endMs: number }[]; language: string | null; cached: boolean }>> {
+    try {
+      // Public endpoint — no auth headers; the CaptAPI key stays server-side.
+      const response = await fetch(`${this.baseUrl}/api/free-tools/transcript`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ platform, url }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) return { success: false, error: body.message || `Failed to fetch transcript (${response.status})` };
+      return { success: true, data: body.data };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  async getAdminUserAccounts(id: number): Promise<ApiResponse<AdminUserAccount[]>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/users/${id}/accounts`, { headers: this.getAuthHeaders() });
+      if (!response.ok) return { success: false, error: `Failed to load accounts: ${response.status}` };
+      const body = await response.json();
+      return { success: true, data: body.data || [] };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async getAdminUser(id: number): Promise<ApiResponse<AdminUserDetail>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/users/${id}`, { headers: this.getAuthHeaders() });
+      if (!response.ok) return { success: false, error: `Failed to load user: ${response.status}` };
+      const body = await response.json();
+      return { success: true, data: body.data };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async updateAdminUserRole(id: number, role: string): Promise<ApiResponse<AdminUserDetail['user']>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/users/${id}/role`, {
+        method: 'PUT',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) return { success: false, error: body.message || `Failed to update role: ${response.status}` };
+      return { success: true, data: body.data?.user };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async deleteUser(id: number): Promise<ApiResponse<void>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        return { success: false, error: body.message || `Failed to delete user: ${response.status}` };
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async getAdminUserSuggest(field: 'name' | 'email' | 'plan', q?: string): Promise<ApiResponse<string[]>> {
+    try {
+      const params = new URLSearchParams({ field });
+      if (q) params.append('q', q);
+      const response = await fetch(`${this.baseUrl}/api/admin/users/suggest?${params.toString()}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to fetch suggestions: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: result.data || result || [] };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // Admin-only: signup / added-card / subscribed widgets over a date range.
+  async getAdminUserStats(filters?: { from?: string; to?: string }): Promise<ApiResponse<AdminUserStats>> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.from) params.append('from', filters.from);
+      if (filters?.to) params.append('to', filters.to);
+      const response = await fetch(`${this.baseUrl}/api/admin/users/stats?${params.toString()}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(`Failed to fetch admin user stats: ${response.status}`);
+      const result = await response.json();
+      return { success: true, data: result.data || result };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
@@ -1058,9 +1639,110 @@ class ViewsMaxApiService {
 
   // Upload a single post media file (image/video). Returns a public URL the
   // backend publishing APIs can fetch (e.g. TikTok PULL_FROM_URL).
-  // Uses XMLHttpRequest (not fetch) so the caller can show real upload progress
-  // via the optional onProgress callback (0–100).
-  uploadPostMedia(
+  //
+  // Preferred path: presigned direct-to-R2 upload (single PUT, or parallel
+  // multipart for large videos) so the file doesn't relay through the API
+  // server. Falls back to the legacy relay endpoint when the backend has no
+  // S3-compatible media disk or the direct path fails (e.g. missing bucket
+  // CORS). Progress covers the full journey: bytes map to 0–99, and 100 only
+  // fires once the backend has verified the object.
+  async uploadPostMedia(
+    file: File,
+    type: "image" | "video",
+    onProgress?: (percent: number) => void,
+  ): Promise<ApiResponse<PostMediaItem>> {
+    let session: DirectUploadSession;
+    try {
+      const response = await fetch(`${this.baseUrl}/api/posts/media/direct`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ type, filename: file.name, mime: file.type, size: file.size }),
+      });
+      if (response.status === 422) {
+        // The file itself is invalid (size/mime) — the relay would reject it
+        // identically, so surface the validation message instead of retrying.
+        const body = await response.json().catch(() => null);
+        const errors = body?.errors ? Object.values(body.errors).flat().join(' ') : '';
+        return { success: false, error: errors || body?.message || 'File is not a supported image/video.' };
+      }
+      if (!response.ok) throw new Error(`Session request failed: ${response.status}`);
+      session = (await response.json()).data;
+    } catch {
+      // Older backend or transient failure — the relay path still works.
+      return this.uploadPostMediaRelay(file, type, onProgress);
+    }
+
+    if (session?.strategy !== 'put' && session?.strategy !== 'multipart') {
+      return this.uploadPostMediaRelay(file, type, onProgress);
+    }
+
+    const onBytes = (bytes: number) => {
+      if (onProgress) onProgress(Math.min(99, Math.round((bytes / file.size) * 99)));
+    };
+
+    try {
+      let parts: UploadedPart[] | undefined;
+      if (session.strategy === 'put') {
+        await putWithProgress(session.url!, file, session.headers ?? {}, onBytes);
+      } else {
+        parts = await uploadMultipartParts(
+          file,
+          { part_size: session.part_size!, parts: session.parts! },
+          onBytes,
+        );
+      }
+
+      const result = await this.completeDirectUpload(type, session.path!, session.upload_id, parts);
+      if (result.success && onProgress) onProgress(100);
+      return result;
+    } catch (error) {
+      if (session.strategy === 'multipart' && session.upload_id) {
+        // Best-effort cleanup — abandoned parts are billable on R2.
+        this.abortDirectUpload(session.path!, session.upload_id);
+      }
+      console.warn('Direct upload failed, falling back to relay:', error);
+      return this.uploadPostMediaRelay(file, type, onProgress);
+    }
+  }
+
+  private async completeDirectUpload(
+    type: "image" | "video",
+    path: string,
+    uploadId?: string,
+    parts?: UploadedPart[],
+  ): Promise<ApiResponse<PostMediaItem>> {
+    const response = await fetch(`${this.baseUrl}/api/posts/media/direct/complete`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({
+        type,
+        path,
+        ...(uploadId ? { upload_id: uploadId, parts } : {}),
+      }),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !body?.success) {
+      // Verification failures (422: too big / wrong mime) are terminal — the
+      // relay applies the same rules, so don't retry there.
+      if (response.status === 422) {
+        return { success: false, error: body?.message || 'Uploaded file failed verification.' };
+      }
+      throw new Error(body?.message || `Completing the upload failed: ${response.status}`);
+    }
+    return { success: true, data: body.data };
+  }
+
+  private abortDirectUpload(path: string, uploadId: string): void {
+    fetch(`${this.baseUrl}/api/posts/media/direct/abort`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ path, upload_id: uploadId }),
+    }).catch(() => undefined);
+  }
+
+  // Legacy path: multipart POST through the API server, which re-uploads to
+  // storage before responding (slower for big files; kept as the fallback).
+  private uploadPostMediaRelay(
     file: File,
     type: "image" | "video",
     onProgress?: (percent: number) => void,
@@ -1112,8 +1794,15 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
       });
       if (!response.ok) {
-        const errorData = await response.text();
-        return { success: false, error: `Failed to fetch TikTok creator info: ${response.status} - ${errorData}` };
+        // TikTok answers "this creator can't post right now" with a code the
+        // backend tags as creator_cannot_post. Content Sharing Guidelines,
+        // Required UX 1(b) needs that told apart from a generic outage, so pass
+        // the message through verbatim.
+        const body = await response.json().catch(() => null);
+        if (body?.code === 'creator_cannot_post') {
+          return { success: false, error: body.message, code: body.code };
+        }
+        return { success: false, error: body?.message || `Failed to fetch TikTok creator info: ${response.status}` };
       }
       const result = await response.json();
       return { success: true, data: result.data || result };
@@ -5193,7 +5882,14 @@ class ViewsMaxApiService {
         method: 'POST',
         headers: this.getAuthHeaders(),
         // price_id tells the backend which tier the user chose; omitted → trial default.
-        body: JSON.stringify(priceId ? { payment_method_id: paymentMethodId, price_id: priceId } : { payment_method_id: paymentMethodId }),
+        // referral: Rewardful's visitor UUID when the signup came through an
+        // affiliate link — the backend pins it to the Stripe customer so the
+        // conversion is credited to the affiliate.
+        body: JSON.stringify({
+          payment_method_id: paymentMethodId,
+          ...(priceId ? { price_id: priceId } : {}),
+          ...(rewardfulReferral() ? { referral: rewardfulReferral() } : {}),
+        }),
       });
 
       if (!response.ok) {

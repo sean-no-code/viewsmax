@@ -17,10 +17,7 @@ class PlanSeeder extends Seeder
         // same as stripe_price_id — so a tier is tuned by setting env vars and
         // re-running this seeder. NULL means "unlimited" for a limit. Returns
         // null when an env var is unset *and* the default is null (= unlimited).
-        // An empty value counts as unlimited too, not 0: .env.example documents
-        // "blank = unlimited", and a key present but empty returns '' rather than
-        // null — which would otherwise cast to 0 and cap the tier at nothing.
-        $num = fn (string $key, ?int $default = null): ?int => (($v = env($key, $default)) === null || $v === '') ? null : (int) $v;
+        $num = fn (string $key, ?int $default = null): ?int => ($v = env($key, $default)) === null ? null : (int) $v;
 
         // The four paid tiers from the Pricing + Features ticket.
         $plans = [

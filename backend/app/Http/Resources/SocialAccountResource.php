@@ -24,7 +24,10 @@ class SocialAccountResource extends JsonResource
             'avatar_url' => $this->avatar_url,
             'profile_url' => $this->profile_url,
             'status' => $this->status,
-            'token_valid' => $this->hasValidToken(),
+            // "Can it publish without user action?" — NOT raw access-token
+            // expiry (expired-but-refreshable is healthy; the FE shows
+            // "Reconnect" whenever this is false).
+            'token_valid' => $this->hasUsableCredentials(),
             'token_expires_at' => $this->token_expires_at?->toISOString(),
             'last_error' => $this->last_error,
             'last_synced_at' => $this->last_synced_at?->toISOString(),

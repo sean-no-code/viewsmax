@@ -72,6 +72,87 @@ class TikTokProvider extends AbstractSocialProvider
         return collect([$account]);
     }
 
+    /**
+     * Follower count via the user info endpoint. Requires the user.info.stats
+     * scope (gated behind stats_enabled — users must reconnect). Null when off
+     * or on any failure.
+     */
+    public function fetchFollowerCount(SocialAccount $account): ?int
+    {
+        if (! $this->config('stats_enabled')) {
+            return null;
+        }
+
+        try {
+            $account = $this->ensureFreshToken($account);
+            $response = Http::withToken($account->access_token)
+                ->get('https://open.tiktokapis.com/v2/user/info/', ['fields' => 'follower_count']);
+
+            if (! $response->successful()) {
+                \Illuminate\Support\Facades\Log::warning('[TikTok] follower lookup failed', [
+                    'account_id' => $account->id, 'status' => $response->status(),
+                ]);
+
+                return null;
+            }
+
+            $count = $response->json('data.user.follower_count');
+
+            return $count === null ? null : (int) $count;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TikTok] follower lookup errored', [
+                'account_id' => $account->id, 'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Per-video engagement via the video/query endpoint. Requires the
+     * video.list scope (gated behind stats_enabled). Empty when off/on failure.
+     */
+    public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
+    {
+        if (! $this->config('stats_enabled') || empty($remotePostIds)) {
+            return [];
+        }
+
+        try {
+            $account = $this->ensureFreshToken($account);
+            $response = Http::withToken($account->access_token)
+                ->post('https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count', [
+                    'filters' => ['video_ids' => array_values(array_slice($remotePostIds, 0, 20))],
+                ]);
+
+            if (! $response->successful()) {
+                \Illuminate\Support\Facades\Log::warning('[TikTok] video metrics failed', [
+                    'account_id' => $account->id, 'status' => $response->status(),
+                ]);
+
+                return [];
+            }
+
+            $out = [];
+            foreach ($response->json('data.videos') ?? [] as $v) {
+                $out[(string) $v['id']] = [
+                    'likes' => (int) ($v['like_count'] ?? 0),
+                    'comments' => (int) ($v['comment_count'] ?? 0),
+                    'shares' => (int) ($v['share_count'] ?? 0),
+                    'views' => (int) ($v['view_count'] ?? 0),
+                ];
+            }
+
+            return $out;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TikTok] video metrics errored', [
+                'account_id' => $account->id, 'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
     public function ensureFreshToken(SocialAccount $account): SocialAccount
     {
         if ($account->hasValidToken() || empty($account->refresh_token)) {

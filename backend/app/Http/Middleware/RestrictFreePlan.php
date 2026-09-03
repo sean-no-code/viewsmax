@@ -25,6 +25,11 @@ class RestrictFreePlan
             ], 401);
         }
 
+        // Admin users bypass plan restrictions
+        if ($request->user()->isAdmin()) {
+            return $next($request);
+        }
+
         // Allow GET and DELETE requests for all users
         if ($request->isMethod('GET') || $request->isMethod('DELETE')) {
             return $next($request);

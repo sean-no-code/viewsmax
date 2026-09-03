@@ -67,6 +67,8 @@ class UserPlanController extends Controller
             'price_id' => 'required|string',
             'success_url' => 'nullable|url',
             'cancel_url' => 'nullable|url',
+            // Rewardful affiliate referral UUID, captured client-side.
+            'referral' => 'nullable|string|max:64',
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +86,7 @@ class UserPlanController extends Controller
                 $request->input('price_id'),
                 $request->input('success_url'),
                 $request->input('cancel_url'),
+                $request->input('referral'),
             );
 
             return response()->json([
@@ -441,6 +444,49 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plan history',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Admin: update plan status (for Stripe-driven sync).
+     */
+    public function updateStatus(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'plan_id' => 'required|exists:plans,id',
+            'status' => 'required|in:active,inactive,cancelled,expired',
+            'stripe_subscription_id' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $user = User::findOrFail($request->user_id);
+            $plan = Plan::findOrFail($request->plan_id);
+
+            $user->plans()->updateExistingPivot($plan->id, [
+                'status' => $request->status,
+                'stripe_subscription_id' => $request->stripe_subscription_id,
+                'updated_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Plan status updated successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update plan status',
                 'error' => $e->getMessage(),
             ], 500);
         }

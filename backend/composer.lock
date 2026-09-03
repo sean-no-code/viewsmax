@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e4a970a8bf9a9c821ed88ac07a20fbca",
+    "content-hash": "30dcaef50b14ec0893a768a1d604b429",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -8186,6 +8186,40 @@
             "time": "2024-12-21T16:25:41+00:00"
         },
         {
+            "name": "viewsmax/seo-engine",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "packages/viewsmax/seo-engine",
+                "reference": "2a6782125b0372420e27c3c394697ef97ea1dad0"
+            },
+            "require": {
+                "laravel/framework": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "ViewsMax\\SeoEngine\\SeoEngineServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "ViewsMax\\SeoEngine\\": "src/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Automated SEO engine: discovers high-intent competitor keywords (DataForSEO), drafts articles (Anthropic), publishes to WordPress, and prospects backlink opportunities.",
+            "homepage": "https://viewsmax.com",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "vlucas/phpdotenv",
             "version": "v5.6.2",
             "source": {
@@ -10449,12 +10483,14 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "viewsmax/seo-engine": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

@@ -1,6 +1,6 @@
-import { useState } from "react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-service";
@@ -42,6 +42,11 @@ const Snippet = ({ id, code, copied, onCopy }: {
 
 const ConnectAI = () => {
   const [copied, setCopied] = useState<string | null>(null);
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [hash]);
 
   const copy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -49,16 +54,16 @@ const ConnectAI = () => {
     setTimeout(() => setCopied(null), 1500);
   };
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section className="mb-8">
+  const Section = ({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) => (
+    <section id={id} className="mb-8 scroll-mt-24">
       <h2 className="text-2xl font-semibold mb-4">{title}</h2>
       {children}
     </section>
   );
 
   return (
-    <div className="min-h-screen bg-background pt-16 flex flex-col">
-      <Header />
+    <div className="min-h-screen bg-background flex flex-col">
+      <LandingNav />
       <header>
         <div className="container mx-auto px-4 py-4 max-w-4xl mt-5">
           <h1 className="text-3xl font-bold text-foreground">Connect your AI to ViewsMax</h1>
@@ -72,7 +77,7 @@ const ConnectAI = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl flex-1">
-        <Section title="Endpoints">
+        <Section id="endpoints" title="Endpoints">
           <ul className="list-disc list-inside text-muted-foreground space-y-2">
             <li>MCP endpoint (Streamable HTTP): <code className="bg-muted px-2 py-1 rounded">{MCP_ENDPOINT}</code></li>
             <li>Capability discovery (JSON): <a className="underline underline-offset-2" href={DISCOVERY_URL}>{DISCOVERY_URL}</a></li>
@@ -80,7 +85,7 @@ const ConnectAI = () => {
           </ul>
         </Section>
 
-        <Section title="Credentials">
+        <Section id="credentials" title="Credentials">
           <p className="text-muted-foreground leading-relaxed mb-4">
             Two options, both sent as a Bearer token:
           </p>
@@ -99,7 +104,7 @@ const ConnectAI = () => {
           </ol>
         </Section>
 
-        <Section title="Claude (claude.ai / Desktop)">
+        <Section id="claude" title="Claude (claude.ai / Desktop)">
           <p className="text-muted-foreground leading-relaxed mb-3">
             Settings → Connectors → Add custom connector → paste the MCP endpoint →
             complete the sign-in approval.
@@ -107,7 +112,7 @@ const ConnectAI = () => {
           <Snippet id="claude" code={MCP_ENDPOINT} copied={copied} onCopy={copy} />
         </Section>
 
-        <Section title="Claude Code">
+        <Section id="cli" title="Claude Code">
           <Snippet
             id="claude-code"
             code={`claude mcp add --transport http viewsmax ${MCP_ENDPOINT}`}
@@ -123,7 +128,7 @@ const ConnectAI = () => {
           />
         </Section>
 
-        <Section title="ChatGPT">
+        <Section id="chatgpt" title="ChatGPT">
           <p className="text-muted-foreground leading-relaxed">
             Settings → Apps &amp; Connectors → enable Developer mode → add a connector with
             the MCP URL and complete OAuth. ViewsMax is an <em>action</em> connector
@@ -132,7 +137,7 @@ const ConnectAI = () => {
           </p>
         </Section>
 
-        <Section title="Cursor">
+        <Section id="cursor" title="Cursor">
           <p className="text-muted-foreground leading-relaxed mb-3"><code className="bg-muted px-1 rounded">.cursor/mcp.json</code>:</p>
           <Snippet
             id="cursor"
@@ -142,7 +147,7 @@ const ConnectAI = () => {
           />
         </Section>
 
-        <Section title="OpenClaw">
+        <Section id="openclaw" title="OpenClaw">
           <p className="text-muted-foreground leading-relaxed">
             Download the ViewsMax skill from{" "}
             <a className="underline underline-offset-2" href="/skills/viewsmax/SKILL.md">/skills/viewsmax/SKILL.md</a>{" "}
@@ -153,7 +158,7 @@ const ConnectAI = () => {
           </p>
         </Section>
 
-        <Section title="Hermes Agent">
+        <Section id="hermes" title="Hermes Agent">
           <Snippet
             id="hermes"
             code={`{ "viewsmax": { "transport": "http", "url": "${MCP_ENDPOINT}", "headers": { "Authorization": "Bearer vmx_YOUR_KEY" } } }`}
@@ -162,7 +167,7 @@ const ConnectAI = () => {
           />
         </Section>
 
-        <Section title="Plain REST / curl">
+        <Section id="rest" title="Plain REST / curl">
           <Snippet
             id="curl"
             code={`curl -H "Authorization: Bearer vmx_YOUR_KEY" ${API_BASE_URL}/api/posts`}
@@ -175,7 +180,7 @@ const ConnectAI = () => {
           </p>
         </Section>
 
-        <Section title="What agents can do (18 MCP tools)">
+        <Section id="tools" title="What agents can do (18 MCP tools)">
           <div className="flex flex-wrap gap-2 mb-4">
             {TOOLS.map((t) => (
               <code key={t} className="bg-muted px-2 py-1 rounded text-xs">{t}</code>
@@ -190,7 +195,7 @@ const ConnectAI = () => {
           </p>
         </Section>
 
-        <Section title="Security & limits">
+        <Section id="security" title="Security & limits">
           <ul className="list-disc list-inside text-muted-foreground space-y-2">
             <li>Read-only credentials cannot write, anywhere.</li>
             <li>Every AI tool call is recorded in your audit log (Settings → AI Assistant Access).</li>
@@ -199,7 +204,7 @@ const ConnectAI = () => {
           </ul>
         </Section>
       </main>
-      <Footer />
+      <LandingFooter />
     </div>
   );
 };

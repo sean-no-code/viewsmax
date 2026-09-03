@@ -19,6 +19,15 @@ class AnthropicService
     }
 
     /**
+     * Canned responses in local/development (avoids API costs) and testing (the
+     * suite must never hit the real API); real Claude calls everywhere else.
+     */
+    private function usesCannedResponses(): bool
+    {
+        return in_array(config('app.env'), ['local', 'development', 'testing'], true);
+    }
+
+    /**
      * Generate a video script using Claude
      *
      * @param string $project The video project/topic
@@ -28,7 +37,7 @@ class AnthropicService
     public function generateScript(string $project, ?int $maxTokens = null): array
     {
         // Check if we're in production - if not, return fake response to avoid API costs
-        if (config('app.env') !== 'production') {
+        if ($this->usesCannedResponses()) {
             Log::info('Non-production environment detected - returning fake script response to avoid API costs', [
                 'environment' => config('app.env'),
                 'project_length' => strlen($project)
@@ -173,7 +182,7 @@ Now you have everything you need to master {$topic}. If this helped you, hit sub
     public function updateScript(string $updatePrompt): array
     {
         // Check if we're in production - if not, return fake response to avoid API costs
-        if (config('app.env') !== 'production') {
+        if ($this->usesCannedResponses()) {
             Log::info('Non-production environment detected - returning fake script update response to avoid API costs', [
                 'environment' => config('app.env'),
                 'prompt_length' => strlen($updatePrompt)
@@ -259,6 +268,141 @@ The updated script maintains the engaging tone and structure you requested, whil
             Log::error('Script update error: ' . $e->getMessage());
             throw new \Exception('Failed to update script: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Generate a structured breakdown of an outlier video (idea / hook /
+     * storytelling structure / visual layout / annotated transcript).
+     *
+     * @param array $video   Meta: title, channel, platform, duration_seconds, views, like_count, comment_count
+     * @param string $transcriptText Full transcript text
+     * @param array $segments Timestamped transcript segments ([{start, text}, ...]) when available
+     * @return array The decoded breakdown payload
+     * @throws \Exception
+     */
+    public function generateOutlierBreakdown(array $video, string $transcriptText, array $segments = []): array
+    {
+        // Non-production: return a fake breakdown to avoid API costs (same pattern as generateScript).
+        if ($this->usesCannedResponses()) {
+            Log::info('Non-production environment detected - returning fake outlier breakdown', [
+                'environment' => config('app.env'),
+                'title' => $video['title'] ?? null,
+            ]);
+
+            return $this->fakeBreakdown($video, $transcriptText);
+        }
+
+        if (empty($this->apiKey) || $this->apiKey === 'your-anthropic-api-key-here') {
+            Log::error('Anthropic API key not configured properly');
+            throw new \Exception('Anthropic API key not configured');
+        }
+
+        $segmentLines = collect($segments)
+            ->map(function ($s) {
+                $start = (float) ($s['start'] ?? 0);
+                $stamp = sprintf('%d:%02d', floor($start / 60), (int) $start % 60);
+
+                return "[{$stamp}] ".($s['text'] ?? '');
+            })
+            ->implode("\n");
+
+        $prompt = $this->loadPrompt('Outliers/breakdown.txt', [
+            'title' => $video['title'] ?? '',
+            'channel' => $video['channel'] ?? 'Unknown',
+            'platform' => $video['platform'] ?? 'youtube',
+            'duration_seconds' => (string) ($video['duration_seconds'] ?? 'unknown'),
+            'views' => (string) ($video['views'] ?? 'unknown'),
+            'transcript' => $segmentLines !== '' ? $segmentLines : $transcriptText,
+        ]);
+
+        $response = Http::withHeaders([
+            'x-api-key' => $this->apiKey,
+            'anthropic-version' => '2023-06-01',
+            'Content-Type' => 'application/json',
+        ])->timeout(config('services.anthropic.timeout', 600))->post($this->apiUrl, [
+            'model' => $this->model,
+            'max_tokens' => (int) config('services.anthropic.max_output_tokens', 8192),
+            'messages' => [
+                ['role' => 'user', 'content' => $prompt],
+            ],
+            'temperature' => 0.4,
+        ]);
+
+        if (! $response->successful()) {
+            Log::error('Anthropic API error during outlier breakdown', [
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'model' => $this->model,
+            ]);
+            throw new \Exception('Failed to generate breakdown: '.$response->status());
+        }
+
+        $content = $response->json()['content'][0]['text'] ?? '';
+
+        return $this->parseBreakdownResponse($content);
+    }
+
+    /** Decode Claude's breakdown JSON (tolerating markdown code fences). */
+    private function parseBreakdownResponse(string $content): array
+    {
+        $json = trim($content);
+        $json = preg_replace('/^```(?:json)?\s*|\s*```$/', '', $json);
+
+        $payload = json_decode($json, true);
+
+        if (! is_array($payload)) {
+            Log::error('Could not parse breakdown response as JSON', ['content' => mb_substr($content, 0, 500)]);
+            throw new \Exception('Breakdown response was not valid JSON');
+        }
+
+        foreach (['idea', 'hook', 'structure', 'visual', 'transcript'] as $key) {
+            if (! array_key_exists($key, $payload)) {
+                throw new \Exception("Breakdown response is missing the '{$key}' section");
+            }
+        }
+
+        return $payload;
+    }
+
+    /** Deterministic fake payload for local/staging (mirrors the real payload shape). */
+    private function fakeBreakdown(array $video, string $transcriptText): array
+    {
+        $title = $video['title'] ?? 'This video';
+        $firstLine = trim(mb_substr($transcriptText, 0, 120)) ?: $title;
+
+        return [
+            'idea' => [
+                'topic' => $title,
+                'idea_seed' => 'The thing everyone dismisses is actually a serious, high-performing subject. The joke is the way in; the receipts are the payoff.',
+                'unique_angle' => 'Defends the thing viewers expect to be roasted, forcing a reaction: agree, argue, or share it at someone.',
+            ],
+            'hook' => [
+                ['time' => '0.0s', 'line' => $firstLine, 'note' => 'Stat shock. A claim nobody expects, attached to a thing everybody has an opinion about. No greeting, no setup.'],
+                ['time' => '1.4s', 'line' => 'The contradiction lands immediately.', 'note' => 'Flips the viewer\'s prior within two seconds — the comment section is pre-loaded with disagreement.'],
+                ['time' => '2.6s', 'line' => 'Cut to b-roll, captions on', 'note' => 'Visual reset before second 3 — the pattern break lands where most viewers decide to swipe.'],
+            ],
+            'structure' => [
+                'summary' => '5 beats',
+                'beats' => [
+                    ['label' => 'HOOK', 'start' => '0s', 'end' => '3s', 'pct' => 8, 'title' => 'Hook — stat shock', 'note' => 'Big claim in one breath. No intro, no channel branding.', 'highlight' => 'red'],
+                    ['label' => 'FLIP', 'start' => '3s', 'end' => '9s', 'pct' => 16, 'title' => 'Flip — attack the prior', 'note' => 'Names the thing the viewer believes, then contradicts it directly.', 'highlight' => null],
+                    ['label' => 'ESCALATION', 'start' => '9s', 'end' => '22s', 'pct' => 34, 'title' => 'Escalation — how it works', 'note' => 'Each fact raises the stakes of the opening claim instead of repeating it.', 'highlight' => null],
+                    ['label' => 'RECEIPTS', 'start' => '22s', 'end' => '32s', 'pct' => 26, 'title' => 'Receipts — the numbers', 'note' => 'Proof lands after curiosity peaks, not before.', 'highlight' => null],
+                    ['label' => 'PAYOFF', 'start' => '32s', 'end' => '38s', 'pct' => 16, 'title' => 'Payoff — the loop back', 'note' => 'Ends on the opening claim restated with the evidence behind it. Clean loop point for rewatches.', 'highlight' => 'volt'],
+                ],
+            ],
+            'visual' => [
+                ['title' => 'Talking head · ~40% of runtime', 'note' => 'Centered, chest-up, plain background. Face carries the hook and the payoff; b-roll carries everything in between.'],
+                ['title' => 'Captions · always on', 'note' => '3–4 words per line, lower third, keyword highlighted per line.'],
+                ['title' => 'Cut rate · every ~2s', 'note' => 'Angle or subject changes on every cut; never two identical clips back to back.'],
+                ['title' => 'Zoom punches on numbers', 'note' => 'Every stat lands with a punch-in. The rhythm trains the viewer: zoom means "this is the point."'],
+            ],
+            'transcript' => [
+                ['time' => '0:00', 'text' => $firstLine, 'label' => 'hook'],
+                ['time' => '0:10', 'text' => 'Middle section of the fake transcript for local development.', 'label' => null],
+                ['time' => '0:30', 'text' => 'Closing line that loops back to the opening claim.', 'label' => 'loop point'],
+            ],
+        ];
     }
 
     /**

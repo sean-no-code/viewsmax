@@ -24,6 +24,7 @@ class UserSeeder extends Seeder
         }
 
         // Get roles and plans
+        $adminRole = Role::where('name', 'admin')->first();
         $customerRole = Role::where('name', 'customer')->first();
         $freePlan = Plan::where('name', 'free')->first();
         $starterPlan = Plan::where('name', 'starter')->first();
@@ -36,6 +37,11 @@ class UserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        // Assign admin role
+        if ($adminRole && !$adminUser->hasRole('admin')) {
+            $adminUser->roles()->attach($adminRole->id);
+        }
 
         // Assign starter (pro) plan to admin user
         if ($starterPlan) {

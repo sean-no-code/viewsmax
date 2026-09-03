@@ -17,7 +17,7 @@ class ReplicateService
     {
         $this->apiKey = config('services.replicates.api_key');
         $this->apiUrl = config('services.replicates.api_url') ?: 'https://api.replicate.com/v1';
-        $this->namespace = config('services.replicates.destination_namespace') ?: 'viewsmax';
+        $this->namespace = config('services.replicates.destination_namespace') ?: 'iclicksee';
         $this->huggingFaceApiKey = config('services.huggingface.api_key');
         Log::info('ReplicateService initialized', [
             'api_url' => $this->apiUrl,
@@ -48,7 +48,7 @@ class ReplicateService
         $payload = [
             'owner' => $this->namespace,
             'name' => $modelName,
-            'description' => $description ?: "AI model created by ViewsMax",
+            'description' => $description ?: "AI model created by iClickSee",
             'visibility' => 'private', // Create as private repository
             'hardware' => 'gpu-t4', // Specify hardware requirements
             'github_url' => null,
@@ -182,7 +182,7 @@ class ReplicateService
      */
     public function generateModelName(int $aiModelId, int $userId): string
     {
-        return 'viewsmax-ai-model-' . $userId . '-' . $aiModelId . '-' . time();
+        return 'iclicksee-ai-model-' . $userId . '-' . $aiModelId . '-' . time();
     }
 
     /**

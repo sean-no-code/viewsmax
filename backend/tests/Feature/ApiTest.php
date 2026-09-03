@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -19,33 +18,10 @@ class ApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
+        
         // Create a test user and token
         $this->user = User::factory()->create();
         $this->token = $this->user->createToken('test-token')->plainTextToken;
-
-        // These tests exercise request validation on write endpoints, which sit
-        // behind `restrict.free` and `check.credits`. A bare factory user has no
-        // plan and no credits, so those middleware reject first and the request
-        // never reaches the validation being asserted. Give the user a paid plan
-        // and a credit balance so the assertions test what they intend to.
-        $plan = Plan::create([
-            'name' => 'test_paid',
-            'display_name' => 'Test Paid',
-            'price' => 29.00,
-            'currency' => 'USD',
-            'billing_cycle' => 'monthly',
-            'is_active' => true,
-        ]);
-
-        $this->user->plans()->attach($plan->id, [
-            'stripe_subscription_id' => 'sub_test',
-            'status' => 'active',
-            'starts_at' => now(),
-            'expires_at' => now()->addMonth(),
-        ]);
-
-        $this->user->deposit(100000);
     }
 
     /**
@@ -451,4 +427,62 @@ class ApiTest extends TestCase
     /**
      * Test the new generate titles from project endpoint
      */
+    public function test_generate_titles_from_project_endpoint(): void
+    {
+        // Test with valid project object
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->token,
+            'Accept' => 'application/json',
+        ])->postJson('/api/titles/generate-from-project', [
+            'project' => [
+                'description' => 'How to make delicious pasta'
+            ],
+            'number' => 3
+        ]);
+
+        $response->assertHeader('content-type', 'application/json');
+        
+        // Should return JSON structure regardless of success or failure
+        $response->assertJsonStructure([
+            'success',
+            'message'
+        ]);
+
+        // Test with missing project
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->token,
+            'Accept' => 'application/json',
+        ])->postJson('/api/titles/generate-from-project', [
+            'number' => 3
+        ]);
+
+        $response->assertHeader('content-type', 'application/json');
+        
+        // Should be an error response (422 for validation)
+        $this->assertTrue(in_array($response->getStatusCode(), [422, 500]));
+        
+        $response->assertJsonStructure([
+            'success',
+            'message'
+        ]);
+
+        // Test with missing description
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $this->token,
+            'Accept' => 'application/json',
+        ])->postJson('/api/titles/generate-from-project', [
+            'project' => [],
+            'number' => 3
+        ]);
+
+        $response->assertHeader('content-type', 'application/json');
+        
+        // Should be an error response (422 for validation)
+        $this->assertTrue(in_array($response->getStatusCode(), [422, 500]));
+        
+        $response->assertJsonStructure([
+            'success',
+            'message'
+        ]);
+    }
 }

@@ -270,12 +270,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                   })}
                 </div>
               )}
-              {entry.key === "tiktok" && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  TikTok doesn't show an account picker. To add a <em>different</em> account, sign out of
-                  TikTok (or open a private/incognito window) first, then click Add&nbsp;account.
-                </p>
-              )}
+
             </div>
           );
         }

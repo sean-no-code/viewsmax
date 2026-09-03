@@ -45,6 +45,73 @@ class YouTubeProvider extends GoogleOAuthProvider
         return collect([$account]);
     }
 
+    /**
+     * Subscriber count via the Data API statistics part (1 quota unit). Uses the
+     * account's own OAuth token and stored channel id.
+     */
+    public function fetchFollowerCount(SocialAccount $account): ?int
+    {
+        $account = $this->ensureFreshToken($account);
+        $channelId = $account->meta('channel_id') ?? $account->platform_account_id;
+
+        $response = Http::withToken($account->access_token)
+            ->get('https://www.googleapis.com/youtube/v3/channels', $channelId
+                ? ['part' => 'statistics', 'id' => $channelId]
+                : ['part' => 'statistics', 'mine' => 'true']);
+
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('[YouTube] subscriber lookup failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return null;
+        }
+
+        $count = $response->json('items.0.statistics.subscriberCount');
+
+        return $count === null ? null : (int) $count;
+    }
+
+    /**
+     * Per-video engagement via the Data API statistics part (≤50 ids/call,
+     * 1 quota unit). Shares aren't exposed by the API, so they stay 0.
+     */
+    public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
+    {
+        if (empty($remotePostIds)) {
+            return [];
+        }
+
+        $account = $this->ensureFreshToken($account);
+
+        $response = Http::withToken($account->access_token)
+            ->get('https://www.googleapis.com/youtube/v3/videos', [
+                'part' => 'statistics',
+                'id' => implode(',', array_slice($remotePostIds, 0, 50)),
+            ]);
+
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('[YouTube] video stats failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return [];
+        }
+
+        $out = [];
+        foreach ($response->json('items') ?? [] as $v) {
+            $s = $v['statistics'] ?? [];
+            $out[(string) $v['id']] = [
+                'likes' => (int) ($s['likeCount'] ?? 0),
+                'comments' => (int) ($s['commentCount'] ?? 0),
+                'shares' => 0,
+                'views' => (int) ($s['viewCount'] ?? 0),
+            ];
+        }
+
+        return $out;
+    }
+
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
     {
         $video = $this->firstVideoUrl($post);

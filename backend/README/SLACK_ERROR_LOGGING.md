@@ -1,6 +1,6 @@
 # Slack Error Logging Configuration
 
-This document explains how to configure and use Slack error logging in the ViewsMax backend.
+This document explains how to configure and use Slack error logging in the TubeMaster backend.
 
 ## Configuration
 
@@ -21,7 +21,7 @@ Since this application runs in Docker containers, you need to set environment va
 LOG_SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
 
 # Optional Slack configuration
-LOG_SLACK_USERNAME=ViewsMax Error Bot
+LOG_SLACK_USERNAME=TubeMaster Error Bot
 LOG_SLACK_EMOJI=:warning:
 LOG_SLACK_LEVEL=error
 ```
@@ -35,8 +35,8 @@ The Docker Compose file has been updated to include Slack environment variables 
 After updating your `.env` file, restart your Docker containers:
 
 ```bash
-docker compose down
-docker compose up -d
+docker-compose down
+docker-compose up -d
 ```
 
 ## Usage
@@ -145,12 +145,12 @@ Log::channel('error_stack')->error('Custom error message', [
 You can test the configuration by running:
 
 ```bash
-# Send a test error through the configured channel
-docker compose exec app php artisan tinker --execute="Log::channel('error_stack')->error('Test error message from ViewsMax');"
-```
+# Test from within Docker container
+docker-compose exec app php test_slack_logging.php
 
-If the webhook is configured correctly the message appears in the target
-Slack channel within a few seconds.
+# Or test directly with Laravel
+docker-compose exec app php artisan tinker --execute="Log::channel('error_stack')->error('Test error message from TubeMaster');"
+```
 
 ## Troubleshooting
 
@@ -159,7 +159,7 @@ Slack channel within a few seconds.
 1. **Check environment variables**: Make sure `LOG_SLACK_WEBHOOK_URL` is set in your `.env` file
 2. **Restart containers**: After updating `.env`, restart Docker containers
 3. **Check webhook URL**: Verify the Slack webhook URL is correct and active
-4. **Test webhook directly**: use the curl snippet under "Testing Commands" below
+4. **Test webhook directly**: Use the test script to verify connectivity
 
 ### Issue: Errors only going to file, not Slack
 
@@ -171,10 +171,10 @@ Slack channel within a few seconds.
 
 ```bash
 # Check if environment variables are loaded
-docker compose exec app env | grep LOG_SLACK
+docker-compose exec app env | grep LOG_SLACK
 
 # Test Slack webhook directly
-docker compose exec app php -r "
+docker-compose exec app php -r "
 \$url = getenv('LOG_SLACK_WEBHOOK_URL');
 if (\$url) {
     \$data = json_encode(['text' => 'Test from Docker - ' . date('Y-m-d H:i:s')]);

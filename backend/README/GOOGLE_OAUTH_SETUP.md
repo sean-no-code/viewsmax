@@ -1,6 +1,6 @@
 # Google OAuth Setup Guide
 
-This guide explains how to set up Google OAuth for YouTube API access in the ViewsMax Backend.
+This guide explains how to set up Google OAuth for YouTube API access in the TubeMaster Backend.
 
 ## Environment Variables
 

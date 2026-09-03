@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { isTrackingAllowed } from '@/lib/tracking';
 
 declare global {
   interface Window {
@@ -8,8 +9,8 @@ declare global {
 
 export const MetaPixel = () => {
   useEffect(() => {
-    // Only load tracking on production domain
-    if (window.location.hostname !== 'viewsmax.com') {
+    // Only load tracking on production domain, and never for admin users
+    if (!isTrackingAllowed()) {
       return;
     }
 
@@ -55,13 +56,13 @@ export const MetaPixel = () => {
 
 // Utility functions for tracking events
 export const trackEvent = (eventName: string, parameters?: any) => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'viewsmax.com' && window.fbq) {
+  if (isTrackingAllowed() && window.fbq) {
     window.fbq('track', eventName, parameters);
   }
 };
 
 export const trackCustomEvent = (eventName: string, parameters?: any) => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'viewsmax.com' && window.fbq) {
+  if (isTrackingAllowed() && window.fbq) {
     window.fbq('trackCustom', eventName, parameters);
   }
 };

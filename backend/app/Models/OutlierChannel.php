@@ -13,11 +13,13 @@ class OutlierChannel extends Model
     protected $table = 'channels';
     
     protected $fillable = [
+        'platform',
         'youtube_channel_id',
         'channel_name',
         'profile_image_url',
         'subscriber_count',
         'video_count',
+        'country',
         'average_views',
         'average_calculated_at',
         'average_video_ids'

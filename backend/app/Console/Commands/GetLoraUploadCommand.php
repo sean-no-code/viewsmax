@@ -44,13 +44,8 @@ class GetLoraUploadCommand extends Command
         $serverUrl = config('services.comfyui.server_url');
         
         // Parse server URL to get IP
-        $parsedUrl = parse_url((string) $serverUrl);
-        $serverIp = $parsedUrl['host'] ?? config('services.comfyui.ssh_host');
-
-        if (!$serverIp) {
-            $this->error('❌ No ComfyUI host configured. Set COMFYUI_SERVER_URL or COMFYUI_SSH_HOST.');
-            return 1;
-        }
+        $parsedUrl = parse_url($serverUrl);
+        $serverIp = $parsedUrl['host'] ?? '3.11.174.151';
 
         $loraFilename = $comfyUIService->getLoraFilename($aiModel);
         $remotePath = "/home/ubuntu/ComfyUI/models/loras/{$loraFilename}";

@@ -123,29 +123,39 @@ class YouTubeChannelService
      */
     public function getVideoDetailsWithApiKey(array $videoIds): array
     {
+        $videoIds = array_values(array_filter(array_unique($videoIds)));
         if (empty($videoIds)) {
             return [];
         }
 
-        $params = [
-            'part' => 'snippet,statistics,contentDetails',
-            'id'   => implode(',', $videoIds),
-            'key'  => $this->apiKey,
-        ];
+        // videos.list accepts at most 50 ids per call — more (e.g. the merged
+        // long+short search passes, up to ~100 ids) makes YouTube 400 with
+        // "The request specifies an invalid filter parameter". Chunk like
+        // getChannelsBatch does.
+        $items = [];
+        foreach (array_chunk($videoIds, 50) as $chunk) {
+            $params = [
+                'part' => 'snippet,statistics,contentDetails',
+                'id'   => implode(',', $chunk),
+                'key'  => $this->apiKey,
+            ];
 
-        $this->logYouTubeRequest('/videos', $params);
+            $this->logYouTubeRequest('/videos', $params);
 
-        $response = Http::get(self::API_BASE_URL . '/videos', $params);
+            $response = Http::get(self::API_BASE_URL . '/videos', $params);
 
-        if ($response->failed()) {
-            Log::error('YouTube API (getVideoDetailsWithApiKey) failed', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-            throw new \Exception('YouTube API Error: ' . $response->body());
+            if ($response->failed()) {
+                Log::error('YouTube API (getVideoDetailsWithApiKey) failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                throw new \Exception('YouTube API Error: ' . $response->body());
+            }
+
+            $items = array_merge($items, $response->json('items') ?? []);
         }
 
-        return $response->json('items') ?? [];
+        return $items;
     }
 
     /**
@@ -341,6 +351,11 @@ class YouTubeChannelService
                 'subscriber_count'  => (int)($channelData['statistics']['subscriberCount'] ?? 0),
                 'video_count'       => (int)($channelData['statistics']['videoCount'] ?? 0),
             ];
+            // Only set when YouTube sends one — a refresh without it must not
+            // null out a country we already have (e.g. from the backfill).
+            if (! empty($channelData['snippet']['country'])) {
+                $channelAttributes['country'] = strtoupper($channelData['snippet']['country']);
+            }
         }
 
         // Fetch Recent Videos for Average Calculation
@@ -441,6 +456,8 @@ class YouTubeChannelService
                 'thumbnail_url'       => $thumbnails['default']['url'] ?? null,
                 'thumbnail_medium_url'=> $thumbnails['medium']['url'] ?? null,
                 'views'               => (int)($statistics['viewCount'] ?? 0),
+                'like_count'          => isset($statistics['likeCount']) ? (int) $statistics['likeCount'] : null,
+                'comment_count'       => isset($statistics['commentCount']) ? (int) $statistics['commentCount'] : null,
                 'duration'            => $contentDetails['duration'] ?? null,
                 'published_at'        => isset($snippet['publishedAt'])
                     ? Carbon::parse($snippet['publishedAt'])
@@ -516,6 +533,82 @@ class YouTubeChannelService
     }
 
     /**
+     * Ingest a single YouTube video by URL as an outlier (the search bar's
+     * paste-a-URL flow). A deliberate add is stored even when its score is
+     * below the outlier threshold, unlike organic search ingestion.
+     */
+    public function ingestOutlierByUrl(string $url): OutlierVideo
+    {
+        $videoId = self::extractVideoId($url);
+        if (! $videoId) {
+            throw new \InvalidArgumentException("That doesn't look like a YouTube video link.");
+        }
+
+        $items = $this->getVideoDetailsWithApiKey([$videoId]);
+        $item = collect($items)->firstWhere('id', $videoId);
+        if (! $item) {
+            throw new \InvalidArgumentException('That YouTube video could not be found.');
+        }
+
+        $channelId = $item['snippet']['channelId'] ?? null;
+        if (! $channelId) {
+            throw new \RuntimeException("Could not resolve the video's channel.");
+        }
+
+        $videoDbData = $this->mapVideoDataToDatabase($item);
+        $videoDbData['views'] = (int) ($videoDbData['view_count'] ?? 0);
+
+        $averageData = $this->getOutlierChannelAverage($channelId, $videoId);
+        $score = $this->computeOutlierScore($videoDbData['views'], (float) $averageData['average']);
+
+        $video = $this->saveOutlierVideo($videoDbData, $averageData['channel'], $score, true);
+
+        // Deliberate URL adds are exempt from the browse min-score gate.
+        if (! $video->manually_added) {
+            $video->forceFill(['manually_added' => true])->save();
+        }
+
+        // Classify inline (one probe) so the breakdown page gets the right shape
+        // immediately. The add must never fail because of the probe.
+        try {
+            app(\App\Services\VideoFormatClassifier::class)->ensureClassified($video);
+        } catch (\App\Services\Exceptions\ProbeRateLimited $e) {
+            Log::warning('[shorts-probe] rate limited during URL add — left unclassified', ['video_id' => $videoId]);
+        }
+
+        return $video->load('channel');
+    }
+
+    /** The video id inside any watch/youtu.be/shorts/embed/live YouTube URL, or null. */
+    public static function extractVideoId(string $url): ?string
+    {
+        $parts = parse_url(trim($url));
+        $host = strtolower($parts['host'] ?? '');
+        $path = $parts['path'] ?? '';
+
+        if (str_contains($host, 'youtu.be')) {
+            $id = ltrim($path, '/');
+
+            return preg_match('/^[\w-]{6,}$/', $id) ? $id : null;
+        }
+
+        if (! str_contains($host, 'youtube.com')) {
+            return null;
+        }
+
+        parse_str($parts['query'] ?? '', $query);
+        if (! empty($query['v']) && preg_match('/^[\w-]{6,}$/', $query['v'])) {
+            return $query['v'];
+        }
+
+        if (preg_match('#/(shorts|embed|live)/([\w-]{6,})#', $path, $m)) {
+            return $m[2];
+        }
+
+        return null;
+    }
+
+    /**
      * Single source of truth for persisting an OutlierVideo record.
      * Both the search flow and the multiplier endpoint use this.
      *
@@ -524,26 +617,34 @@ class YouTubeChannelService
      * @param OutlierChannel $channel
      * @param float $score
      */
-    public function saveOutlierVideo(array $videoData, OutlierChannel $channel, float $score): ?OutlierVideo
+    public function saveOutlierVideo(array $videoData, OutlierChannel $channel, float $score, bool $ignoreMinScore = false): ?OutlierVideo
     {
-        if ($score < OutlierVideo::minScore()) {
+        if (! $ignoreMinScore && $score < OutlierVideo::minScore()) {
             return null;
         }
 
-        return OutlierVideo::updateOrCreate(
-            ['youtube_video_id' => $videoData['youtube_video_id']],
-            [
-                'channel_id'           => $channel->id,
-                'title'                => $videoData['title'] ?? null,
-                'description'          => $videoData['description'] ?? null,
-                'thumbnail_url'        => $videoData['thumbnail_url'] ?? null,
-                'thumbnail_medium_url' => $videoData['thumbnail_medium_url'] ?? null,
-                'views'                => (int) ($videoData['views'] ?? 0),
-                'duration'             => $videoData['duration'] ?? null,
-                'published_at'         => $videoData['published_at'] ?? null,
-                'outlier_score'        => $score,
-            ]
-        );
+        $attrs = [
+            'platform'             => 'youtube', // explicit: the in-memory model must know (DB default alone isn't enough)
+            'channel_id'           => $channel->id,
+            'title'                => $videoData['title'] ?? null,
+            'description'          => $videoData['description'] ?? null,
+            'thumbnail_url'        => $videoData['thumbnail_url'] ?? null,
+            'thumbnail_medium_url' => $videoData['thumbnail_medium_url'] ?? null,
+            'views'                => (int) ($videoData['views'] ?? 0),
+            'like_count'           => isset($videoData['like_count']) ? (int) $videoData['like_count'] : null,
+            'comment_count'        => isset($videoData['comment_count']) ? (int) $videoData['comment_count'] : null,
+            'duration'             => $videoData['duration'] ?? null,
+            'published_at'         => $videoData['published_at'] ?? null,
+            'outlier_score'        => $score,
+        ];
+        // Only write the Shorts classification when the caller provides one — a
+        // re-save from search refresh must never wipe an existing answer.
+        if (array_key_exists('is_short', $videoData)) {
+            $attrs['is_short'] = $videoData['is_short'];
+            $attrs['format_checked_at'] = now();
+        }
+
+        return OutlierVideo::updateOrCreate(['youtube_video_id' => $videoData['youtube_video_id']], $attrs);
     }
     public function getChannelVideos(string $accessToken, string $channelId, int $maxResults = 50, ?string $pageToken = null): array
     {
@@ -773,9 +874,10 @@ class YouTubeChannelService
             throw new \Exception('Token refresh failed: ' . $response->body());
         }
         
-        Log::info('Token refresh response', ['response' => $response->json()]);
-
         $tokenData = $response->json();
+
+        // Never log the response itself: it carries the new access token.
+        Log::info('Token refresh succeeded', ['expires_in' => $tokenData['expires_in'] ?? null]);
         
         return [
             'access_token' => $tokenData['access_token'],

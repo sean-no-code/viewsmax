@@ -9,8 +9,10 @@ use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Laravel\Passport\Passport;
@@ -55,6 +57,23 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register observer for VideoTranscription
         VideoTranscription::observe(VideoTranscriptionObserver::class);
+
+        // Guard the queue worker against a poisoned DB connection. The `database`
+        // queue driver shares the app's default connection, and DatabaseQueue::pop()
+        // reserves each job inside a transaction. If a prior job leaves a transaction
+        // open on that long-lived connection — e.g. a nested bavix/laravel-wallet
+        // credit transaction that desyncs Laravel's transaction counter from PDO
+        // after a failed commit/rollback on an aborted Postgres transaction — the
+        // next pop() calls beginTransaction() while PDO still has one open and throws
+        // "There is already an active transaction", wedging the worker until it is
+        // restarted. Rolling back any leaked transaction before each daemon loop
+        // iteration keeps the worker healthy. A well-behaved job leaves
+        // transactionLevel() at 0, so this is a no-op in the normal case.
+        Queue::looping(function () {
+            while (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+        });
 
         // Reverse proxies (ngrok in local testing, likely also prod's LB)
         // terminate TLS and forward plain HTTP, so Laravel's own request
@@ -112,6 +131,12 @@ class AppServiceProvider extends ServiceProvider
         // payload is cached, this just stops abuse.
         RateLimiter::for('ai-discovery', function (Request $request) {
             return Limit::perMinute(30)->by('ai-discovery:' . $request->ip());
+        });
+
+        // Free transcript tools: public + per-IP. Each miss spends CaptAPI credits
+        // (repeat URLs are served from the DB cache), so keep this modest.
+        RateLimiter::for('transcript', function (Request $request) {
+            return Limit::perMinute(15)->by('transcript:' . ($request->user()?->id ?? $request->ip()));
         });
 
         // Mention typeahead proxy: the FE debounces 300ms and the controller

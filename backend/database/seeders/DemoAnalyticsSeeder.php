@@ -41,23 +41,23 @@ class DemoAnalyticsSeeder extends Seeder
         // [offer name, url, sale value, links...]. A link with `yt` set is a
         // YouTube-backed link with reach; `initial`/`gained` drive the view delta.
         $offers = [
-            ['Creator Accelerator', 'https://example.com/accelerator', 199, [
+            ['Creator Accelerator', 'https://iclicksee.com/accelerator', 199, [
                 ['YouTube — flagship review', 'video', 'dQw4w9WgXcQ', 62000, 24000, 14],
                 ['YouTube — Shorts teaser', 'video', 'shorts_A1B2C3', 15000, 11000, 9],
                 ['Instagram bio link', 'instagram', null, 0, 0, 6],
                 ['Newsletter feature', 'email', null, 0, 0, 4],
             ]],
-            ['Thumbnail Masterclass', 'https://example.com/thumbnails', 79, [
+            ['Thumbnail Masterclass', 'https://iclicksee.com/thumbnails', 79, [
                 ['YouTube — tutorial', 'video', 'thumb_Xy9Z', 41000, 9000, 8],
                 ['TikTok promo', 'tiktok', null, 0, 0, 7],
                 ['Blog embed', 'blog', null, 0, 0, 3],
             ]],
-            ['Channel Audit (call)', 'https://example.com/audit', 0, [
+            ['Channel Audit (call)', 'https://iclicksee.com/audit', 0, [
                 ['YouTube — pinned comment', 'video', 'audit_QwErT', 88000, 30000, 10],
                 ['X / Twitter thread', 'x', null, 0, 0, 5],
                 ['LinkedIn post', 'linkedin', null, 0, 0, 4],
             ]],
-            ['Pro Membership', 'https://example.com/pro', 39, [
+            ['Pro Membership', 'https://iclicksee.com/pro', 39, [
                 ['YouTube — end screen', 'video', 'pro_MnBv', 27000, 7000, 9],
                 ['Website footer', 'website', null, 0, 0, 5],
             ]],

@@ -41,12 +41,66 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(30)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:process-expired scheduled run failed'));
 
+        // Keep social connections alive: refresh soon-expiring tokens daily.
+        // Meta-family tokens can only be refreshed BEFORE expiry — without
+        // this, an account not published to for ~60 days dies and forces a
+        // reconnect.
+        $schedule->command('social:refresh-tokens')
+            ->daily()
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('social:refresh-tokens scheduled run failed'));
+
         // Boost like-threshold checks (auto repost / auto promo). Checks run
         // on a 6-hour cadence, so a 10-minute scan keeps API traffic smooth.
         $schedule->command('boosts:run')
             ->everyTenMinutes()
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('boosts:run scheduled run failed'));
+
+        // Re-import each connected channel's latest uploads so the "add a video"
+        // pickers stay current with videos published after connect-time. Daily
+        // because the import uses search.list (100 quota units/call); the
+        // picker's "Refresh from YouTube" button covers instant needs.
+        // Shorts/long-form classification catch-up (rows whose follow-up job was
+        // rate-limited or lost). Bounded per run; idempotent.
+        $schedule->command('outliers:classify-formats --limit=300')
+            ->dailyAt('04:10')
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('outliers:classify-formats scheduled run failed'));
+
+        $schedule->command('channels:sync-videos')
+            ->daily()
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('channels:sync-videos scheduled run failed'));
+
+        // Audience Growth: daily follower/subscriber snapshot per connected
+        // account, and per-post engagement snapshot, so the growth charts and
+        // top-posts list have a day-over-day series to plot.
+        $schedule->command('audience:refresh')
+            ->daily()
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('audience:refresh scheduled run failed'));
+
+        $schedule->command('posts:refresh-metrics')
+            ->daily()
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:refresh-metrics scheduled run failed'));
+
+        // Tag users who signed up but never started a subscription (abandoned cart) in Kit.
+        // IMPORTANT: this cadence MUST match config('services.kit.abandoned_cart_window_hours')
+        // (default 3) — the command's created_at slice is one interval wide so each user is
+        // tagged exactly once. Change one, change the other.
+        $schedule->command('kit:tag-abandoned-carts')
+            ->everyThreeHours()
+            ->withoutOverlapping(10)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('kit:tag-abandoned-carts scheduled run failed'));
+
+        // Remind trialing users ~48h before their card is charged. Hourly so the mail
+        // lands close to the 48h mark; the trial_reminder_sent_at flag keeps it once-only.
+        $schedule->command('subscriptions:send-trial-reminders')
+            ->hourly()
+            ->withoutOverlapping(10)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-trial-reminders scheduled run failed'));
     })
     ->withMiddleware(function (Middleware $middleware): void {
         // Ensure CORS runs globally and at the start of the API stack
@@ -64,6 +118,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         
         $middleware->alias([
+            'role' => \App\Http\Middleware\CheckRole::class,
             'plan' => \App\Http\Middleware\CheckPlan::class,
             'api.auth' => \App\Http\Middleware\ApiAuth::class,
             'mcp.auth' => \App\Http\Middleware\McpAuth::class,

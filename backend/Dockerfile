@@ -13,8 +13,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     libpq-dev \
-    libwebp-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
 
 # Clear cache
@@ -37,10 +36,8 @@ COPY . /var/www/html
 # Copy existing application directory permissions
 COPY --chown=www-data:www-data . /var/www/html
 
-# Install PHP dependencies. Dev dependencies are included on purpose: this
-# image backs the local docker-compose setup, where `php artisan test` needs
-# PHPUnit. For a production image, add --no-dev --optimize-autoloader.
-RUN composer install --no-interaction --prefer-dist --no-progress
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
 # Install Node.js dependencies and build assets (if needed)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
@@ -52,8 +49,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache \
-    && chmod +x /var/www/html/docker/entrypoint.sh
+    && chmod -R 755 /var/www/html/bootstrap/cache
 
 # Expose port 8000
 EXPOSE 8000

@@ -22,6 +22,11 @@ class CheckPlan
             ], 401);
         }
 
+        // Admin users bypass plan checks
+        if ($request->user()->isAdmin()) {
+            return $next($request);
+        }
+
         $userPlan = $request->user()->activePlan();
         
         if (!$userPlan) {

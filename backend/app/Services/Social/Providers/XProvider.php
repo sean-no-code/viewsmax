@@ -88,21 +88,31 @@ class XProvider extends AbstractSocialProvider implements SupportsComments
             return $account;
         }
 
-        $response = Http::asForm()
-            ->withBasicAuth($this->clientId(), $this->clientSecret())
-            ->post(self::TOKEN_URL, [
-                'refresh_token' => $account->refresh_token,
-                'grant_type' => 'refresh_token',
-                'client_id' => $this->clientId(),
-            ]);
+        // X refresh tokens are single-use and rotate — refreshes must be
+        // serialized per account or concurrent publish jobs brick it.
+        return $this->refreshingSafely($account, function (SocialAccount $account) {
+            $response = Http::asForm()
+                ->withBasicAuth($this->clientId(), $this->clientSecret())
+                ->post(self::TOKEN_URL, [
+                    'refresh_token' => $account->refresh_token,
+                    'grant_type' => 'refresh_token',
+                    'client_id' => $this->clientId(),
+                ]);
 
-        if (! $response->successful()) {
-            $account->markNeedsReauth('X token refresh failed.');
+            if (! $response->successful()) {
+                if ($this->isDefinitiveAuthFailure($response->status())) {
+                    $account->markNeedsReauth('X token refresh was rejected — reconnect the account.');
+                } else {
+                    \Illuminate\Support\Facades\Log::warning('X token refresh failed transiently', [
+                        'account_id' => $account->id, 'status' => $response->status(),
+                    ]);
+                }
 
-            return $account;
-        }
+                return $account;
+            }
 
-        return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+        });
     }
 
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
@@ -225,6 +235,55 @@ class XProvider extends AbstractSocialProvider implements SupportsComments
         }
 
         return $metrics;
+    }
+
+    /**
+     * Follower count via users/me public_metrics. May 403 on restrictive API
+     * plans (see XPublishedPostsService note) — returns null rather than throw.
+     */
+    public function fetchFollowerCount(SocialAccount $account): ?int
+    {
+        $account = $this->ensureFreshToken($account);
+
+        $response = Http::withToken($account->access_token)
+            ->get('https://api.twitter.com/2/users/me', ['user.fields' => 'public_metrics']);
+
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('X follower lookup failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return null;
+        }
+
+        $count = data_get($response->json(), 'data.public_metrics.followers_count');
+
+        return $count === null ? null : (int) $count;
+    }
+
+    /**
+     * Per-tweet engagement, normalized to the shared shape. X exposes no public
+     * impression/view count on this plan, so views is 0.
+     */
+    public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
+    {
+        if (empty($remotePostIds)) {
+            return [];
+        }
+
+        $account = $this->ensureFreshToken($account);
+
+        $out = [];
+        foreach ($this->getTweetMetrics($account, $remotePostIds) as $id => $m) {
+            $out[(string) $id] = [
+                'likes' => (int) ($m['like_count'] ?? 0),
+                'comments' => (int) ($m['reply_count'] ?? 0),
+                'shares' => (int) ($m['retweet_count'] ?? 0),
+                'views' => 0,
+            ];
+        }
+
+        return $out;
     }
 
     /**

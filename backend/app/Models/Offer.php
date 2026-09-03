@@ -5,24 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-/**
- * A promotion/campaign being tracked: it owns tracking links, clicks and
- * conversions, and carries `offer_url`, `conversion_url` and `conversion_value`.
- *
- * Naming note — "Offer" is the model concept only. It is backed by the
- * `tracking_events` table (see $table below), and foreign keys on the related
- * tables are still named `tracking_event_id`. Expect that mismatch when writing
- * queries or migrations against anything that references an Offer.
- */
-/**
- * A promotion/campaign being tracked: it owns tracking links, clicks and
- * conversions, and carries `offer_url`, `conversion_url` and `conversion_value`.
- *
- * Naming note — "Offer" is the model concept only. It is backed by the
- * `tracking_events` table (see $table below), and foreign keys on the related
- * tables are still named `tracking_event_id`. Expect that mismatch when writing
- * queries or migrations against anything that references an Offer.
- */
 class Offer extends Model
 {
     use SoftDeletes;

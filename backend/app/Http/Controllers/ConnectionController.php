@@ -120,6 +120,19 @@ class ConnectionController extends Controller
 
         try {
             return response()->json(['data' => $tiktok->creatorInfo($account)]);
+        } catch (\App\Exceptions\TikTokCreatorUnavailableException $e) {
+            // Required UX 1(b): the creator can't post right now, so the composer
+            // must stop the attempt and prompt them to try again later. Tagged
+            // distinctly so the UI shows that rather than a generic outage.
+            Log::warning('TikTok creator cannot post', [
+                'user_id' => $request->user()->id,
+                'code' => $e->errorCode,
+            ]);
+
+            return response()->json([
+                'code' => 'creator_cannot_post',
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Exception $e) {
             Log::error('TikTok creator info failed', [
                 'user_id' => $request->user()->id,

@@ -10,24 +10,36 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::connection('outlier_db')->create('search_terms', function (Blueprint $table) {
-            $table->id();
-            $table->string('term')->unique();
-            $table->timestamps();
-        });
+        // outlier_db is a SEPARATE connection: the migrations ledger (main DB)
+        // can say this never ran while the outlier DB already has the tables
+        // (provisioned by another environment). Guard every create so the run
+        // is idempotent instead of dying on "relation already exists".
+        $schema = Schema::connection('outlier_db');
 
-        Schema::connection('outlier_db')->create('search_terms_requests', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id'); // Just an ID, no FK constraint
-            $table->foreignId('term_id')->constrained('search_terms')->onDelete('cascade'); // This works because search_terms is in the same DB
-            $table->timestamp('created_at')->useCurrent();
-        });
+        if (! $schema->hasTable('search_terms')) {
+            $schema->create('search_terms', function (Blueprint $table) {
+                $table->id();
+                $table->string('term')->unique();
+                $table->timestamps();
+            });
+        }
 
-        Schema::connection('outlier_db')->create('terms_data_fetch', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('term_id')->constrained('search_terms')->onDelete('cascade');
-            $table->timestamp('fetched_at')->useCurrent();
-        });
+        if (! $schema->hasTable('search_terms_requests')) {
+            $schema->create('search_terms_requests', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('user_id'); // Just an ID, no FK constraint
+                $table->foreignId('term_id')->constrained('search_terms')->onDelete('cascade'); // This works because search_terms is in the same DB
+                $table->timestamp('created_at')->useCurrent();
+            });
+        }
+
+        if (! $schema->hasTable('terms_data_fetch')) {
+            $schema->create('terms_data_fetch', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('term_id')->constrained('search_terms')->onDelete('cascade');
+                $table->timestamp('fetched_at')->useCurrent();
+            });
+        }
     }
 
     /**

@@ -102,6 +102,7 @@ export function TrackingEventForm({ initialData, isEdit = false }: TrackingEvent
 
     const [videos, setVideos] = useState<Array<{ id: string; title: string }>>([]);
     const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+    const [isRefreshingVideos, setIsRefreshingVideos] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     const [landingPageOptions, setLandingPageOptions] = useState<string[]>([]);
@@ -174,30 +175,42 @@ export function TrackingEventForm({ initialData, isEdit = false }: TrackingEvent
         }
     }, [initialData?.offer_url]);
 
-    // Load videos
-    useEffect(() => {
-        const loadVideos = async () => {
-            setIsLoadingVideos(true);
-            try {
-                const token = localStorage.getItem('auth_session') ? JSON.parse(localStorage.getItem('auth_session')!).token : '';
-                if (user) {
-                    const channels = await apiService.getChannels(token);
-                    if (channels.success && channels.data && channels.data.length > 0) {
-                        const vids = await apiService.getChannelVideos(token, channels.data[0].id);
-                        if (vids.success && vids.data) {
-                            // Use youtube_video_id as the ID
-                            setVideos(vids.data.videos.map(v => ({ id: v.youtube_video_id, title: v.title })));
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to load videos:", error);
-            } finally {
-                setIsLoadingVideos(false);
+    // Load videos across ALL connected channels. getChannelVideos is a pure DB
+    // read; pass { refresh: true } to first import the newest uploads from the
+    // YouTube API so a video published just now becomes selectable.
+    const loadVideos = async (opts?: { refresh?: boolean }) => {
+        const token = localStorage.getItem('auth_session') ? JSON.parse(localStorage.getItem('auth_session')!).token : '';
+        if (!user || !token) return;
+        if (opts?.refresh) setIsRefreshingVideos(true); else setIsLoadingVideos(true);
+        try {
+            const channels = await apiService.getChannels(token);
+            if (!channels.success || !channels.data || channels.data.length === 0) {
+                setVideos([]);
+                return;
             }
-        };
+            if (opts?.refresh) {
+                await Promise.all(channels.data.map(c => apiService.fetchChannelVideosFromYouTube(token, c.id)));
+            }
+            const lists = await Promise.all(channels.data.map(c => apiService.getChannelVideos(token, c.id, 100)));
+            const merged = new Map<string, { id: string; title: string }>();
+            for (const l of lists) {
+                if (l.success && l.data) {
+                    for (const v of l.data.videos) merged.set(v.youtube_video_id, { id: v.youtube_video_id, title: v.title });
+                }
+            }
+            setVideos([...merged.values()]);
+            if (opts?.refresh) toast.success("Pulled your latest videos from YouTube.");
+        } catch (error) {
+            console.error("Failed to load videos:", error);
+            if (opts?.refresh) toast.error("Couldn't refresh videos from YouTube.");
+        } finally {
+            if (opts?.refresh) setIsRefreshingVideos(false); else setIsLoadingVideos(false);
+        }
+    };
 
+    useEffect(() => {
         loadVideos();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     // -- Event Row Management --
@@ -503,8 +516,23 @@ export function TrackingEventForm({ initialData, isEdit = false }: TrackingEvent
             {/* Links Section */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Links</CardTitle>
-                    <CardDescription>Configure tracking links for different placements</CardDescription>
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <CardTitle>Links</CardTitle>
+                            <CardDescription>Configure tracking links for different placements</CardDescription>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => loadVideos({ refresh: true })}
+                            disabled={isRefreshingVideos || isLoadingVideos}
+                            title="Fetch your newest uploads from YouTube"
+                        >
+                            <Loader2 className={cn("h-4 w-4", isRefreshingVideos ? "animate-spin" : "hidden")} />
+                            {isRefreshingVideos ? "Refreshing…" : "Refresh from YouTube"}
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">

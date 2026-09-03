@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\SubscriptionStarted;
 use App\Models\Plan;
 use App\Services\StripeService;
 use Carbon\Carbon;
@@ -128,6 +129,8 @@ class BillingController extends Controller
         $validator = Validator::make($request->all(), [
             'payment_method_id' => 'required|string',
             'price_id' => 'nullable|string',
+            // Rewardful affiliate referral UUID, captured client-side.
+            'referral' => 'nullable|string|max:64',
         ]);
 
         if ($validator->fails()) {
@@ -161,6 +164,7 @@ class BillingController extends Controller
                 $user,
                 $priceId,
                 (int) config('services.stripe.trial_period_days', 3),
+                $request->input('referral'),
             );
 
             $subscriptionId = $subscription['id'];
@@ -191,6 +195,12 @@ class BillingController extends Controller
                     ]);
                 }
             });
+
+            // Card added → subscription live. Drive Kit off this (converted tag +
+            // abandoned-tag removal) via a queued listener. Dispatched AFTER the
+            // transaction commits (queue after_commit=false, so an in-transaction
+            // dispatch could fire before commit / on a row that rolled back).
+            SubscriptionStarted::dispatch($user);
 
             return response()->json([
                 'data' => [

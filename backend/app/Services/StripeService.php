@@ -175,10 +175,14 @@ class StripeService
     /**
      * Create a Checkout Session for a new subscription (signup or resubscribe).
      */
-    public function createCheckoutSession(User $user, string $priceId, ?string $successUrl = null, ?string $cancelUrl = null): CheckoutSession
+    public function createCheckoutSession(User $user, string $priceId, ?string $successUrl = null, ?string $cancelUrl = null, ?string $referralId = null): CheckoutSession
     {
         $customer = $this->findOrCreateCustomer($user);
 
+        // Rewardful affiliate attribution: their integration reads the visitor's
+        // referral UUID from client_reference_id. User matching lives in
+        // metadata.user_id (the webhook reads metadata first), so the field is
+        // free to carry the referral when one exists.
         $session = CheckoutSession::create([
             'mode' => 'subscription',
             'customer' => $customer->id,
@@ -188,15 +192,17 @@ class StripeService
             ]],
             'success_url' => $successUrl ?? config('services.stripe.success_url').'?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl ?? config('services.stripe.cancel_url'),
-            'client_reference_id' => (string) $user->id,
+            'client_reference_id' => $referralId ?: (string) $user->id,
             'subscription_data' => [
-                'metadata' => [
+                'metadata' => array_filter([
                     'user_id' => (string) $user->id,
-                ],
+                    'referral' => $referralId,
+                ]),
             ],
-            'metadata' => [
+            'metadata' => array_filter([
                 'user_id' => (string) $user->id,
-            ],
+                'referral' => $referralId,
+            ]),
         ]);
 
         Log::info('Stripe checkout session created', [
@@ -262,15 +268,28 @@ class StripeService
     /**
      * Create a subscription on the given price with a trial (no charge today).
      */
-    public function createTrialSubscription(User $user, string $priceId, int $trialDays): array
+    public function createTrialSubscription(User $user, string $priceId, int $trialDays, ?string $referralId = null): array
     {
         $customer = $this->findOrCreateCustomer($user);
+
+        // Rewardful affiliate attribution for server-side subscriptions: the
+        // referral UUID must live in the CUSTOMER's metadata before the
+        // subscription exists (that's where Rewardful looks for API-created
+        // subscriptions, unlike Checkout's client_reference_id).
+        if ($referralId) {
+            Customer::update($customer->id, [
+                'metadata' => ['referral' => $referralId],
+            ]);
+        }
 
         $subscription = Subscription::create([
             'customer' => $customer->id,
             'items' => [['price' => $priceId]],
             'trial_period_days' => $trialDays,
-            'metadata' => ['user_id' => (string) $user->id],
+            'metadata' => array_filter([
+                'user_id' => (string) $user->id,
+                'referral' => $referralId,
+            ]),
             'expand' => ['latest_invoice.payment_intent', 'items.data.price'],
         ]);
 

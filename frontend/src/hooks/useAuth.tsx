@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { viewsMaxApi } from '@/lib/api-service';
+import { disableTrackingForAdmin } from '@/lib/tracking';
 
 interface CustomUser {
   id: number | string;
@@ -11,6 +12,7 @@ interface CustomUser {
   onboarding_completed_at?: string | null;
   connections_count?: number;
   has_active_subscription?: boolean;
+  is_admin?: boolean;
 }
 
 interface CustomSession {
@@ -148,6 +150,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
     setLoading(false);
   }, []);
+
+  // index.html blocks trackers at page load for admins; this stops any that
+  // loaded before an admin logged in mid-session (no reload needed)
+  useEffect(() => {
+    if (user?.is_admin) {
+      disableTrackingForAdmin();
+    }
+  }, [user?.is_admin]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut, setAuthData, refreshUser }}>

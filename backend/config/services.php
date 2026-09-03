@@ -19,9 +19,15 @@ return [
         'fetch_period_days' => env('YOUTUBE_FETCH_PERIOD_DAYS', 2),
         'video_cache_duration_hours' => env('YOUTUBE_VIDEO_CACHE_DURATION_HOURS', 1),
         'channel_cache_duration_hours' => env('YOUTUBE_CHANNEL_CACHE_DURATION_HOURS', 24),
+        // Shorts detection via HEAD youtube.com/shorts/{id}. Kill switch → duration fallback.
+        'format_probe_enabled' => env('YOUTUBE_FORMAT_PROBE_ENABLED', true),
+        'format_probe_delay_ms' => env('YOUTUBE_FORMAT_PROBE_DELAY_MS', 250),
         'sample_size' => env('YOUTUBE_AVERAGE_SAMPLE_SIZE', 30),
         'max_pages' => env('YOUTUBE_MAX_PAGES', 5),
         'max_search_results' => env('YOUTUBE_MAX_SEARCH_RESULTS', 50),
+        // search.list pages per duration bucket (each page = 100 quota units;
+        // a term costs 2 buckets × this many pages).
+        'search_pages' => env('YOUTUBE_SEARCH_PAGES', 2),
         'always_fetch_api_for_multiplier' => env('ALWAYS_FETCH_API_FOR_MULTIPLIER', false),
         'min_outlier_score' => env('YOUTUBE_MIN_OUTLIER_SCORE', 20),
     ],
@@ -82,13 +88,13 @@ return [
         'api_key' => env('REPLICATES_API_KEY'),
         'api_url' => env('REPLICATES_API_URL', 'https://api.replicate.com/v1'),
         'model_version' => env('REPLICATES_MODEL_VERSION', 'your-model-version'),
-        'destination_namespace' => env('REPLICATES_DESTINATION_NAMESPACE', 'viewsmax'),
+        'destination_namespace' => env('REPLICATES_DESTINATION_NAMESPACE', 'iclicksee'),
     ],
 
     'huggingface' => [
         'api_key' => env('HUGGINGFACE_API_KEY'),
         'api_url' => env('HUGGINGFACE_API_URL', 'https://huggingface.co/api'),
-        'namespace' => env('HUGGINGFACE_NAMESPACE', 'viewsmax'),
+        'namespace' => env('HUGGINGFACE_NAMESPACE', 'iclicksee'),
         'model_type' => env('HUGGINGFACE_MODEL_TYPE', 'lora'),
     ],
 
@@ -193,11 +199,22 @@ return [
         // $29/mo recurring price used for the onboarding trial subscription.
         'trial_price_id' => env('STRIPE_TRIAL_PRICE_ID'),
         'trial_period_days' => env('STRIPE_TRIAL_PERIOD_DAYS', 7),
+        // How many hours before a trial ends to send the "card about to be charged"
+        // reminder. Guarded like subscription_grace_period_hours: a set-but-empty env
+        // arrives as '' and would TypeError in the command's date math.
+        'trial_reminder_hours_before' => is_numeric(env('STRIPE_TRIAL_REMINDER_HOURS_BEFORE', 48))
+            ? (int) env('STRIPE_TRIAL_REMINDER_HOURS_BEFORE', 48)
+            : 48,
     ],
 
     'tiktok' => [
         'client_key' => env('TIKTOK_CLIENT_KEY'),
         'client_secret' => env('TIKTOK_CLIENT_SECRET'),
+        // Content Sharing Guidelines, Technical Consideration 2(d): video that
+        // already lives on our storage must be pulled by TikTok, not pushed as
+        // chunks. Defaults on, so compliance does not depend on remembering to
+        // set it; turn it off only where TikTok cannot reach the app to pull.
+        'video_pull_from_url' => env('TIKTOK_VIDEO_PULL_FROM_URL', true),
     ],
 
     'meta' => [
@@ -212,10 +229,29 @@ return [
         'timeout' => env('PERPLEXITY_TIMEOUT', 600),
     ],
 
-    'klaviyo' => [
-        'api_key' => env('KLAVIYO_API_KEY'),
-        'api_url' => env('KLAVIYO_API_URL', 'https://a.klaviyo.com'),
-        'list_id' => env('KLAVIYO_LIST_ID', 'WzRvSF'),
+    'kit' => [
+        'api_key' => env('KIT_API_KEY'),
+        'api_secret' => env('KIT_API_SECRET'),
+        // Converted tag: applied when a user starts a subscription (see SyncKitOnSubscription).
+        'tag' => env('KIT_TAG', 'viewsmax: new subscriber'),
+        // Whether to push subscribers to the live Kit list. Unset (null) means
+        // "production only", so local/dev/staging signups don't pollute the real
+        // newsletter. Set KIT_ENABLED=true/false to force it on/off in any env.
+        'enabled' => env('KIT_ENABLED'),
+        // Abandoned-cart tag: applied by kit:tag-abandoned-carts to users who signed
+        // up but never started a subscription. Removed again on conversion.
+        'abandoned_cart_tag' => env('KIT_ABANDONED_CART_TAG', 'viewsmax: abandoned cart'),
+        // Eligibility slice for kit:tag-abandoned-carts. window_hours MUST equal the
+        // scheduler cadence (everyThreeHours in bootstrap/app.php) so consecutive runs
+        // tile the created_at timeline and each user is tagged exactly once (no DB flag).
+        'abandoned_cart_window_hours' => (int) env('KIT_ABANDONED_CART_WINDOW_HOURS', 3),
+        'abandoned_cart_min_age_hours' => (int) env('KIT_ABANDONED_CART_MIN_AGE_HOURS', 1),
+    ],
+
+    'captapi' => [
+        // Transcript provider for the free tools. Key is server-side only.
+        'api_key' => env('CAPTAPIKEY'),
+        'base_url' => env('CAPTAPI_BASE_URL', 'https://api.captapi.com/v1'),
     ],
 
 ];

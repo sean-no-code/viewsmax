@@ -75,13 +75,29 @@ class PublishToTikTokJob implements ShouldQueue
                         return;
                     }
 
-                    $size = Storage::disk($disk)->size($path);
-                    $stream = Storage::disk($disk)->readStream($path);
-                    try {
-                        $result = $tiktok->publishVideoFromStream($account, $caption, $stream, $size, $target->options ?? []);
-                    } finally {
-                        if (is_resource($stream)) {
-                            fclose($stream);
+                    if (config('services.tiktok.video_pull_from_url')) {
+                        // The file is on our own storage, so TikTok must fetch it rather
+                        // than us pushing chunks — Content Sharing Guidelines,
+                        // Technical Consideration 2(d).
+                        // Hand over a signed proxy URL on the verified domain, the
+                        // same route photo posts already use.
+                        $result = $tiktok->publishVideoFromUrl(
+                            $account,
+                            $caption,
+                            \App\Support\MediaProxy::url($path, $disk),
+                            $target->options ?? []
+                        );
+                    } else {
+                        // Opted out: push the bytes instead, for environments TikTok
+                        // cannot reach to pull from.
+                        $size = Storage::disk($disk)->size($path);
+                        $stream = Storage::disk($disk)->readStream($path);
+                        try {
+                            $result = $tiktok->publishVideoFromStream($account, $caption, $stream, $size, $target->options ?? []);
+                        } finally {
+                            if (is_resource($stream)) {
+                                fclose($stream);
+                            }
                         }
                     }
                 } else {

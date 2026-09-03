@@ -76,6 +76,78 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
     }
 
     /**
+     * Current follower/subscriber count for this account, or null when the
+     * platform / API plan doesn't expose it. Consumed by audience:refresh.
+     * Default: unsupported.
+     */
+    public function fetchFollowerCount(SocialAccount $account): ?int
+    {
+        return null;
+    }
+
+    /**
+     * Engagement metrics for the given remote post ids, keyed by id. Only ids
+     * the platform returns data for appear. Consumed by posts:refresh-metrics.
+     * Default: unsupported (empty).
+     *
+     * @param  array<int, string>  $remotePostIds
+     * @return array<string, array{likes:int, comments:int, shares:int, views:int}>
+     */
+    public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
+    {
+        return [];
+    }
+
+    /**
+     * Serialize token refreshes per account and re-read state inside the
+     * lock. Several publish jobs can hit an expired token at once; with
+     * single-use rotating refresh tokens (X) the losers would burn a stale
+     * token, get invalid_grant, and wrongly brick the account. Inside the
+     * lock: if another worker already refreshed, reuse its result.
+     *
+     * @param  callable(SocialAccount): SocialAccount  $refresh
+     * @param  (callable(SocialAccount): bool)|null  $isFresh  "no refresh needed
+     *         anymore" check re-run inside the lock; defaults to hasValidToken()
+     *         (early-refreshing providers pass their own window check)
+     */
+    protected function refreshingSafely(SocialAccount $account, callable $refresh, ?callable $isFresh = null): SocialAccount
+    {
+        $isFresh ??= fn (SocialAccount $a) => $a->hasValidToken();
+        $lock = \Illuminate\Support\Facades\Cache::lock('social:token-refresh:'.$account->id, 25);
+
+        try {
+            $lock->block(15);
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException) {
+            // Couldn't obtain the lock — return current DB state rather than
+            // racing; the holder is refreshing right now.
+            return $account->fresh() ?? $account;
+        }
+
+        try {
+            $fresh = $account->fresh() ?? $account;
+            if ($isFresh($fresh)) {
+                return $fresh; // another worker already refreshed
+            }
+
+            return $refresh($fresh);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Whether a refresh-endpoint failure definitively means the grant is dead
+     * (user must reconnect) as opposed to a transient hiccup (rate limit,
+     * upstream outage, network) that must NOT flip the account to
+     * needs_reauth — bricking a healthy account over a 503 is exactly how
+     * "why do I keep reconnecting" happens.
+     */
+    protected function isDefinitiveAuthFailure(int $status): bool
+    {
+        return in_array($status, [400, 401, 403], true);
+    }
+
+    /**
      * Standard OAuth2 authorization-code → token exchange against $tokenUrl.
      */
     protected function exchangeAuthorizationCode(string $tokenUrl, string $code, string $redirectUri, array $extra = []): OAuthResult

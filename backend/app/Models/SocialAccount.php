@@ -78,6 +78,22 @@ class SocialAccount extends Model
     }
 
     /**
+     * Whether this account can still publish WITHOUT user action. An expired
+     * access token is normal (X's live 2 hours) — publishing refreshes it
+     * silently. Only a missing refresh path or an explicit needs_reauth means
+     * the user genuinely has to reconnect. This is what the UI's "Reconnect"
+     * state must key off — never raw access-token expiry.
+     */
+    public function hasUsableCredentials(): bool
+    {
+        if ($this->status !== self::STATUS_CONNECTED || empty($this->access_token)) {
+            return false;
+        }
+
+        return $this->hasValidToken() || ! empty($this->refresh_token);
+    }
+
+    /**
      * Read a value out of the metadata bag.
      */
     public function meta(string $key, $default = null)

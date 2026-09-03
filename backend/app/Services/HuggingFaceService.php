@@ -42,7 +42,7 @@ class HuggingFaceService
 
         $payload = [
             'name' => $modelName,
-            'description' => $description ?: "AI model created by ViewsMax",
+            'description' => $description ?: "AI model created by iClickSee",
             'tags' => array_merge(['lora', 'ai-model'], $tags),
             'private' => true, // Create as private repository
             'type' => 'model', // Explicitly set as model type

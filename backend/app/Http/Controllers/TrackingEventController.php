@@ -282,6 +282,40 @@ class TrackingEventController extends Controller
             $countLabel = 'views';
         }
 
+        // Hosts we own. Self-referred traffic (an admin opening a link from the
+        // dashboard, a blog→app hop) is internal navigation, not acquisition —
+        // GA4 drops self-referrals the same way. Match on HOST, not a LIKE over
+        // the full URL, so ports (localhost:8081) and owned subdomains
+        // (blog.viewsmax.com) can't slip through.
+        $internalHosts = collect([config('app.frontend_url'), config('app.url')])
+            ->filter()
+            ->map(fn ($url) => self::referrerHost($url))
+            ->filter()
+            ->unique()
+            ->values();
+        $internalDomains = $internalHosts
+            ->map(fn ($host) => self::registrableDomain($host))
+            ->filter()
+            ->unique()
+            ->values();
+
+        // Coarse SQL pre-filter so internal + localhost rows don't reach either
+        // table. referrerHost strips www in PHP, but the LIKE pass needs the
+        // www. variant too. The referrers table gets a precise host pass below.
+        $sqlHosts = $internalHosts->flatMap(fn ($h) => [$h, 'www.'.$h])->unique()->values();
+        $base->where(function ($q) use ($sqlHosts) {
+            // Keep: no referrer (direct), or a referrer on none of our hosts.
+            $q->whereNull('referrer')->orWhere('referrer', '')
+                ->orWhere(function ($qq) use ($sqlHosts) {
+                    $qq->where('referrer', 'not like', '%://localhost%')
+                        ->where('referrer', 'not like', '%://127.0.0.1%');
+                    foreach ($sqlHosts as $host) {
+                        $qq->where('referrer', 'not like', "%://{$host}/%")
+                            ->where('referrer', 'not like', "%://{$host}");
+                    }
+                });
+        });
+
         $sources = (clone $base)
             ->select(
                 'inferred_platform',
@@ -297,23 +331,47 @@ class TrackingEventController extends Controller
                 'views' => (int) $row->{$countLabel},
             ]);
 
-        $referrers = (clone $base)
+        // Referrers listed per URL (the exact URLs that sent traffic), NOT
+        // grouped by domain. Still drop localhost + self-referrals (matched on
+        // host). Distinct-visitor counts can't be summed across rows, so fold in
+        // PHP from (referrer, visitor) pairs; host extraction stays identical
+        // across SQLite/Postgres.
+        $referrerPairs = (clone $base)
             ->whereNotNull('referrer')
             ->where('referrer', '!=', '')
-            ->select(
-                'referrer',
-                DB::raw("COUNT(*) as {$countLabel}"),
-                DB::raw('COUNT(DISTINCT tracking_visitor_id) as visitors')
-            )
-            ->groupBy('referrer')
-            ->orderByDesc('visitors')
-            ->limit(50)
-            ->get()
-            ->map(fn ($row) => [
-                'referrer' => $row->referrer,
-                'visitors' => (int) $row->visitors,
-                'views' => (int) $row->{$countLabel},
-            ]);
+            ->select('referrer', 'tracking_visitor_id', DB::raw("COUNT(*) as {$countLabel}"))
+            ->groupBy('referrer', 'tracking_visitor_id')
+            ->get();
+
+        $byUrl = [];
+        foreach ($referrerPairs as $row) {
+            $host = self::referrerHost($row->referrer);
+            if ($host === null || in_array($host, self::DEV_REFERRER_HOSTS, true)) {
+                continue;
+            }
+            if ($internalHosts->contains($host) || $internalDomains->contains(self::registrableDomain($host))) {
+                continue;
+            }
+            $url = (string) $row->referrer;
+            if (! isset($byUrl[$url])) {
+                $byUrl[$url] = ['views' => 0, 'visitors' => []];
+            }
+            $byUrl[$url]['views'] += (int) $row->{$countLabel};
+            if ($row->tracking_visitor_id !== null) {
+                $byUrl[$url]['visitors'][$row->tracking_visitor_id] = true;
+            }
+        }
+
+        $referrers = collect($byUrl)
+            ->map(fn ($agg, $url) => [
+                'referrer' => $url,
+                'visitors' => count($agg['visitors']),
+                'views' => $agg['views'],
+            ])
+            ->sortByDesc('visitors')
+            ->take(50)
+            ->values()
+            ->all();
 
         return response()->json([
             'success' => true,
@@ -323,6 +381,42 @@ class TrackingEventController extends Controller
                 'referrers' => $referrers,
             ],
         ]);
+    }
+
+    /** Loopback/dev hosts that are never real acquisition. */
+    private const DEV_REFERRER_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
+
+    /**
+     * Normalized referrer host: lowercase, no leading www., no port. Returns
+     * null when there's nothing parseable. Accepts a full URL or a bare host.
+     */
+    private static function referrerHost(?string $referrer): ?string
+    {
+        if (! $referrer) {
+            return null;
+        }
+
+        $host = parse_url($referrer, PHP_URL_HOST);
+        if (! $host) {
+            // Bare host or host:port with no scheme.
+            $host = explode('/', preg_replace('#^[a-z][a-z0-9+.-]*://#i', '', $referrer))[0] ?? '';
+            $host = explode(':', $host)[0];
+        }
+
+        $host = preg_replace('/^www\./i', '', strtolower(trim((string) $host)));
+
+        return $host !== '' ? $host : null;
+    }
+
+    /**
+     * Registrable-ish domain (last two labels) — good enough to fold owned
+     * subdomains (blog./app./api.viewsmax.com) together as self-referrals.
+     */
+    private static function registrableDomain(string $host): string
+    {
+        $labels = explode('.', $host);
+
+        return count($labels) <= 2 ? $host : implode('.', array_slice($labels, -2));
     }
 
     /**

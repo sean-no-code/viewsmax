@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import youtubeLogo from "@/assets/youtubelogo.png";
 import searchBar from "@/assets/searchbar-scaled.png";
 import signInButton from "@/assets/sign-in-buttons.png";
@@ -173,7 +174,9 @@ const ThumbnailPreview = () => {
 
 
   return (
-    <div className="min-h-screen bg-background py-12">
+    <div className="min-h-screen bg-background flex flex-col">
+      <LandingNav />
+      <div className="flex-1 py-12">
       <style>{`
         .youtube-grid {
           max-width: 1120px;
@@ -444,6 +447,8 @@ const ThumbnailPreview = () => {
           </CardContent>
         </Card>
       </div>
+      </div>
+      <LandingFooter />
     </div>
   );
 };

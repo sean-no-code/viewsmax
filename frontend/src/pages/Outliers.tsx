@@ -1,610 +1,710 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Zap, Filter, Search, RotateCcw, ArrowUpDown, Loader2 } from "lucide-react";
-import OutlierVideoCard, { OutlierVideoData } from "@/components/OutlierVideoCard";
-import { searchOutliers } from "@/lib/outlier-service";
-import { toast } from "sonner";
+import { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import {
+    Search, Users, Globe, ChevronDown, RotateCcw, Save, FolderOpen,
+    TrendingUp, Loader2, Check, Eye, Heart,
+} from 'lucide-react';
+import { COUNTRIES, countryFlag, countryName } from '@/components/outliers/countries';
+import {
+    searchOutliers, startSearchOutliers, getOutlierChannels, fetchOutlierByUrl, toggleOutlierFeature,
+    getSavedFilters, saveFilter, deleteSavedFilter, getLibrary, saveOutlier, deleteSavedOutlier,
+    type OutlierVideo, type OutlierFilters, type OutlierChannelOption, type SavedFilter,
+} from '@/lib/outlier-service';
+import OutlierCard from '@/components/outliers/OutlierCard';
+import SaveOutlierModal from '@/components/outliers/SaveOutlierModal';
+import { formatCompact, cardVariant } from '@/components/outliers/format';
+import { useAuth } from '@/hooks/useAuth';
 
-const PER_PAGE = 20;
-
-// Helper to format date as YYYY/MM/DD
-const formatDate = (date: Date): string => {
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    return `${yyyy}/${mm}/${dd}`;
+const CARD: CSSProperties = {
+    background: 'var(--paper-0)',
+    border: '1px solid var(--line-1)',
+    borderRadius: 'var(--r-lg)',
+    boxShadow: '0 1px 3px rgba(10,10,12,.05)',
 };
+const mono = 'var(--font-mono)';
+const PER_PAGE = 24;
 
-// Helper to format big numbers
-const formatMetric = (num: number): string => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-    return num.toString();
-};
+function videoKey(platform: string, id: string) { return `${platform}:${id}`; }
 
-const Outliers = () => {
-    const [searchQuery, setSearchQuery] = useState("");
-    const [videos, setVideos] = useState<OutlierVideoData[]>([]);
+// The countries filter auto-saves per device and is restored on the next visit
+// (unlike other filters, which reset) — no manual "Save filter" step needed.
+const COUNTRIES_STORAGE_KEY = 'vm.outliers.countries';
+
+function loadPersistedCountries(): string[] {
+    try {
+        const raw = localStorage.getItem(COUNTRIES_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.filter((c): c is string => typeof c === 'string') : [];
+    } catch {
+        return [];
+    }
+}
+
+/** Which platform an added-video URL belongs to (browse is blended; the URL decides). */
+function detectUrlPlatform(url: string): 'tiktok' | 'instagram' | 'youtube' | null {
+    let host = '';
+    try { host = new URL(url).hostname.toLowerCase(); } catch { return null; }
+    if (host.endsWith('tiktok.com')) return 'tiktok';
+    if (host.endsWith('instagram.com') || host.endsWith('instagr.am')) return 'instagram';
+    if (host.endsWith('youtube.com') || host.endsWith('youtu.be')) return 'youtube';
+    return null;
+}
+
+export default function Outliers() {
+    const [query, setQuery] = useState('');
+    const [exactMatch, setExactMatch] = useState(false);
+    const [durationFilter, setDurationFilter] = useState<'long' | 'shorts'>('long');
+    const [minScore, setMinScore] = useState<number>(20);
+    const [subsMax, setSubsMax] = useState<number | undefined>(undefined);
+    const [viewsMax, setViewsMax] = useState<number | undefined>(undefined);
+    const [dateRange, setDateRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
+    const [sortBy, setSortBy] = useState<'recent' | 'score' | 'views'>('recent');
+
+    // Channels multi-select
+    const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+    const [channelsOpen, setChannelsOpen] = useState(false);
+    const [channelQuery, setChannelQuery] = useState('');
+    const [channelOptions, setChannelOptions] = useState<OutlierChannelOption[]>([]);
+
+    // Countries multi-select (auto-saved; restored on the next visit)
+    const [selectedCountries, setSelectedCountries] = useState<string[]>(loadPersistedCountries);
+    const [countriesOpen, setCountriesOpen] = useState(false);
+    const [countryQuery, setCountryQuery] = useState('');
+
+    // Data
+    const [videos, setVideos] = useState<OutlierVideo[]>([]);
     const [loading, setLoading] = useState(false);
-    const [hasSearched, setHasSearched] = useState(false);
-    const [filtersChanged, setFiltersChanged] = useState(false);
-    const [browsing, setBrowsing] = useState(true);
-
-    // Pagination
+    const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [totalResults, setTotalResults] = useState(0);
-    const [loadingMore, setLoadingMore] = useState(false);
+
+    // Saved filters
+    const [savedList, setSavedList] = useState<SavedFilter[]>([]);
+    const [savedOpen, setSavedOpen] = useState(false);
+    const [saveOpen, setSaveOpen] = useState(false);
+    const [saveName, setSaveName] = useState('');
+
+    // Library (bookmark state) + save modal
+    const [savedMap, setSavedMap] = useState<Record<string, number>>({});
+    const [pendingSave, setPendingSave] = useState<OutlierVideo | null>(null);
+
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-    // Filters
-    const [minScore, setMinScore] = useState([20]); // Slider returns array (min score)
-    const [subsRange, setSubsRange] = useState([0, 100]); // 0-10M mapped
-    const [viewsRange, setViewsRange] = useState([0, 100]); // 0-10M mapped
+    // The untouched initial screen shows the admin-curated (featured) feed;
+    // any search or filter interaction — or an empty curated list — drops to
+    // the full browse feed.
+    const [defaultFeed, setDefaultFeed] = useState(true);
+    const [showingCurated, setShowingCurated] = useState(false);
 
-    const [dateRange, setDateRange] = useState("all");
-    const [sortBy, setSortBy] = useState("recent"); // 'score' | 'recent'
-    const [exactMatch, setExactMatch] = useState(false);
-    const [durationFilter, setDurationFilter] = useState("long"); // 'long' | 'shorts'
+    const buildFilters = useCallback((pageNum: number): OutlierFilters => {
+        const f: OutlierFilters = {
+            query,
+            channels: selectedChannels.length ? selectedChannels : undefined,
+            countries: selectedCountries.length ? selectedCountries : undefined,
+            min_score: minScore,
+            max_subs: subsMax,
+            max_views: viewsMax,
+            duration_type: durationFilter,
+            sort_by: sortBy,
+            page: pageNum,
+            per_page: PER_PAGE,
+        };
+        if (exactMatch && query) f.keyword_match = query;
+        if (dateRange !== 'all') {
+            const days = dateRange === 'week' ? 7 : dateRange === 'month' ? 30 : 365;
+            f.published_after = new Date(Date.now() - days * 86_400_000).toISOString();
+        }
+        // Pristine initial screen → curated feed (filters at their defaults only —
+        // a restored country selection counts as a filter, so it browses instead).
+        if (defaultFeed && !query.trim() && !selectedChannels.length && !selectedCountries.length && minScore === 20
+            && subsMax === undefined && viewsMax === undefined && dateRange === 'all') {
+            f.featured = true;
+        }
+        return f;
+    }, [query, selectedChannels, selectedCountries, minScore, subsMax, viewsMax, durationFilter, sortBy, exactMatch, dateRange, defaultFeed]);
 
-    const parseMetric = (val: string) => {
-        if (!val) return 0;
-        const num = parseFloat(val.replace(/[^0-9.]/g, ''));
-        if (val.includes('M')) return num * 1000000;
-        if (val.includes('K')) return num * 1000;
-        return num;
+    const applyResults = (data: OutlierVideo[], pageNum: number, total: number, lastPage: number) => {
+        setVideos((prev) => (pageNum === 1 ? data : [...prev, ...data]));
+        setTotalResults(total);
+        setHasMore(pageNum < lastPage);
+        setPage(pageNum);
     };
 
-    const getPublishedAfter = useCallback(() => {
-        if (dateRange === "today") return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        if (dateRange === "week") return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        if (dateRange === "month") return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        return "";
-    }, [dateRange]);
-
-    const mapSortBy = useCallback((sort: string) => {
-        if (sort === 'score') return 'score';
-        if (sort === 'recent') return 'recent';
-        return 'score';
-    }, []);
-
-    const buildFilters = useCallback((pageNum: number, queryOverride?: string, overrides?: Record<string, any>) => ({
-        query: queryOverride ?? searchQuery,
-        min_score: overrides?.min_score ?? minScore[0],
-        min_subs: subsRange[0] * 100000,
-        max_subs: subsRange[1] === 100 ? undefined : subsRange[1] * 100000,
-        min_views: viewsRange[0] * 100000,
-        max_views: viewsRange[1] === 100 ? undefined : viewsRange[1] * 100000,
-        published_after: getPublishedAfter() || undefined,
-        keyword_match: exactMatch ? searchQuery : undefined,
-        duration_type: overrides?.duration_type ?? durationFilter,
-        sort_by: overrides?.sort_by ?? mapSortBy(sortBy),
-        page: pageNum,
-        per_page: PER_PAGE,
-    }), [searchQuery, minScore, subsRange, viewsRange, getPublishedAfter, exactMatch, durationFilter, sortBy, mapSortBy]);
-
-    const mapVideo = (v: any): OutlierVideoData => ({
-        id: v.youtube_video_id,
-        title: v.title,
-        thumbnail: v.thumbnail_medium_url || v.thumbnail_url,
-        subscribers: v.channel?.subscriber_count ? formatMetric(v.channel.subscriber_count) : 'N/A',
-        views: v.views ?? v.view_count ?? 0,
-        publishedDate: v.published_at,
-        outlierScore: typeof v.outlier_score === 'number' ? v.outlier_score : parseFloat(v.outlier_score as unknown as string) || 0,
-        duration: v.duration || "0:00",
-        channelName: v.channel?.channel_name || "Unknown Channel",
-        channelAvatar: v.channel?.profile_image_url || "",
-    });
-
-    // Explicit search handler — triggered by Search button or Enter key
-    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const suppressFilterChangeRef = useRef(false);
-
-    const handleSearch = useCallback(() => {
-        // Clear any existing poll interval
-        if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
-
-        if (!searchQuery.trim()) {
-            // If browsing with empty query, refetch with current filters
-            if (browsing) {
-                setLoading(true);
-                setPage(1);
-                setFiltersChanged(false);
-                searchOutliers(buildFilters(1, '')).then(response => {
-                    setVideos(response.data.map(mapVideo));
-                    setTotalResults(response.total);
-                    setHasMore(response.current_page < response.last_page);
-                }).catch(err => {
-                    console.error(err);
-                }).finally(() => {
-                    setLoading(false);
-                });
-                return;
+    const runBrowse = useCallback(async (pageNum = 1) => {
+        pageNum === 1 ? setLoading(true) : setLoadingMore(true);
+        try {
+            let f = buildFilters(pageNum);
+            let res = await searchOutliers(f);
+            // Nothing curated yet → quietly fall back to the full feed.
+            if (f.featured && pageNum === 1 && res.total === 0) {
+                setDefaultFeed(false);
+                f = { ...f, featured: undefined };
+                res = await searchOutliers(f);
             }
-            setVideos([]); setLoading(false); setTotalResults(0); setHasMore(false); setHasSearched(false); return;
+            setShowingCurated(!!f.featured);
+            applyResults(res.data, pageNum, res.total, res.last_page);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to load outliers');
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
         }
-        if (searchQuery.length < 2 || !/[a-zA-Z0-9]/.test(searchQuery)) {
-            if (searchQuery.length > 0) toast.error("Search must be at least 2 characters and contain letters or numbers.");
-            setVideos([]); setLoading(false); setTotalResults(0); setHasMore(false); return;
-        }
+    }, [buildFilters]);
 
-        const isFirstSearch = browsing;
-        setBrowsing(false);
-        if (isFirstSearch) {
-            setSortBy('score');
-        }
-        setLoading(true);
-        setPage(1);
-        setHasMore(false);
-        setTotalResults(0);
-        setHasSearched(true);
-        setFiltersChanged(false);
-
-        const searchOverrides = isFirstSearch ? { sort_by: 'score' } : undefined;
-        let attempts = 0;
-
-        const pollResults = async () => {
-            try {
-                const response = await searchOutliers(buildFilters(1, undefined, searchOverrides));
-
-                const mapped = response.data.map(mapVideo);
-
-                setVideos(mapped);
-                setPage(1);
-                setTotalResults(response.total);
-                setHasMore(response.current_page < response.last_page);
-
-                if (response.status === 'done' || response.status === 'failed') {
-                    setLoading(false);
-                    if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
-                    if (response.status === 'failed' && mapped.length === 0) {
-                        toast.error("Search job failed.");
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        };
-
-        const startSearch = async () => {
-            try {
-                const { startSearchOutliers } = await import("@/lib/outlier-service");
-                await startSearchOutliers(searchQuery, exactMatch);
-            } catch (err) {
-                console.error("Failed to start search", err);
-            }
-
-            pollResults();
-            pollIntervalRef.current = setInterval(() => {
-                attempts++;
-                if (attempts > 1200) { setLoading(false); if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); return; }
-                pollResults();
-            }, 3000);
-        };
-
-        startSearch();
-    }, [searchQuery, exactMatch, buildFilters]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Cleanup poll interval on unmount
-    useEffect(() => {
-        return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
-    }, []);
-
-    // Load recent outliers on mount
-    useEffect(() => {
-        let isMounted = true;
-        const loadInitial = async () => {
-            setLoading(true);
-            try {
-                const response = await searchOutliers(buildFilters(1, ''));
-                if (!isMounted) return;
-                setVideos(response.data.map(mapVideo));
-                setTotalResults(response.total);
-                setHasMore(response.current_page < response.last_page);
-                setPage(1);
-            } catch (err) {
-                console.error('Failed to load outliers', err);
-            } finally {
-                if (isMounted) setLoading(false);
-            }
-        };
-        loadInitial();
-        return () => { isMounted = false; };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Detect if filters have changed since the last search/browse
-    const hasMountedRef = useRef(false);
-    useEffect(() => {
-        if (!hasMountedRef.current) {
-            hasMountedRef.current = true;
-            return;
-        }
-        if (suppressFilterChangeRef.current) {
-            return;
-        }
-        setFiltersChanged(true);
-    }, [minScore, subsRange, viewsRange, dateRange, exactMatch, durationFilter]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Search query changes mark filters as changed
-    const queryMountedRef = useRef(false);
-    useEffect(() => {
-        if (!queryMountedRef.current) {
-            queryMountedRef.current = true;
-            return;
-        }
-        if (suppressFilterChangeRef.current) {
-            return;
-        }
-        setFiltersChanged(true);
-    }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Clear suppress flag after all effects have run
-    useEffect(() => {
-        if (suppressFilterChangeRef.current) {
-            suppressFilterChangeRef.current = false;
-        }
-    });
-
-    // Auto-refetch when sortBy changes (no need to click Update)
-    useEffect(() => {
-        if (browsing && !loading) {
-            // Re-fetch browse results with the new sort
-            const refetchBrowse = async () => {
-                setLoading(true);
-                setPage(1);
-                try {
-                    const response = await searchOutliers(buildFilters(1, ''));
-                    setVideos(response.data.map(mapVideo));
-                    setTotalResults(response.total);
-                    setHasMore(response.current_page < response.last_page);
-                } catch (err) {
-                    console.error(err);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            refetchBrowse();
-        } else if (hasSearched && !loading) {
-            handleSearch();
-        }
-    }, [sortBy]); // eslint-disable-line react-hooks/exhaustive-deps
-
-
-    // Effect 3: Load next page (infinite scroll trigger)
-    useEffect(() => {
-        if (page <= 1) return;
-        if (!browsing && !searchQuery.trim()) return;
-
-        let isMounted = true;
-
-        const loadNextPage = async () => {
-            setLoadingMore(true);
-            try {
-                const response = browsing
-                    ? await searchOutliers(buildFilters(page, ''))
-                    : await searchOutliers(buildFilters(page));
-
-                if (!isMounted) return;
-
-                const mapped = response.data.map(mapVideo);
-
-                setVideos(prev => [...prev, ...mapped]);
-                setTotalResults(response.total);
-                setHasMore(response.current_page < response.last_page);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                if (isMounted) setLoadingMore(false);
-            }
-        };
-
-        loadNextPage();
-
-        return () => { isMounted = false; };
-    }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // IntersectionObserver for infinite scroll sentinel
-    useEffect(() => {
-        const sentinel = sentinelRef.current;
-        if (!sentinel) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-                    setPage(prev => prev + 1);
-                }
-            },
-            { threshold: 0.1 }
-        );
-
-        observer.observe(sentinel);
-
-        return () => { observer.disconnect(); };
-    }, [hasMore, loadingMore, loading]);
-
-    const filteredAndSortedVideos = useMemo(() => {
-        return videos;
-    }, [videos]);
-
-    const resetFilters = async () => {
-        if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
-        suppressFilterChangeRef.current = true;
-        setFiltersChanged(false);
-        setSearchQuery("");
-        setMinScore([20]);
-        setSubsRange([0, 100]);
-        setViewsRange([0, 100]);
-        setDateRange("all");
-        setSortBy("recent");
-        setExactMatch(false);
-        setDurationFilter("long");
-        setPage(1);
-        setHasMore(false);
-        setTotalResults(0);
-        setHasSearched(false);
-        setBrowsing(true);
+    const browseAll = async () => {
+        // Fetch directly — runBrowse's closure still sees the old defaultFeed state.
+        setDefaultFeed(false);
         setLoading(true);
         try {
-            const defaultFilters = {
-                query: '',
-                min_score: 20,
-                min_subs: 0,
-                min_views: 0,
-                duration_type: 'long',
-                sort_by: 'recent',
-                page: 1,
-                per_page: PER_PAGE,
-            };
-            const response = await searchOutliers(defaultFilters);
-            setVideos(response.data.map(mapVideo));
-            setTotalResults(response.total);
-            setHasMore(response.current_page < response.last_page);
-        } catch (err) {
-            console.error('Failed to load outliers', err);
-            setVideos([]);
+            const res = await searchOutliers({ ...buildFilters(1), featured: undefined });
+            setShowingCurated(false);
+            applyResults(res.data, 1, res.total, res.last_page);
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to load outliers');
         } finally {
             setLoading(false);
         }
     };
 
+    /** Admin: star toggle on cards — adds/removes the video from the curated feed. */
+    const toggleFeature = async (video: OutlierVideo) => {
+        try {
+            const featured = await toggleOutlierFeature(video.platform, video.youtube_video_id);
+            setVideos((prev) => prev.map((v) =>
+                v.platform === video.platform && v.youtube_video_id === video.youtube_video_id ? { ...v, featured } : v));
+            toast.success(featured ? 'Added to the default feed' : 'Removed from the default feed');
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to update');
+        }
+    };
+
+    const stopPoll = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+
+    const handleSearch = useCallback(async () => {
+        stopPoll();
+        // A pasted video URL (any platform) fetches that video and opens its breakdown.
+        const trimmed = query.trim();
+        const asUrl = trimmed.startsWith('www.') ? `https://${trimmed}` : trimmed;
+        if (/^https?:\/\//i.test(asUrl)) {
+            const urlPlatform = detectUrlPlatform(asUrl);
+            if (!urlPlatform) {
+                toast.error("That URL doesn't look like a YouTube, TikTok or Instagram video link.");
+                return;
+            }
+            setLoading(true);
+            try {
+                // Parseable URLs queue a background download and we land on the
+                // breakdown page's spinner right away; existing videos go straight there.
+                const res = await fetchOutlierByUrl(urlPlatform, asUrl);
+                navigate(
+                    `/dashboard/outliers/breakdown/${urlPlatform}/${encodeURIComponent(res.video_id)}`,
+                    res.queued ? { state: { ingestUrl: asUrl } } : undefined,
+                );
+            } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Could not fetch that video');
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+        // A keyword search kicks off an async YouTube scrape, then polls; empty query browses.
+        if (query.trim()) {
+            setLoading(true);
+            setVideos([]);
+            try {
+                await startSearchOutliers(query.trim(), exactMatch);
+            } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Failed to start search');
+            }
+            let attempts = 0;
+            const poll = async () => {
+                attempts += 1;
+                try {
+                    const res = await searchOutliers(buildFilters(1));
+                    applyResults(res.data, 1, res.total, res.last_page);
+                    if (res.status === 'done' || res.status === 'failed' || attempts > 400) {
+                        stopPoll();
+                        setLoading(false);
+                    }
+                } catch {
+                    stopPoll();
+                    setLoading(false);
+                }
+            };
+            poll();
+            pollRef.current = setInterval(poll, 3000);
+        } else {
+            runBrowse(1);
+        }
+    }, [query, exactMatch, buildFilters, runBrowse, navigate]);
+
+    // Initial load
+    useEffect(() => {
+        runBrowse(1);
+        return stopPoll;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Re-fetch when sort, the Long/Shorts toggle, or the country selection changes
+    // (the toggle used to only swap the card shape — long videos sat in the Shorts
+    // tab until Search). Effect deps, not setTimeout(runBrowse) — that closure is stale.
+    useEffect(() => {
+        if (query.trim() && pollRef.current) return;
+        runBrowse(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortBy, durationFilter, selectedCountries]);
+
+    // Countries auto-save: write through on every change so the next visit restores them.
+    useEffect(() => {
+        try {
+            localStorage.setItem(COUNTRIES_STORAGE_KEY, JSON.stringify(selectedCountries));
+        } catch { /* private mode etc. — filter still works for this visit */ }
+    }, [selectedCountries]);
+
+    // Load saved filters + library bookmark state once
+    useEffect(() => {
+        getSavedFilters().then(setSavedList).catch(() => {});
+        getLibrary().then((items) => {
+            const map: Record<string, number> = {};
+            items.forEach((s) => { map[videoKey(s.platform, s.video_id)] = s.id; });
+            setSavedMap(map);
+        }).catch(() => {});
+    }, []);
+
+    // Channel options for the modal (all platforms, debounced)
+    useEffect(() => {
+        if (!channelsOpen) return;
+        const t = setTimeout(() => {
+            getOutlierChannels(channelQuery).then(setChannelOptions).catch(() => setChannelOptions([]));
+        }, 250);
+        return () => clearTimeout(t);
+    }, [channelsOpen, channelQuery]);
+
+    // Infinite scroll
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+        const obs = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+                runBrowse(page + 1);
+            }
+        }, { threshold: 0.1 });
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [hasMore, loading, loadingMore, page, runBrowse]);
+
+    const toggleChannel = (id: string) => {
+        setSelectedChannels((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+    };
+
+    const toggleCountry = (code: string) => {
+        setSelectedCountries((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+    };
+
+    const resetFilters = () => {
+        setQuery('');
+        setExactMatch(false);
+        setDurationFilter('long');
+        setMinScore(20);
+        setSubsMax(undefined);
+        setViewsMax(undefined);
+        setDateRange('all');
+        setSortBy('recent');
+        setSelectedChannels([]);
+        setSelectedCountries([]); // the autosave effect clears the persisted copy too
+        setTimeout(() => runBrowse(1), 0);
+    };
+
+    const handleSaveFilter = async () => {
+        if (!saveName.trim()) return;
+        try {
+            const f = buildFilters(1);
+            delete f.page; delete f.per_page;
+            const saved = await saveFilter(saveName.trim(), f);
+            setSavedList((prev) => [saved, ...prev]);
+            setSaveName('');
+            setSaveOpen(false);
+            toast.success('Filter saved');
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to save filter');
+        }
+    };
+
+    const loadFilter = (sf: SavedFilter) => {
+        const f = sf.filters;
+        // f.platform from older saved filters is ignored — browse is blended now.
+        setQuery(f.query || '');
+        setExactMatch(!!f.keyword_match);
+        setDurationFilter((f.duration_type as 'long' | 'shorts') || 'long');
+        setMinScore(f.min_score ?? 20);
+        setSubsMax(f.max_subs);
+        setViewsMax(f.max_views);
+        setSortBy((f.sort_by as 'recent' | 'score' | 'views') || 'recent');
+        setSelectedChannels(f.channels || []);
+        setSelectedCountries(f.countries || []);
+        setSavedOpen(false);
+        setTimeout(() => runBrowse(1), 0);
+    };
+
+    const removeFilter = async (id: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        await deleteSavedFilter(id).catch(() => {});
+        setSavedList((prev) => prev.filter((s) => s.id !== id));
+    };
+
+    /** Bookmark click: saved → remove; unsaved → open the tag/save modal. */
+    const toggleSaveVideo = (video: OutlierVideo) => {
+        const key = videoKey(video.platform, video.youtube_video_id);
+        const existingId = savedMap[key];
+        if (existingId) {
+            setSavedMap((prev) => { const n = { ...prev }; delete n[key]; return n; });
+            deleteSavedOutlier(existingId).catch(() => {
+                setSavedMap((prev) => ({ ...prev, [key]: existingId }));
+                toast.error('Failed to remove');
+            });
+            return;
+        }
+        setPendingSave(video);
+    };
+
+    const saveWithTags = async (video: OutlierVideo, tags: string[]) => {
+        const key = videoKey(video.platform, video.youtube_video_id);
+        try {
+            const saved = await saveOutlier({
+                platform: video.platform,
+                video_id: video.youtube_video_id,
+                tags,
+                snapshot: {
+                    title: video.title,
+                    thumbnail_url: video.thumbnail_url,
+                    thumbnail_medium_url: video.thumbnail_medium_url,
+                    views: video.views,
+                    like_count: video.like_count,
+                    comment_count: video.comment_count,
+                    outlier_score: video.outlier_score,
+                    engagement_rate: video.engagement_rate,
+                    duration: video.duration,
+                    published_at: video.published_at,
+                    channel_name: video.channel?.channel_name,
+                    channel_avatar: video.channel?.profile_image_url,
+                    subscriber_count: video.channel?.subscriber_count,
+                    channel_average_views: video.channel?.average_views,
+                    platform: video.platform,
+                    is_short: video.is_short ?? null,
+                },
+            });
+            setSavedMap((prev) => ({ ...prev, [key]: saved.id }));
+            setPendingSave(null);
+            toast.success(tags.length ? `Saved with ${tags.length} tag${tags.length > 1 ? 's' : ''}` : 'Saved to library');
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to save');
+        }
+    };
+
+    const variant: 'long' | 'shorts' = durationFilter === 'shorts' ? 'shorts' : 'long';
+    const gridCols = variant === 'shorts' ? 'repeat(auto-fill, minmax(220px,1fr))' : 'repeat(auto-fill, minmax(300px,1fr))';
+    const pickedChannelNames = channelOptions.filter((c) => selectedChannels.includes(c.id)).map((c) => c.name);
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <Card>
-                <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Filters</CardTitle>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={resetFilters} className="h-8 gap-1">
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            Reset
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="grid gap-6">
-                    {/* Row 1: Search, Date, Video Type */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Search */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Search</label>
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search terms ..."
-                                    className="pl-8"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-                                />
-                                {loading && (
-                                    <div className="absolute right-3 top-2.5">
-                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex items-center space-x-2 pt-1">
-                                <Checkbox
-                                    id="exact-match"
-                                    checked={exactMatch}
-                                    onCheckedChange={(checked) => setExactMatch(checked as boolean)}
-                                />
-                                <label
-                                    htmlFor="exact-match"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    Exact keyword match
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* Date Filter */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Published Date</label>
-                            <Select value={dateRange} onValueChange={setDateRange}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Any time" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Any time</SelectItem>
-                                    <SelectItem value="today">Last 24 hours</SelectItem>
-                                    <SelectItem value="week">Last 7 days</SelectItem>
-                                    <SelectItem value="month">Last 30 days</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Video Type Toggle */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Video Type</label>
-                            <div className="flex rounded-md border overflow-hidden">
-                                <Button
-                                    type="button"
-                                    variant={durationFilter === 'long' ? 'default' : 'ghost'}
-                                    size="sm"
-                                    className={`flex-1 rounded-none ${durationFilter === 'long' ? '' : 'text-muted-foreground'}`}
-                                    onClick={() => setDurationFilter('long')}
-                                >
-                                    Long
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={durationFilter === 'shorts' ? 'default' : 'ghost'}
-                                    size="sm"
-                                    className={`flex-1 rounded-none ${durationFilter === 'shorts' ? '' : 'text-muted-foreground'}`}
-                                    onClick={() => setDurationFilter('shorts')}
-                                >
-                                    Shorts
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Row 2: Range Sliders */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t">
-                        {/* Subscribers Slider (Range) */}
-                        <div className="space-y-4 pt-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium">Subscribers Range:
-                                    <span className="text-primary font-bold ml-1">
-                                        {formatMetric(subsRange[0] * 100000)} - {subsRange[1] === 100 ? '10M+' : formatMetric(subsRange[1] * 100000)}
-                                    </span>
-                                </label>
-                            </div>
-                            <Slider
-                                value={subsRange}
-                                onValueChange={setSubsRange}
-                                max={100}
-                                step={1}
-                                minStepsBetweenThumbs={1}
-                                className="w-full"
-                            />
-                        </div>
-
-                        {/* Views Slider (Range) */}
-                        <div className="space-y-4 pt-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium">Views Range:
-                                    <span className="text-primary font-bold ml-1">
-                                        {formatMetric(viewsRange[0] * 100000)} - {viewsRange[1] === 100 ? '10M+' : formatMetric(viewsRange[1] * 100000)}
-                                    </span>
-                                </label>
-                            </div>
-                            <Slider
-                                value={viewsRange}
-                                onValueChange={setViewsRange}
-                                max={100}
-                                step={1}
-                                minStepsBetweenThumbs={1}
-                                className="w-full"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Outlier Score Slider */}
-                    <div className="space-y-4 pt-2 border-t pt-4">
-                        <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium">Min Outlier Score: <span className="text-primary font-bold">{minScore[0]}</span></label>
-                        </div>
-                        <Slider
-                            value={minScore}
-                            onValueChange={setMinScore}
-                            min={20}
-                            max={100}
-                            step={1}
-                            className="w-full"
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: 'var(--font-body)' }}>
+            {/* Filter bar */}
+            <div style={{ ...CARD, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Row 1 */}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1.5 1 260px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--paper-1)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
+                        <Search size={16} stroke="#76767F" />
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            placeholder="Search titles, keywords, URLs…"
+                            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--ink-on-paper-1)', minWidth: 60 }}
                         />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--ink-on-paper-3)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={exactMatch} onChange={(e) => setExactMatch(e.target.checked)} style={{ accentColor: 'var(--vm-red)' }} />
+                            Exact match
+                        </label>
                     </div>
 
-                    {/* Search Button */}
-                    <div className="flex justify-end pt-4 border-t">
-                        <div className="flex flex-col items-center gap-1">
-                            <Button
-                                onClick={handleSearch}
-                                disabled={loading}
-                                className={`gap-2 transition-all duration-300 ${filtersChanged
-                                    ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-background shadow-lg shadow-amber-400/20'
-                                    : ''
-                                    }`}
-                            >
-                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                Search
-                            </Button>
-                            {filtersChanged && (
-                                <span className="text-xs text-amber-500 font-medium animate-in fade-in duration-300">
-                                    Filters updated
-                                </span>
-                            )}
-                        </div>
+                    {/* Channels multi-select */}
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setChannelsOpen((o) => !o)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 'var(--r-md)', background: 'var(--paper-0)', cursor: 'pointer', minWidth: 160, border: `1px solid ${selectedChannels.length ? 'var(--vm-red)' : 'var(--line-2)'}` }}
+                        >
+                            <Users size={15} stroke="#76767F" />
+                            <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)', fontWeight: selectedChannels.length ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {selectedChannels.length === 0 ? 'All channels'
+                                    : selectedChannels.length === 1 ? (pickedChannelNames[0] || '1 channel')
+                                    : `${selectedChannels.length} channels`}
+                            </span>
+                            <ChevronDown size={14} style={{ marginLeft: 'auto' }} stroke="#76767F" />
+                        </button>
+                        {channelsOpen && (
+                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30, minWidth: 260, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', overflow: 'hidden' }}>
+                                <div style={{ padding: 8, borderBottom: '1px solid var(--line-1)' }}>
+                                    <input autoFocus value={channelQuery} onChange={(e) => setChannelQuery(e.target.value)} placeholder="Filter channels…" style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, outline: 'none' }} />
+                                </div>
+                                <div style={{ maxHeight: 230, overflowY: 'auto' }}>
+                                    <button onClick={() => setSelectedChannels([])} style={rowBtn(false)}>
+                                        <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>All channels</span>
+                                    </button>
+                                    {channelOptions.map((c) => {
+                                        const picked = selectedChannels.includes(c.id);
+                                        return (
+                                            <button key={c.id} onClick={() => toggleChannel(c.id)} style={rowBtn(picked)}>
+                                                {c.avatar
+                                                    ? <img src={c.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />
+                                                    : <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ink-800)' }} />}
+                                                <span style={{ fontSize: 13, color: 'var(--ink-on-paper-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                                                {picked && <Check size={15} stroke="#D60B27" style={{ marginLeft: 'auto' }} />}
+                                            </button>
+                                        );
+                                    })}
+                                    {channelOptions.length === 0 && (
+                                        <div style={{ padding: 12, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>No channels loaded yet.</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </CardContent>
-            </Card>
 
-            {/* Results Grid */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                    <div className="text-sm text-muted-foreground pb-2">
-                        {loading
-                            ? (videos.length === 0 ? (browsing ? 'Loading outliers...' : 'Searching YouTube...') : 'Updating results...')
-                            : `Showing ${filteredAndSortedVideos.length} of ${totalResults} results`
-                        }
+                    {/* Countries multi-select (auto-saved) */}
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setCountriesOpen((o) => !o)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 'var(--r-md)', background: 'var(--paper-0)', cursor: 'pointer', minWidth: 150, border: `1px solid ${selectedCountries.length ? 'var(--vm-red)' : 'var(--line-2)'}` }}
+                        >
+                            <Globe size={15} stroke="#76767F" />
+                            <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)', fontWeight: selectedCountries.length ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {selectedCountries.length === 0 ? 'All countries'
+                                    : selectedCountries.length === 1 ? `${countryFlag(selectedCountries[0])} ${countryName(selectedCountries[0])}`
+                                    : `${selectedCountries.length} countries`}
+                            </span>
+                            <ChevronDown size={14} style={{ marginLeft: 'auto' }} stroke="#76767F" />
+                        </button>
+                        {countriesOpen && (
+                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30, minWidth: 250, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', overflow: 'hidden' }}>
+                                <div style={{ padding: 8, borderBottom: '1px solid var(--line-1)' }}>
+                                    <input autoFocus value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} placeholder="Filter countries…" style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, outline: 'none' }} />
+                                </div>
+                                <div style={{ maxHeight: 230, overflowY: 'auto' }}>
+                                    <button onClick={() => setSelectedCountries([])} style={rowBtn(false)}>
+                                        <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>All countries</span>
+                                    </button>
+                                    {COUNTRIES
+                                        .filter((c) => !countryQuery.trim()
+                                            || c.name.toLowerCase().includes(countryQuery.trim().toLowerCase())
+                                            || c.code.toLowerCase() === countryQuery.trim().toLowerCase())
+                                        .map((c) => {
+                                            const picked = selectedCountries.includes(c.code);
+                                            return (
+                                                <button key={c.code} onClick={() => toggleCountry(c.code)} style={rowBtn(picked)}>
+                                                    <span style={{ fontSize: 16, lineHeight: 1 }}>{countryFlag(c.code)}</span>
+                                                    <span style={{ fontSize: 13, color: 'var(--ink-on-paper-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                                                    {picked && <Check size={15} stroke="#D60B27" style={{ marginLeft: 'auto' }} />}
+                                                </button>
+                                            );
+                                        })}
+                                </div>
+                                <div style={{ padding: '8px 12px', borderTop: '1px solid var(--line-1)', fontSize: 11.5, color: 'var(--ink-on-paper-3)' }}>
+                                    Channel country (YouTube only) · selection is remembered
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Sort by:</span>
-                        <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Sort order" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="recent">Recent</SelectItem>
-                                <SelectItem value="score">Outlier Score</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    {/* Posted date */}
+                    <select value={dateRange} onChange={(e) => { setDateRange(e.target.value as typeof dateRange); setTimeout(() => runBrowse(1), 0); }}
+                        style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', padding: '8px 10px', fontSize: 13, color: 'var(--ink-on-paper-2)', background: 'var(--paper-0)', cursor: 'pointer' }}>
+                        <option value="all">Posted: Any time</option>
+                        <option value="week">Past week</option>
+                        <option value="month">Past month</option>
+                        <option value="year">Past year</option>
+                    </select>
+
+                    {/* Long / Shorts */}
+                    <div style={{ display: 'flex', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+                        {(['long', 'shorts'] as const).map((d) => {
+                            const active = durationFilter === d;
+                            return (
+                                <button key={d} onClick={() => setDurationFilter(d)} /* refetch happens in the [sortBy, durationFilter] effect — a direct runBrowse here used the stale closure and fetched the OLD tab */
+                                    style={{ padding: '8px 16px', fontSize: 13, fontWeight: active ? 700 : 400, cursor: 'pointer', border: 'none', textTransform: 'capitalize', background: active ? 'var(--vm-red)' : 'var(--paper-0)', color: active ? '#fff' : 'var(--ink-on-paper-2)' }}>
+                                    {d === 'long' ? 'Long' : 'Shorts'}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {loading && videos.length === 0 ? (
-                    <div className="flex justify-center items-center py-20">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                {/* Row 2 — metric chips */}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <MetricChip label="Max subs" value={subsMax != null ? `${formatCompact(subsMax)}` : 'Any'} onChange={setSubsMax} current={subsMax} />
+                    <MetricChip label="Max views" value={viewsMax != null ? `${formatCompact(viewsMax)}` : 'Any'} onChange={setViewsMax} current={viewsMax} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--vm-red)', background: 'var(--vm-red-tint-l)' }}>
+                        <span style={{ fontSize: 12, color: 'var(--vm-red-deep)', fontWeight: 700 }}>Score ≥</span>
+                        <input type="number" value={minScore} min={0} onChange={(e) => setMinScore(Number(e.target.value) || 0)}
+                            style={{ width: 46, border: 'none', background: 'transparent', fontFamily: mono, fontWeight: 700, color: 'var(--vm-red-deep)', outline: 'none' }} />
                     </div>
-                ) : filteredAndSortedVideos.length > 0 ? (
-                    <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {filteredAndSortedVideos.map((video) => (
-                                <OutlierVideoCard key={video.id} video={video} />
-                            ))}
-                        </div>
+                </div>
 
-                        {/* Infinite scroll sentinel */}
-                        <div ref={sentinelRef} className="flex justify-center py-6">
-                            {loadingMore && (
-                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                            )}
-                            {!hasMore && filteredAndSortedVideos.length > 0 && totalResults > PER_PAGE && (
-                                <p className="text-sm text-muted-foreground">All results loaded</p>
-                            )}
-                        </div>
-                    </>
-                ) : (
-                    <div className="text-center py-20 bg-muted/20 rounded-lg border border-dashed">
-                        <Filter className="w-10 h-10 mx-auto text-muted-foreground mb-3 opacity-50" />
-                        <h3 className="text-lg font-medium">{hasSearched ? "No outliers found" : "No outliers available yet"}</h3>
-                        <p className="text-muted-foreground">{hasSearched ? "Try adjusting your filters or search query." : "Search for a topic to discover outlier videos."}</p>
-                        {hasSearched && (
-                            <Button variant="link" onClick={resetFilters} className="mt-2">
-                                Clear all filters
-                            </Button>
+                {/* Row 3 — actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--line-1)', paddingTop: 10, flexWrap: 'wrap' }}>
+                    {/* Saved filters loader */}
+                    <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                        <button onClick={() => { setSavedOpen((o) => !o); setSaveOpen(false); }} style={actionBtn}>
+                            <FolderOpen size={14} /> Saved filters <ChevronDown size={13} />
+                        </button>
+                        {savedOpen && (
+                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 240, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', overflow: 'hidden' }}>
+                                {savedList.length === 0 ? (
+                                    <div style={{ padding: 14, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>Nothing saved yet — set filters and hit Save.</div>
+                                ) : savedList.map((sf) => (
+                                    <button key={sf.id} onClick={() => loadFilter(sf)} style={{ ...rowBtn(false), justifyContent: 'space-between' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                                            <TrendingUp size={14} stroke="var(--vm-red)" />
+                                            <span style={{ fontSize: 13, color: 'var(--ink-on-paper-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sf.name}</span>
+                                        </span>
+                                        <span onClick={(e) => removeFilter(sf.id, e)} style={{ fontSize: 16, color: 'var(--ink-on-paper-3)', cursor: 'pointer', lineHeight: 1 }}>×</span>
+                                    </button>
+                                ))}
+                            </div>
                         )}
                     </div>
-                )}
+
+                    {/* Save */}
+                    <div style={{ position: 'relative' }}>
+                        <button onClick={() => { setSaveOpen((o) => !o); setSavedOpen(false); }} style={actionBtn}>
+                            <Save size={14} /> Save
+                        </button>
+                        {saveOpen && (
+                            <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 250, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', padding: 12 }}>
+                                <div style={{ fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-on-paper-3)', fontWeight: 700, marginBottom: 6 }}>Name this filter</div>
+                                <input autoFocus value={saveName} onChange={(e) => setSaveName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSaveFilter()}
+                                    style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '7px 9px', fontSize: 13, outline: 'none', marginBottom: 8 }} />
+                                <button onClick={handleSaveFilter} style={{ width: '100%', padding: '8px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Save filter</button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ width: 1, height: 22, background: 'var(--line-1)' }} />
+                    <button onClick={resetFilters} style={actionBtn}><RotateCcw size={14} /> Reset</button>
+                    <button onClick={handleSearch} style={{ padding: '10px 22px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Search
+                    </button>
+                </div>
             </div>
+
+            {/* Results header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>
+                    Showing <span style={{ fontFamily: mono, fontWeight: 700 }}>{videos.length}</span> of <span style={{ fontFamily: mono, fontWeight: 700 }}>{totalResults}</span> results
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingLeft: 12, borderLeft: '1px solid var(--line-1)', fontSize: 12, color: 'var(--ink-on-paper-3)' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><TrendingUp size={13} stroke="#0FB67E" /> Score</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={13} /> Views</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Heart size={13} /> Engagement</span>
+                </div>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>Sort by</span>
+                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                        style={{ border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', padding: '6px 10px', fontSize: 13, background: 'var(--paper-0)', cursor: 'pointer' }}>
+                        <option value="recent">Recent</option>
+                        <option value="score">Outlier score</option>
+                        <option value="views">Views</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Curated-feed banner: the initial screen shows hand-picked videos */}
+            {showingCurated && videos.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-on-paper-3)' }}>
+                        Curated picks
+                    </span>
+                    <button onClick={browseAll} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 12.5, color: 'var(--vm-red)' }}>
+                        Browse all outliers →
+                    </button>
+                </div>
+            )}
+
+            {/* Grid */}
+            {loading && videos.length === 0 ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 60, color: 'var(--ink-on-paper-3)' }}><Loader2 size={28} className="animate-spin" /></div>
+            ) : videos.length === 0 ? (
+                <div style={{ ...CARD, padding: 48, textAlign: 'center', color: 'var(--ink-on-paper-3)' }}>
+                    No outliers yet — search a topic to discover breakout videos, or paste a YouTube/TikTok/Instagram URL into the search bar.
+                </div>
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 20 }}>
+                    {videos.map((v) => (
+                        <OutlierCard
+                            key={`${v.platform}-${v.youtube_video_id}`}
+                            video={v}
+                            variant={cardVariant(v)}
+                            saved={!!savedMap[videoKey(v.platform, v.youtube_video_id)]}
+                            onToggleSave={toggleSaveVideo}
+                            onToggleFeature={user?.is_admin ? toggleFeature : undefined}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* Infinite-scroll sentinel */}
+            <div ref={sentinelRef} style={{ height: 1 }} />
+            {loadingMore && <div style={{ display: 'flex', justifyContent: 'center', padding: 20, color: 'var(--ink-on-paper-3)' }}><Loader2 size={20} className="animate-spin" /></div>}
+
+            {/* Save-with-tags modal */}
+            {pendingSave && (
+                <SaveOutlierModal
+                    video={pendingSave}
+                    onSave={(tags) => saveWithTags(pendingSave, tags)}
+                    onClose={() => setPendingSave(null)}
+                />
+            )}
         </div>
     );
+}
+
+const actionBtn: CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 'var(--r-pill)',
+    border: '1px solid var(--line-2)', background: 'var(--paper-0)', color: 'var(--ink-on-paper-2)',
+    fontSize: 13, cursor: 'pointer',
 };
 
-export default Outliers;
+function rowBtn(active: boolean): CSSProperties {
+    return {
+        width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+        border: 'none', cursor: 'pointer', textAlign: 'left',
+        background: active ? 'var(--vm-red-tint-l)' : 'transparent',
+    };
+}
+
+function MetricChip({ label, value, onChange, current }: { label: string; value: string; onChange: (v: number | undefined) => void; current: number | undefined }) {
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState(current?.toString() ?? '');
+    return (
+        <div style={{ position: 'relative' }}>
+            <button onClick={() => setOpen((o) => !o)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--line-2)', background: 'var(--paper-0)', cursor: 'pointer', fontFamily: mono }}>
+                <span style={{ fontSize: 12, color: 'var(--ink-on-paper-3)', fontFamily: 'var(--font-body)' }}>{label}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-on-paper-1)' }}>{value}</span>
+                <ChevronDown size={13} stroke="#76767F" />
+            </button>
+            {open && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30, width: 190, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', padding: 12 }}>
+                    <div style={{ fontSize: 12, color: 'var(--ink-on-paper-3)', marginBottom: 6 }}>{label} (leave blank for any)</div>
+                    <input type="number" value={draft} min={0} placeholder="e.g. 1000000" onChange={(e) => setDraft(e.target.value)}
+                        style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '7px 9px', fontSize: 13, outline: 'none', marginBottom: 8 }} />
+                    <button onClick={() => { onChange(draft.trim() === '' ? undefined : Number(draft)); setOpen(false); }}
+                        style={{ width: '100%', padding: '7px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Apply</button>
+                </div>
+            )}
+        </div>
+    );
+}

@@ -56,4 +56,20 @@ interface SocialProviderInterface
      * Publish a post's content/media to the given account.
      */
     public function publish(SocialAccount $account, SocialPost $post): PublishResult;
+
+    /**
+     * Current follower/subscriber count, or null when the platform/API plan
+     * doesn't expose it. Consumed by audience:refresh.
+     */
+    public function fetchFollowerCount(SocialAccount $account): ?int;
+
+    /**
+     * Engagement metrics for the given remote post ids, keyed by id →
+     * ['likes','comments','shares','views']. Only ids the platform returns data
+     * for appear. Consumed by posts:refresh-metrics.
+     *
+     * @param  array<int, string>  $remotePostIds
+     * @return array<string, array{likes:int, comments:int, shares:int, views:int}>
+     */
+    public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array;
 }

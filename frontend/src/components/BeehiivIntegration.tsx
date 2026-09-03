@@ -68,7 +68,7 @@ export function BeehiivIntegration({ onChange }: { onChange?: (s: BeehiivConnect
             {loading ? "Checking…"
               : connected
                 ? `Connected${status?.publication_name ? ` — ${status.publication_name}` : ""}${status?.key_hint ? ` · ${status.key_hint}` : ""}`
-                : "Pull newsletter post views into your reach conversion rate."}
+                : ""}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

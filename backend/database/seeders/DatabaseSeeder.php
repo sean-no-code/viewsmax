@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
                 // TitleSeeder::class,
             UserSeeder::class,
             ScriptSeeder::class, // Seed scripts after users are created
+            ShockingTruthsHookSeeder::class, // "Shocking truths" hook pack for each user's component library
                 // VideoSeeder::class, // Seed videos after users and titles are created
             ThumbnailSeeder::class,
             AiModelSeeder::class, // Seed AI models after users, ethnicities, and types are created

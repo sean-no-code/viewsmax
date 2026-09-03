@@ -41,6 +41,11 @@ function tabStyle(active: boolean): CSSProperties {
   };
 }
 
+// Content Sharing Guidelines, Required UX 2 NOTE and 4: the declarations name two
+// policies, and both must be reachable rather than plain text.
+// https://developers.tiktok.com/doc/content-sharing-guidelines/
+const policyLink: React.CSSProperties = { color: "inherit", textDecoration: "underline" };
+
 const PRIVACY_LABELS: Record<string, string> = {
   PUBLIC_TO_EVERYONE: "Everyone",
   MUTUAL_FOLLOW_FRIENDS: "Friends",
@@ -74,7 +79,7 @@ const todayStr = () => {
 /* ---------------- Follow-up comments ---------------- */
 // Extra messages posted after the post goes live: X reply threads, LinkedIn /
 // Instagram comments, Threads replies. Each comment can wait a delay after the
-// previous message in the chain — either a fixed preset or custom minutes.
+// previous message in the chain (Postiz-style presets + custom minutes).
 const COMMENT_PLATFORMS = ["x", "linkedin", "threads", "instagram"];
 const DELAY_PRESETS: Array<{ label: string; seconds: number }> = [
   { label: "Immediately", seconds: 0 },
@@ -430,6 +435,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   }, [c.postType]);
   useEffect(() => { if (tab !== "all" && !c.selected.includes(tab)) setTab("all"); }, [c.selected, tab]);
   // Load TikTok posting options the first time TikTok is selected.
+  //
+  // Known limitation: creator info is not refetched when the selected TikTok
+  // account changes, so with more than one account selected the panel shows the
+  // first account's nickname, privacy options and interaction flags and applies
+  // them to all of them. TikTok requires the options shown to match the account
+  // being posted to, so the others can be rejected.
   useEffect(() => {
     if (c.selected.includes("tiktok") && !c.creatorInfo && !c.creatorInfoLoading && !c.creatorInfoError) c.loadCreatorInfo();
     /* eslint-disable-next-line */
@@ -506,6 +517,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const tiktokNeedsBrand = tiktokSelected && !!c.tiktok.disclose_commercial && !c.tiktok.your_brand && !c.tiktok.branded_content;
   const tiktokBrandedPrivate = tiktokSelected && !!c.tiktok.branded_content && c.tiktok.privacy_level === "SELF_ONLY";
   const tiktokBlockReason: string | null = !tiktokSelected ? null
+    : c.creatorCannotPost ? c.creatorCannotPost
+    // A failed creator_info lookup leaves the privacy options empty, so without
+    // this the button would blame the user for not choosing one. Show TikTok's
+    // own reason — being throttled and being offline need different responses.
+    : c.creatorInfoError ? c.creatorInfoError
     : tiktokNeedsPrivacy ? "Choose who can view your TikTok post before publishing."
     : tiktokNeedsBrand ? "You need to indicate if your content promotes yourself, a third party, or both."
     : tiktokBrandedPrivate ? "Branded content can't be set to private on TikTok."
@@ -625,7 +641,18 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
       } else if (status === "posted") {
         // Publishing runs asynchronously on the queue — the post is NOT live
         // yet, so don't claim "Posted". Send the user to History to watch it.
-        toast("Processing — we're publishing your post. Track it in History.");
+        //
+        // Content Sharing Guidelines, Required UX 5(d) applies to TikTok only:
+        // those users must be told it may take a few minutes to process and that
+        // it then becomes visible on their profile, so that notice stays on
+        // screen until dismissed. Every other platform keeps the short toast it
+        // has always had — a TikTok rule should not change how posting to X or
+        // LinkedIn behaves.
+        if (c.selected.includes("tiktok")) {
+          toast("Publishing — it may take a few minutes for your post to finish processing and appear on your profile. Track it in History.", { duration: Infinity, closeButton: true });
+        } else {
+          toast("Processing — we're publishing your post. Track it in History.");
+        }
         navigate("/dashboard/post/history");
       } else {
         setDone("schedule");
@@ -835,7 +862,9 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
             )}
 
             <Card>
-              <SectionLabel>Caption</SectionLabel>
+              {/* TikTok audit 2a: the post text is the platform "Title/Description"
+                  metadata (TikTok title, YouTube title+description, etc.). */}
+              <SectionLabel>Title / Description</SectionLabel>
               <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                 <button onClick={() => setTab("all")} style={tabStyle(tab === "all")}>
                   <Icon name="layers" size={13} stroke={tab === "all" ? "#fff" : "var(--ink-on-paper-3)"} /> All platforms
@@ -851,7 +880,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
 
               {!editingOverride ? (
                 <>
-                  <MentionTextarea value={c.caption} onChangeText={c.setCaption} mentions={c.selected.includes("x")} accountId={c.accountSel["x"]?.[0]} rows={6} style={{ ...fieldBase, resize: "vertical", lineHeight: 1.55, minHeight: 130 }} placeholder="Write your caption…" />
+                  <MentionTextarea value={c.caption} onChangeText={c.setCaption} mentions={c.selected.includes("x")} accountId={c.accountSel["x"]?.[0]} rows={6} style={{ ...fieldBase, resize: "vertical", lineHeight: 1.55, minHeight: 130 }} placeholder="Write your title / description…" />
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 12, flexWrap: "wrap" }}>
                     {c.selected.map((id) => <CountChip key={id} id={id} status={c.status} />)}
                   </div>
@@ -909,6 +938,20 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 {activeOptTab === "tiktok" && (
                   c.creatorInfoLoading ? (
                     <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>Loading TikTok options…</div>
+                  ) : c.creatorCannotPost ? (
+                    // Content Sharing Guidelines, Required UX 1(b): the creator cannot post
+                    // right now, so stop here rather than showing an options panel
+                    // that cannot be used.
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", borderRadius: 10, padding: "11px 13px" }}>
+                      <Icon name="alert-triangle" size={16} stroke="var(--vm-red)" />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--vm-red-deep)", lineHeight: 1.45 }}>{c.creatorCannotPost}</span>
+                        <span style={{ fontSize: 11.5, color: "var(--ink-on-paper-2)", lineHeight: 1.5 }}>
+                          You can still save this as a draft. TikTok publishing is unavailable for this account until the limit clears.
+                        </span>
+                        <button onClick={() => c.loadCreatorInfo()} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>Check again</button>
+                      </div>
+                    </div>
                   ) : c.creatorInfoError ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--vm-red)" }}>
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {c.creatorInfoError}
@@ -971,9 +1014,28 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         <Toggle label="Disclose that this content promotes yourself, a brand, product or service" checked={!!c.tiktok.disclose_commercial} onChange={(v) => c.patchTiktok({ disclose_commercial: v, your_brand: v ? c.tiktok.your_brand : false, branded_content: v ? c.tiktok.branded_content : false })} />
                         {c.tiktok.disclose_commercial && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 6 }}>
+                            {/* Content Sharing Guidelines, Required UX 3(b): when the visibility is
+                                private, branded content is unavailable — say so, rather than
+                                only greying the control out. */}
+                            {c.tiktok.privacy_level === "SELF_ONLY" && (
+                              <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.5 }}>
+                                Branded content visibility cannot be set to private — choose a different audience above to use it.
+                              </span>
+                            )}
                             <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
                               <Toggle label="Your brand" checked={!!c.tiktok.your_brand} onChange={(v) => c.patchTiktok({ your_brand: v })} />
-                              <Toggle label="Branded content" checked={!!c.tiktok.branded_content} onChange={(v) => c.patchTiktok({ branded_content: v, ...(v && c.tiktok.privacy_level === "SELF_ONLY" ? { privacy_level: "" } : {}) })} />
+                              {/* Content Sharing Guidelines, Required UX 3(b): branded content only
+                                  works with public/friends visibility, so it is disabled —
+                                  with the required explanation on hover — while "only me"
+                                  is chosen. */}
+                              <span title={c.tiktok.privacy_level === "SELF_ONLY" ? "Branded content visibility cannot be set to private." : undefined}>
+                                <Toggle
+                                  label="Branded content"
+                                  checked={!!c.tiktok.branded_content}
+                                  disabled={c.tiktok.privacy_level === "SELF_ONLY"}
+                                  onChange={(v) => c.patchTiktok({ branded_content: v })}
+                                />
+                              </span>
                             </div>
                             {(c.tiktok.your_brand || c.tiktok.branded_content) && (
                               <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.5 }}>
@@ -1101,7 +1163,14 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         : "Fix the X thread — a tweet is empty or the thread is too long"}
                     </div>
                   )}
-                  <PostPreview id={previewId} text={c.textFor(previewId)} media={c.media} />
+                  <PostPreview
+                    id={previewId}
+                    text={c.textFor(previewId)}
+                    media={c.media}
+                    handle={previewId === "tiktok"
+                      ? (c.creatorInfo?.creator_username ? `@${c.creatorInfo.creator_username}` : c.creatorInfo?.creator_nickname) || undefined
+                      : undefined}
+                  />
                 </div>
               </div>
             </div>
@@ -1134,7 +1203,14 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       publish button; the wording changes for branded content. */}
                   {tiktokSelected && (
                     <div style={{ marginBottom: 12, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                      By posting, you agree to TikTok's {c.tiktok.branded_content ? "Branded Content Policy and " : ""}Music Usage Confirmation.
+                      By posting, you agree to TikTok's{" "}
+                      {c.tiktok.branded_content && (
+                        <>
+                          <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener noreferrer" style={policyLink}>Branded Content Policy</a>
+                          {" and "}
+                        </>
+                      )}
+                      <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" style={policyLink}>Music Usage Confirmation</a>.
                     </div>
                   )}
                   {tiktokBlockReason && (

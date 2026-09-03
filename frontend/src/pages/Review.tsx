@@ -7,6 +7,7 @@ import { Clock, Play, Youtube, RefreshCw, Unplug, Search, Star } from "lucide-re
 import { toast } from "sonner";
 import { youtubeAuthService, type YouTubeChannelData, type YouTubeAnalytics } from "@/lib/youtube-auth";
 import { viewsMaxApi } from "@/lib/api-service";
+import { supabase } from "@/integrations/supabase/client";
 import PrivacyConsentDialog from "@/components/PrivacyConsentDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { hasUserConsented, recordUserConsent, hasLocalConsent } from "@/lib/consent";

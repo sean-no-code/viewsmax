@@ -22,6 +22,7 @@ use App\Http\Controllers\PostMediaController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PrivacyConsentController;
 use App\Http\Controllers\PromptController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ScriptController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\ThumbnailController;
@@ -67,14 +68,30 @@ Route::post('/auth/resend-verification', [AuthController::class, 'resendVerifica
 Route::get('/ai', [\App\Http\Controllers\AiDiscoveryController::class, 'index'])
     ->middleware('throttle:ai-discovery');
 
+// Free transcript tools (public). Server-side so the CaptAPI key stays off the FE.
+Route::post('/free-tools/transcript', [\App\Http\Controllers\FreeToolTranscriptController::class, 'store'])
+    ->middleware('throttle:transcript');
+
 // Health check endpoint (public)
 Route::get('/health', function () {
     return response()->json([
         'status' => 'healthy',
         'timestamp' => now()->toISOString(),
-        'service' => config('app.name'),
+        'service' => 'Title Embedding API',
         'version' => '1.0.0',
     ]);
+});
+
+// Test thumbnail generation endpoint (public for testing)
+Route::post('/test/thumbnails', function (Illuminate\Http\Request $request) {
+    $request->validate([
+        'description' => 'required|string|max:1000',
+    ]);
+
+    $thumbnailHelper = app(\App\Services\ThumbnailHelper::class);
+    $result = $thumbnailHelper->generateThumbnailsWithFallbackJson($request->description);
+
+    return response()->json($result);
 });
 
 // Stripe webhooks (public - no authentication required)
@@ -186,7 +203,39 @@ Route::middleware('api.auth')->group(function () {
     // Outlier Search Routes (protected)
     Route::prefix('outliers')->group(function () {
         Route::get('/', [App\Http\Controllers\OutlierController::class, 'index']);
+        Route::get('/channels', [App\Http\Controllers\OutlierController::class, 'channels']);
         Route::post('/search', [App\Http\Controllers\OutlierController::class, 'search']);
+        Route::post('/fetch', [App\Http\Controllers\OutlierController::class, 'fetchByUrl']);
+
+        // Saved filter presets (per-user)
+        Route::get('/saved-filters', [App\Http\Controllers\OutlierSavedFilterController::class, 'index']);
+        Route::post('/saved-filters', [App\Http\Controllers\OutlierSavedFilterController::class, 'store']);
+        Route::delete('/saved-filters/{id}', [App\Http\Controllers\OutlierSavedFilterController::class, 'destroy']);
+
+        // Competitor channels (per-user)
+        Route::get('/competitors', [App\Http\Controllers\OutlierCompetitorController::class, 'index']);
+        Route::post('/competitors', [App\Http\Controllers\OutlierCompetitorController::class, 'store']);
+        Route::delete('/competitors/{channelId}', [App\Http\Controllers\OutlierCompetitorController::class, 'destroy'])->whereNumber('channelId');
+
+        // Saved-outliers library + tags (per-user)
+        Route::get('/tags', [App\Http\Controllers\SavedOutlierController::class, 'tags']);
+        Route::get('/library', [App\Http\Controllers\SavedOutlierController::class, 'index']);
+        Route::post('/library', [App\Http\Controllers\SavedOutlierController::class, 'store']);
+        Route::patch('/library/{id}', [App\Http\Controllers\SavedOutlierController::class, 'update']);
+        Route::delete('/library/{id}', [App\Http\Controllers\SavedOutlierController::class, 'destroy']);
+
+        // Single video + AI breakdown (registered last; {platform} is constrained so
+        // these can never shadow the literal routes above)
+        Route::get('/{platform}/{videoId}', [App\Http\Controllers\OutlierController::class, 'show'])
+            ->whereIn('platform', ['youtube', 'tiktok', 'instagram']);
+        Route::post('/{platform}/{videoId}/refresh-media', [App\Http\Controllers\OutlierController::class, 'refreshMedia'])
+            ->whereIn('platform', ['instagram']);
+        Route::post('/{platform}/{videoId}/feature', [App\Http\Controllers\OutlierController::class, 'toggleFeature'])
+            ->whereIn('platform', ['youtube', 'tiktok', 'instagram'])->middleware('role:admin');
+        Route::get('/{platform}/{videoId}/breakdown', [App\Http\Controllers\OutlierBreakdownController::class, 'show'])
+            ->whereIn('platform', ['youtube', 'tiktok', 'instagram']);
+        Route::post('/{platform}/{videoId}/breakdown', [App\Http\Controllers\OutlierBreakdownController::class, 'store'])
+            ->whereIn('platform', ['youtube', 'tiktok', 'instagram']);
     });
 
     // Analyzer Status Routes (protected)
@@ -365,6 +414,10 @@ Route::middleware('api.auth')->group(function () {
     Route::get('tracking-events/stats', [TrackingEventController::class, 'getStats']);
     Route::get('tracking-events/timeseries', [TrackingEventController::class, 'getTimeseries']);
     Route::get('tracking-events/sources', [TrackingEventController::class, 'getSources']);
+
+    // Audience Growth: per-platform follower series + engagement-ranked posts.
+    Route::get('analytics/audience', [\App\Http\Controllers\AnalyticsGrowthController::class, 'audience']);
+    Route::get('analytics/posts', [\App\Http\Controllers\AnalyticsGrowthController::class, 'posts']);
     Route::get('goal-types', [GoalTypeController::class, 'index']); // Seeded conversion event types
     Route::apiResource('tracking-events', TrackingEventController::class);
     Route::apiResource('tracking-links', TrackingLinkController::class)->except(['index']); // Standard CRUD
@@ -379,7 +432,52 @@ Route::middleware('api.auth')->group(function () {
 
     // Multi-platform Posts (compose + schedule)
     Route::post('/posts/media', [PostMediaController::class, 'store']);
+    // Presigned direct-to-R2 media uploads (browser → bucket, no server relay).
+    Route::post('/posts/media/direct', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'store']);
+    Route::post('/posts/media/direct/complete', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'complete']);
+    Route::post('/posts/media/direct/abort', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'abort']);
     // Retry publishing for a single failed platform target (leaves siblings alone).
     Route::post('/posts/{post}/targets/{target}/retry', [PostController::class, 'retryTarget']);
     Route::apiResource('posts', PostController::class);
+
+    // Admin-only routes
+    Route::middleware('role:admin')->group(function () {
+        // Publishing monitor — all clients' posts + per-platform outcomes.
+        Route::get('/admin/posts', [\App\Http\Controllers\Admin\PostMonitorController::class, 'index']);
+        Route::get('/admin/posts/stats', [\App\Http\Controllers\Admin\PostMonitorController::class, 'stats']);
+        Route::post('/admin/posts/reconcile', [\App\Http\Controllers\Admin\PostMonitorController::class, 'reconcile']);
+        Route::post('/admin/posts/{post}/requeue', [\App\Http\Controllers\Admin\PostMonitorController::class, 'requeue']);
+        Route::get('/admin/posts/{post}', [\App\Http\Controllers\Admin\PostMonitorController::class, 'show']);
+
+        // Users monitor — index + signup / added-card widgets over a date range.
+        // Offers + links monitor across all clients.
+        Route::get('/admin/offers', [\App\Http\Controllers\Admin\AnalyticsMonitorController::class, 'offers']);
+        Route::get('/admin/links', [\App\Http\Controllers\Admin\AnalyticsMonitorController::class, 'links']);
+
+        Route::get('/admin/users', [\App\Http\Controllers\Admin\UserAdminController::class, 'index']);
+        Route::get('/admin/users/stats', [\App\Http\Controllers\Admin\UserAdminController::class, 'stats']);
+        Route::get('/admin/users/suggest', [\App\Http\Controllers\Admin\UserAdminController::class, 'suggest']);
+        Route::delete('/admin/users/{user}', [\App\Http\Controllers\Admin\UserAdminController::class, 'destroy']);
+        Route::get('/admin/users/{user}/accounts', [\App\Http\Controllers\Admin\UserAdminController::class, 'accounts']);
+        Route::get('/admin/users/{user}', [\App\Http\Controllers\Admin\UserAdminController::class, 'show'])->whereNumber('user');
+        Route::put('/admin/users/{user}/role', [\App\Http\Controllers\Admin\UserAdminController::class, 'updateRole']);
+
+        // Role management
+        Route::prefix('roles')->group(function () {
+            Route::get('/', [RoleController::class, 'index']);
+            Route::post('/assign', [RoleController::class, 'assignRole']);
+            Route::post('/remove', [RoleController::class, 'removeRole']);
+            Route::get('/user/{userId}', [RoleController::class, 'getUserRoles']);
+        });
+
+        // Plan management (admin only)
+        Route::prefix('admin/plans')->group(function () {
+            Route::post('/', [PlanController::class, 'store']);
+            Route::put('/{id}', [PlanController::class, 'update']);
+            Route::delete('/{id}', [PlanController::class, 'destroy']);
+        });
+
+        // User plan status updates (admin sync helper)
+        Route::post('/user-plans/update-status', [UserPlanController::class, 'updateStatus']);
+    });
 });

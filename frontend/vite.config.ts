@@ -14,9 +14,8 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "::",
       port: 8080,
-      // Allow serving the dev app through a tunnel (for OAuth testing), by
-      // wildcard domain rather than a specific tunnel name.
-      allowedHosts: [".ngrok-free.app", ".ngrok-free.dev"],
+      // Allow serving the dev app through an ngrok tunnel (for OAuth testing).
+      allowedHosts: [".ngrok-free.app", "oxalic-carry-interparenthetically.ngrok-free.dev"],
     },
     plugins: [
       react(),

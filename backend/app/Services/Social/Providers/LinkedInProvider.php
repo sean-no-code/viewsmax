@@ -87,15 +87,28 @@ class LinkedInProvider extends AbstractSocialProvider implements SupportsComment
             return $account;
         }
 
-        try {
-            $tokens = $this->refreshWithToken('https://www.linkedin.com/oauth/v2/accessToken', $account->refresh_token);
+        return $this->refreshingSafely($account, function (SocialAccount $account) {
+            $response = Http::asForm()->post('https://www.linkedin.com/oauth/v2/accessToken', [
+                'client_id' => $this->clientId(),
+                'client_secret' => $this->clientSecret(),
+                'refresh_token' => $account->refresh_token,
+                'grant_type' => 'refresh_token',
+            ]);
 
-            return $this->applyTokens($account, $tokens);
-        } catch (\Throwable $e) {
-            $account->markNeedsReauth('LinkedIn token refresh failed.');
+            if (! $response->successful()) {
+                if ($this->isDefinitiveAuthFailure($response->status())) {
+                    $account->markNeedsReauth('LinkedIn token refresh was rejected — reconnect the account.');
+                } else {
+                    Log::warning('LinkedIn token refresh failed transiently', [
+                        'account_id' => $account->id, 'status' => $response->status(),
+                    ]);
+                }
 
-            return $account;
-        }
+                return $account;
+            }
+
+            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+        });
     }
 
     public function publish(SocialAccount $account, SocialPost $post): PublishResult

@@ -16,12 +16,14 @@ class UserPlan extends Model
         'starts_at',
         'expires_at',
         'cancelled_at',
+        'trial_reminder_sent_at',
     ];
 
     protected $casts = [
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'trial_reminder_sent_at' => 'datetime',
     ];
 
     /**

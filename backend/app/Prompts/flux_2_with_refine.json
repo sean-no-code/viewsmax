@@ -104,7 +104,7 @@
     },
     "121": {
         "inputs": {
-            "image": "example.jpeg"
+            "image": "sean.jpeg"
         },
         "class_type": "LoadImage",
         "_meta": {
@@ -293,7 +293,7 @@
     "185": {
         "inputs": {
             "mode": "always",
-            "webhook_url": "",
+            "webhook_url": "https://e17cfa3b2b5f.ngrok-free.app/api/webhooks/comfyui/completion",
             "verify_ssl": false,
             "notification_text": "Image generation complete",
             "json_format": "{\"prompt_id\":\"<notification_text>\",\"image_id\":\"44\",\"status\":\"completed\"}",

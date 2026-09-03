@@ -19,6 +19,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton:
             "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          // Styling only — this does NOT give every toast a close button. Sonner
+          // renders one solely for toasts that pass closeButton, which today is
+          // just the TikTok publish notice. The class exists so that button, when
+          // it appears, uses the product's own paper/ink tokens instead of
+          // Sonner's stark bordered circle.
+          closeButton:
+            "vm-toast-close",
         },
       }}
       {...props}

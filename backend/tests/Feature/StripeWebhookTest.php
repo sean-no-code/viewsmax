@@ -116,6 +116,45 @@ class StripeWebhookTest extends TestCase
         $this->assertNotNull($user->fresh()->card_added_at);
     }
 
+    /**
+     * Affiliate signups: client_reference_id carries the Rewardful referral
+     * UUID, so the webhook must resolve the user from metadata.user_id and
+     * never misread the UUID as a user id.
+     */
+    public function test_checkout_completed_resolves_user_from_metadata_when_client_reference_is_a_referral_uuid(): void
+    {
+        $user = User::factory()->create(['stripe_customer_id' => 'cus_1']);
+        $this->proPlan();
+
+        $periodEnd = now()->addMonth()->timestamp;
+        $this->mock(StripeService::class, function ($mock) use ($periodEnd) {
+            $mock->shouldReceive('getSubscription')->with('sub_ref')->andReturn([
+                'status' => 'active',
+                'current_period_end' => $periodEnd,
+                'items' => ['data' => [[
+                    'price' => ['id' => 'price_pro'],
+                    'current_period_end' => $periodEnd,
+                ]]],
+                'metadata' => [],
+                'latest_invoice' => ['amount_paid' => 9900],
+            ]);
+            $mock->shouldReceive('subscriptionHasTrial')->andReturn(false);
+        });
+
+        $this->postJson('/api/webhooks/stripe', [
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => [
+                'id' => 'cs_ref',
+                'subscription' => 'sub_ref',
+                'customer' => 'cus_1',
+                'client_reference_id' => 'c33e60ec-71f8-4f14-9c5c-3e0e0f4c8b1a', // Rewardful UUID
+                'metadata' => ['user_id' => (string) $user->id],
+            ]],
+        ])->assertOk();
+
+        $this->assertNotNull($user->fresh()->card_added_at);
+    }
+
     public function test_invoice_payment_paid_event_allocates_paid_credits_and_activates(): void
     {
         $user = User::factory()->create();

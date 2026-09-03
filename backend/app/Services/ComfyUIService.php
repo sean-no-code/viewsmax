@@ -66,12 +66,12 @@ class ComfyUIService implements ThumbnailServiceInterface
      * This should match the filename uploaded to ComfyUI server
      *
      * Format: {model_name}-{model_id}.safetensors
-     * Example: example-8.safetensors, john-12.safetensors
+     * Example: sean-8.safetensors, john-12.safetensors
      */
     public function getLoraFilename(\App\Models\AiModel $aiModel): string
     {
         // Use simple format: {name}-{id}.safetensors
-        // Example: example-8.safetensors
+        // Example: sean-8.safetensors
         $safeName = preg_replace('/[^a-zA-Z0-9-_]/', '-', strtolower($aiModel->name));
 
         return $safeName . '-' . $aiModel->id . '.safetensors';

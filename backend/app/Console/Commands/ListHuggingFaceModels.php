@@ -29,7 +29,7 @@ class ListHuggingFaceModels extends Command
      */
     public function handle()
     {
-        $namespace = $this->option('namespace') ?: config('services.huggingface.namespace', 'viewsmax');
+        $namespace = $this->option('namespace') ?: config('services.huggingface.namespace', 'iclicksee');
         $limit = (int) $this->option('limit');
         $jsonOutput = $this->option('json');
         

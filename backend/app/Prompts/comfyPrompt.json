@@ -31,7 +31,7 @@
           "115",
           0
         ],
-        "lora_name": "example.safetensors",
+        "lora_name": "sean.safetensors",
         "strength_model": 1.0,
         "strength_clip": 1.0
       }
@@ -307,7 +307,7 @@
         },
         "lora_1": {
           "on": true,
-          "lora": "example.safetensors",
+          "lora": "sean.safetensors",
           "strength": 1
         },
         "➕ Add Lora": "",

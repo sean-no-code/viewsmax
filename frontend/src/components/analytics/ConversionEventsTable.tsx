@@ -9,7 +9,6 @@ import { fmtFull, fmtMoney, type LinkMetric } from "@/lib/analytics-model";
 interface Row {
   id: string;
   source: string;
-  visitors: number;
   views: number;
   clicks: number;
   calls: number;
@@ -18,7 +17,7 @@ interface Row {
   revenue: number;
 }
 
-const GRID = "minmax(0,2.4fr) repeat(6, minmax(76px,1fr)) minmax(88px,1fr)";
+const GRID = "minmax(0,2.4fr) repeat(5, minmax(76px,1fr)) minmax(88px,1fr)";
 const headCell: CSSProperties = { textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".05em", textTransform: "uppercase", color: "rgba(255,255,255,.6)", fontWeight: 600 };
 const numCell: CSSProperties = { textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-2)" };
 const totalNum: CSSProperties = { textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, color: "var(--ink-on-paper-1)" };
@@ -35,14 +34,14 @@ export function ConversionEventsTable({
   const rows = useMemo<Row[]>(() => {
     const base: Row[] = links.map((l) => ({
       id: l.id, source: l.label,
-      visitors: l.visitors, views: l.viewsSince, clicks: l.clicks, calls: l.calls, emails: l.emails, sales: l.conv, revenue: l.rev,
+      views: l.viewsSince, clicks: l.clicks, calls: l.calls, emails: l.emails, sales: l.conv, revenue: l.rev,
     }));
     return base.sort((a, b) => (asc ? a.revenue - b.revenue : b.revenue - a.revenue));
   }, [asc, links]);
 
   const totals = useMemo(() => rows.reduce(
-    (t, r) => ({ visitors: t.visitors + r.visitors, views: t.views + r.views, clicks: t.clicks + r.clicks, calls: t.calls + r.calls, emails: t.emails + r.emails, sales: t.sales + r.sales, revenue: t.revenue + r.revenue }),
-    { visitors: 0, views: 0, clicks: 0, calls: 0, emails: 0, sales: 0, revenue: 0 },
+    (t, r) => ({ views: t.views + r.views, clicks: t.clicks + r.clicks, calls: t.calls + r.calls, emails: t.emails + r.emails, sales: t.sales + r.sales, revenue: t.revenue + r.revenue }),
+    { views: 0, clicks: 0, calls: 0, emails: 0, sales: 0, revenue: 0 },
   ), [rows]);
 
   return (
@@ -54,11 +53,10 @@ export function ConversionEventsTable({
       </div>
 
       <div style={{ overflowX: "auto" }}>
-        <div style={{ minWidth: 920 }}>
+        <div style={{ minWidth: 840 }}>
           {/* dark header row */}
           <div style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "11px 18px", background: "var(--ink-900)" }}>
             <div style={{ ...headCell, textAlign: "left" }}>Content</div>
-            <div style={headCell}>Visitors</div>
             <div style={headCell}>Content Views</div>
             <div style={headCell}>Clicks</div>
             <div style={headCell}>Call bookings</div>
@@ -72,7 +70,6 @@ export function ConversionEventsTable({
           {/* totals row */}
           <div style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "12px 18px", borderBottom: "2px solid var(--line-1)" }}>
             <div style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, color: "var(--ink-on-paper-1)" }}>All content</div>
-            <div style={totalNum}>{fmtFull(totals.visitors)}</div>
             <div style={totalNum}>{fmtFull(totals.views)}</div>
             <div style={totalNum}>{fmtFull(totals.clicks)}</div>
             <div style={totalNum}>{fmtFull(totals.calls)}</div>
@@ -90,7 +87,6 @@ export function ConversionEventsTable({
               onMouseEnter={(e) => { if (onOpenContent) e.currentTarget.style.background = "var(--paper-2)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = idx % 2 === 1 ? "var(--paper-1)" : "transparent"; }}>
               <div style={{ fontFamily: "var(--font-body)", fontWeight: 500, fontSize: 13, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", paddingRight: 14 }}>{r.source}</div>
-              <div style={numCell}>{fmtFull(r.visitors)}</div>
               <div style={numCell}>{r.views > 0 ? fmtFull(r.views) : "—"}</div>
               <div style={numCell}>{fmtFull(r.clicks)}</div>
               <div style={numCell}>{fmtFull(r.calls)}</div>

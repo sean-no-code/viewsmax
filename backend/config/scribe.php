@@ -48,6 +48,7 @@ return [
             // social, offers (tracking-events), tracking links, analytics,
             // contents, connections, feature requests, API keys, plans.
             'exclude' => [
+                'api/admin/*',
                 'api/webhooks/*',
                 'api/test/*',
                 'api/track/*',

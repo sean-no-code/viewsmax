@@ -155,7 +155,7 @@ export default function AnalyticsOverview() {
     <AnalyticsShell>
       <div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26, letterSpacing: "-.03em", color: "var(--ink-on-paper-1)", margin: 0 }}>Analytics</h1>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26, letterSpacing: "-.03em", color: "var(--ink-on-paper-1)", margin: 0 }}>Revenue growth</h1>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-on-paper-3)" }}>{domain}</span>
         </div>
         <p style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--ink-on-paper-2)", margin: "6px 0 0", maxWidth: 780, lineHeight: 1.5 }}>
@@ -194,7 +194,7 @@ export default function AnalyticsOverview() {
           </div>
 
           {/* GA-style acquisition: sources (grouped visitors) + full referrer URLs. */}
-          <TrafficSources data={trafficSources} loading={sourcesLoading} />
+          <TrafficSources data={trafficSources} loading={sourcesLoading} limit={5} moreHref="/dashboard/analytics/sources" />
 
           <ConversionEventsTable
             links={tableLinks}

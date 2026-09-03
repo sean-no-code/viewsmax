@@ -1,7 +1,18 @@
-import { BarChart3, DollarSign, Send, Plug, Lightbulb, Settings, Zap } from "lucide-react";
+import { BarChart3, DollarSign, Send, Plug, Shield, Zap, Search, CalendarDays, ScrollText, TrendingUp, type LucideIcon } from "lucide-react";
+
+type NavSubItem = { title: string; i18nKey?: string; url: string };
+type NavItem = {
+  title: string;
+  i18nKey?: string;
+  url: string;
+  icon: LucideIcon;
+  isProFeature?: boolean;
+  subItems?: NavSubItem[];
+};
 import { NavLink, useLocation, Link } from "react-router-dom";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   Sidebar,
@@ -22,7 +33,7 @@ import {
 
 // `i18nKey` looks up the translated label (nav.* in locales/*/translation.json);
 // `title` stays as the English fallback and the stable React key.
-const allNavigationItems = [
+const allNavigationItems: NavItem[] = [
   {
     title: "Post",
     i18nKey: "nav.post",
@@ -34,8 +45,29 @@ const allNavigationItems = [
       { title: "Drafts", i18nKey: "nav.drafts", url: "/dashboard/post/drafts" },
       { title: "Scheduled", i18nKey: "nav.scheduled", url: "/dashboard/post/scheduled" },
       { title: "History", i18nKey: "nav.history", url: "/dashboard/post/history" },
-      { title: "Calendar", i18nKey: "nav.calendar", url: "/dashboard/post/calendar" },
     ]
+  },
+  // {
+  //   title: "Scripts",
+  //   i18nKey: "nav.scripts",
+  //   url: "/dashboard/scripts",
+  //   icon: ScrollText,
+  //   isProFeature: true,
+  //   subItems: [
+  //     { title: "Create", i18nKey: "nav.scriptsCreate", url: "/dashboard/scripts/create" },
+  //     { title: "Library", i18nKey: "nav.scriptsLibrary", url: "/dashboard/scripts/library" },
+  //   ]
+  // },
+  {
+    title: "Outliers",
+    i18nKey: "nav.outliers",
+    url: "/dashboard/outliers",
+    icon: TrendingUp,
+    isProFeature: true,
+    subItems: [
+      { title: "Browse", i18nKey: "nav.outliersBrowse", url: "/dashboard/outliers" },
+      { title: "Library", i18nKey: "nav.outliersLibrary", url: "/dashboard/outliers/library" },
+    ],
   },
   {
     title: "Monetization",
@@ -47,20 +79,57 @@ const allNavigationItems = [
       { title: "Offers", i18nKey: "nav.offers", url: "/dashboard/monetization/offers" },
     ]
   },
-  { title: "Analytics", i18nKey: "nav.analytics", url: "/dashboard/analytics/overview", icon: BarChart3, isProFeature: false },
+  {
+    title: "Analytics",
+    i18nKey: "nav.analytics",
+    url: "/dashboard/analytics/overview",
+    icon: BarChart3,
+    isProFeature: false,
+    subItems: [
+      { title: "Revenue Growth", i18nKey: "nav.revenueGrowth", url: "/dashboard/analytics/overview" },
+      { title: "Audience Growth", i18nKey: "nav.audienceGrowth", url: "/dashboard/analytics/audience-growth" },
+    ]
+  },
   { title: "Boosts", i18nKey: "nav.boosts", url: "/dashboard/boosts", icon: Zap, isProFeature: false },
+  { title: "Calendar", i18nKey: "nav.calendar", url: "/dashboard/calendar", icon: CalendarDays, isProFeature: false },
+  // { title: "SEO", i18nKey: "nav.seo", url: "/dashboard/seo", icon: Search, isProFeature: false },
   { title: "Connections", i18nKey: "nav.connections", url: "/dashboard/connections", icon: Plug, isProFeature: false },
-  { title: "Settings", i18nKey: "nav.settings", url: "/dashboard/settings", icon: Settings, isProFeature: false },
-  { title: "Request a feature", i18nKey: "nav.requestFeature", url: "/dashboard/feature-requests", icon: Lightbulb, isProFeature: false },
+  // Settings lives in the top-nav user menu; feature requests under top-nav Support.
 ];
+
+// Admin-only — appended to the nav when the signed-in user is an admin.
+const adminNavigationItem: NavItem = {
+  title: "Admin",
+  url: "/dashboard/admin/posts",
+  icon: Shield,
+  isProFeature: false,
+  subItems: [
+    { title: "Publishing monitor", url: "/dashboard/admin/posts" },
+    { title: "Users", url: "/dashboard/admin/users" },
+    { title: "Offers", url: "/dashboard/admin/offers" },
+    { title: "Links", url: "/dashboard/admin/links" },
+    { title: "Lead magnet", url: "/dashboard/admin/lead-magnet" },
+  ],
+};
 
 export function AppSidebar() {
   const { t } = useTranslation();
   const { state } = useSidebar();
+  const { user } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const navigationItems = allNavigationItems;
+  const isAdmin = !!user?.is_admin;
+
+  // Audience Growth is admin-only for now (multi-platform data pipeline still
+  // being finished) — hide it from the Analytics submenu for non-admins.
+  const baseItems = allNavigationItems.map((item) =>
+    item.title === "Analytics" && item.subItems
+      ? { ...item, subItems: item.subItems.filter((sub) => sub.title !== "Audience Growth" || isAdmin) }
+      : item,
+  );
+
+  const navigationItems = isAdmin ? [...baseItems, adminNavigationItem] : baseItems;
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>

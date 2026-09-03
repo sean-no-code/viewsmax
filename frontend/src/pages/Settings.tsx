@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Switch } from "@/components/ui/switch";
 import { youtubeAuthService } from "@/lib/youtube-auth";
 import { viewsMaxApi } from "@/lib/api-service";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import ConnectAccounts from "@/components/ConnectAccounts";
 import AiAssistantAccess from "@/components/AiAssistantAccess";

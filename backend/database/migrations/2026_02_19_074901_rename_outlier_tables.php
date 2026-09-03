@@ -12,6 +12,12 @@ return new class extends Migration
     {
         $schema = Schema::connection('outlier_db');
 
+        // Idempotent: skip when the rename already happened on this outlier DB
+        // (tables already live as channels/videos).
+        if (! $schema->hasTable('outlier_videos')) {
+            return;
+        }
+
         // 1. Drop FK before any renames
         $schema->table('outlier_videos', function (Blueprint $table) {
             $table->dropForeign(['outlier_channel_id']);

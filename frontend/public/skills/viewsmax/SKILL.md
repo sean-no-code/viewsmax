@@ -66,11 +66,6 @@ curl -s -X POST -H "Authorization: Bearer $VIEWSMAX_API_KEY" \
 ```
 
 - `status`: `draft` | `posted` (publish now) | `scheduled` (+ `scheduled_at`).
-- `options`: optional per-platform publish settings, keyed by platform — e.g.
-  `{"tiktok": {"privacy_level": "SELF_ONLY", "auto_add_music": true}}`.
-  `options.tiktok.auto_add_music` (boolean, **default `false`**) lets TikTok
-  auto-add its recommended background music to a **photo slideshow**; it is
-  ignored for video, and there is no music option for Instagram.
 - Publishing is **asynchronous**. Poll `GET /api/posts/{id}` and check each
   entry in `targets[]` — a post is only live on a platform when its target
   status is `published`. Never report success before that.

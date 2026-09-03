@@ -1,0 +1,186 @@
+services:
+    # Laravel Application (optional - for development)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: viewsmax_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=tubemaster
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL}
+      - LOG_SLACK_USERNAME=${LOG_SLACK_USERNAME:-TubeMaster Error Bot}
+      - LOG_SLACK_EMOJI=${LOG_SLACK_EMOJI:-:warning:}
+      - LOG_SLACK_LEVEL=${LOG_SLACK_LEVEL:-error}
+    depends_on:
+      - postgres
+    networks:
+      - viewsmax_network
+  # PostgreSQL Database
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: viewsmax_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tubemaster
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - viewsmax_network
+
+  # Queue Worker 1
+  queue-worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: viewsmax_queue_worker_1
+    restart: unless-stopped
+    command: php artisan queue:work database --sleep=3 --tries=3 --timeout=300 --memory=512
+    volumes:
+      - .:/var/www/html
+      # Without this the worker uses PHP's 128M default and OOMs uploading video.
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=tubemaster
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - QUEUE_CONNECTION=database
+      - LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL}
+      - LOG_SLACK_USERNAME=${LOG_SLACK_USERNAME:-TubeMaster Error Bot}
+      - LOG_SLACK_EMOJI=${LOG_SLACK_EMOJI:-:warning:}
+      - LOG_SLACK_LEVEL=${LOG_SLACK_LEVEL:-error}
+    depends_on:
+      - postgres
+    networks:
+      - viewsmax_network
+
+  # Scheduler — runs `schedule:run` every minute (publishes due scheduled posts)
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: viewsmax_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www/html
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=tubemaster
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - QUEUE_CONNECTION=database
+      - LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL}
+      - LOG_SLACK_USERNAME=${LOG_SLACK_USERNAME:-TubeMaster Error Bot}
+      - LOG_SLACK_EMOJI=${LOG_SLACK_EMOJI:-:warning:}
+      - LOG_SLACK_LEVEL=${LOG_SLACK_LEVEL:-error}
+    depends_on:
+      - postgres
+    networks:
+      - viewsmax_network
+
+  # Queue Worker 2
+  # queue-worker-2:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: viewsmax_queue_worker_2
+  #   restart: unless-stopped
+  #   command: php artisan queue:work database --sleep=3 --tries=3 --timeout=300 --memory=512
+  #   volumes:
+  #     - .:/var/www/html
+  #   environment:
+  #     - DB_HOST=postgres
+  #     - DB_PORT=5432
+  #     - DB_DATABASE=tubemaster
+  #     - DB_USERNAME=postgres
+  #     - DB_PASSWORD=postgres
+  #     - QUEUE_CONNECTION=database
+  #     - LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL}
+  #     - LOG_SLACK_USERNAME=${LOG_SLACK_USERNAME:-TubeMaster Error Bot}
+  #     - LOG_SLACK_EMOJI=${LOG_SLACK_EMOJI:-:warning:}
+  #     - LOG_SLACK_LEVEL=${LOG_SLACK_LEVEL:-error}
+  #   depends_on:
+  #     - postgres
+  #   networks:
+  #     - viewsmax_network
+
+  # # Queue Worker 3
+  # queue-worker-3:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: viewsmax_queue_worker_3
+  #   restart: unless-stopped
+  #   command: php artisan queue:work database --sleep=3 --tries=3 --timeout=300 --memory=512
+  #   volumes:
+  #     - .:/var/www/html
+  #   environment:
+  #     - DB_HOST=postgres
+  #     - DB_PORT=5432
+  #     - DB_DATABASE=tubemaster
+  #     - DB_USERNAME=postgres
+  #     - DB_PASSWORD=postgres
+  #     - QUEUE_CONNECTION=database
+  #     - LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL}
+  #     - LOG_SLACK_USERNAME=${LOG_SLACK_USERNAME:-TubeMaster Error Bot}
+  #     - LOG_SLACK_EMOJI=${LOG_SLACK_EMOJI:-:warning:}
+  #     - LOG_SLACK_LEVEL=${LOG_SLACK_LEVEL:-error}
+  #   depends_on:
+  #     - postgres
+  #   networks:
+  #     - viewsmax_network
+
+  # # Queue Worker 4
+  # queue-worker-4:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: viewsmax_queue_worker_4
+  #   restart: unless-stopped
+  #   command: php artisan queue:work database --sleep=3 --tries=3 --timeout=300 --memory=512
+  #   volumes:
+  #     - .:/var/www/html
+  #   environment:
+  #     - DB_HOST=postgres
+  #     - DB_PORT=5432
+  #     - DB_DATABASE=tubemaster
+  #     - DB_USERNAME=postgres
+  #     - DB_PASSWORD=postgres
+  #     - QUEUE_CONNECTION=database
+  #     - LOG_SLACK_WEBHOOK_URL=${LOG_SLACK_WEBHOOK_URL}
+  #     - LOG_SLACK_USERNAME=${LOG_SLACK_USERNAME:-TubeMaster Error Bot}
+  #     - LOG_SLACK_EMOJI=${LOG_SLACK_EMOJI:-:warning:}
+  #     - LOG_SLACK_LEVEL=${LOG_SLACK_LEVEL:-error}
+  #   depends_on:
+  #     - postgres
+  #   networks:
+  #     - viewsmax_network
+
+
+
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  viewsmax_network:
+    driver: bridge

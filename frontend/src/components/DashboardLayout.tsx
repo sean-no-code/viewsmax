@@ -2,12 +2,11 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Crown, Coins, HelpCircle, MessageCircle, Settings, Globe } from "lucide-react";
+import { LogOut, User, Crown, Coins, HelpCircle, MessageCircle, Settings, Globe, Lightbulb } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES } from "@/i18n";
 import { viewsMaxApi } from "@/lib/api-service";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
 import { useUserCredits } from "@/contexts/UserCreditsContext";
 import { Link } from "react-router-dom";
 import {
@@ -16,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { RoleBadge } from "@/components/ui/role-badge";
 import { AIModelProcessingLoader } from "@/components/AIModelProcessingLoader";
 
 export default function DashboardLayout() {
@@ -28,11 +26,12 @@ export default function DashboardLayout() {
     await i18n.changeLanguage(code); // persists to localStorage via the detector
     void viewsMaxApi.updateUserSettings({ locale: code }); // best-effort server sync
   };
-  const { userRole, planName } = useUserRole();
   const { credits, isAnimating } = useUserCredits();
 
   const getPageTitle = () => {
     const path = location.pathname;
+    if (path.startsWith('/dashboard/outliers/breakdown/')) return 'Breakdown';
+    if (path === '/dashboard/outliers/library') return 'Outliers Library';
     if (path === '/dashboard/outliers') return 'Outliers';
     if (path === '/dashboard/titles/new') return 'Create Titles';
     if (path === '/dashboard/scripts') return 'Scripts';
@@ -45,13 +44,17 @@ export default function DashboardLayout() {
     if (path === '/dashboard/post') return 'New Post';
     if (path === '/dashboard/post/drafts') return 'Drafts';
     if (path === '/dashboard/post/scheduled') return 'Scheduled';
-    if (path === '/dashboard/post/calendar') return 'Calendar';
+    if (path === '/dashboard/post/calendar' || path === '/dashboard/calendar') return 'Calendar';
     if (path === '/dashboard/connections') return 'Connections';
     if (path === '/dashboard/channel-analytics') return 'Channel Analytics';
     if (path.startsWith('/dashboard/monetization/offers')) return 'Offers';
     if (path.startsWith('/dashboard/monetization/links')) return 'Link';
     if (path.startsWith('/dashboard/analytics/platform')) return 'Analytics · Source';
+    if (path.startsWith('/dashboard/analytics/overview')) return 'Revenue Growth';
+    if (path.startsWith('/dashboard/analytics/audience-growth')) return 'Audience Growth';
     if (path.startsWith('/dashboard/analytics')) return 'Analytics';
+    if (path === '/dashboard/admin/users') return 'Users';
+    if (path === '/dashboard/seo') return 'SEO';
     if (path === '/dashboard/feature-requests') return 'Request a Feature';
     if (path === '/dashboard/settings') return 'Settings';
     if (path === '/dashboard/billing') return 'Billing';
@@ -71,7 +74,6 @@ export default function DashboardLayout() {
               <SidebarTrigger />
               <div className="flex items-center gap-3">
                 <h1 className="text-lg font-semibold text-foreground">{getPageTitle()}</h1>
-                <RoleBadge role={userRole.role} planName={planName} />
               </div>
               <AIModelProcessingLoader />
             </div>
@@ -116,10 +118,16 @@ export default function DashboardLayout() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={() => window.open('https://join.slack.com/t/viewsmax/shared_invite/zt-3n1ei5p39-7X0Xv01PeeK747uyV~VWqw', '_blank')}
+                    onClick={() => window.open('https://discord.gg/Wwe57w3Dv5', '_blank')}
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
-                    Slack Channel
+                    Discord Community
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/feature-requests" className="flex items-center">
+                      <Lightbulb className="w-4 h-4 mr-2" />
+                      Request a feature
+                    </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

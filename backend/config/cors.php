@@ -19,23 +19,32 @@ return [
 
     'allowed_methods' => ['*'],
 
-    // Add your own deployed frontend via CORS_ALLOWED_ORIGINS (comma-separated).
-    'allowed_origins' => array_merge(
+    /*
+    | Browser origins allowed to call the API.
+    |
+    | Local dev origins are always allowed. FRONTEND_URL is added automatically,
+    | and CORS_ALLOWED_ORIGINS takes a comma-separated list for anything else
+    | (a staging host, a tunnel while testing OAuth, ...). Nothing deployment-
+    | specific belongs in this file.
+    |
+    |   CORS_ALLOWED_ORIGINS=https://app.example.com,https://abc123.ngrok-free.app
+    */
+    'allowed_origins' => array_values(array_unique(array_filter(array_merge(
         [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://localhost:8000',
             'http://localhost:8080',
             'http://127.0.0.1:8080',
-            'http://localhost:8000',
-            'http://localhost:3000',
-            'https://viewsmax.com',
-            // YouTube origins are required by the browser extension / embeds.
-            'https://studio.youtube.com',
-            'https://www.youtube.com',
-            'https://youtube.com',
         ],
-        array_filter(explode(',', (string) env('CORS_ALLOWED_ORIGINS', '')))
-    ),
+        [rtrim((string) env('FRONTEND_URL', ''), '/')],
+        array_map(
+            fn (string $origin) => rtrim(trim($origin), '/'),
+            explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))
+        ),
+    )))),
 
-    // Allow any youtube.com subdomain (e.g., studio.youtube.com)
+    // The YouTube Studio integration calls the API from youtube.com pages.
     'allowed_origins_patterns' => [
         '/^https:\/\/([a-z0-9-]+\.)*youtube\.com$/i',
     ],

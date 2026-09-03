@@ -216,21 +216,43 @@ function DeliveryLine({ target, comments, retrying, onRetry }: { target: PostTar
 }
 
 export function PostHistoryView() {
+  const navigate = useNavigate();
   const { directory: accountDirectory } = useAccountDirectory();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState<Set<number>>(new Set());
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // `background` refetches without flipping the page back to its loading state,
+  // so the poll below doesn't blank the table every few seconds.
+  const load = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     const res = await viewsMaxApi.getPosts();
     // Newest first; drafts excluded (nothing to report yet).
     const all = res.success && res.data ? res.data : [];
     setPosts(all.filter((p) => p.status !== "draft"));
-    setLoading(false);
+    if (!background) setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Content Sharing Guidelines, Required UX 5(e): the publish status must be
+  // polled "so users can understand the status of their posts". The server polls
+  // TikTok, but this page only read that once on mount, so a post stayed on
+  // "Publishing" until the user happened to reload — which is not them
+  // understanding anything.
+  //
+  // Refetch while any target is still in flight, and stop as soon as they have
+  // all settled, so a page of finished posts costs nothing.
+  const settling = posts.some((p) =>
+    (p.targets ?? []).some((t) => t.status === "pending" || t.status === "publishing")
+  );
+
+  useEffect(() => {
+    if (!settling) return;
+    const id = setInterval(() => load(true), 5000);
+
+    return () => clearInterval(id);
+  }, [settling, load]);
 
   const retry = async (postId: number, targetId: number) => {
     setRetrying((s) => new Set(s).add(targetId));
@@ -264,8 +286,22 @@ export function PostHistoryView() {
           {posts.map((p, i) => {
             const targets = p.targets || [];
             const caption = effectiveCaption(p);
+            // A post with any failed platform is re-openable: click the row to
+            // load it back into the composer (all fields hydrated) and try again.
+            const hasFailed = targets.some((t) => t.status === "failed");
+            const openInComposer = () => navigate(`/dashboard/post/${p.id}`);
             return (
-              <div key={p.id} style={{ display: "grid", gridTemplateColumns: HISTORY_GRID, gap: 14, alignItems: "start", padding: "14px 18px", borderTop: i ? "1px solid var(--paper-2)" : "none" }}>
+              <div
+                key={p.id}
+                onClick={hasFailed ? openInComposer : undefined}
+                role={hasFailed ? "button" : undefined}
+                tabIndex={hasFailed ? 0 : undefined}
+                onKeyDown={hasFailed ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openInComposer(); } } : undefined}
+                title={hasFailed ? "Open in the composer to edit and try again" : undefined}
+                onMouseEnter={hasFailed ? (e) => { e.currentTarget.style.background = "var(--paper-1)"; } : undefined}
+                onMouseLeave={hasFailed ? (e) => { e.currentTarget.style.background = "transparent"; } : undefined}
+                style={{ display: "grid", gridTemplateColumns: HISTORY_GRID, gap: 14, alignItems: "start", padding: "14px 18px", borderTop: i ? "1px solid var(--paper-2)" : "none", cursor: hasFailed ? "pointer" : "default", transition: "background var(--dur)" }}
+              >
                 <div style={{ display: "flex", alignItems: "center", minWidth: 0, paddingTop: 2 }}>
                   {targets.length ? (
                     <span style={{ display: "flex" }}>
@@ -277,8 +313,8 @@ export function PostHistoryView() {
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)" }}>—</span>
                   )}
                 </div>
-                <div style={{ ...historyCell, color: caption ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", fontStyle: caption ? "normal" : "italic", paddingTop: 3, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }} title={caption || undefined}>
-                  {caption || "No caption"}
+                <div style={{ ...historyCell, color: caption ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", fontStyle: caption ? "normal" : "italic", paddingTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={caption || undefined}>
+                  {caption ? (caption.length > 60 ? caption.slice(0, 60) + "…" : caption) : "No caption"}
                 </div>
                 <div style={{ ...historyCell, fontFamily: "var(--font-mono)", fontSize: 12, textAlign: "right", paddingTop: 3 }}>{(p.media || []).length}</div>
                 <div style={{ ...historyCell, fontFamily: "var(--font-mono)", fontSize: 11.5, paddingTop: 3 }}>{p.scheduled_at ? fmtDateTime(p.scheduled_at) : "—"}</div>
