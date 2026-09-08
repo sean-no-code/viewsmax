@@ -1,24 +1,24 @@
-name: 'Social Posts'
+name: Connections
 description: |-
 
-  Earlier posting surface (predates /api/posts). Prefer the Posts endpoints
-  for new integrations; these remain for existing clients.
+  Legacy connection management (YouTube/TikTok/Instagram OAuth token
+  exchange). Prefer the /api/social endpoints for new integrations.
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: api/social/posts
+    uri: api/connections
     metadata:
       custom: []
-      groupName: 'Social Posts'
+      groupName: Connections
       groupDescription: |-
 
-        Earlier posting surface (predates /api/posts). Prefer the Posts endpoints
-        for new integrations; these remain for existing clients.
+        Legacy connection management (YouTube/TikTok/Instagram OAuth token
+        exchange). Prefer the /api/social endpoints for new integrations.
       subgroup: ''
       subgroupDescription: ''
-      title: "List the user's posts (most recent first)."
+      title: "List the authenticated user's connections."
       description: ''
       authenticated: true
       deprecated: false
@@ -54,18 +54,80 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - POST
-    uri: api/social/posts
+      - DELETE
+    uri: 'api/connections/{id}'
     metadata:
       custom: []
-      groupName: 'Social Posts'
+      groupName: Connections
       groupDescription: |-
 
-        Earlier posting surface (predates /api/posts). Prefer the Posts endpoints
-        for new integrations; these remain for existing clients.
+        Legacy connection management (YouTube/TikTok/Instagram OAuth token
+        exchange). Prefer the /api/social endpoints for new integrations.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Create a post and publish (or schedule) it to the chosen accounts.'
+      title: 'Delete a connection belonging to the caller.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the connection.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/connections/tiktok/creator-info
+    metadata:
+      custom: []
+      groupName: Connections
+      groupDescription: |-
+
+        Legacy connection management (YouTube/TikTok/Instagram OAuth token
+        exchange). Prefer the /api/social endpoints for new integrations.
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Return the TikTok creator's allowed posting options (privacy levels,
+        comment/duet/stitch availability, max duration). The composer must render
+        the privacy/interaction UI from this before a post can be published.
       description: ''
       authenticated: true
       deprecated: false
@@ -77,180 +139,325 @@ endpoints:
     cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
-    bodyParameters:
-      content:
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
         custom: []
-        name: content
-        description: 'Must not be greater than 10000 characters.'
-        required: false
-        example: b
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/social/platforms
+    metadata:
+      custom: []
+      groupName: Connections
+      groupDescription: |-
+
+        Connected social accounts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky, Facebook). List what's connected, start an OAuth
+        connect flow, or disconnect an account.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List every platform the app supports plus whether it is configured.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/social/accounts
+    metadata:
+      custom: []
+      groupName: Connections
+      groupDescription: |-
+
+        Connected social accounts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky, Facebook). List what's connected, start an OAuth
+        connect flow, or disconnect an account.
+      subgroup: ''
+      subgroupDescription: ''
+      title: "List the authenticated user's connected accounts (optionally by platform)."
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - DELETE
+    uri: 'api/social/accounts/{id}'
+    metadata:
+      custom: []
+      groupName: Connections
+      groupDescription: |-
+
+        Connected social accounts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky, Facebook). List what's connected, start an OAuth
+        connect flow, or disconnect an account.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Disconnect (delete) a connected account.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the account.'
+        required: true
+        example: architecto
         type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      link:
-        custom: []
-        name: link
-        description: 'Must be a valid URL. Must not be greater than 1024 characters.'
-        required: false
-        example: 'n'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      media:
-        custom: []
-        name: media
-        description: ''
-        required: false
-        example: null
-        type: 'object[]'
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      account_ids:
-        custom: []
-        name: account_ids
-        description: ''
-        required: false
-        example:
-          - 16
-        type: 'integer[]'
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      scheduled_at:
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
         custom: []
-        name: scheduled_at
-        description: 'Must be a valid date. Must be a date after <code>now</code>.'
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/social/{platform}/auth-url'
+    metadata:
+      custom: []
+      groupName: Connections
+      groupDescription: |-
+
+        Connected social accounts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky, Facebook). List what's connected, start an OAuth
+        connect flow, or disconnect an account.
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Build the OAuth authorization URL for a platform. The frontend opens this,
+        the user grants access, and the provider redirects back to redirect_uri
+        with a `code` to be sent to exchange().
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      platform:
+        custom: []
+        name: platform
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      platform: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/social/{platform}/exchange'
+    metadata:
+      custom: []
+      groupName: Connections
+      groupDescription: |-
+
+        Connected social accounts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky, Facebook). List what's connected, start an OAuth
+        connect flow, or disconnect an account.
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Exchange an authorization code (returned to the frontend callback) for
+        tokens and persist the connected account(s).
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      platform:
+        custom: []
+        name: platform
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      platform: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      code:
+        custom: []
+        name: code
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      state:
+        custom: []
+        name: state
+        description: ''
         required: false
-        example: '2052-08-03'
+        example: architecto
         type: string
         enumValues: []
         exampleWasSpecified: false
         nullable: true
         deprecated: false
-      'media[].url':
+      redirect_uri:
         custom: []
-        name: 'media[].url'
-        description: 'This field is required when <code>media</code> is present. Must be a valid URL.'
+        name: redirect_uri
+        description: 'Must be a valid URL.'
         required: false
         example: 'http://bailey.com/'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      'media[].type':
-        custom: []
-        name: 'media[].type'
-        description: ''
-        required: false
-        example: image
-        type: string
-        enumValues:
-          - image
-          - video
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'media[].mime':
-        custom: []
-        name: 'media[].mime'
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'media[].alt':
-        custom: []
-        name: 'media[].alt'
-        description: ''
-        required: false
-        example: architecto
         type: string
         enumValues: []
         exampleWasSpecified: false
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      content: b
-      link: 'n'
-      account_ids:
-        - 16
-      scheduled_at: '2052-08-03'
-      media:
-        -
-          url: 'http://bailey.com/'
-          type: image
-          mime: architecto
-          alt: architecto
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: 'api/social/posts/{id}'
-    metadata:
-      custom: []
-      groupName: 'Social Posts'
-      groupDescription: |-
-
-        Earlier posting surface (predates /api/posts). Prefer the Posts endpoints
-        for new integrations; these remain for existing clients.
-      subgroup: ''
-      subgroupDescription: ''
-      title: ''
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the post.'
-        required: true
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: architecto
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
+      code: architecto
+      state: architecto
+      redirect_uri: 'http://bailey.com/'
     fileParameters: []
     responses:
       -
@@ -274,17 +481,18 @@ endpoints:
     custom: []
     httpMethods:
       - POST
-    uri: 'api/social/posts/{id}/retry'
+    uri: 'api/social/{platform}/connect'
     metadata:
       custom: []
-      groupName: 'Social Posts'
+      groupName: Connections
       groupDescription: |-
 
-        Earlier posting surface (predates /api/posts). Prefer the Posts endpoints
-        for new integrations; these remain for existing clients.
+        Connected social accounts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky, Facebook). List what's connected, start an OAuth
+        connect flow, or disconnect an account.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Retry the failed targets of a post.'
+      title: 'Connect a non-OAuth platform (e.g. Bluesky) with direct credentials.'
       description: ''
       authenticated: true
       deprecated: false
@@ -293,10 +501,10 @@ endpoints:
       Content-Type: application/json
       Accept: application/json
     urlParameters:
-      id:
+      platform:
         custom: []
-        name: id
-        description: 'The ID of the post.'
+        name: platform
+        description: ''
         required: true
         example: architecto
         type: string
@@ -305,7 +513,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: architecto
+      platform: architecto
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -319,6 +527,105 @@ endpoints:
         headers:
           cache-control: 'no-cache, private'
           content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/social/x/users/search
+    metadata:
+      custom: []
+      groupName: Connections
+      groupDescription: |-
+
+        X user search for the composer's @mention typeahead, proxied through the
+        user's own connected X account token. X gates /2/users/search to higher
+        API tiers — on a 403 the endpoint flips an app-level flag and degrades to
+        exact-username lookup, which lower tiers allow.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Search X users by handle prefix.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      q:
+        custom: []
+        name: q
+        description: 'The typed handle fragment, with or without a leading @.'
+        required: true
+        example: jane
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      social_account_id:
+        custom: []
+        name: social_account_id
+        description: 'Search as a specific connected X account.'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      q: jane
+      social_account_id: 1
+    bodyParameters:
+      q:
+        custom: []
+        name: q
+        description: 'Must not be greater than 50 characters.'
+        required: true
+        example: b
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      social_account_id:
+        custom: []
+        name: social_account_id
+        description: ''
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      q: b
+      social_account_id: 16
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          x-ratelimit-limit: '30'
+          x-ratelimit-remaining: '29'
           vary: Origin
         description: null
     responseFields: []

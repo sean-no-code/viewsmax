@@ -1,29 +1,23 @@
-name: Offers
+name: 'Image Generation'
 description: |-
 
-  Offers are products/campaigns being promoted (stored as tracking events).
-  Each offer has an offer URL and conversion value, owns tracking links, and
-  accumulates clicks and conversions. The stats and timeseries endpoints
-  power the analytics dashboards.
+  APIs for generating AI images using Flux 2
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: api/tracking-events/offers
+    uri: api/image/generate/config
     metadata:
       custom: []
-      groupName: Offers
+      groupName: 'Image Generation'
       groupDescription: |-
 
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
+        APIs for generating AI images using Flux 2
       subgroup: ''
       subgroupDescription: ''
-      title: 'Get a list of distinct offer URLs used by the authenticated user.'
-      description: ''
+      title: 'Get Image Generation Configuration'
+      description: 'Retrieve configuration options for image generation including available methods, quality presets, defaults, and limits.'
       authenticated: true
       deprecated: false
     headers:
@@ -40,13 +34,10 @@ endpoints:
     responses:
       -
         custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
+        status: 200
+        content: '{"success":true,"message":"Configuration retrieved successfully","data":{"enabled":true,"methods":["generate","head_swap"],"qualities":["fast","normal","high","very_high"],"defaults":{"quality":"fast","steps":4,"refine_enabled":false,"inpainting_enabled":true,"number_of_images":1},"limits":{"max_prompt_length":2000,"max_image_size_bytes":10485760,"max_additional_images":3,"max_number_of_images":10}}}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers
@@ -59,20 +50,17 @@ endpoints:
     custom: []
     httpMethods:
       - GET
-    uri: api/tracking-events/stats
+    uri: api/image/generate
     metadata:
       custom: []
-      groupName: Offers
+      groupName: 'Image Generation'
       groupDescription: |-
 
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
+        APIs for generating AI images using Flux 2
       subgroup: ''
       subgroupDescription: ''
-      title: 'Get aggregated stats for tracking events with date filtering and deduplication.'
-      description: ''
+      title: 'List Generated Images'
+      description: "Get a paginated list of the authenticated user's generated images. Can be filtered by status and method."
       authenticated: true
       deprecated: false
     headers:
@@ -81,166 +69,54 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
+    queryParameters:
+      status:
+        custom: []
+        name: status
+        description: 'Filter by status: `pending`, `processing`, `completed`, `failed`.'
+        required: false
+        example: completed
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      method:
+        custom: []
+        name: method
+        description: 'Filter by method: `generate`, `head_swap`.'
+        required: false
+        example: generate
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Number of results per page.'
+        required: false
+        example: 15
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      status: completed
+      method: generate
+      per_page: 15
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
     responses:
       -
         custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/tracking-events/timeseries
-    metadata:
-      custom: []
-      groupName: Offers
-      groupDescription: |-
-
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
-      subgroup: ''
-      subgroupDescription: ''
-      title: |-
-        Daily time-series of clicks and attributed revenue for the authenticated
-        user, used by the Analytics overview area charts. Returns one bucket per
-        day across the requested window (gaps filled with zeros).
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/goal-types
-    metadata:
-      custom: []
-      groupName: Offers
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'List the predefined conversion goal/event types (seeded reference list).'
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - GET
-    uri: api/tracking-events
-    metadata:
-      custom: []
-      groupName: Offers
-      groupDescription: |-
-
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
-      subgroup: ''
-      subgroupDescription: ''
-      title: 'Display a list of the resource.'
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters: []
-    cleanUrlParameters: []
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
+        status: 200
+        content: '{"success":true,"message":"Images retrieved successfully","data":{"current_page":1,"data":[...],"per_page":15,"total":100}}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers
@@ -253,20 +129,17 @@ endpoints:
     custom: []
     httpMethods:
       - POST
-    uri: api/tracking-events
+    uri: api/image/generate
     metadata:
       custom: []
-      groupName: Offers
+      groupName: 'Image Generation'
       groupDescription: |-
 
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
+        APIs for generating AI images using Flux 2
       subgroup: ''
       subgroupDescription: ''
-      title: 'Store a newly created resource in storage.'
-      description: ''
+      title: 'Create Image Generation Request'
+      description: 'Create a new image generation request. Credits will be deducted based on the number of images requested (50 credits per image).'
       authenticated: true
       deprecated: false
     headers:
@@ -278,167 +151,121 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      name:
+      method:
         custom: []
-        name: name
-        description: 'Must not be greater than 255 characters.'
+        name: method
+        description: 'The generation method. Must be one of: `generate`, `head_swap`. Default: `head_swap`.'
         required: false
-        example: b
+        example: generate
         type: string
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: true
         deprecated: false
-      offer_url:
+      quality:
         custom: []
-        name: offer_url
-        description: 'Must be a valid URL.'
-        required: true
-        example: 'http://bailey.com/'
+        name: quality
+        description: 'The quality preset. Must be one of: `fast`, `normal`, `high`, `very_high`. Default: `fast`.'
+        required: false
+        example: normal
         type: string
         enumValues: []
-        exampleWasSpecified: false
-        nullable: false
+        exampleWasSpecified: true
+        nullable: true
         deprecated: false
-      goals:
+      prompt:
         custom: []
-        name: goals
-        description: 'Goals (conversion events) are optional at creation — added later on the offer page.'
+        name: prompt
+        description: 'Text prompt for generation (max 2000 characters).'
+        required: false
+        example: 'A person standing confidently in front of a mountain'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      base_image:
+        custom: []
+        name: base_image
+        description: 'Required for `head_swap`, optional for `generate`. Image file (max 10MB). Provide either `base_image` or `base_image_url`.'
         required: false
         example: null
-        type: 'object[]'
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      conversion_value:
-        custom: []
-        name: conversion_value
-        description: ''
-        required: false
-        example: 4326.41688
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'goals[].event_type':
-        custom: []
-        name: 'goals[].event_type'
-        description: |-
-          Built-in types (conversion, call booked, email-signup, newsletter, trial) plus
-          arbitrary user-defined "custom" events, which are stored verbatim. Must not be greater than 255 characters.
-        required: true
-        example: m
-        type: string
+        type: file
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
-      'goals[].conversion_url':
+      base_image_url:
         custom: []
-        name: 'goals[].conversion_url'
-        description: ''
-        required: true
-        example: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+        name: base_image_url
+        description: 'Required for `head_swap`, optional for `generate`. URL to download the base image from. Provide either `base_image` or `base_image_url`.'
+        required: false
+        example: 'https://example.com/image.jpg'
         type: string
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         deprecated: false
-      'goals[].conversion_value':
+      reference_image:
         custom: []
-        name: 'goals[].conversion_value'
-        description: 'Must be at least 0.'
+        name: reference_image
+        description: 'Optional reference image file (max 10MB). For `generate` method, this is the person to generate. For `head_swap` method, this is the source face.'
         required: false
-        example: 8
-        type: number
+        example: null
+        type: file
         enumValues: []
         exampleWasSpecified: false
         nullable: true
         deprecated: false
-      links:
+      number_of_images:
         custom: []
-        name: links
-        description: ''
+        name: number_of_images
+        description: 'Number of images to generate (1-10). Default: `1`.'
         required: false
-        example:
-          - []
-        type: 'object[]'
+        example: 2
+        type: integer
         enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      'links[].youtube_video_id':
-        custom: []
-        name: 'links[].youtube_video_id'
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].placement':
-        custom: []
-        name: 'links[].placement'
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].name':
-        custom: []
-        name: 'links[].name'
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].description':
-        custom: []
-        name: 'links[].description'
-        description: 'Must not be greater than 255 characters.'
-        required: false
-        example: 'Et animi quos velit et fugiat.'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      name: b
-      offer_url: 'http://bailey.com/'
-      conversion_value: 4326.41688
-      goals:
-        -
-          event_type: m
-          conversion_url: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
-          conversion_value: 8
-      links:
-        -
-          youtube_video_id: architecto
-          placement: architecto
-          name: architecto
-          description: 'Et animi quos velit et fugiat.'
+      method: generate
+      quality: normal
+      prompt: 'A person standing confidently in front of a mountain'
+      base_image_url: 'https://example.com/image.jpg'
+      number_of_images: 2
     fileParameters: []
     responses:
       -
         custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
+        status: 202
+        content: '{"success":true,"message":"Image generation started","data":{"id":123,"status":"pending","method":"generate","quality":"normal","estimated_time_seconds":40}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 400
+        content: '{"success":false,"message":"For generate method, please upload a base image, provide an image URL, or set a default reference image at /user/default-image."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 400
+        content: '{"success":false,"message":"Reference image is required for head swap. You can upload a default image at /user/default-image."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 400
+        content: '{"success":false,"message":"Failed to download or validate base image from URL. Please check the URL and try again."}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 503
+        content: '{"success":false,"message":"Image generation feature is not enabled"}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers
@@ -451,20 +278,17 @@ endpoints:
     custom: []
     httpMethods:
       - GET
-    uri: 'api/tracking-events/{id}'
+    uri: 'api/image/generate/{id}'
     metadata:
       custom: []
-      groupName: Offers
+      groupName: 'Image Generation'
       groupDescription: |-
 
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
+        APIs for generating AI images using Flux 2
       subgroup: ''
       subgroupDescription: ''
-      title: 'Display the specified resource.'
-      description: ''
+      title: 'Get Generated Image Details'
+      description: 'Retrieve detailed information about a specific generated image.'
       authenticated: true
       deprecated: false
     headers:
@@ -475,16 +299,16 @@ endpoints:
       id:
         custom: []
         name: id
-        description: 'The ID of the tracking event.'
-        required: true
-        example: architecto
-        type: string
+        description: 'The ID of the generated image.'
+        required: false
+        example: 123
+        type: integer
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: architecto
+      id: 123
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -493,13 +317,16 @@ endpoints:
     responses:
       -
         custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
+        status: 200
+        content: '{"success":true,"message":"Generated image retrieved successfully","data":{"id":123,"method":"generate","quality":"normal","status":"completed","prompt":"A person standing confidently","base_image_url":"https://...","reference_image_url":"https://...","result_image_url":"https://...","result_image_urls":["https://...","https://..."],"result_image_count":2,"megapixel":0.5,"steps":4,"refine_enabled":false,"inpainting_enabled":true,"number_of_images":2,"error_message":null,"processing_log":[...],"created_at":"2024-01-28T10:00:00Z","updated_at":"2024-01-28T10:01:00Z"}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 404
+        content: '{"success":false,"message":"Generated image not found"}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers
@@ -511,22 +338,18 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - PUT
-      - PATCH
-    uri: 'api/tracking-events/{id}'
+      - GET
+    uri: 'api/image/generate/{id}/status'
     metadata:
       custom: []
-      groupName: Offers
+      groupName: 'Image Generation'
       groupDescription: |-
 
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
+        APIs for generating AI images using Flux 2
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update the specified resource in storage.'
-      description: ''
+      title: 'Get Image Generation Status'
+      description: 'Check the processing status of a generated image. Use this to poll for completion.'
       authenticated: true
       deprecated: false
     headers:
@@ -537,180 +360,101 @@ endpoints:
       id:
         custom: []
         name: id
-        description: 'The ID of the tracking event.'
-        required: true
-        example: architecto
-        type: string
+        description: 'The ID of the generated image.'
+        required: false
+        example: 123
+        type: integer
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: architecto
+      id: 123
     queryParameters: []
     cleanQueryParameters: []
-    bodyParameters:
-      name:
-        custom: []
-        name: name
-        description: 'Must not be greater than 255 characters.'
-        required: false
-        example: b
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      offer_url:
-        custom: []
-        name: offer_url
-        description: 'Must be a valid URL.'
-        required: false
-        example: 'http://bailey.com/'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      goals:
-        custom: []
-        name: goals
-        description: ''
-        required: false
-        example: null
-        type: 'object[]'
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      conversion_value:
-        custom: []
-        name: conversion_value
-        description: ''
-        required: false
-        example: 4326.41688
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      links:
-        custom: []
-        name: links
-        description: ''
-        required: false
-        example: null
-        type: 'object[]'
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'goals[].event_type':
-        custom: []
-        name: 'goals[].event_type'
-        description: 'Must not be greater than 255 characters.'
-        required: true
-        example: m
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      'goals[].conversion_url':
-        custom: []
-        name: 'goals[].conversion_url'
-        description: ''
-        required: true
-        example: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      'goals[].conversion_value':
-        custom: []
-        name: 'goals[].conversion_value'
-        description: 'Must be at least 0.'
-        required: false
-        example: 8
-        type: number
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].id':
-        custom: []
-        name: 'links[].id'
-        description: ''
-        required: false
-        example: 16
-        type: integer
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].youtube_video_id':
-        custom: []
-        name: 'links[].youtube_video_id'
-        description: 'For updating existing links.'
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].placement':
-        custom: []
-        name: 'links[].placement'
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].name':
-        custom: []
-        name: 'links[].name'
-        description: ''
-        required: false
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-      'links[].description':
-        custom: []
-        name: 'links[].description'
-        description: 'Must not be greater than 255 characters.'
-        required: false
-        example: 'Et animi quos velit et fugiat.'
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
-        deprecated: false
-    cleanBodyParameters:
-      name: b
-      offer_url: 'http://bailey.com/'
-      conversion_value: 4326.41688
-      goals:
-        -
-          event_type: m
-          conversion_url: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
-          conversion_value: 8
-      links:
-        -
-          id: 16
-          youtube_video_id: architecto
-          placement: architecto
-          name: architecto
-          description: 'Et animi quos velit et fugiat.'
+    bodyParameters: []
+    cleanBodyParameters: []
     fileParameters: []
     responses:
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"message":"Status retrieved successfully","data":{"id":123,"status":"processing","is_complete":false,"is_successful":false}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"message":"Status retrieved successfully","data":{"id":123,"status":"completed","is_complete":true,"is_successful":true,"result_image_url":"https://...","result_image_urls":["https://..."],"result_image_count":2}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 200
+        content: '{"success":true,"message":"Status retrieved successfully","data":{"id":123,"status":"failed","is_complete":true,"is_successful":false,"error_message":"Error details..."}}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 404
+        content: '{"success":false,"message":"Generated image not found"}'
+        headers: []
+        description: ''
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/image/generate/{id}/download'
+    metadata:
+      custom: []
+      groupName: 'Image Generation'
+      groupDescription: |-
+
+        APIs for generating AI images using Flux 2
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Download Generated Image'
+      description: 'Download the generated image file. Returns a binary PNG file.'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the generated image.'
+        required: false
+        example: 123
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 123
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 400
+        content: '{"success":false,"message":"No result image available for download"}'
+        headers: []
+        description: ''
       -
         custom: []
         status: 401
@@ -720,6 +464,12 @@ endpoints:
           content-type: application/json
           vary: Origin
         description: null
+      -
+        custom: []
+        status: 404
+        content: '{"success":false,"message":"Generated image not found"}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers
@@ -732,20 +482,17 @@ endpoints:
     custom: []
     httpMethods:
       - DELETE
-    uri: 'api/tracking-events/{id}'
+    uri: 'api/image/generate/{id}'
     metadata:
       custom: []
-      groupName: Offers
+      groupName: 'Image Generation'
       groupDescription: |-
 
-        Offers are products/campaigns being promoted (stored as tracking events).
-        Each offer has an offer URL and conversion value, owns tracking links, and
-        accumulates clicks and conversions. The stats and timeseries endpoints
-        power the analytics dashboards.
+        APIs for generating AI images using Flux 2
       subgroup: ''
       subgroupDescription: ''
-      title: 'Remove the specified resource from storage.'
-      description: ''
+      title: 'Delete Generated Image'
+      description: 'Delete a generated image and all associated files.'
       authenticated: true
       deprecated: false
     headers:
@@ -756,16 +503,16 @@ endpoints:
       id:
         custom: []
         name: id
-        description: 'The ID of the tracking event.'
-        required: true
-        example: architecto
-        type: string
+        description: 'The ID of the generated image.'
+        required: false
+        example: 123
+        type: integer
         enumValues: []
-        exampleWasSpecified: false
+        exampleWasSpecified: true
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: architecto
+      id: 123
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -774,13 +521,16 @@ endpoints:
     responses:
       -
         custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
-          vary: Origin
-        description: null
+        status: 200
+        content: '{"success":true,"message":"Generated image deleted successfully"}'
+        headers: []
+        description: ''
+      -
+        custom: []
+        status: 404
+        content: '{"success":false,"message":"Generated image not found"}'
+        headers: []
+        description: ''
     responseFields: []
     auth:
       - headers

@@ -16,20 +16,8 @@
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.29",
         "sarfrazrizwan/laravel-brevo": "^1.0",
-        "stripe/stripe-php": "^20.2",
-        "viewsmax/seo-engine": "dev-main"
+        "stripe/stripe-php": "^20.2"
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "packages/viewsmax/seo-engine",
-            "options": {
-                "versions": {
-                    "viewsmax/seo-engine": "dev-main"
-                }
-            }
-        }
-    ],
     "require-dev": {
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.2",

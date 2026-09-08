@@ -669,62 +669,6 @@ export interface AdminPostStats {
   posts: number;
 }
 
-/* ---- SEO engine (per-user, per-offer) ---- */
-export interface SeoProfileRow {
-  id: number;
-  tracking_event_id: number;
-  competitors: string[];
-  wp_url: string | null;
-  wp_username: string | null;
-  has_wp_password: boolean;
-  articles_per_week: number;
-  auto_publish: boolean;
-  enabled: boolean;
-}
-
-export interface SeoKeywordRow {
-  id: number;
-  keyword: string;
-  competitor_domain: string | null;
-  competitor_url: string | null;
-  search_volume: number;
-  difficulty: number;
-  cpc: string | number;
-  intent_score: number;
-  status: 'discovered' | 'drafted' | 'published' | 'skipped';
-  created_at: string;
-}
-
-export type SeoArticleCategory = 'Guide: Explainer' | 'Guide: How-to' | 'List: Round-up' | 'List: Resources' | 'List: Examples';
-
-export interface SeoArticleRow {
-  id: number;
-  title: string;
-  slug: string;
-  meta_description: string | null;
-  category: SeoArticleCategory | null;
-  html?: string;
-  featured_image_url: string | null;
-  status: 'review' | 'queued' | 'published' | 'failed';
-  published_url: string | null;
-  published_at: string | null;
-  error: string | null;
-  created_at: string;
-  keyword?: SeoKeywordRow | null;
-}
-
-export interface SeoProspectRow {
-  id: number;
-  url: string;
-  domain: string;
-  competitor_domain: string | null;
-  anchor: string | null;
-  domain_rank: number;
-  dofollow: boolean;
-  status: 'new' | 'contacted' | 'won' | 'rejected';
-  created_at: string;
-}
-
 export interface AdminOfferRow {
   id: number;
   name: string | null;
@@ -1292,40 +1236,6 @@ class ViewsMaxApiService {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
-
-  /* ---- SEO engine (per-user, per-offer profiles) ---- */
-
-  private async seoRequest<T>(path: string, method = 'GET', body?: Record<string, unknown>): Promise<ApiResponse<T>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/seo/${path}`, {
-        method,
-        headers: { ...this.getAuthHeaders(), ...(body ? { 'Content-Type': 'application/json' } : {}) },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => null);
-        throw new Error(err?.message || `seo ${path} failed: ${response.status}`);
-      }
-      const result = await response.json();
-      return { success: true, data: result.data ?? null };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  }
-
-  getSeoProfiles() { return this.seoRequest<SeoProfileRow[]>('profiles'); }
-  saveSeoProfile(offerId: number, profile: Partial<SeoProfileRow> & { wp_app_password?: string }) {
-    return this.seoRequest<SeoProfileRow>(`profiles/offer/${offerId}`, 'PUT', profile);
-  }
-  getSeoKeywords(profileId: number) { return this.seoRequest<SeoKeywordRow[]>(`profiles/${profileId}/keywords`); }
-  getSeoArticles(profileId: number) { return this.seoRequest<SeoArticleRow[]>(`profiles/${profileId}/articles`); }
-  getSeoProspects(profileId: number) { return this.seoRequest<SeoProspectRow[]>(`profiles/${profileId}/prospects`); }
-  updateSeoKeyword(id: number, status: 'discovered' | 'skipped') { return this.seoRequest<null>(`keywords/${id}`, 'PATCH', { status }); }
-  updateSeoArticle(id: number, patch: { status?: 'review' | 'queued'; title?: string; meta_description?: string | null; category?: SeoArticleCategory | null; html?: string; featured_image_url?: string | null }) {
-    return this.seoRequest<SeoArticleRow>(`articles/${id}`, 'PATCH', patch);
-  }
-  updateSeoProspect(id: number, patch: { status?: string }) { return this.seoRequest<null>(`prospects/${id}`, 'PATCH', patch); }
-  bulkUpdateSeoProspects(ids: number[], status: string) { return this.seoRequest<{ updated: number }>('prospects', 'PATCH', { ids, status }); }
 
   async getAdminOffers(q?: string): Promise<ApiResponse<AdminOfferRow[]>> {
     try {
@@ -2017,6 +1927,14 @@ class ViewsMaxApiService {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
+
+    // A free-tier ngrok tunnel answers browser requests with an HTML
+    // interstitial (no CORS headers) unless this header is present, which the
+    // browser then reports as a CORS failure. Only relevant when the API itself
+    // is tunnelled, so keep it off for every other host.
+    if (/^https?:\/\/[^/?#]*\.ngrok(-free)?\.(app|dev)(?=[/:?#]|$)/i.test(String(this.baseUrl ?? ''))) {
+      headers['ngrok-skip-browser-warning'] = 'true';
+    }
 
     if (this.authSession?.token) {
       headers['Authorization'] = `${this.authSession.token_type || 'Bearer'} ${this.authSession.token}`;

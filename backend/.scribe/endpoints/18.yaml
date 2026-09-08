@@ -1,0 +1,566 @@
+name: Posts
+description: |-
+
+  Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
+  Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+  fans out to per-platform targets that each report their own publish
+  status — publishing is asynchronous, so poll GET /api/posts/{id}.
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/posts/{post}/targets/{target}/retry'
+    metadata:
+      custom: []
+      groupName: Posts
+      groupDescription: |-
+
+        Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+        fans out to per-platform targets that each report their own publish
+        status — publishing is asynchronous, so poll GET /api/posts/{id}.
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Re-queue publishing for a single failed platform target. Only a FAILED
+        target can be retried, and only that target is touched — its siblings
+        (which may already be published) are left alone, so a retry can never
+        double-post to a platform that already succeeded.
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      post:
+        custom: []
+        name: post
+        description: 'The post.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      target:
+        custom: []
+        name: target
+        description: 'The target.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      post: architecto
+      target: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/posts
+    metadata:
+      custom: []
+      groupName: Posts
+      groupDescription: |-
+
+        Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+        fans out to per-platform targets that each report their own publish
+        status — publishing is asynchronous, so poll GET /api/posts/{id}.
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        List the user's posts (with targets). Optional filters: status, and a
+        scheduled_at date window (from/to) used by the calendar view.
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/posts
+    metadata:
+      custom: []
+      groupName: Posts
+      groupDescription: |-
+
+        Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+        fans out to per-platform targets that each report their own publish
+        status — publishing is asynchronous, so poll GET /api/posts/{id}.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Create a post.'
+      description: |-
+        Composes a post and fans it out to the given platforms. Save as a draft,
+        publish immediately (status=posted), or schedule (status=scheduled with
+        scheduled_at). Publishing is asynchronous — poll GET /api/posts/{id} for
+        per-platform results.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      caption:
+        custom: []
+        name: caption
+        description: 'The post text / caption.'
+        required: false
+        example: 'Big news today!'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      platforms:
+        custom: []
+        name: platforms
+        description: 'Target platforms: youtube, tiktok, instagram, x, linkedin, threads.'
+        required: false
+        example:
+          - tiktok
+          - instagram
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      media:
+        custom: []
+        name: media
+        description: 'Media entries, usually from POST /api/posts/media.'
+        required: false
+        example:
+          - []
+        type: 'object[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'media[].type':
+        custom: []
+        name: 'media[].type'
+        description: 'image or video.'
+        required: false
+        example: image
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'media[].url':
+        custom: []
+        name: 'media[].url'
+        description: 'Public URL of the media.'
+        required: false
+        example: 'https://cdn.example/1.jpg'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      'media[].path':
+        custom: []
+        name: 'media[].path'
+        description: 'Storage path (YouTube requires a video path).'
+        required: false
+        example: posts/1/clip.mp4
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      status:
+        custom: []
+        name: status
+        description: 'draft (default), scheduled, or posted.'
+        required: false
+        example: draft
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      scheduled_at:
+        custom: []
+        name: scheduled_at
+        description: 'ISO-8601 datetime; required when status is scheduled.'
+        required: false
+        example: '2026-07-20T18:30:00Z'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      brand_id:
+        custom: []
+        name: brand_id
+        description: 'The brand selected in the composer (informational).'
+        required: false
+        example: 1
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      overrides:
+        custom: []
+        name: overrides
+        description: 'Per-platform caption overrides, keyed by platform.'
+        required: false
+        example: []
+        type: object
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      options:
+        custom: []
+        name: options
+        description: 'Per-platform publish options, keyed by platform.'
+        required: false
+        example: []
+        type: object
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      options.tiktok.privacy_level:
+        custom: []
+        name: options.tiktok.privacy_level
+        description: 'TikTok privacy, e.g. SELF_ONLY or PUBLIC_TO_EVERYONE.'
+        required: false
+        example: SELF_ONLY
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      options.tiktok.auto_add_music:
+        custom: []
+        name: options.tiktok.auto_add_music
+        description: "Auto-add TikTok's recommended music to a photo slideshow. Slideshows only; ignored for video. Defaults to false."
+        required: false
+        example: false
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      options.youtube.privacy_status:
+        custom: []
+        name: options.youtube.privacy_status
+        description: 'public, unlisted, or private.'
+        required: false
+        example: public
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      options.instagram.cover_url:
+        custom: []
+        name: options.instagram.cover_url
+        description: 'Public cover image URL for an Instagram Reel.'
+        required: false
+        example: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      options.linkedin.first_comment:
+        custom: []
+        name: options.linkedin.first_comment
+        description: 'A comment auto-posted right after publishing.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      caption: 'Big news today!'
+      platforms:
+        - tiktok
+        - instagram
+      media:
+        -
+          type: image
+          url: 'https://cdn.example/1.jpg'
+          path: posts/1/clip.mp4
+      status: draft
+      scheduled_at: '2026-07-20T18:30:00Z'
+      brand_id: 1
+      overrides: []
+      options: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/posts/{id}'
+    metadata:
+      custom: []
+      groupName: Posts
+      groupDescription: |-
+
+        Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+        fans out to per-platform targets that each report their own publish
+        status — publishing is asynchronous, so poll GET /api/posts/{id}.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the post.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PUT
+      - PATCH
+    uri: 'api/posts/{id}'
+    metadata:
+      custom: []
+      groupName: Posts
+      groupDescription: |-
+
+        Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+        fans out to per-platform targets that each report their own publish
+        status — publishing is asynchronous, so poll GET /api/posts/{id}.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the post.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - DELETE
+    uri: 'api/posts/{id}'
+    metadata:
+      custom: []
+      groupName: Posts
+      groupDescription: |-
+
+        Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
+        Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+        fans out to per-platform targets that each report their own publish
+        status — publishing is asynchronous, so poll GET /api/posts/{id}.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the post.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null

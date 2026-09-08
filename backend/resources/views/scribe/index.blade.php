@@ -26,7 +26,7 @@
             </style>
 
     <script>
-        var tryItOutBaseUrl = "https://viewsmax.com";
+        var tryItOutBaseUrl = "https://api.viewsmax.com";
         var useCsrf = Boolean();
         var csrfUrl = "/sanctum/csrf-cookie";
     </script>
@@ -112,6 +112,15 @@ scheduled_at date window (from/to) used by the calendar view.</a>
                                     <ul id="tocify-subheader-post-media" class="tocify-subheader">
                                                     <li class="tocify-item level-2" data-unique="post-media-POSTapi-posts-media">
                                 <a href="#post-media-POSTapi-posts-media">Upload a single post media file.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="post-media-POSTapi-posts-media-direct">
+                                <a href="#post-media-POSTapi-posts-media-direct">Create a direct-upload session.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="post-media-POSTapi-posts-media-direct-complete">
+                                <a href="#post-media-POSTapi-posts-media-direct-complete">Complete a direct upload.</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="post-media-POSTapi-posts-media-direct-abort">
+                                <a href="#post-media-POSTapi-posts-media-direct-abort">Abort a multipart direct upload.</a>
                             </li>
                                                                         </ul>
                             </ul>
@@ -397,29 +406,8 @@ lose their brand link.</a>
                     <a href="#endpoints">Endpoints</a>
                 </li>
                                     <ul id="tocify-subheader-endpoints" class="tocify-subheader">
-                                                    <li class="tocify-item level-2" data-unique="endpoints-GETapi-seo-profiles">
-                                <a href="#endpoints-GETapi-seo-profiles">The caller's profiles (one per offer).</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="endpoints-PUTapi-seo-profiles-offer--offerId-">
-                                <a href="#endpoints-PUTapi-seo-profiles-offer--offerId-">Create or update the profile for one of the caller's offers.</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-seo-profiles--profileId--keywords">
-                                <a href="#endpoints-GETapi-seo-profiles--profileId--keywords">GET api/seo/profiles/{profileId}/keywords</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-seo-profiles--profileId--articles">
-                                <a href="#endpoints-GETapi-seo-profiles--profileId--articles">GET api/seo/profiles/{profileId}/articles</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="endpoints-GETapi-seo-profiles--profileId--prospects">
-                                <a href="#endpoints-GETapi-seo-profiles--profileId--prospects">GET api/seo/profiles/{profileId}/prospects</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-seo-keywords--id-">
-                                <a href="#endpoints-PATCHapi-seo-keywords--id-">PATCH api/seo/keywords/{id}</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-seo-articles--id-">
-                                <a href="#endpoints-PATCHapi-seo-articles--id-">PATCH api/seo/articles/{id}</a>
-                            </li>
-                                                                                <li class="tocify-item level-2" data-unique="endpoints-PATCHapi-seo-prospects--id-">
-                                <a href="#endpoints-PATCHapi-seo-prospects--id-">PATCH api/seo/prospects/{id}</a>
+                                                    <li class="tocify-item level-2" data-unique="endpoints-POSTapi-free-tools-transcript">
+                                <a href="#endpoints-POSTapi-free-tools-transcript">POST api/free-tools/transcript</a>
                             </li>
                                                                                 <li class="tocify-item level-2" data-unique="endpoints-GETapi-health">
                                 <a href="#endpoints-GETapi-health">GET api/health</a>
@@ -466,6 +454,49 @@ lose their brand link.</a>
                             </li>
                                                                         </ul>
                             </ul>
+                    <ul id="tocify-header-outliers" class="tocify-header">
+                <li class="tocify-item level-1" data-unique="outliers">
+                    <a href="#outliers">Outliers</a>
+                </li>
+                                    <ul id="tocify-subheader-outliers" class="tocify-subheader">
+                                                    <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers">
+                                <a href="#outliers-GETapi-outliers">Browse outliers</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers-channels">
+                                <a href="#outliers-GETapi-outliers-channels">List outlier channels</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-POSTapi-outliers-search">
+                                <a href="#outliers-POSTapi-outliers-search">Start an outlier search</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-POSTapi-outliers-fetch">
+                                <a href="#outliers-POSTapi-outliers-fetch">Fetch an outlier by URL</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers-tags">
+                                <a href="#outliers-GETapi-outliers-tags">List library tags</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers-library">
+                                <a href="#outliers-GETapi-outliers-library">List saved outliers</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-POSTapi-outliers-library">
+                                <a href="#outliers-POSTapi-outliers-library">Save an outlier</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-PATCHapi-outliers-library--id-">
+                                <a href="#outliers-PATCHapi-outliers-library--id-">Update a saved outlier's tags</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-DELETEapi-outliers-library--id-">
+                                <a href="#outliers-DELETEapi-outliers-library--id-">Remove a saved outlier</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers--platform---videoId-">
+                                <a href="#outliers-GETapi-outliers--platform---videoId-">Get an outlier</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers--platform---videoId--breakdown">
+                                <a href="#outliers-GETapi-outliers--platform---videoId--breakdown">Get an outlier's AI breakdown</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-POSTapi-outliers--platform---videoId--breakdown">
+                                <a href="#outliers-POSTapi-outliers--platform---videoId--breakdown">Generate an outlier's AI breakdown</a>
+                            </li>
+                                                                        </ul>
+                            </ul>
                     <ul id="tocify-header-user-default-reference-image" class="tocify-header">
                 <li class="tocify-item level-1" data-unique="user-default-reference-image">
                     <a href="#user-default-reference-image">User Default Reference Image</a>
@@ -491,7 +522,7 @@ lose their brand link.</a>
     </ul>
 
     <ul class="toc-footer" id="last-updated">
-        <li>Last updated: July 30, 2026</li>
+        <li>Last updated: September 8, 2026</li>
     </ul>
 </div>
 
@@ -501,7 +532,7 @@ lose their brand link.</a>
         <h1 id="introduction">Introduction</h1>
 <p>ViewsMax REST API: multi-platform posts, offers, tracking links, analytics, media, and connections. AI agents can also use the MCP server at /api/mcp — see <a href="https://viewsmax.com/ai.md">https://viewsmax.com/ai.md</a> and /api/ai for discovery.</p>
 <aside>
-    <strong>Base URL</strong>: <code>https://viewsmax.com</code>
+    <strong>Base URL</strong>: <code>https://api.viewsmax.com</code>
 </aside>
 <pre><code>This documentation aims to provide all the information you need to work with our API.
 
@@ -530,14 +561,14 @@ You can switch the language used with the tabs at the top right (or from the nav
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/ai" \
+    --get "https://api.viewsmax.com/api/ai" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/ai"
+    "https://api.viewsmax.com/api/ai"
 );
 
 const headers = {
@@ -563,22 +594,22 @@ fetch(url, {
             <pre><code class="language-http">cache-control: max-age=3600, public
 content-type: application/json
 x-ratelimit-limit: 30
-x-ratelimit-remaining: 29
+x-ratelimit-remaining: 28
 vary: Origin
  </code></pre></details>         <pre>
 
 <code class="language-json" style="max-height: 300px;">{
     &quot;name&quot;: &quot;ViewsMax&quot;,
-    &quot;summary&quot;: &quot;Social posting + link tracking/analytics SaaS. AI agents act on a user&#039;s behalf: compose and schedule posts to YouTube, TikTok, X, LinkedIn, Threads, Instagram, and Bluesky; create offers and tracked links; read click, conversion, and revenue stats. User data is private &mdash; all access is authenticated.&quot;,
-    &quot;site&quot;: &quot;http://localhost:8080&quot;,
+    &quot;summary&quot;: &quot;Social posting + link tracking/analytics SaaS. AI agents act on a user&#039;s behalf: compose and schedule posts to YouTube, TikTok, X, LinkedIn, Threads, Instagram, and Bluesky; create offers and tracked links; read click, conversion, and revenue stats; research outlier videos (content that massively over-performed its channel) and get AI breakdowns of why they worked. User data is private &mdash; all access is authenticated.&quot;,
+    &quot;site&quot;: &quot;https://viewsmax.com&quot;,
     &quot;docs&quot;: {
-        &quot;agents&quot;: &quot;http://localhost:8080/ai.md&quot;,
-        &quot;llms_txt&quot;: &quot;http://localhost:8080/llms.txt&quot;,
-        &quot;api_reference&quot;: &quot;https://viewsmax.com/docs&quot;,
-        &quot;openapi&quot;: &quot;https://viewsmax.com/docs.openapi&quot;
+        &quot;agents&quot;: &quot;https://viewsmax.com/ai.md&quot;,
+        &quot;llms_txt&quot;: &quot;https://viewsmax.com/llms.txt&quot;,
+        &quot;api_reference&quot;: &quot;https://api.viewsmax.com/docs&quot;,
+        &quot;openapi&quot;: &quot;https://api.viewsmax.com/docs.openapi&quot;
     },
     &quot;mcp&quot;: {
-        &quot;endpoint&quot;: &quot;https://viewsmax.com/api/mcp&quot;,
+        &quot;endpoint&quot;: &quot;https://api.viewsmax.com/api/mcp&quot;,
         &quot;transport&quot;: &quot;streamable-http&quot;,
         &quot;auth&quot;: [
             {
@@ -590,8 +621,8 @@ vary: Origin
                     &quot;mcp:read&quot;,
                     &quot;mcp:write&quot;
                 ],
-                &quot;authorization_server_metadata&quot;: &quot;https://viewsmax.com/.well-known/oauth-authorization-server&quot;,
-                &quot;protected_resource_metadata&quot;: &quot;https://viewsmax.com/.well-known/oauth-protected-resource/api/mcp&quot;,
+                &quot;authorization_server_metadata&quot;: &quot;https://api.viewsmax.com/.well-known/oauth-authorization-server&quot;,
+                &quot;protected_resource_metadata&quot;: &quot;https://api.viewsmax.com/.well-known/oauth-protected-resource/api/mcp&quot;,
                 &quot;dynamic_client_registration&quot;: true
             },
             {
@@ -602,7 +633,7 @@ vary: Origin
                     &quot;read&quot;,
                     &quot;full&quot;
                 ],
-                &quot;obtain_at&quot;: &quot;http://localhost:8080/dashboard/settings&quot;
+                &quot;obtain_at&quot;: &quot;https://viewsmax.com/dashboard/settings&quot;
             }
         ],
         &quot;tools&quot;: [
@@ -700,18 +731,66 @@ vary: Origin
                 &quot;name&quot;: &quot;create_feature_request&quot;,
                 &quot;description&quot;: &quot;Submit a feature request to the ViewsMax team on the user&#039;s behalf.&quot;,
                 &quot;access&quot;: &quot;write&quot;
+            },
+            {
+                &quot;name&quot;: &quot;list_outliers&quot;,
+                &quot;description&quot;: &quot;Browse outlier videos &mdash; content that massively over-performed its channel&#039;s average (outlier_score = views &divide; channel average views) across YouTube, TikTok and Instagram. Without `query` this is the curated/featured feed; with `query` it returns title matches already in the database. If the response `status` is \&quot;queued\&quot; or \&quot;in_progress\&quot; no scrape has finished for that query yet &mdash; call search_outliers to start one, then re-run this tool. Filter by platform, score, views, subscribers, publish date, duration (long/shorts), channel ids or ISO country codes. Paginated (per_page &le; 50).&quot;,
+                &quot;access&quot;: &quot;read&quot;
+            },
+            {
+                &quot;name&quot;: &quot;search_outliers&quot;,
+                &quot;description&quot;: &quot;Start a background scrape for outlier videos matching a keyword/topic. Returns immediately with status \&quot;queued\&quot;; results land in the shared outlier database over the next minute or two &mdash; poll list_outliers with the same `query` until its status is \&quot;done\&quot;. Use exact_match to require the whole phrase.&quot;,
+                &quot;access&quot;: &quot;write&quot;
+            },
+            {
+                &quot;name&quot;: &quot;get_outlier&quot;,
+                &quot;description&quot;: &quot;Fetch one outlier video by platform + video id (as returned by list_outliers or fetch_outlier), including its channel, views, outlier score and engagement.&quot;,
+                &quot;access&quot;: &quot;read&quot;
+            },
+            {
+                &quot;name&quot;: &quot;fetch_outlier&quot;,
+                &quot;description&quot;: &quot;Pull a specific video into the outlier database from its URL so it can be analysed (get_outlier, generate_outlier_breakdown, save_outlier). If the video is already known it is returned immediately; otherwise ingestion is queued (`queued: true`) &mdash; poll get_outlier with the returned platform + video_id.&quot;,
+                &quot;access&quot;: &quot;write&quot;
+            },
+            {
+                &quot;name&quot;: &quot;get_outlier_breakdown&quot;,
+                &quot;description&quot;: &quot;Read the AI breakdown of an outlier video (hook, structure, why it worked, how to replicate it). `status` is none (never generated &mdash; call generate_outlier_breakdown), pending/processing (poll again), completed (`payload` holds the analysis) or failed (`error`).&quot;,
+                &quot;access&quot;: &quot;read&quot;
+            },
+            {
+                &quot;name&quot;: &quot;generate_outlier_breakdown&quot;,
+                &quot;description&quot;: &quot;Queue an AI breakdown of an outlier video (transcript + analysis of the hook, structure and why it over-performed). Generation runs in the background and takes up to a couple of minutes &mdash; poll get_outlier_breakdown until status is completed. Re-running for a video that already has a breakdown returns the existing one instead of regenerating.&quot;,
+                &quot;access&quot;: &quot;write&quot;
+            },
+            {
+                &quot;name&quot;: &quot;list_saved_outliers&quot;,
+                &quot;description&quot;: &quot;The user&#039;s saved-outliers library (videos they bookmarked with save_outlier), newest first, with tags and the video snapshot taken when saved. Filter by a title/channel query, tag names, platforms, or creator name.&quot;,
+                &quot;access&quot;: &quot;read&quot;
+            },
+            {
+                &quot;name&quot;: &quot;save_outlier&quot;,
+                &quot;description&quot;: &quot;Bookmark an outlier video into the user&#039;s library, optionally with tags (created on demand). Saving the same video again replaces its tags. The video must already be in the outlier database (list_outliers / fetch_outlier).&quot;,
+                &quot;access&quot;: &quot;write&quot;
+            },
+            {
+                &quot;name&quot;: &quot;remove_saved_outlier&quot;,
+                &quot;description&quot;: &quot;Remove a saved video from the user&#039;s outlier library by its saved id (from list_saved_outliers / save_outlier). The video itself stays in the outlier database.&quot;,
+                &quot;access&quot;: &quot;write&quot;
             }
         ]
     },
     &quot;rest&quot;: {
-        &quot;base_url&quot;: &quot;https://viewsmax.com/api&quot;,
-        &quot;auth&quot;: &quot;Same vmx_ API key as a Bearer token (posts, offers, tracking, stats endpoints only; read-only keys are limited to GET).&quot;,
-        &quot;openapi&quot;: &quot;https://viewsmax.com/docs.openapi&quot;
+        &quot;base_url&quot;: &quot;https://api.viewsmax.com/api&quot;,
+        &quot;auth&quot;: &quot;Same vmx_ API key as a Bearer token (posts, offers, tracking, stats, and outliers endpoints only; read-only keys are limited to GET).&quot;,
+        &quot;openapi&quot;: &quot;https://api.viewsmax.com/docs.openapi&quot;
     },
     &quot;rate_limits&quot;: {
         &quot;mcp_requests_per_minute&quot;: 120,
         &quot;create_post_per_hour&quot;: 180,
-        &quot;upload_media_per_hour&quot;: 40
+        &quot;upload_media_per_hour&quot;: 40,
+        &quot;search_outliers_per_hour&quot;: 30,
+        &quot;fetch_outlier_per_hour&quot;: 60,
+        &quot;generate_outlier_breakdown_per_hour&quot;: 30
     }
 }</code>
  </pre>
@@ -813,7 +892,7 @@ double-post to a platform that already succeeded.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/posts/architecto/targets/architecto/retry" \
+    "https://api.viewsmax.com/api/posts/architecto/targets/architecto/retry" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -821,7 +900,7 @@ double-post to a platform that already succeeded.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/posts/architecto/targets/architecto/retry"
+    "https://api.viewsmax.com/api/posts/architecto/targets/architecto/retry"
 );
 
 const headers = {
@@ -981,7 +1060,7 @@ scheduled_at date window (from/to) used by the calendar view.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/posts" \
+    --get "https://api.viewsmax.com/api/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -989,7 +1068,7 @@ scheduled_at date window (from/to) used by the calendar view.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/posts"
+    "https://api.viewsmax.com/api/posts"
 );
 
 const headers = {
@@ -1126,7 +1205,7 @@ per-platform results.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/posts" \
+    "https://api.viewsmax.com/api/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -1154,7 +1233,7 @@ per-platform results.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/posts"
+    "https://api.viewsmax.com/api/posts"
 );
 
 const headers = {
@@ -1562,7 +1641,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/posts/architecto" \
+    --get "https://api.viewsmax.com/api/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -1570,7 +1649,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/posts/architecto"
+    "https://api.viewsmax.com/api/posts/architecto"
 );
 
 const headers = {
@@ -1717,7 +1796,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://viewsmax.com/api/posts/architecto" \
+    "https://api.viewsmax.com/api/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -1725,7 +1804,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/posts/architecto"
+    "https://api.viewsmax.com/api/posts/architecto"
 );
 
 const headers = {
@@ -1876,7 +1955,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/posts/architecto" \
+    "https://api.viewsmax.com/api/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -1884,7 +1963,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/posts/architecto"
+    "https://api.viewsmax.com/api/posts/architecto"
 );
 
 const headers = {
@@ -2037,7 +2116,7 @@ the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/posts/media" \
+    "https://api.viewsmax.com/api/posts/media" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -2046,7 +2125,7 @@ the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/posts/media"
+    "https://api.viewsmax.com/api/posts/media"
 );
 
 const headers = {
@@ -2191,6 +2270,630 @@ You can check the Dev Tools console for debugging information.</code></pre>
         </div>
         </form>
 
+                    <h2 id="post-media-POSTapi-posts-media-direct">Create a direct-upload session.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-posts-media-direct">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/posts/media/direct" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"type\": \"architecto\",
+    \"filename\": \"architecto\",
+    \"mime\": \"architecto\",
+    \"size\": 16
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/posts/media/direct"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "type": "architecto",
+    "filename": "architecto",
+    "mime": "architecto",
+    "size": 16
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-posts-media-direct">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-posts-media-direct" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-posts-media-direct"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-posts-media-direct"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-posts-media-direct" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-posts-media-direct">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-posts-media-direct" data-method="POST"
+      data-path="api/posts/media/direct"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-posts-media-direct', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-posts-media-direct"
+                    onclick="tryItOut('POSTapi-posts-media-direct');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-posts-media-direct"
+                    onclick="cancelTryOut('POSTapi-posts-media-direct');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-posts-media-direct"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/posts/media/direct</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-posts-media-direct"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-posts-media-direct"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-posts-media-direct"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="type"                data-endpoint="POSTapi-posts-media-direct"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>image|video. Required. Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>filename</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="filename"                data-endpoint="POSTapi-posts-media-direct"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Original file name (display only). Required. Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>mime</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="mime"                data-endpoint="POSTapi-posts-media-direct"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>File content type, e.g. video/mp4. Required. Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>size</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="size"                data-endpoint="POSTapi-posts-media-direct"
+               value="16"
+               data-component="body">
+    <br>
+<p>File size in bytes. Required. Example: <code>16</code></p>
+        </div>
+        </form>
+
+                    <h2 id="post-media-POSTapi-posts-media-direct-complete">Complete a direct upload.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Finalizes the multipart upload (when upload_id is present), verifies the
+stored object against the declared type's size/mime limits (a presigned
+PUT cannot enforce size), and returns the media entry for the composer.</p>
+
+<span id="example-requests-POSTapi-posts-media-direct-complete">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/posts/media/direct/complete" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"type\": \"architecto\",
+    \"path\": \"architecto\",
+    \"parts\": [
+        {
+            \"part_number\": 22,
+            \"etag\": \"architecto\"
+        }
+    ]
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/posts/media/direct/complete"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "type": "architecto",
+    "path": "architecto",
+    "parts": [
+        {
+            "part_number": 22,
+            "etag": "architecto"
+        }
+    ]
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-posts-media-direct-complete">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-posts-media-direct-complete" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-posts-media-direct-complete"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-posts-media-direct-complete"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-posts-media-direct-complete" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-posts-media-direct-complete">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-posts-media-direct-complete" data-method="POST"
+      data-path="api/posts/media/direct/complete"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-posts-media-direct-complete', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-posts-media-direct-complete"
+                    onclick="tryItOut('POSTapi-posts-media-direct-complete');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-posts-media-direct-complete"
+                    onclick="cancelTryOut('POSTapi-posts-media-direct-complete');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-posts-media-direct-complete"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/posts/media/direct/complete</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-posts-media-direct-complete"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-posts-media-direct-complete"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-posts-media-direct-complete"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>type</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="type"                data-endpoint="POSTapi-posts-media-direct-complete"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>image|video. Required. Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>path</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="path"                data-endpoint="POSTapi-posts-media-direct-complete"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Storage path returned by the session. Required. Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>upload_id</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="upload_id"                data-endpoint="POSTapi-posts-media-direct-complete"
+               value=""
+               data-component="body">
+    <br>
+<p>Multipart upload id (multipart only).</p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+        <details>
+            <summary style="padding-bottom: 10px;">
+                <b style="line-height: 2;"><code>parts</code></b>&nbsp;&nbsp;
+<small>object[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+<br>
+<p>Uploaded parts as {part_number, etag} (multipart only).</p>
+            </summary>
+                                                <div style="margin-left: 14px; clear: unset;">
+                        <b style="line-height: 2;"><code>part_number</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="parts.0.part_number"                data-endpoint="POSTapi-posts-media-direct-complete"
+               value="22"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Example: <code>22</code></p>
+                    </div>
+                                                                <div style="margin-left: 14px; clear: unset;">
+                        <b style="line-height: 2;"><code>etag</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="parts.0.etag"                data-endpoint="POSTapi-posts-media-direct-complete"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Example: <code>architecto</code></p>
+                    </div>
+                                    </details>
+        </div>
+        </form>
+
+                    <h2 id="post-media-POSTapi-posts-media-direct-abort">Abort a multipart direct upload.</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-POSTapi-posts-media-direct-abort">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/posts/media/direct/abort" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"path\": \"architecto\",
+    \"upload_id\": \"architecto\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/posts/media/direct/abort"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "path": "architecto",
+    "upload_id": "architecto"
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-posts-media-direct-abort">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-posts-media-direct-abort" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-posts-media-direct-abort"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-posts-media-direct-abort"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-posts-media-direct-abort" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-posts-media-direct-abort">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-posts-media-direct-abort" data-method="POST"
+      data-path="api/posts/media/direct/abort"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-posts-media-direct-abort', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-posts-media-direct-abort"
+                    onclick="tryItOut('POSTapi-posts-media-direct-abort');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-posts-media-direct-abort"
+                    onclick="cancelTryOut('POSTapi-posts-media-direct-abort');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-posts-media-direct-abort"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/posts/media/direct/abort</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-posts-media-direct-abort"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-posts-media-direct-abort"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-posts-media-direct-abort"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>path</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="path"                data-endpoint="POSTapi-posts-media-direct-abort"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Storage path returned by the session. Required. Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>upload_id</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="upload_id"                data-endpoint="POSTapi-posts-media-direct-abort"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Multipart upload id. Required. Example: <code>architecto</code></p>
+        </div>
+        </form>
+
                 <h1 id="offers">Offers</h1>
 
     <p>Offers are products/campaigns being promoted (stored as tracking events).
@@ -2212,7 +2915,7 @@ power the analytics dashboards.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/tracking-events/offers" \
+    --get "https://api.viewsmax.com/api/tracking-events/offers" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -2220,7 +2923,7 @@ power the analytics dashboards.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/offers"
+    "https://api.viewsmax.com/api/tracking-events/offers"
 );
 
 const headers = {
@@ -2354,7 +3057,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/tracking-events/stats" \
+    --get "https://api.viewsmax.com/api/tracking-events/stats" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -2362,7 +3065,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/stats"
+    "https://api.viewsmax.com/api/tracking-events/stats"
 );
 
 const headers = {
@@ -2498,7 +3201,7 @@ day across the requested window (gaps filled with zeros).</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/tracking-events/timeseries" \
+    --get "https://api.viewsmax.com/api/tracking-events/timeseries" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -2506,7 +3209,7 @@ day across the requested window (gaps filled with zeros).</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/timeseries"
+    "https://api.viewsmax.com/api/tracking-events/timeseries"
 );
 
 const headers = {
@@ -2644,7 +3347,7 @@ visitors + view counts. Pageview-based; falls back to link-click data
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/tracking-events/sources" \
+    --get "https://api.viewsmax.com/api/tracking-events/sources" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -2652,7 +3355,7 @@ visitors + view counts. Pageview-based; falls back to link-click data
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/sources"
+    "https://api.viewsmax.com/api/tracking-events/sources"
 );
 
 const headers = {
@@ -2786,7 +3489,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/goal-types" \
+    --get "https://api.viewsmax.com/api/goal-types" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -2794,7 +3497,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/goal-types"
+    "https://api.viewsmax.com/api/goal-types"
 );
 
 const headers = {
@@ -2928,7 +3631,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/tracking-events" \
+    --get "https://api.viewsmax.com/api/tracking-events" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -2936,7 +3639,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events"
+    "https://api.viewsmax.com/api/tracking-events"
 );
 
 const headers = {
@@ -3070,7 +3773,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/tracking-events" \
+    "https://api.viewsmax.com/api/tracking-events" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -3099,7 +3802,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events"
+    "https://api.viewsmax.com/api/tracking-events"
 );
 
 const headers = {
@@ -3401,7 +4104,7 @@ arbitrary user-defined &quot;custom&quot; events, which are stored verbatim. Mus
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/tracking-events/architecto" \
+    --get "https://api.viewsmax.com/api/tracking-events/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -3409,7 +4112,7 @@ arbitrary user-defined &quot;custom&quot; events, which are stored verbatim. Mus
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/architecto"
+    "https://api.viewsmax.com/api/tracking-events/architecto"
 );
 
 const headers = {
@@ -3556,7 +4259,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://viewsmax.com/api/tracking-events/architecto" \
+    "https://api.viewsmax.com/api/tracking-events/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -3586,7 +4289,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/architecto"
+    "https://api.viewsmax.com/api/tracking-events/architecto"
 );
 
 const headers = {
@@ -3917,7 +4620,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/tracking-events/architecto" \
+    "https://api.viewsmax.com/api/tracking-events/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -3925,7 +4628,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/architecto"
+    "https://api.viewsmax.com/api/tracking-events/architecto"
 );
 
 const headers = {
@@ -4078,7 +4781,7 @@ bios; ViewsMax records clicks and attributes conversions back to the link
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/tracking-links" \
+    "https://api.viewsmax.com/api/tracking-links" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -4100,7 +4803,7 @@ bios; ViewsMax records clicks and attributes conversions back to the link
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-links"
+    "https://api.viewsmax.com/api/tracking-links"
 );
 
 const headers = {
@@ -4360,7 +5063,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://viewsmax.com/api/tracking-links/architecto" \
+    "https://api.viewsmax.com/api/tracking-links/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -4381,7 +5084,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-links/architecto"
+    "https://api.viewsmax.com/api/tracking-links/architecto"
 );
 
 const headers = {
@@ -4645,7 +5348,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/tracking-links/architecto" \
+    "https://api.viewsmax.com/api/tracking-links/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -4653,7 +5356,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-links/architecto"
+    "https://api.viewsmax.com/api/tracking-links/architecto"
 );
 
 const headers = {
@@ -4800,7 +5503,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/tracking-events/architecto/links" \
+    --get "https://api.viewsmax.com/api/tracking-events/architecto/links" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -4808,7 +5511,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/tracking-events/architecto/links"
+    "https://api.viewsmax.com/api/tracking-events/architecto/links"
 );
 
 const headers = {
@@ -4961,7 +5664,7 @@ endpoint. All endpoints are scoped to the authenticated user.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/contents/1/media" \
+    --get "https://api.viewsmax.com/api/contents/1/media" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -4969,7 +5672,7 @@ endpoint. All endpoints are scoped to the authenticated user.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/contents/1/media"
+    "https://api.viewsmax.com/api/contents/1/media"
 );
 
 const headers = {
@@ -5125,7 +5828,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/contents?offer_id=12&amp;status=published" \
+    --get "https://api.viewsmax.com/api/contents?offer_id=12&amp;status=published" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -5133,7 +5836,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/contents"
+    "https://api.viewsmax.com/api/contents"
 );
 
 const params = {
@@ -5306,7 +6009,7 @@ The <code>body</code> accepts long-form text. <code>media</code> accepts a singl
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/contents" \
+    "https://api.viewsmax.com/api/contents" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
@@ -5314,12 +6017,12 @@ The <code>body</code> accepts long-form text. <code>media</code> accepts a singl
     --form "body=Once upon a time..."\
     --form "offer_id=12"\
     --form "status=published"\
-    --form "media=@/tmp/phpEhqlKX" </code></pre></div>
+    --form "media=@/tmp/phpx3aYfL" </code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/contents"
+    "https://api.viewsmax.com/api/contents"
 );
 
 const headers = {
@@ -5520,7 +6223,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
                value=""
                data-component="body">
     <br>
-<p>A media file to attach (image/video/document, max 50 MB). Example: <code>/tmp/phpEhqlKX</code></p>
+<p>A media file to attach (image/video/document, max 50 MB). Example: <code>/tmp/phpx3aYfL</code></p>
         </div>
         </form>
 
@@ -5538,7 +6241,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/contents/1" \
+    --get "https://api.viewsmax.com/api/contents/1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -5546,7 +6249,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/contents/1"
+    "https://api.viewsmax.com/api/contents/1"
 );
 
 const headers = {
@@ -5699,7 +6402,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://viewsmax.com/api/contents/1" \
+    "https://api.viewsmax.com/api/contents/1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
@@ -5707,12 +6410,12 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "body=New body text..."\
     --form "offer_id=12"\
     --form "status=published"\
-    --form "media=@/tmp/phpQdJ1g4" </code></pre></div>
+    --form "media=@/tmp/phpinnV1s" </code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/contents/1"
+    "https://api.viewsmax.com/api/contents/1"
 );
 
 const headers = {
@@ -5910,7 +6613,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
                value=""
                data-component="body">
     <br>
-<p>Replacement media file (max 50 MB). Example: <code>/tmp/phpQdJ1g4</code></p>
+<p>Replacement media file (max 50 MB). Example: <code>/tmp/phpinnV1s</code></p>
         </div>
         </form>
 
@@ -5928,7 +6631,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/contents/1" \
+    "https://api.viewsmax.com/api/contents/1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -5936,7 +6639,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/contents/1"
+    "https://api.viewsmax.com/api/contents/1"
 );
 
 const headers = {
@@ -6077,7 +6780,7 @@ exchange). Prefer the /api/social endpoints for new integrations.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/connections" \
+    --get "https://api.viewsmax.com/api/connections" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6085,7 +6788,7 @@ exchange). Prefer the /api/social endpoints for new integrations.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/connections"
+    "https://api.viewsmax.com/api/connections"
 );
 
 const headers = {
@@ -6219,7 +6922,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/connections/architecto" \
+    "https://api.viewsmax.com/api/connections/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6227,7 +6930,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/connections/architecto"
+    "https://api.viewsmax.com/api/connections/architecto"
 );
 
 const headers = {
@@ -6376,7 +7079,7 @@ the privacy/interaction UI from this before a post can be published.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/connections/tiktok/creator-info" \
+    --get "https://api.viewsmax.com/api/connections/tiktok/creator-info" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6384,7 +7087,7 @@ the privacy/interaction UI from this before a post can be published.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/connections/tiktok/creator-info"
+    "https://api.viewsmax.com/api/connections/tiktok/creator-info"
 );
 
 const headers = {
@@ -6518,7 +7221,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/social/platforms" \
+    --get "https://api.viewsmax.com/api/social/platforms" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6526,7 +7229,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/platforms"
+    "https://api.viewsmax.com/api/social/platforms"
 );
 
 const headers = {
@@ -6660,7 +7363,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/social/accounts" \
+    --get "https://api.viewsmax.com/api/social/accounts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6668,7 +7371,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/accounts"
+    "https://api.viewsmax.com/api/social/accounts"
 );
 
 const headers = {
@@ -6802,7 +7505,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/social/accounts/architecto" \
+    "https://api.viewsmax.com/api/social/accounts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6810,7 +7513,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/accounts/architecto"
+    "https://api.viewsmax.com/api/social/accounts/architecto"
 );
 
 const headers = {
@@ -6959,7 +7662,7 @@ with a `code` to be sent to exchange().</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/social/architecto/auth-url" \
+    --get "https://api.viewsmax.com/api/social/architecto/auth-url" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6967,7 +7670,7 @@ with a `code` to be sent to exchange().</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/architecto/auth-url"
+    "https://api.viewsmax.com/api/social/architecto/auth-url"
 );
 
 const headers = {
@@ -7115,7 +7818,7 @@ tokens and persist the connected account(s).</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/social/architecto/exchange" \
+    "https://api.viewsmax.com/api/social/architecto/exchange" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -7129,7 +7832,7 @@ tokens and persist the connected account(s).</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/architecto/exchange"
+    "https://api.viewsmax.com/api/social/architecto/exchange"
 );
 
 const headers = {
@@ -7320,7 +8023,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/social/architecto/connect" \
+    "https://api.viewsmax.com/api/social/architecto/connect" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7328,7 +8031,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/architecto/connect"
+    "https://api.viewsmax.com/api/social/architecto/connect"
 );
 
 const headers = {
@@ -7475,7 +8178,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/social/x/users/search?q=jane&amp;social_account_id=1" \
+    --get "https://api.viewsmax.com/api/social/x/users/search?q=jane&amp;social_account_id=1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -7488,7 +8191,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/x/users/search"
+    "https://api.viewsmax.com/api/social/x/users/search"
 );
 
 const params = {
@@ -7694,7 +8397,7 @@ read; the X API plan doesn&#039;t allow timeline reads.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/social/x/posts" \
+    --get "https://api.viewsmax.com/api/social/x/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7702,7 +8405,7 @@ read; the X API plan doesn&#039;t allow timeline reads.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/x/posts"
+    "https://api.viewsmax.com/api/social/x/posts"
 );
 
 const headers = {
@@ -7836,7 +8539,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/social/posts" \
+    --get "https://api.viewsmax.com/api/social/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7844,7 +8547,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/posts"
+    "https://api.viewsmax.com/api/social/posts"
 );
 
 const headers = {
@@ -7978,7 +8681,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/social/posts" \
+    "https://api.viewsmax.com/api/social/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -7988,7 +8691,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"account_ids\": [
         16
     ],
-    \"scheduled_at\": \"2052-08-23\",
+    \"scheduled_at\": \"2052-10-01\",
     \"media\": [
         {
             \"url\": \"http:\\/\\/bailey.com\\/\",
@@ -8003,7 +8706,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/posts"
+    "https://api.viewsmax.com/api/social/posts"
 );
 
 const headers = {
@@ -8018,7 +8721,7 @@ let body = {
     "account_ids": [
         16
     ],
-    "scheduled_at": "2052-08-23",
+    "scheduled_at": "2052-10-01",
     "media": [
         {
             "url": "http:\/\/bailey.com\/",
@@ -8247,10 +8950,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="scheduled_at"                data-endpoint="POSTapi-social-posts"
-               value="2052-08-23"
+               value="2052-10-01"
                data-component="body">
     <br>
-<p>Must be a valid date. Must be a date after <code>now</code>. Example: <code>2052-08-23</code></p>
+<p>Must be a valid date. Must be a date after <code>now</code>. Example: <code>2052-10-01</code></p>
         </div>
         </form>
 
@@ -8268,7 +8971,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/social/posts/architecto" \
+    --get "https://api.viewsmax.com/api/social/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8276,7 +8979,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/posts/architecto"
+    "https://api.viewsmax.com/api/social/posts/architecto"
 );
 
 const headers = {
@@ -8423,7 +9126,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/social/posts/architecto/retry" \
+    "https://api.viewsmax.com/api/social/posts/architecto/retry" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8431,7 +9134,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/social/posts/architecto/retry"
+    "https://api.viewsmax.com/api/social/posts/architecto/retry"
 );
 
 const headers = {
@@ -8587,7 +9290,7 @@ management endpoints themselves require a login session, not a key.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/user/api-key" \
+    --get "https://api.viewsmax.com/api/user/api-key" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8595,7 +9298,7 @@ management endpoints themselves require a login session, not a key.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/api-key"
+    "https://api.viewsmax.com/api/user/api-key"
 );
 
 const headers = {
@@ -8729,7 +9432,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/user/api-key/rotate" \
+    "https://api.viewsmax.com/api/user/api-key/rotate" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -8741,7 +9444,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/api-key/rotate"
+    "https://api.viewsmax.com/api/user/api-key/rotate"
 );
 
 const headers = {
@@ -8901,7 +9604,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/plans" \
+    --get "https://api.viewsmax.com/api/plans" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8909,7 +9612,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/plans"
+    "https://api.viewsmax.com/api/plans"
 );
 
 const headers = {
@@ -9043,7 +9746,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/plans/architecto" \
+    --get "https://api.viewsmax.com/api/plans/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9051,7 +9754,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/plans/architecto"
+    "https://api.viewsmax.com/api/plans/architecto"
 );
 
 const headers = {
@@ -9202,7 +9905,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/feature-requests" \
+    --get "https://api.viewsmax.com/api/feature-requests" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9210,7 +9913,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/feature-requests"
+    "https://api.viewsmax.com/api/feature-requests"
 );
 
 const headers = {
@@ -9344,7 +10047,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/feature-requests" \
+    "https://api.viewsmax.com/api/feature-requests" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -9358,7 +10061,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/feature-requests"
+    "https://api.viewsmax.com/api/feature-requests"
 );
 
 const headers = {
@@ -9536,7 +10239,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/feature-requests/architecto/upvote" \
+    "https://api.viewsmax.com/api/feature-requests/architecto/upvote" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9544,7 +10247,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/feature-requests/architecto/upvote"
+    "https://api.viewsmax.com/api/feature-requests/architecto/upvote"
 );
 
 const headers = {
@@ -9696,7 +10399,7 @@ Assistant Access) or the MCP OAuth flow instead of storing passwords.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/register" \
+    "https://api.viewsmax.com/api/register" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
@@ -9710,7 +10413,7 @@ Assistant Access) or the MCP OAuth flow instead of storing passwords.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/register"
+    "https://api.viewsmax.com/api/register"
 );
 
 const headers = {
@@ -9902,7 +10605,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/login" \
+    "https://api.viewsmax.com/api/login" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
@@ -9914,7 +10617,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/login"
+    "https://api.viewsmax.com/api/login"
 );
 
 const headers = {
@@ -10066,7 +10769,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/forgot-password" \
+    "https://api.viewsmax.com/api/forgot-password" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -10078,7 +10781,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/forgot-password"
+    "https://api.viewsmax.com/api/forgot-password"
 );
 
 const headers = {
@@ -10230,7 +10933,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/reset-password" \
+    "https://api.viewsmax.com/api/reset-password" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -10244,7 +10947,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/reset-password"
+    "https://api.viewsmax.com/api/reset-password"
 );
 
 const headers = {
@@ -10427,7 +11130,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/auth/verify-email" \
+    "https://api.viewsmax.com/api/auth/verify-email" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -10439,7 +11142,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/auth/verify-email"
+    "https://api.viewsmax.com/api/auth/verify-email"
 );
 
 const headers = {
@@ -10590,7 +11293,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/auth/resend-verification" \
+    "https://api.viewsmax.com/api/auth/resend-verification" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -10602,7 +11305,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/auth/resend-verification"
+    "https://api.viewsmax.com/api/auth/resend-verification"
 );
 
 const headers = {
@@ -10753,7 +11456,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/logout" \
+    "https://api.viewsmax.com/api/logout" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -10761,7 +11464,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/logout"
+    "https://api.viewsmax.com/api/logout"
 );
 
 const headers = {
@@ -10895,7 +11598,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/profile" \
+    --get "https://api.viewsmax.com/api/profile" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -10903,7 +11606,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/profile"
+    "https://api.viewsmax.com/api/profile"
 );
 
 const headers = {
@@ -11037,7 +11740,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/refresh" \
+    "https://api.viewsmax.com/api/refresh" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11045,7 +11748,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/refresh"
+    "https://api.viewsmax.com/api/refresh"
 );
 
 const headers = {
@@ -11186,7 +11889,7 @@ account: current count, day-over-day delta across the range, and points.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/analytics/audience" \
+    --get "https://api.viewsmax.com/api/analytics/audience" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11194,7 +11897,7 @@ account: current count, day-over-day delta across the range, and points.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/analytics/audience"
+    "https://api.viewsmax.com/api/analytics/audience"
 );
 
 const headers = {
@@ -11329,7 +12032,7 @@ day-over-day delta. Optional ?platform= filter.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/analytics/posts" \
+    --get "https://api.viewsmax.com/api/analytics/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11337,7 +12040,7 @@ day-over-day delta. Optional ?platform= filter.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/analytics/posts"
+    "https://api.viewsmax.com/api/analytics/posts"
 );
 
 const headers = {
@@ -11477,7 +12180,7 @@ Checks run 6h apart, up to 3 times per post, and stop on success.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/boosts/settings" \
+    --get "https://api.viewsmax.com/api/boosts/settings" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11485,7 +12188,7 @@ Checks run 6h apart, up to 3 times per post, and stop on success.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/boosts/settings"
+    "https://api.viewsmax.com/api/boosts/settings"
 );
 
 const headers = {
@@ -11619,13 +12322,13 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://viewsmax.com/api/boosts/settings/architecto" \
+    "https://api.viewsmax.com/api/boosts/settings/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
     \"feature\": \"architecto\",
-    \"enabled\": true,
+    \"enabled\": false,
     \"likes_threshold\": 22,
     \"promo_text\": \"architecto\"
 }"
@@ -11634,7 +12337,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/boosts/settings/architecto"
+    "https://api.viewsmax.com/api/boosts/settings/architecto"
 );
 
 const headers = {
@@ -11645,7 +12348,7 @@ const headers = {
 
 let body = {
     "feature": "architecto",
-    "enabled": true,
+    "enabled": false,
     "likes_threshold": 22,
     "promo_text": "architecto"
 };
@@ -11806,7 +12509,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>likes_threshold</code></b>&nbsp;&nbsp;
@@ -11848,7 +12551,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/boosts/activity" \
+    --get "https://api.viewsmax.com/api/boosts/activity" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11856,7 +12559,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/boosts/activity"
+    "https://api.viewsmax.com/api/boosts/activity"
 );
 
 const headers = {
@@ -11997,7 +12700,7 @@ store: social_accounts (X, Instagram, ...) or legacy connections
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/brands" \
+    --get "https://api.viewsmax.com/api/brands" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -12005,7 +12708,7 @@ store: social_accounts (X, Instagram, ...) or legacy connections
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/brands"
+    "https://api.viewsmax.com/api/brands"
 );
 
 const headers = {
@@ -12139,7 +12842,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/brands" \
+    "https://api.viewsmax.com/api/brands" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -12158,7 +12861,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/brands"
+    "https://api.viewsmax.com/api/brands"
 );
 
 const headers = {
@@ -12346,7 +13049,7 @@ so a rename-only payload never wipes membership.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://viewsmax.com/api/brands/architecto" \
+    "https://api.viewsmax.com/api/brands/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -12354,7 +13057,7 @@ so a rename-only payload never wipes membership.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/brands/architecto"
+    "https://api.viewsmax.com/api/brands/architecto"
 );
 
 const headers = {
@@ -12506,7 +13209,7 @@ lose their brand link.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/brands/architecto" \
+    "https://api.viewsmax.com/api/brands/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -12514,7 +13217,7 @@ lose their brand link.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/brands/architecto"
+    "https://api.viewsmax.com/api/brands/architecto"
 );
 
 const headers = {
@@ -12651,7 +13354,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
     
 
-                                <h2 id="endpoints-GETapi-seo-profiles">The caller&#039;s profiles (one per offer).</h2>
+                                <h2 id="endpoints-POSTapi-free-tools-transcript">POST api/free-tools/transcript</h2>
 
 <p>
 <small class="badge badge-darkred">requires authentication</small>
@@ -12659,176 +13362,26 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 
 
-<span id="example-requests-GETapi-seo-profiles">
+<span id="example-requests-POSTapi-free-tools-transcript">
 <blockquote>Example request:</blockquote>
 
 
 <div class="bash-example">
-    <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/seo/profiles" \
-    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/profiles"
-);
-
-const headers = {
-    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-fetch(url, {
-    method: "GET",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-GETapi-seo-profiles">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-vary: Origin
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
-}</code>
- </pre>
-    </span>
-<span id="execution-results-GETapi-seo-profiles" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-GETapi-seo-profiles"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-GETapi-seo-profiles"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-GETapi-seo-profiles" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-GETapi-seo-profiles">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-GETapi-seo-profiles" data-method="GET"
-      data-path="api/seo/profiles"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('GETapi-seo-profiles', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-GETapi-seo-profiles"
-                    onclick="tryItOut('GETapi-seo-profiles');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-GETapi-seo-profiles"
-                    onclick="cancelTryOut('GETapi-seo-profiles');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-GETapi-seo-profiles"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-green">GET</small>
-            <b><code>api/seo/profiles</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="GETapi-seo-profiles"
-               value="Bearer vmx_{YOUR_API_KEY}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="GETapi-seo-profiles"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="GETapi-seo-profiles"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        </form>
-
-                    <h2 id="endpoints-PUTapi-seo-profiles-offer--offerId-">Create or update the profile for one of the caller&#039;s offers.</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-PUTapi-seo-profiles-offer--offerId-">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request PUT \
-    "https://viewsmax.com/api/seo/profiles/offer/architecto" \
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/free-tools/transcript" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"competitors\": [
-        \"b\"
-    ],
-    \"wp_url\": \"http:\\/\\/bailey.com\\/\",
-    \"wp_username\": \"m\",
-    \"wp_app_password\": \"i\",
-    \"articles_per_week\": 7,
-    \"auto_publish\": false,
-    \"enabled\": false
+    \"platform\": \"instagram\",
+    \"url\": \"http:\\/\\/www.bailey.biz\\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html\"
 }"
 </code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/profiles/offer/architecto"
+    "https://api.viewsmax.com/api/free-tools/transcript"
 );
 
 const headers = {
@@ -12838,28 +13391,21 @@ const headers = {
 };
 
 let body = {
-    "competitors": [
-        "b"
-    ],
-    "wp_url": "http:\/\/bailey.com\/",
-    "wp_username": "m",
-    "wp_app_password": "i",
-    "articles_per_week": 7,
-    "auto_publish": false,
-    "enabled": false
+    "platform": "instagram",
+    "url": "http:\/\/www.bailey.biz\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html"
 };
 
 fetch(url, {
-    method: "PUT",
+    method: "POST",
     headers,
     body: JSON.stringify(body),
 }).then(response =&gt; response.json());</code></pre></div>
 
 </span>
 
-<span id="example-responses-PUTapi-seo-profiles-offer--offerId-">
+<span id="example-responses-POSTapi-free-tools-transcript">
             <blockquote>
-            <p>Example response (401):</p>
+            <p>Example response (422):</p>
         </blockquote>
                 <details class="annotation">
             <summary style="cursor: pointer;">
@@ -12867,61 +13413,62 @@ fetch(url, {
             </summary>
             <pre><code class="language-http">cache-control: no-cache, private
 content-type: application/json
+x-ratelimit-limit: 15
+x-ratelimit-remaining: 14
 vary: Origin
  </code></pre></details>         <pre>
 
 <code class="language-json" style="max-height: 300px;">{
     &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
+    &quot;message&quot;: &quot;That doesn&#039;t look like a valid instagram link.&quot;
 }</code>
  </pre>
     </span>
-<span id="execution-results-PUTapi-seo-profiles-offer--offerId-" hidden>
+<span id="execution-results-POSTapi-free-tools-transcript" hidden>
     <blockquote>Received response<span
-                id="execution-response-status-PUTapi-seo-profiles-offer--offerId-"></span>:
+                id="execution-response-status-POSTapi-free-tools-transcript"></span>:
     </blockquote>
-    <pre class="json"><code id="execution-response-content-PUTapi-seo-profiles-offer--offerId-"
+    <pre class="json"><code id="execution-response-content-POSTapi-free-tools-transcript"
       data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
 </span>
-<span id="execution-error-PUTapi-seo-profiles-offer--offerId-" hidden>
+<span id="execution-error-POSTapi-free-tools-transcript" hidden>
     <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-PUTapi-seo-profiles-offer--offerId-">
+    <pre><code id="execution-error-message-POSTapi-free-tools-transcript">
 
 Tip: Check that you&#039;re properly connected to the network.
 If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
 You can check the Dev Tools console for debugging information.</code></pre>
 </span>
-<form id="form-PUTapi-seo-profiles-offer--offerId-" data-method="PUT"
-      data-path="api/seo/profiles/offer/{offerId}"
+<form id="form-POSTapi-free-tools-transcript" data-method="POST"
+      data-path="api/free-tools/transcript"
       data-authed="1"
       data-hasfiles="0"
       data-isarraybody="0"
       autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('PUTapi-seo-profiles-offer--offerId-', this);">
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-free-tools-transcript', this);">
     <h3>
         Request&nbsp;&nbsp;&nbsp;
                     <button type="button"
                     style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-PUTapi-seo-profiles-offer--offerId-"
-                    onclick="tryItOut('PUTapi-seo-profiles-offer--offerId-');">Try it out ⚡
+                    id="btn-tryout-POSTapi-free-tools-transcript"
+                    onclick="tryItOut('POSTapi-free-tools-transcript');">Try it out ⚡
             </button>
             <button type="button"
                     style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-PUTapi-seo-profiles-offer--offerId-"
-                    onclick="cancelTryOut('PUTapi-seo-profiles-offer--offerId-');" hidden>Cancel 🛑
+                    id="btn-canceltryout-POSTapi-free-tools-transcript"
+                    onclick="cancelTryOut('POSTapi-free-tools-transcript');" hidden>Cancel 🛑
             </button>&nbsp;&nbsp;
             <button type="submit"
                     style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-PUTapi-seo-profiles-offer--offerId-"
+                    id="btn-executetryout-POSTapi-free-tools-transcript"
                     data-initial-text="Send Request 💥"
                     data-loading-text="⏱ Sending..."
                     hidden>Send Request 💥
             </button>
             </h3>
             <p>
-            <small class="badge badge-darkblue">PUT</small>
-            <b><code>api/seo/profiles/offer/{offerId}</code></b>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/free-tools/transcript</code></b>
         </p>
                 <h4 class="fancy-heading-panel"><b>Headers</b></h4>
                                 <div style="padding-left: 28px; clear: unset;">
@@ -12930,7 +13477,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
  &nbsp;
                 <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="PUTapi-seo-profiles-offer--offerId-"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-free-tools-transcript"
                value="Bearer vmx_{YOUR_API_KEY}"
                data-component="header">
     <br>
@@ -12942,7 +13489,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
  &nbsp;
                 <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
+                              name="Content-Type"                data-endpoint="POSTapi-free-tools-transcript"
                value="application/json"
                data-component="header">
     <br>
@@ -12954,1157 +13501,40 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
  &nbsp;
                 <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
+                              name="Accept"                data-endpoint="POSTapi-free-tools-transcript"
                value="application/json"
                data-component="header">
     <br>
 <p>Example: <code>application/json</code></p>
             </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>offerId</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="offerId"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-               value="architecto"
-               data-component="url">
-    <br>
-<p>Example: <code>architecto</code></p>
-            </div>
-                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
         <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>competitors</code></b>&nbsp;&nbsp;
-<small>string[]</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="competitors[0]"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-               data-component="body">
-        <input type="text" style="display: none"
-               name="competitors[1]"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-               data-component="body">
-    <br>
-<p>Must not be greater than 255 characters.</p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>wp_url</code></b>&nbsp;&nbsp;
+            <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
 <small>string</small>&nbsp;
-<i>optional</i> &nbsp;
+ &nbsp;
  &nbsp;
                 <input type="text" style="display: none"
-                              name="wp_url"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-               value="http://bailey.com/"
+                              name="platform"                data-endpoint="POSTapi-free-tools-transcript"
+               value="instagram"
                data-component="body">
     <br>
-<p>Must be a valid URL. Must not be greater than 255 characters. Example: <code>http://bailey.com/</code></p>
+<p>Example: <code>instagram</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>wp_username</code></b>&nbsp;&nbsp;
+            <b style="line-height: 2;"><code>url</code></b>&nbsp;&nbsp;
 <small>string</small>&nbsp;
-<i>optional</i> &nbsp;
+ &nbsp;
  &nbsp;
                 <input type="text" style="display: none"
-                              name="wp_username"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-               value="m"
+                              name="url"                data-endpoint="POSTapi-free-tools-transcript"
+               value="http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html"
                data-component="body">
     <br>
-<p>Must not be greater than 255 characters. Example: <code>m</code></p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>wp_app_password</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="wp_app_password"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-               value="i"
-               data-component="body">
-    <br>
-<p>Must not be greater than 255 characters. Example: <code>i</code></p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>articles_per_week</code></b>&nbsp;&nbsp;
-<small>integer</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="number" style="display: none"
-               step="any"               name="articles_per_week"                data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-               value="7"
-               data-component="body">
-    <br>
-<p>Must be at least 0. Must not be greater than 21. Example: <code>7</code></p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>auto_publish</code></b>&nbsp;&nbsp;
-<small>boolean</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <label data-endpoint="PUTapi-seo-profiles-offer--offerId-" style="display: none">
-            <input type="radio" name="auto_publish"
-                   value="true"
-                   data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-                   data-component="body"             >
-            <code>true</code>
-        </label>
-        <label data-endpoint="PUTapi-seo-profiles-offer--offerId-" style="display: none">
-            <input type="radio" name="auto_publish"
-                   value="false"
-                   data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-                   data-component="body"             >
-            <code>false</code>
-        </label>
-    <br>
-<p>Example: <code>false</code></p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>enabled</code></b>&nbsp;&nbsp;
-<small>boolean</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <label data-endpoint="PUTapi-seo-profiles-offer--offerId-" style="display: none">
-            <input type="radio" name="enabled"
-                   value="true"
-                   data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-                   data-component="body"             >
-            <code>true</code>
-        </label>
-        <label data-endpoint="PUTapi-seo-profiles-offer--offerId-" style="display: none">
-            <input type="radio" name="enabled"
-                   value="false"
-                   data-endpoint="PUTapi-seo-profiles-offer--offerId-"
-                   data-component="body"             >
-            <code>false</code>
-        </label>
-    <br>
-<p>Example: <code>false</code></p>
+<p>Must be a valid URL. Must not be greater than 2048 characters. Example: <code>http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html</code></p>
         </div>
         </form>
-
-                    <h2 id="endpoints-GETapi-seo-profiles--profileId--keywords">GET api/seo/profiles/{profileId}/keywords</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-GETapi-seo-profiles--profileId--keywords">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/seo/profiles/architecto/keywords" \
-    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/profiles/architecto/keywords"
-);
-
-const headers = {
-    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-fetch(url, {
-    method: "GET",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-GETapi-seo-profiles--profileId--keywords">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-vary: Origin
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
-}</code>
- </pre>
-    </span>
-<span id="execution-results-GETapi-seo-profiles--profileId--keywords" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-GETapi-seo-profiles--profileId--keywords"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-GETapi-seo-profiles--profileId--keywords"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-GETapi-seo-profiles--profileId--keywords" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-GETapi-seo-profiles--profileId--keywords">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-GETapi-seo-profiles--profileId--keywords" data-method="GET"
-      data-path="api/seo/profiles/{profileId}/keywords"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('GETapi-seo-profiles--profileId--keywords', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-GETapi-seo-profiles--profileId--keywords"
-                    onclick="tryItOut('GETapi-seo-profiles--profileId--keywords');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-GETapi-seo-profiles--profileId--keywords"
-                    onclick="cancelTryOut('GETapi-seo-profiles--profileId--keywords');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-GETapi-seo-profiles--profileId--keywords"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-green">GET</small>
-            <b><code>api/seo/profiles/{profileId}/keywords</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="GETapi-seo-profiles--profileId--keywords"
-               value="Bearer vmx_{YOUR_API_KEY}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="GETapi-seo-profiles--profileId--keywords"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="GETapi-seo-profiles--profileId--keywords"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>profileId</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="profileId"                data-endpoint="GETapi-seo-profiles--profileId--keywords"
-               value="architecto"
-               data-component="url">
-    <br>
-<p>Example: <code>architecto</code></p>
-            </div>
-                    </form>
-
-                    <h2 id="endpoints-GETapi-seo-profiles--profileId--articles">GET api/seo/profiles/{profileId}/articles</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-GETapi-seo-profiles--profileId--articles">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/seo/profiles/architecto/articles" \
-    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/profiles/architecto/articles"
-);
-
-const headers = {
-    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-fetch(url, {
-    method: "GET",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-GETapi-seo-profiles--profileId--articles">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-vary: Origin
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
-}</code>
- </pre>
-    </span>
-<span id="execution-results-GETapi-seo-profiles--profileId--articles" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-GETapi-seo-profiles--profileId--articles"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-GETapi-seo-profiles--profileId--articles"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-GETapi-seo-profiles--profileId--articles" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-GETapi-seo-profiles--profileId--articles">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-GETapi-seo-profiles--profileId--articles" data-method="GET"
-      data-path="api/seo/profiles/{profileId}/articles"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('GETapi-seo-profiles--profileId--articles', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-GETapi-seo-profiles--profileId--articles"
-                    onclick="tryItOut('GETapi-seo-profiles--profileId--articles');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-GETapi-seo-profiles--profileId--articles"
-                    onclick="cancelTryOut('GETapi-seo-profiles--profileId--articles');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-GETapi-seo-profiles--profileId--articles"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-green">GET</small>
-            <b><code>api/seo/profiles/{profileId}/articles</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="GETapi-seo-profiles--profileId--articles"
-               value="Bearer vmx_{YOUR_API_KEY}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="GETapi-seo-profiles--profileId--articles"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="GETapi-seo-profiles--profileId--articles"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>profileId</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="profileId"                data-endpoint="GETapi-seo-profiles--profileId--articles"
-               value="architecto"
-               data-component="url">
-    <br>
-<p>Example: <code>architecto</code></p>
-            </div>
-                    </form>
-
-                    <h2 id="endpoints-GETapi-seo-profiles--profileId--prospects">GET api/seo/profiles/{profileId}/prospects</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-GETapi-seo-profiles--profileId--prospects">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/seo/profiles/architecto/prospects" \
-    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/profiles/architecto/prospects"
-);
-
-const headers = {
-    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-fetch(url, {
-    method: "GET",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-GETapi-seo-profiles--profileId--prospects">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-vary: Origin
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
-}</code>
- </pre>
-    </span>
-<span id="execution-results-GETapi-seo-profiles--profileId--prospects" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-GETapi-seo-profiles--profileId--prospects"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-GETapi-seo-profiles--profileId--prospects"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-GETapi-seo-profiles--profileId--prospects" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-GETapi-seo-profiles--profileId--prospects">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-GETapi-seo-profiles--profileId--prospects" data-method="GET"
-      data-path="api/seo/profiles/{profileId}/prospects"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('GETapi-seo-profiles--profileId--prospects', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-GETapi-seo-profiles--profileId--prospects"
-                    onclick="tryItOut('GETapi-seo-profiles--profileId--prospects');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-GETapi-seo-profiles--profileId--prospects"
-                    onclick="cancelTryOut('GETapi-seo-profiles--profileId--prospects');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-GETapi-seo-profiles--profileId--prospects"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-green">GET</small>
-            <b><code>api/seo/profiles/{profileId}/prospects</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="GETapi-seo-profiles--profileId--prospects"
-               value="Bearer vmx_{YOUR_API_KEY}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="GETapi-seo-profiles--profileId--prospects"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="GETapi-seo-profiles--profileId--prospects"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>profileId</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="profileId"                data-endpoint="GETapi-seo-profiles--profileId--prospects"
-               value="architecto"
-               data-component="url">
-    <br>
-<p>Example: <code>architecto</code></p>
-            </div>
-                    </form>
-
-                    <h2 id="endpoints-PATCHapi-seo-keywords--id-">PATCH api/seo/keywords/{id}</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-PATCHapi-seo-keywords--id-">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request PATCH \
-    "https://viewsmax.com/api/seo/keywords/architecto" \
-    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/keywords/architecto"
-);
-
-const headers = {
-    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-fetch(url, {
-    method: "PATCH",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-PATCHapi-seo-keywords--id-">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-vary: Origin
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
-}</code>
- </pre>
-    </span>
-<span id="execution-results-PATCHapi-seo-keywords--id-" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-PATCHapi-seo-keywords--id-"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-PATCHapi-seo-keywords--id-"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-PATCHapi-seo-keywords--id-" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-PATCHapi-seo-keywords--id-">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-PATCHapi-seo-keywords--id-" data-method="PATCH"
-      data-path="api/seo/keywords/{id}"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-seo-keywords--id-', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-PATCHapi-seo-keywords--id-"
-                    onclick="tryItOut('PATCHapi-seo-keywords--id-');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-PATCHapi-seo-keywords--id-"
-                    onclick="cancelTryOut('PATCHapi-seo-keywords--id-');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-PATCHapi-seo-keywords--id-"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-purple">PATCH</small>
-            <b><code>api/seo/keywords/{id}</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-seo-keywords--id-"
-               value="Bearer vmx_{YOUR_API_KEY}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="PATCHapi-seo-keywords--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="PATCHapi-seo-keywords--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="id"                data-endpoint="PATCHapi-seo-keywords--id-"
-               value="architecto"
-               data-component="url">
-    <br>
-<p>The ID of the keyword. Example: <code>architecto</code></p>
-            </div>
-                    </form>
-
-                    <h2 id="endpoints-PATCHapi-seo-articles--id-">PATCH api/seo/articles/{id}</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-PATCHapi-seo-articles--id-">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request PATCH \
-    "https://viewsmax.com/api/seo/articles/architecto" \
-    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json" \
-    --data "{
-    \"title\": \"b\",
-    \"meta_description\": \"n\",
-    \"html\": \"g\",
-    \"featured_image_url\": \"http:\\/\\/www.okuneva.com\\/fugiat-sunt-nihil-accusantium-harum-mollitia.html\"
-}"
-</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/articles/architecto"
-);
-
-const headers = {
-    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-let body = {
-    "title": "b",
-    "meta_description": "n",
-    "html": "g",
-    "featured_image_url": "http:\/\/www.okuneva.com\/fugiat-sunt-nihil-accusantium-harum-mollitia.html"
-};
-
-fetch(url, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify(body),
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-PATCHapi-seo-articles--id-">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-vary: Origin
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
-}</code>
- </pre>
-    </span>
-<span id="execution-results-PATCHapi-seo-articles--id-" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-PATCHapi-seo-articles--id-"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-PATCHapi-seo-articles--id-"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-PATCHapi-seo-articles--id-" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-PATCHapi-seo-articles--id-">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-PATCHapi-seo-articles--id-" data-method="PATCH"
-      data-path="api/seo/articles/{id}"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-seo-articles--id-', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-PATCHapi-seo-articles--id-"
-                    onclick="tryItOut('PATCHapi-seo-articles--id-');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-PATCHapi-seo-articles--id-"
-                    onclick="cancelTryOut('PATCHapi-seo-articles--id-');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-PATCHapi-seo-articles--id-"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-purple">PATCH</small>
-            <b><code>api/seo/articles/{id}</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-seo-articles--id-"
-               value="Bearer vmx_{YOUR_API_KEY}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="PATCHapi-seo-articles--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="PATCHapi-seo-articles--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="id"                data-endpoint="PATCHapi-seo-articles--id-"
-               value="architecto"
-               data-component="url">
-    <br>
-<p>The ID of the article. Example: <code>architecto</code></p>
-            </div>
-                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
-        <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>status</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="status"                data-endpoint="PATCHapi-seo-articles--id-"
-               value=""
-               data-component="body">
-    <br>
-
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>title</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="title"                data-endpoint="PATCHapi-seo-articles--id-"
-               value="b"
-               data-component="body">
-    <br>
-<p>Must not be greater than 255 characters. Example: <code>b</code></p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>meta_description</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="meta_description"                data-endpoint="PATCHapi-seo-articles--id-"
-               value="n"
-               data-component="body">
-    <br>
-<p>Must not be greater than 320 characters. Example: <code>n</code></p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>category</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="category"                data-endpoint="PATCHapi-seo-articles--id-"
-               value=""
-               data-component="body">
-    <br>
-
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>html</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="html"                data-endpoint="PATCHapi-seo-articles--id-"
-               value="g"
-               data-component="body">
-    <br>
-<p>Must not be greater than 200000 characters. Example: <code>g</code></p>
-        </div>
-                <div style=" padding-left: 28px;  clear: unset;">
-            <b style="line-height: 2;"><code>featured_image_url</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
-<i>optional</i> &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="featured_image_url"                data-endpoint="PATCHapi-seo-articles--id-"
-               value="http://www.okuneva.com/fugiat-sunt-nihil-accusantium-harum-mollitia.html"
-               data-component="body">
-    <br>
-<p>Must be a valid URL. Must not be greater than 2048 characters. Example: <code>http://www.okuneva.com/fugiat-sunt-nihil-accusantium-harum-mollitia.html</code></p>
-        </div>
-        </form>
-
-                    <h2 id="endpoints-PATCHapi-seo-prospects--id-">PATCH api/seo/prospects/{id}</h2>
-
-<p>
-<small class="badge badge-darkred">requires authentication</small>
-</p>
-
-
-
-<span id="example-requests-PATCHapi-seo-prospects--id-">
-<blockquote>Example request:</blockquote>
-
-
-<div class="bash-example">
-    <pre><code class="language-bash">curl --request PATCH \
-    "https://viewsmax.com/api/seo/prospects/architecto" \
-    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
-    --header "Content-Type: application/json" \
-    --header "Accept: application/json"</code></pre></div>
-
-
-<div class="javascript-example">
-    <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/seo/prospects/architecto"
-);
-
-const headers = {
-    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-};
-
-fetch(url, {
-    method: "PATCH",
-    headers,
-}).then(response =&gt; response.json());</code></pre></div>
-
-</span>
-
-<span id="example-responses-PATCHapi-seo-prospects--id-">
-            <blockquote>
-            <p>Example response (401):</p>
-        </blockquote>
-                <details class="annotation">
-            <summary style="cursor: pointer;">
-                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
-            </summary>
-            <pre><code class="language-http">cache-control: no-cache, private
-content-type: application/json
-vary: Origin
- </code></pre></details>         <pre>
-
-<code class="language-json" style="max-height: 300px;">{
-    &quot;success&quot;: false,
-    &quot;message&quot;: &quot;Unauthenticated.&quot;,
-    &quot;error&quot;: null
-}</code>
- </pre>
-    </span>
-<span id="execution-results-PATCHapi-seo-prospects--id-" hidden>
-    <blockquote>Received response<span
-                id="execution-response-status-PATCHapi-seo-prospects--id-"></span>:
-    </blockquote>
-    <pre class="json"><code id="execution-response-content-PATCHapi-seo-prospects--id-"
-      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
-</span>
-<span id="execution-error-PATCHapi-seo-prospects--id-" hidden>
-    <blockquote>Request failed with error:</blockquote>
-    <pre><code id="execution-error-message-PATCHapi-seo-prospects--id-">
-
-Tip: Check that you&#039;re properly connected to the network.
-If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
-You can check the Dev Tools console for debugging information.</code></pre>
-</span>
-<form id="form-PATCHapi-seo-prospects--id-" data-method="PATCH"
-      data-path="api/seo/prospects/{id}"
-      data-authed="1"
-      data-hasfiles="0"
-      data-isarraybody="0"
-      autocomplete="off"
-      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-seo-prospects--id-', this);">
-    <h3>
-        Request&nbsp;&nbsp;&nbsp;
-                    <button type="button"
-                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-tryout-PATCHapi-seo-prospects--id-"
-                    onclick="tryItOut('PATCHapi-seo-prospects--id-');">Try it out ⚡
-            </button>
-            <button type="button"
-                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-canceltryout-PATCHapi-seo-prospects--id-"
-                    onclick="cancelTryOut('PATCHapi-seo-prospects--id-');" hidden>Cancel 🛑
-            </button>&nbsp;&nbsp;
-            <button type="submit"
-                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
-                    id="btn-executetryout-PATCHapi-seo-prospects--id-"
-                    data-initial-text="Send Request 💥"
-                    data-loading-text="⏱ Sending..."
-                    hidden>Send Request 💥
-            </button>
-            </h3>
-            <p>
-            <small class="badge badge-purple">PATCH</small>
-            <b><code>api/seo/prospects/{id}</code></b>
-        </p>
-                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-seo-prospects--id-"
-               value="Bearer vmx_{YOUR_API_KEY}"
-               data-component="header">
-    <br>
-<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Content-Type"                data-endpoint="PATCHapi-seo-prospects--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                                <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
-&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="Accept"                data-endpoint="PATCHapi-seo-prospects--id-"
-               value="application/json"
-               data-component="header">
-    <br>
-<p>Example: <code>application/json</code></p>
-            </div>
-                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
-                    <div style="padding-left: 28px; clear: unset;">
-                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
-<small>string</small>&nbsp;
- &nbsp;
- &nbsp;
-                <input type="text" style="display: none"
-                              name="id"                data-endpoint="PATCHapi-seo-prospects--id-"
-               value="architecto"
-               data-component="url">
-    <br>
-<p>The ID of the prospect. Example: <code>architecto</code></p>
-            </div>
-                    </form>
 
                     <h2 id="endpoints-GETapi-health">GET api/health</h2>
 
@@ -14120,7 +13550,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/health" \
+    --get "https://api.viewsmax.com/api/health" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14128,7 +13558,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/health"
+    "https://api.viewsmax.com/api/health"
 );
 
 const headers = {
@@ -14159,7 +13589,7 @@ vary: Origin
 
 <code class="language-json" style="max-height: 300px;">{
     &quot;status&quot;: &quot;healthy&quot;,
-    &quot;timestamp&quot;: &quot;2026-07-30T13:05:08.301451Z&quot;,
+    &quot;timestamp&quot;: &quot;2026-09-08T09:14:28.245965Z&quot;,
     &quot;service&quot;: &quot;Title Embedding API&quot;,
     &quot;version&quot;: &quot;1.0.0&quot;
 }</code>
@@ -14264,7 +13694,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/user/settings" \
+    --get "https://api.viewsmax.com/api/user/settings" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14272,7 +13702,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/settings"
+    "https://api.viewsmax.com/api/user/settings"
 );
 
 const headers = {
@@ -14406,7 +13836,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PATCH \
-    "https://viewsmax.com/api/user/settings" \
+    "https://api.viewsmax.com/api/user/settings" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -14419,7 +13849,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/settings"
+    "https://api.viewsmax.com/api/user/settings"
 );
 
 const headers = {
@@ -14596,7 +14026,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/user" \
+    --get "https://api.viewsmax.com/api/user" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14604,7 +14034,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user"
+    "https://api.viewsmax.com/api/user"
 );
 
 const headers = {
@@ -14738,7 +14168,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/user/mcp-activity" \
+    --get "https://api.viewsmax.com/api/user/mcp-activity" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14746,7 +14176,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/mcp-activity"
+    "https://api.viewsmax.com/api/user/mcp-activity"
 );
 
 const headers = {
@@ -14884,7 +14314,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/image/generate/config" \
+    --get "https://api.viewsmax.com/api/image/generate/config" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14892,7 +14322,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/image/generate/config"
+    "https://api.viewsmax.com/api/image/generate/config"
 );
 
 const headers = {
@@ -15045,7 +14475,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/image/generate?status=completed&amp;method=generate&amp;per_page=15" \
+    --get "https://api.viewsmax.com/api/image/generate?status=completed&amp;method=generate&amp;per_page=15" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -15053,7 +14483,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/image/generate"
+    "https://api.viewsmax.com/api/image/generate"
 );
 
 const params = {
@@ -15222,7 +14652,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/image/generate" \
+    "https://api.viewsmax.com/api/image/generate" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -15238,7 +14668,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/image/generate"
+    "https://api.viewsmax.com/api/image/generate"
 );
 
 const headers = {
@@ -15506,7 +14936,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/image/generate/123" \
+    --get "https://api.viewsmax.com/api/image/generate/123" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -15514,7 +14944,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/image/generate/123"
+    "https://api.viewsmax.com/api/image/generate/123"
 );
 
 const headers = {
@@ -15661,7 +15091,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/image/generate/123/status" \
+    --get "https://api.viewsmax.com/api/image/generate/123/status" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -15669,7 +15099,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/image/generate/123/status"
+    "https://api.viewsmax.com/api/image/generate/123/status"
 );
 
 const headers = {
@@ -15863,7 +15293,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/image/generate/123/download" \
+    --get "https://api.viewsmax.com/api/image/generate/123/download" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -15871,7 +15301,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/image/generate/123/download"
+    "https://api.viewsmax.com/api/image/generate/123/download"
 );
 
 const headers = {
@@ -16038,7 +15468,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/image/generate/123" \
+    "https://api.viewsmax.com/api/image/generate/123" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -16046,7 +15476,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/image/generate/123"
+    "https://api.viewsmax.com/api/image/generate/123"
 );
 
 const headers = {
@@ -16182,6 +15612,2397 @@ You can check the Dev Tools console for debugging information.</code></pre>
             </div>
                     </form>
 
+                <h1 id="outliers">Outliers</h1>
+
+    <p>Outlier videos: content that massively over-performed its channel's average
+(<code>outlier_score</code> = views ÷ channel average views) across YouTube, TikTok and
+Instagram. Browse the shared database, pull in specific URLs, and get AI
+breakdowns of why a video worked.</p>
+
+                                <h2 id="outliers-GETapi-outliers">Browse outliers</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Paginated outlier videos. Without <code>query</code> this is the curated feed; with
+<code>query</code> it returns title matches already in the database plus a <code>status</code>
+(queued / in_progress / done) for the background scrape of that term —
+start one with the search endpoint.</p>
+
+<span id="example-requests-GETapi-outliers">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "https://api.viewsmax.com/api/outliers" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"query\": \"architecto\",
+    \"min_score\": 39,
+    \"min_views\": 84,
+    \"max_views\": 12,
+    \"min_subs\": 77,
+    \"max_subs\": 8,
+    \"published_before\": \"2026-09-08T09:14:28\",
+    \"published_after\": \"2026-09-08T09:14:28\",
+    \"sort_by\": \"views\",
+    \"keyword_match\": \"architecto\",
+    \"featured\": false,
+    \"platform\": \"tiktok\",
+    \"channels\": [
+        \"architecto\"
+    ],
+    \"countries\": [
+        \"ng\"
+    ],
+    \"page\": 66,
+    \"per_page\": 17
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "query": "architecto",
+    "min_score": 39,
+    "min_views": 84,
+    "max_views": 12,
+    "min_subs": 77,
+    "max_subs": 8,
+    "published_before": "2026-09-08T09:14:28",
+    "published_after": "2026-09-08T09:14:28",
+    "sort_by": "views",
+    "keyword_match": "architecto",
+    "featured": false,
+    "platform": "tiktok",
+    "channels": [
+        "architecto"
+    ],
+    "countries": [
+        "ng"
+    ],
+    "page": 66,
+    "per_page": 17
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-outliers">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-outliers" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-outliers"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-outliers"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-outliers" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-outliers">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-outliers" data-method="GET"
+      data-path="api/outliers"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-outliers', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-outliers"
+                    onclick="tryItOut('GETapi-outliers');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-outliers"
+                    onclick="cancelTryOut('GETapi-outliers');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-outliers"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/outliers</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-outliers"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-outliers"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-outliers"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>query</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="query"                data-endpoint="GETapi-outliers"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>min_score</code></b>&nbsp;&nbsp;
+<small>number</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="min_score"                data-endpoint="GETapi-outliers"
+               value="39"
+               data-component="body">
+    <br>
+<p>Must be at least 0. Example: <code>39</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>min_views</code></b>&nbsp;&nbsp;
+<small>number</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="min_views"                data-endpoint="GETapi-outliers"
+               value="84"
+               data-component="body">
+    <br>
+<p>Must be at least 0. Example: <code>84</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>max_views</code></b>&nbsp;&nbsp;
+<small>number</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="max_views"                data-endpoint="GETapi-outliers"
+               value="12"
+               data-component="body">
+    <br>
+<p>Must be at least 0. Example: <code>12</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>min_subs</code></b>&nbsp;&nbsp;
+<small>number</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="min_subs"                data-endpoint="GETapi-outliers"
+               value="77"
+               data-component="body">
+    <br>
+<p>Must be at least 0. Example: <code>77</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>max_subs</code></b>&nbsp;&nbsp;
+<small>number</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="max_subs"                data-endpoint="GETapi-outliers"
+               value="8"
+               data-component="body">
+    <br>
+<p>Must be at least 0. Example: <code>8</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>published_before</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="published_before"                data-endpoint="GETapi-outliers"
+               value="2026-09-08T09:14:28"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Example: <code>2026-09-08T09:14:28</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>published_after</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="published_after"                data-endpoint="GETapi-outliers"
+               value="2026-09-08T09:14:28"
+               data-component="body">
+    <br>
+<p>Must be a valid date. Example: <code>2026-09-08T09:14:28</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>sort_by</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="sort_by"                data-endpoint="GETapi-outliers"
+               value="views"
+               data-component="body">
+    <br>
+<p>Example: <code>views</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>score</code></li> <li><code>date</code></li> <li><code>views</code></li> <li><code>recent</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>keyword_match</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="keyword_match"                data-endpoint="GETapi-outliers"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>duration_type</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="duration_type"                data-endpoint="GETapi-outliers"
+               value=""
+               data-component="body">
+    <br>
+
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>featured</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="GETapi-outliers" style="display: none">
+            <input type="radio" name="featured"
+                   value="true"
+                   data-endpoint="GETapi-outliers"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="GETapi-outliers" style="display: none">
+            <input type="radio" name="featured"
+                   value="false"
+                   data-endpoint="GETapi-outliers"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Example: <code>false</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="GETapi-outliers"
+               value="tiktok"
+               data-component="body">
+    <br>
+<p>Example: <code>tiktok</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>channels</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="channels[0]"                data-endpoint="GETapi-outliers"
+               data-component="body">
+        <input type="text" style="display: none"
+               name="channels[1]"                data-endpoint="GETapi-outliers"
+               data-component="body">
+    <br>
+
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>countries</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="countries[0]"                data-endpoint="GETapi-outliers"
+               data-component="body">
+        <input type="text" style="display: none"
+               name="countries[1]"                data-endpoint="GETapi-outliers"
+               data-component="body">
+    <br>
+<p>Must contain only letters. Must be 2 characters.</p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="page"                data-endpoint="GETapi-outliers"
+               value="66"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Example: <code>66</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>per_page</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="per_page"                data-endpoint="GETapi-outliers"
+               value="17"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Must not be greater than 100. Example: <code>17</code></p>
+        </div>
+        </form>
+
+                    <h2 id="outliers-GETapi-outliers-channels">List outlier channels</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Distinct channels in the outlier database (for the <code>channels</code> filter of the browse endpoint).</p>
+
+<span id="example-requests-GETapi-outliers-channels">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "https://api.viewsmax.com/api/outliers/channels" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"platform\": \"tiktok\",
+    \"q\": \"architecto\",
+    \"limit\": 22
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/channels"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "platform": "tiktok",
+    "q": "architecto",
+    "limit": 22
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-outliers-channels">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-outliers-channels" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-outliers-channels"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-outliers-channels"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-outliers-channels" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-outliers-channels">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-outliers-channels" data-method="GET"
+      data-path="api/outliers/channels"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-outliers-channels', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-outliers-channels"
+                    onclick="tryItOut('GETapi-outliers-channels');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-outliers-channels"
+                    onclick="cancelTryOut('GETapi-outliers-channels');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-outliers-channels"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/outliers/channels</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-outliers-channels"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-outliers-channels"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-outliers-channels"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="GETapi-outliers-channels"
+               value="tiktok"
+               data-component="body">
+    <br>
+<p>Example: <code>tiktok</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>q</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="q"                data-endpoint="GETapi-outliers-channels"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>limit</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="limit"                data-endpoint="GETapi-outliers-channels"
+               value="22"
+               data-component="body">
+    <br>
+<p>Must be at least 1. Must not be greater than 100. Example: <code>22</code></p>
+        </div>
+        </form>
+
+                    <h2 id="outliers-POSTapi-outliers-search">Start an outlier search</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Queue a background scrape for a keyword/topic. Poll the browse endpoint
+with the same <code>query</code> until its <code>status</code> is <code>done</code>.</p>
+
+<span id="example-requests-POSTapi-outliers-search">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/outliers/search" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"term\": \"faceless youtube automation\",
+    \"exact_match\": false
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/search"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "term": "faceless youtube automation",
+    "exact_match": false
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-outliers-search">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-outliers-search" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-outliers-search"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-outliers-search"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-outliers-search" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-outliers-search">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-outliers-search" data-method="POST"
+      data-path="api/outliers/search"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-outliers-search', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-outliers-search"
+                    onclick="tryItOut('POSTapi-outliers-search');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-outliers-search"
+                    onclick="cancelTryOut('POSTapi-outliers-search');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-outliers-search"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/outliers/search</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-outliers-search"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-outliers-search"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-outliers-search"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>term</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="term"                data-endpoint="POSTapi-outliers-search"
+               value="faceless youtube automation"
+               data-component="body">
+    <br>
+<p>Keyword or topic. Example: <code>faceless youtube automation</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>exact_match</code></b>&nbsp;&nbsp;
+<small>boolean</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <label data-endpoint="POSTapi-outliers-search" style="display: none">
+            <input type="radio" name="exact_match"
+                   value="true"
+                   data-endpoint="POSTapi-outliers-search"
+                   data-component="body"             >
+            <code>true</code>
+        </label>
+        <label data-endpoint="POSTapi-outliers-search" style="display: none">
+            <input type="radio" name="exact_match"
+                   value="false"
+                   data-endpoint="POSTapi-outliers-search"
+                   data-component="body"             >
+            <code>false</code>
+        </label>
+    <br>
+<p>Match the whole phrase only. Example: <code>false</code></p>
+        </div>
+        </form>
+
+                    <h2 id="outliers-POSTapi-outliers-fetch">Fetch an outlier by URL</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Ingest a single video by URL so it can be analysed. Known videos return
+immediately; otherwise ingestion is queued (HTTP 202, <code>queued: true</code>) —
+poll the show endpoint with the returned platform + video_id. YouTube goes
+through the YouTube API; TikTok/Instagram go through CaptAPI (no
+channel-listing endpoint there, so those are pulled one URL at a time).</p>
+
+<span id="example-requests-POSTapi-outliers-fetch">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/outliers/fetch" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"platform\": \"instagram\",
+    \"url\": \"http:\\/\\/www.bailey.biz\\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html\"
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/fetch"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "platform": "instagram",
+    "url": "http:\/\/www.bailey.biz\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html"
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-outliers-fetch">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-outliers-fetch" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-outliers-fetch"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-outliers-fetch"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-outliers-fetch" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-outliers-fetch">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-outliers-fetch" data-method="POST"
+      data-path="api/outliers/fetch"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-outliers-fetch', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-outliers-fetch"
+                    onclick="tryItOut('POSTapi-outliers-fetch');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-outliers-fetch"
+                    onclick="cancelTryOut('POSTapi-outliers-fetch');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-outliers-fetch"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/outliers/fetch</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-outliers-fetch"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-outliers-fetch"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-outliers-fetch"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="POSTapi-outliers-fetch"
+               value="instagram"
+               data-component="body">
+    <br>
+<p>Example: <code>instagram</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>url</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="url"                data-endpoint="POSTapi-outliers-fetch"
+               value="http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html"
+               data-component="body">
+    <br>
+<p>Must be a valid URL. Example: <code>http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html</code></p>
+        </div>
+        </form>
+
+                    <h2 id="outliers-GETapi-outliers-tags">List library tags</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Distinct tag names the user has applied to saved outliers.</p>
+
+<span id="example-requests-GETapi-outliers-tags">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "https://api.viewsmax.com/api/outliers/tags" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/tags"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-outliers-tags">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-outliers-tags" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-outliers-tags"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-outliers-tags"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-outliers-tags" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-outliers-tags">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-outliers-tags" data-method="GET"
+      data-path="api/outliers/tags"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-outliers-tags', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-outliers-tags"
+                    onclick="tryItOut('GETapi-outliers-tags');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-outliers-tags"
+                    onclick="cancelTryOut('GETapi-outliers-tags');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-outliers-tags"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/outliers/tags</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-outliers-tags"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-outliers-tags"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-outliers-tags"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        </form>
+
+                    <h2 id="outliers-GETapi-outliers-library">List saved outliers</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>The user's library, newest first.</p>
+
+<span id="example-requests-GETapi-outliers-library">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "https://api.viewsmax.com/api/outliers/library?q=hook&amp;tags[]=architecto&amp;platforms[]=architecto&amp;creator=architecto" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/library"
+);
+
+const params = {
+    "q": "hook",
+    "tags[0]": "architecto",
+    "platforms[0]": "architecto",
+    "creator": "architecto",
+};
+Object.keys(params)
+    .forEach(key =&gt; url.searchParams.append(key, params[key]));
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-outliers-library">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-outliers-library" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-outliers-library"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-outliers-library"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-outliers-library" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-outliers-library">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-outliers-library" data-method="GET"
+      data-path="api/outliers/library"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-outliers-library', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-outliers-library"
+                    onclick="tryItOut('GETapi-outliers-library');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-outliers-library"
+                    onclick="cancelTryOut('GETapi-outliers-library');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-outliers-library"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/outliers/library</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-outliers-library"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-outliers-library"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-outliers-library"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Query Parameters</b></h4>
+                                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>q</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="q"                data-endpoint="GETapi-outliers-library"
+               value="hook"
+               data-component="query">
+    <br>
+<p>Matches saved title or channel name. Example: <code>hook</code></p>
+            </div>
+                                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>tags</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="tags[0]"                data-endpoint="GETapi-outliers-library"
+               data-component="query">
+        <input type="text" style="display: none"
+               name="tags[1]"                data-endpoint="GETapi-outliers-library"
+               data-component="query">
+    <br>
+<p>Only items carrying any of these tag names.</p>
+            </div>
+                                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>platforms</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platforms[0]"                data-endpoint="GETapi-outliers-library"
+               data-component="query">
+        <input type="text" style="display: none"
+               name="platforms[1]"                data-endpoint="GETapi-outliers-library"
+               data-component="query">
+    <br>
+<p>youtube, tiktok, instagram.</p>
+            </div>
+                                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>creator</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="creator"                data-endpoint="GETapi-outliers-library"
+               value="architecto"
+               data-component="query">
+    <br>
+<p>Channel/creator name filter. Example: <code>architecto</code></p>
+            </div>
+                </form>
+
+                    <h2 id="outliers-POSTapi-outliers-library">Save an outlier</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Bookmark a video into the library with a snapshot of its stats. Saving the
+same video again replaces its tags.</p>
+
+<span id="example-requests-POSTapi-outliers-library">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/outliers/library" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"platform\": \"tiktok\",
+    \"video_id\": \"architecto\",
+    \"snapshot\": [],
+    \"tags\": [
+        \"b\"
+    ]
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/library"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "platform": "tiktok",
+    "video_id": "architecto",
+    "snapshot": [],
+    "tags": [
+        "b"
+    ]
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-outliers-library">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-outliers-library" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-outliers-library"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-outliers-library"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-outliers-library" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-outliers-library">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-outliers-library" data-method="POST"
+      data-path="api/outliers/library"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-outliers-library', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-outliers-library"
+                    onclick="tryItOut('POSTapi-outliers-library');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-outliers-library"
+                    onclick="cancelTryOut('POSTapi-outliers-library');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-outliers-library"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/outliers/library</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-outliers-library"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-outliers-library"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-outliers-library"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="POSTapi-outliers-library"
+               value="tiktok"
+               data-component="body">
+    <br>
+<p>Example: <code>tiktok</code></p>
+Must be one of:
+<ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>video_id</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="video_id"                data-endpoint="POSTapi-outliers-library"
+               value="architecto"
+               data-component="body">
+    <br>
+<p>Example: <code>architecto</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>snapshot</code></b>&nbsp;&nbsp;
+<small>object</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="snapshot"                data-endpoint="POSTapi-outliers-library"
+               value=""
+               data-component="body">
+    <br>
+
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>tags</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="tags[0]"                data-endpoint="POSTapi-outliers-library"
+               data-component="body">
+        <input type="text" style="display: none"
+               name="tags[1]"                data-endpoint="POSTapi-outliers-library"
+               data-component="body">
+    <br>
+<p>Must not be greater than 50 characters.</p>
+        </div>
+        </form>
+
+                    <h2 id="outliers-PATCHapi-outliers-library--id-">Update a saved outlier&#039;s tags</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-PATCHapi-outliers-library--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request PATCH \
+    "https://api.viewsmax.com/api/outliers/library/architecto" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"tags\": [
+        \"b\"
+    ]
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/library/architecto"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "tags": [
+        "b"
+    ]
+};
+
+fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-PATCHapi-outliers-library--id-">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-PATCHapi-outliers-library--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-PATCHapi-outliers-library--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-PATCHapi-outliers-library--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-PATCHapi-outliers-library--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-PATCHapi-outliers-library--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-PATCHapi-outliers-library--id-" data-method="PATCH"
+      data-path="api/outliers/library/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('PATCHapi-outliers-library--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-PATCHapi-outliers-library--id-"
+                    onclick="tryItOut('PATCHapi-outliers-library--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-PATCHapi-outliers-library--id-"
+                    onclick="cancelTryOut('PATCHapi-outliers-library--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-PATCHapi-outliers-library--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-purple">PATCH</small>
+            <b><code>api/outliers/library/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="PATCHapi-outliers-library--id-"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="PATCHapi-outliers-library--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="PATCHapi-outliers-library--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="id"                data-endpoint="PATCHapi-outliers-library--id-"
+               value="architecto"
+               data-component="url">
+    <br>
+<p>The ID of the library. Example: <code>architecto</code></p>
+            </div>
+                            <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>tags</code></b>&nbsp;&nbsp;
+<small>string[]</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="tags[0]"                data-endpoint="PATCHapi-outliers-library--id-"
+               data-component="body">
+        <input type="text" style="display: none"
+               name="tags[1]"                data-endpoint="PATCHapi-outliers-library--id-"
+               data-component="body">
+    <br>
+<p>Must not be greater than 50 characters.</p>
+        </div>
+        </form>
+
+                    <h2 id="outliers-DELETEapi-outliers-library--id-">Remove a saved outlier</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+
+
+<span id="example-requests-DELETEapi-outliers-library--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request DELETE \
+    "https://api.viewsmax.com/api/outliers/library/architecto" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/library/architecto"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "DELETE",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-DELETEapi-outliers-library--id-">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-DELETEapi-outliers-library--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-DELETEapi-outliers-library--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-DELETEapi-outliers-library--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-DELETEapi-outliers-library--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-DELETEapi-outliers-library--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-DELETEapi-outliers-library--id-" data-method="DELETE"
+      data-path="api/outliers/library/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('DELETEapi-outliers-library--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-DELETEapi-outliers-library--id-"
+                    onclick="tryItOut('DELETEapi-outliers-library--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-DELETEapi-outliers-library--id-"
+                    onclick="cancelTryOut('DELETEapi-outliers-library--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-DELETEapi-outliers-library--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-red">DELETE</small>
+            <b><code>api/outliers/library/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="DELETEapi-outliers-library--id-"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="DELETEapi-outliers-library--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="DELETEapi-outliers-library--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="id"                data-endpoint="DELETEapi-outliers-library--id-"
+               value="architecto"
+               data-component="url">
+    <br>
+<p>The ID of the library. Example: <code>architecto</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="outliers-GETapi-outliers--platform---videoId-">Get an outlier</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>A single outlier video with its channel.</p>
+
+<span id="example-requests-GETapi-outliers--platform---videoId-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-outliers--platform---videoId-">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-outliers--platform---videoId-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-outliers--platform---videoId-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-outliers--platform---videoId-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-outliers--platform---videoId-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-outliers--platform---videoId-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-outliers--platform---videoId-" data-method="GET"
+      data-path="api/outliers/{platform}/{videoId}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-outliers--platform---videoId-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-outliers--platform---videoId-"
+                    onclick="tryItOut('GETapi-outliers--platform---videoId-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-outliers--platform---videoId-"
+                    onclick="cancelTryOut('GETapi-outliers--platform---videoId-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-outliers--platform---videoId-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/outliers/{platform}/{videoId}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-outliers--platform---videoId-"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-outliers--platform---videoId-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-outliers--platform---videoId-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="GETapi-outliers--platform---videoId-"
+               value="youtube"
+               data-component="url">
+    <br>
+<p>youtube, tiktok, or instagram. Example: <code>youtube</code></p>
+            </div>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>videoId</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="videoId"                data-endpoint="GETapi-outliers--platform---videoId-"
+               value="dQw4w9WgXcQ"
+               data-component="url">
+    <br>
+<p>The platform's video id. Example: <code>dQw4w9WgXcQ</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="outliers-GETapi-outliers--platform---videoId--breakdown">Get an outlier&#039;s AI breakdown</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p><code>status</code> is none (never generated), pending/processing (poll again),
+completed (<code>payload</code> holds the analysis) or failed (<code>error</code>).</p>
+
+<span id="example-requests-GETapi-outliers--platform---videoId--breakdown">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-outliers--platform---videoId--breakdown">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-outliers--platform---videoId--breakdown" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-outliers--platform---videoId--breakdown"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-outliers--platform---videoId--breakdown"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-outliers--platform---videoId--breakdown" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-outliers--platform---videoId--breakdown">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-outliers--platform---videoId--breakdown" data-method="GET"
+      data-path="api/outliers/{platform}/{videoId}/breakdown"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-outliers--platform---videoId--breakdown', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-outliers--platform---videoId--breakdown"
+                    onclick="tryItOut('GETapi-outliers--platform---videoId--breakdown');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-outliers--platform---videoId--breakdown"
+                    onclick="cancelTryOut('GETapi-outliers--platform---videoId--breakdown');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-outliers--platform---videoId--breakdown"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/outliers/{platform}/{videoId}/breakdown</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-outliers--platform---videoId--breakdown"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-outliers--platform---videoId--breakdown"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-outliers--platform---videoId--breakdown"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="GETapi-outliers--platform---videoId--breakdown"
+               value="youtube"
+               data-component="url">
+    <br>
+<p>youtube, tiktok, or instagram. Example: <code>youtube</code></p>
+            </div>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>videoId</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="videoId"                data-endpoint="GETapi-outliers--platform---videoId--breakdown"
+               value="dQw4w9WgXcQ"
+               data-component="url">
+    <br>
+<p>The platform's video id. Example: <code>dQw4w9WgXcQ</code></p>
+            </div>
+                    </form>
+
+                    <h2 id="outliers-POSTapi-outliers--platform---videoId--breakdown">Generate an outlier&#039;s AI breakdown</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Queues generation (transcript + LLM analysis); poll the GET endpoint until
+<code>status</code> is completed. An existing breakdown is returned, not regenerated.</p>
+
+<span id="example-requests-POSTapi-outliers--platform---videoId--breakdown">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-outliers--platform---videoId--breakdown">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-outliers--platform---videoId--breakdown" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-outliers--platform---videoId--breakdown"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-outliers--platform---videoId--breakdown"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-outliers--platform---videoId--breakdown" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-outliers--platform---videoId--breakdown">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-outliers--platform---videoId--breakdown" data-method="POST"
+      data-path="api/outliers/{platform}/{videoId}/breakdown"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-outliers--platform---videoId--breakdown', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-outliers--platform---videoId--breakdown"
+                    onclick="tryItOut('POSTapi-outliers--platform---videoId--breakdown');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-outliers--platform---videoId--breakdown"
+                    onclick="cancelTryOut('POSTapi-outliers--platform---videoId--breakdown');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-outliers--platform---videoId--breakdown"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/outliers/{platform}/{videoId}/breakdown</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-outliers--platform---videoId--breakdown"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-outliers--platform---videoId--breakdown"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-outliers--platform---videoId--breakdown"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="POSTapi-outliers--platform---videoId--breakdown"
+               value="youtube"
+               data-component="url">
+    <br>
+<p>youtube, tiktok, or instagram. Example: <code>youtube</code></p>
+            </div>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>videoId</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="videoId"                data-endpoint="POSTapi-outliers--platform---videoId--breakdown"
+               value="dQw4w9WgXcQ"
+               data-component="url">
+    <br>
+<p>The platform's video id. Example: <code>dQw4w9WgXcQ</code></p>
+            </div>
+                    </form>
+
                 <h1 id="user-default-reference-image">User Default Reference Image</h1>
 
     <p>APIs for managing a user's default reference image for image generation</p>
@@ -16200,7 +18021,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://viewsmax.com/api/user/default-image" \
+    --get "https://api.viewsmax.com/api/user/default-image" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -16208,7 +18029,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/default-image"
+    "https://api.viewsmax.com/api/user/default-image"
 );
 
 const headers = {
@@ -16353,7 +18174,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://viewsmax.com/api/user/default-image" \
+    "https://api.viewsmax.com/api/user/default-image" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -16362,7 +18183,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/default-image"
+    "https://api.viewsmax.com/api/user/default-image"
 );
 
 const headers = {
@@ -16506,7 +18327,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://viewsmax.com/api/user/default-image" \
+    "https://api.viewsmax.com/api/user/default-image" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -16514,7 +18335,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://viewsmax.com/api/user/default-image"
+    "https://api.viewsmax.com/api/user/default-image"
 );
 
 const headers = {

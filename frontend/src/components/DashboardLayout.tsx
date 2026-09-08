@@ -54,7 +54,6 @@ export default function DashboardLayout() {
     if (path.startsWith('/dashboard/analytics/audience-growth')) return 'Audience Growth';
     if (path.startsWith('/dashboard/analytics')) return 'Analytics';
     if (path === '/dashboard/admin/users') return 'Users';
-    if (path === '/dashboard/seo') return 'SEO';
     if (path === '/dashboard/feature-requests') return 'Request a Feature';
     if (path === '/dashboard/settings') return 'Settings';
     if (path === '/dashboard/billing') return 'Billing';

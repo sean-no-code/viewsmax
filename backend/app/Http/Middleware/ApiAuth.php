@@ -27,6 +27,7 @@ class ApiAuth
         'api/contents', 'api/contents/*',
         'api/connections', 'api/connections/*',
         'api/feature-requests', 'api/feature-requests/*',
+        'api/outliers', 'api/outliers/*',
         'api/profile',
         'api/user',
     ];

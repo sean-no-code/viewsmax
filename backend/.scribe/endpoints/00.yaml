@@ -70,7 +70,7 @@ endpoints:
         name: marketing_consent
         description: ''
         required: false
-        example: true
+        example: false
         type: boolean
         enumValues: []
         exampleWasSpecified: false
@@ -80,7 +80,7 @@ endpoints:
       name: b
       email: zbailey@example.net
       password: '-0pBNvYgxw'
-      marketing_consent: true
+      marketing_consent: false
     fileParameters: []
     responses:
       -

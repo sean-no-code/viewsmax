@@ -7,9 +7,23 @@ use App\Models\SavedOutlier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * @group Outliers
+ *
+ * The user's saved-outliers library: bookmarked videos with tags.
+ */
 class SavedOutlierController extends Controller
 {
-    /** The user's saved-outliers library, filterable by tag names + a text query. */
+    /**
+     * List saved outliers
+     *
+     * The user's library, newest first.
+     *
+     * @queryParam q string Matches saved title or channel name. Example: hook
+     * @queryParam tags string[] Only items carrying any of these tag names.
+     * @queryParam platforms string[] youtube, tiktok, instagram.
+     * @queryParam creator string Channel/creator name filter.
+     */
     public function index(Request $request): JsonResponse
     {
         $query = SavedOutlier::where('user_id', $request->user()->id)
@@ -40,6 +54,12 @@ class SavedOutlierController extends Controller
         return response()->json(['success' => true, 'data' => $query->get()]);
     }
 
+    /**
+     * Save an outlier
+     *
+     * Bookmark a video into the library with a snapshot of its stats. Saving the
+     * same video again replaces its tags.
+     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -60,6 +80,9 @@ class SavedOutlierController extends Controller
         return response()->json(['success' => true, 'data' => $saved->load('tags')], 201);
     }
 
+    /**
+     * Update a saved outlier's tags
+     */
     public function update(Request $request, int $id): JsonResponse
     {
         $saved = SavedOutlier::where('user_id', $request->user()->id)->findOrFail($id);
@@ -74,6 +97,9 @@ class SavedOutlierController extends Controller
         return response()->json(['success' => true, 'data' => $saved->load('tags')]);
     }
 
+    /**
+     * Remove a saved outlier
+     */
     public function destroy(Request $request, int $id): JsonResponse
     {
         $saved = SavedOutlier::where('user_id', $request->user()->id)->findOrFail($id);
@@ -82,7 +108,11 @@ class SavedOutlierController extends Controller
         return response()->json(['success' => true, 'message' => 'Removed from library']);
     }
 
-    /** Distinct tag names for the authenticated user (drives the library's tag chips). */
+    /**
+     * List library tags
+     *
+     * Distinct tag names the user has applied to saved outliers.
+     */
     public function tags(Request $request): JsonResponse
     {
         $tags = OutlierTag::where('user_id', $request->user()->id)

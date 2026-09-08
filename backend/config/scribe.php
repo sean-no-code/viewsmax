@@ -61,7 +61,11 @@ return [
                 'api/library-components*',
                 'api/videos*',
                 'api/channels*',
-                'api/outliers*',
+                // Outliers: UI-only helpers stay out; browse/fetch/show/breakdown/library are documented.
+                'api/outliers/saved-filters*',
+                'api/outliers/competitors*',
+                'api/outliers/*/*/feature',
+                'api/outliers/*/*/refresh-media',
                 'api/viral-titles*',
                 'api/ai-models*',
                 'api/prompts*',

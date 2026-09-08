@@ -1,0 +1,374 @@
+name: 'Post Media'
+description: |-
+
+  Upload media (images / video) used by composed posts. Files are stored on the
+  configured default disk (S3 in production) and returned as a public URL that
+  the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.
+endpoints:
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/posts/media
+    metadata:
+      custom: []
+      groupName: 'Post Media'
+      groupDescription: |-
+
+        Upload media (images / video) used by composed posts. Files are stored on the
+        configured default disk (S3 in production) and returned as a public URL that
+        the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Upload a single post media file.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      type:
+        custom: []
+        name: type
+        description: 'image|video. Required.'
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      file:
+        custom: []
+        name: file
+        description: 'Image or video file. Required.'
+        required: false
+        example: null
+        type: file
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/posts/media/direct
+    metadata:
+      custom: []
+      groupName: 'Post Media'
+      groupDescription: |-
+
+        Direct-to-storage (presigned) uploads for post media. The browser asks for
+        an upload session, PUTs the file straight to R2 using the signed URL(s),
+        then calls complete to verify the object and get the final media entry.
+        When the media disk is not S3-compatible the session returns strategy
+        "relay" and the client falls back to POST /posts/media.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Create a direct-upload session.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      type:
+        custom: []
+        name: type
+        description: 'image|video. Required.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      filename:
+        custom: []
+        name: filename
+        description: 'Original file name (display only). Required.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      mime:
+        custom: []
+        name: mime
+        description: 'File content type, e.g. video/mp4. Required.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      size:
+        custom: []
+        name: size
+        description: 'File size in bytes. Required.'
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      type: architecto
+      filename: architecto
+      mime: architecto
+      size: 16
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/posts/media/direct/complete
+    metadata:
+      custom: []
+      groupName: 'Post Media'
+      groupDescription: |-
+
+        Direct-to-storage (presigned) uploads for post media. The browser asks for
+        an upload session, PUTs the file straight to R2 using the signed URL(s),
+        then calls complete to verify the object and get the final media entry.
+        When the media disk is not S3-compatible the session returns strategy
+        "relay" and the client falls back to POST /posts/media.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Complete a direct upload.'
+      description: |-
+        Finalizes the multipart upload (when upload_id is present), verifies the
+        stored object against the declared type's size/mime limits (a presigned
+        PUT cannot enforce size), and returns the media entry for the composer.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      type:
+        custom: []
+        name: type
+        description: 'image|video. Required.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      path:
+        custom: []
+        name: path
+        description: 'Storage path returned by the session. Required.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      upload_id:
+        custom: []
+        name: upload_id
+        description: 'Multipart upload id (multipart only).'
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      parts:
+        custom: []
+        name: parts
+        description: 'Uploaded parts as {part_number, etag} (multipart only).'
+        required: false
+        example: null
+        type: 'object[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'parts[].part_number':
+        custom: []
+        name: 'parts[].part_number'
+        description: 'Must be at least 1.'
+        required: true
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'parts[].etag':
+        custom: []
+        name: 'parts[].etag'
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      type: architecto
+      path: architecto
+      parts:
+        -
+          part_number: 22
+          etag: architecto
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/posts/media/direct/abort
+    metadata:
+      custom: []
+      groupName: 'Post Media'
+      groupDescription: |-
+
+        Direct-to-storage (presigned) uploads for post media. The browser asks for
+        an upload session, PUTs the file straight to R2 using the signed URL(s),
+        then calls complete to verify the object and get the final media entry.
+        When the media disk is not S3-compatible the session returns strategy
+        "relay" and the client falls back to POST /posts/media.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Abort a multipart direct upload.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      path:
+        custom: []
+        name: path
+        description: 'Storage path returned by the session. Required.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      upload_id:
+        custom: []
+        name: upload_id
+        description: 'Multipart upload id. Required.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      path: architecto
+      upload_id: architecto
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null

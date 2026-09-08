@@ -31,9 +31,9 @@ class UserSeeder extends Seeder
 
         // Create admin user
         $adminUser = User::firstOrCreate(
-            ['email' => 'admin@testaccount.com'],
+            ['email' => 'admin@admin.com'],
             [
-                'password' => Hash::make('hashedPassword1234$'),
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -62,9 +62,9 @@ class UserSeeder extends Seeder
 
         // Create customer user with free plan
         $freeCustomer = User::firstOrCreate(
-            ['email' => 'admin@testaccount.com'],
+            ['email' => 'free@customer.com'],
             [
-                'password' => Hash::make('hashedPassword1234$'),
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -84,9 +84,9 @@ class UserSeeder extends Seeder
 
         // Create customer user with paid plan
         $paidCustomer = User::firstOrCreate(
-            ['email' => 'customer.paid@testaccount.com'],
+            ['email' => 'customer@paid.com'],
             [
-                'password' => Hash::make('Test1234$'),
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );

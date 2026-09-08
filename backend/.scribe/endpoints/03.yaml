@@ -1,18 +1,26 @@
-name: Plans
-description: ''
+name: Boosts
+description: |-
+
+  Per-account Boost automations (X-only v1): Auto Repost retweets a post once
+  it reaches a like threshold; Auto Promo replies to it with a promo comment.
+  Checks run 6h apart, up to 3 times per post, and stop on success.
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: api/plans
+    uri: api/boosts/settings
     metadata:
       custom: []
-      groupName: Plans
-      groupDescription: ''
+      groupName: Boosts
+      groupDescription: |-
+
+        Per-account Boost automations (X-only v1): Auto Repost retweets a post once
+        it reaches a like threshold; Auto Promo replies to it with a promo comment.
+        Checks run 6h apart, up to 3 times per post, and stop on success.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Display a listing of plans.'
+      title: "All of the user's boost settings, keyed for the Boosts page."
       description: ''
       authenticated: true
       deprecated: false
@@ -48,15 +56,19 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - GET
-    uri: 'api/plans/{id}'
+      - PUT
+    uri: 'api/boosts/settings/{socialAccountId}'
     metadata:
       custom: []
-      groupName: Plans
-      groupDescription: ''
+      groupName: Boosts
+      groupDescription: |-
+
+        Per-account Boost automations (X-only v1): Auto Repost retweets a post once
+        it reaches a like threshold; Auto Promo replies to it with a promo comment.
+        Checks run 6h apart, up to 3 times per post, and stop on success.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Display the specified plan.'
+      title: "Create or update one feature's setting on one connected account."
       description: ''
       authenticated: true
       deprecated: false
@@ -65,10 +77,10 @@ endpoints:
       Content-Type: application/json
       Accept: application/json
     urlParameters:
-      id:
+      socialAccountId:
         custom: []
-        name: id
-        description: 'The ID of the plan.'
+        name: socialAccountId
+        description: ''
         required: true
         example: architecto
         type: string
@@ -77,7 +89,103 @@ endpoints:
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: architecto
+      socialAccountId: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      feature:
+        custom: []
+        name: feature
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      enabled:
+        custom: []
+        name: enabled
+        description: ''
+        required: true
+        example: false
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      likes_threshold:
+        custom: []
+        name: likes_threshold
+        description: 'Must be at least 1. Must not be greater than 1000000.'
+        required: true
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      promo_text:
+        custom: []
+        name: promo_text
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      feature: architecto
+      enabled: false
+      likes_threshold: 22
+      promo_text: architecto
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/boosts/activity
+    metadata:
+      custom: []
+      groupName: Boosts
+      groupDescription: |-
+
+        Per-account Boost automations (X-only v1): Auto Repost retweets a post once
+        it reaches a like threshold; Auto Promo replies to it with a promo comment.
+        Checks run 6h apart, up to 3 times per post, and stop on success.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Recent boost activity (triggered/exhausted/failed checks), newest first.'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []

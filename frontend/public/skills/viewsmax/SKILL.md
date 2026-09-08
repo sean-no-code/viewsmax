@@ -1,11 +1,12 @@
 ---
 name: viewsmax
 description: >
-  Post to social media, schedule content, create tracked offer links, and read
-  click/conversion/revenue analytics via ViewsMax (viewsmax.com). Use when the
-  user asks to publish or schedule social posts (YouTube, TikTok, X, LinkedIn,
-  Threads, Instagram, Bluesky), promote an offer with tracked links, or check
-  which content is driving sales.
+  Post to social media, schedule content, create tracked offer links, read
+  click/conversion/revenue analytics, and research outlier videos via ViewsMax
+  (viewsmax.com). Use when the user asks to publish or schedule social posts
+  (YouTube, TikTok, X, LinkedIn, Threads, Instagram, Bluesky), promote an offer
+  with tracked links, check which content is driving sales, or find and break
+  down videos that massively over-performed (content ideation).
 metadata:
   requires_env: VIEWSMAX_API_KEY
   homepage: https://viewsmax.com/ai
@@ -99,6 +100,52 @@ curl -s -H "Authorization: Bearer $VIEWSMAX_API_KEY" -H "Accept: application/jso
   "https://api.viewsmax.com/api/tracking-events/timeseries?bucket=day"
 ```
 
+### 6. Research outlier videos
+
+Outliers are videos that massively over-performed their channel's average
+(`outlier_score` = views ÷ channel average views) on YouTube, TikTok and
+Instagram. Use them for ideation: what hooks, formats and topics are working.
+
+```bash
+# Browse the curated feed (filters: platform, min_score, min_views, max_views,
+# min_subs, max_subs, published_after/before, duration_type=long|shorts,
+# countries[]=US, channels[]=<channel id>, sort_by=score|views|date|recent,
+# page, per_page ≤ 100)
+curl -s -H "Authorization: Bearer $VIEWSMAX_API_KEY" -H "Accept: application/json" \
+  "https://api.viewsmax.com/api/outliers?platform=youtube&min_score=20&duration_type=shorts&per_page=20"
+
+# Keyword browse: returns title matches already in the database plus a
+# `status`. If status is queued/in_progress, start a scrape and poll again:
+curl -s -X POST -H "Authorization: Bearer $VIEWSMAX_API_KEY" \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -d '{ "term": "faceless youtube automation" }' \
+  https://api.viewsmax.com/api/outliers/search
+
+# Pull a specific video in by URL (202 + queued:true when it has to be
+# ingested — poll GET /api/outliers/{platform}/{video_id} until it appears)
+curl -s -X POST -H "Authorization: Bearer $VIEWSMAX_API_KEY" \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -d '{ "platform": "youtube", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }' \
+  https://api.viewsmax.com/api/outliers/fetch
+
+# AI breakdown (hook, structure, why it worked). POST queues generation;
+# GET returns status none|pending|processing|completed|failed + payload.
+curl -s -X POST -H "Authorization: Bearer $VIEWSMAX_API_KEY" -H "Accept: application/json" \
+  https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown
+curl -s -H "Authorization: Bearer $VIEWSMAX_API_KEY" -H "Accept: application/json" \
+  https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown
+
+# Library: save with tags, list, remove
+curl -s -X POST -H "Authorization: Bearer $VIEWSMAX_API_KEY" \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -d '{ "platform": "youtube", "video_id": "dQw4w9WgXcQ", "tags": ["hooks"], "snapshot": { "title": "…" } }' \
+  https://api.viewsmax.com/api/outliers/library
+curl -s -H "Authorization: Bearer $VIEWSMAX_API_KEY" -H "Accept: application/json" \
+  "https://api.viewsmax.com/api/outliers/library?tags[]=hooks"
+```
+
+Poll breakdowns every 10–15 s; generation takes up to a couple of minutes.
+
 ## Failure modes
 
 - `401` — missing/invalid key. Ask the user to re-copy or rotate it.
@@ -106,5 +153,6 @@ curl -s -H "Authorization: Bearer $VIEWSMAX_API_KEY" -H "Accept: application/jso
   surface, or a plan limit. Relay the `message` to the user.
 - `422` — validation error (e.g. caption over a platform's limit). The
   `message` says which platform/field; fix and retry.
-- `429` — rate limited (180 posts/hour, 40 media uploads/hour). Back off.
+- `429` — rate limited (180 posts/hour, 40 media uploads/hour, 30 outlier
+  searches/hour, 60 outlier fetches/hour, 30 breakdowns/hour). Back off.
 - API keys deliberately cannot touch billing, account, or key management.

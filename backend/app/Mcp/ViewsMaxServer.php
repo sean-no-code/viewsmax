@@ -9,15 +9,24 @@ use App\Mcp\Tools\CreateTrackingLink;
 use App\Mcp\Tools\DeleteOffer;
 use App\Mcp\Tools\DeletePost;
 use App\Mcp\Tools\DisconnectAccount;
+use App\Mcp\Tools\FetchOutlier;
+use App\Mcp\Tools\GenerateOutlierBreakdown;
 use App\Mcp\Tools\GetConnectUrl;
 use App\Mcp\Tools\GetOffer;
 use App\Mcp\Tools\GetOfferStats;
+use App\Mcp\Tools\GetOutlier;
+use App\Mcp\Tools\GetOutlierBreakdown;
 use App\Mcp\Tools\GetPost;
 use App\Mcp\Tools\GetStatsTimeseries;
 use App\Mcp\Tools\ListBrands;
 use App\Mcp\Tools\ListConnectedAccounts;
 use App\Mcp\Tools\ListOffers;
+use App\Mcp\Tools\ListOutliers;
 use App\Mcp\Tools\ListPosts;
+use App\Mcp\Tools\ListSavedOutliers;
+use App\Mcp\Tools\RemoveSavedOutlier;
+use App\Mcp\Tools\SaveOutlier;
+use App\Mcp\Tools\SearchOutliers;
 use App\Mcp\Tools\UpdateOffer;
 use App\Mcp\Tools\UpdatePost;
 use App\Mcp\Tools\UploadMedia;
@@ -40,6 +49,12 @@ class ViewsMaxServer extends Server
         Brands are named groups of connected accounts: list_brands shows them,
         and create_post accepts brand_id to post to a whole brand at once.
         Publishing is asynchronous; poll get_post to see per-platform results.
+        Outliers are videos that massively over-performed their channel's
+        average — use them for research and ideation: list_outliers to browse
+        (search_outliers to scrape a new topic), fetch_outlier to pull in a
+        specific URL, generate_outlier_breakdown + get_outlier_breakdown for an
+        AI analysis of why a video worked, and save_outlier to bookmark it in
+        the user's library.
         TXT;
 
     // Show every tool on the first tools/list page.
@@ -70,6 +85,16 @@ class ViewsMaxServer extends Server
         GetConnectUrl::class,
         // Feature requests
         CreateFeatureRequest::class,
+        // Outliers (research)
+        ListOutliers::class,
+        SearchOutliers::class,
+        GetOutlier::class,
+        FetchOutlier::class,
+        GetOutlierBreakdown::class,
+        GenerateOutlierBreakdown::class,
+        ListSavedOutliers::class,
+        SaveOutlier::class,
+        RemoveSavedOutlier::class,
     ];
 
     /**

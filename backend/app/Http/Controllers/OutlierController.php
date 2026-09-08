@@ -15,6 +15,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @group Outliers
+ *
+ * Outlier videos: content that massively over-performed its channel's average
+ * (`outlier_score` = views ÷ channel average views) across YouTube, TikTok and
+ * Instagram. Browse the shared database, pull in specific URLs, and get AI
+ * breakdowns of why a video worked.
+ */
 class OutlierController extends Controller
 {
     protected $youtube;
@@ -28,7 +36,11 @@ class OutlierController extends Controller
         $this->captApiOutliers = $captApiOutliers;
     }
 
-    /** Distinct channels for a platform, for the channel-filter modal's picker. */
+    /**
+     * List outlier channels
+     *
+     * Distinct channels in the outlier database (for the `channels` filter of the browse endpoint).
+     */
     public function channels(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -63,9 +75,13 @@ class OutlierController extends Controller
     }
 
     /**
-     * Ingest a single video by URL. YouTube goes through the YouTube API;
-     * TikTok/Instagram go through CaptAPI (no channel-listing endpoint there,
-     * so those are pulled one URL at a time).
+     * Fetch an outlier by URL
+     *
+     * Ingest a single video by URL so it can be analysed. Known videos return
+     * immediately; otherwise ingestion is queued (HTTP 202, `queued: true`) —
+     * poll the show endpoint with the returned platform + video_id. YouTube goes
+     * through the YouTube API; TikTok/Instagram go through CaptAPI (no
+     * channel-listing endpoint there, so those are pulled one URL at a time).
      */
     public function fetchByUrl(Request $request): JsonResponse
     {
@@ -132,6 +148,14 @@ class OutlierController extends Controller
         return response()->json(['data' => $video->load('channel'), 'queued' => false, 'video_id' => $video->youtube_video_id, 'platform' => $platform]);
     }
 
+    /**
+     * Browse outliers
+     *
+     * Paginated outlier videos. Without `query` this is the curated feed; with
+     * `query` it returns title matches already in the database plus a `status`
+     * (queued / in_progress / done) for the background scrape of that term —
+     * start one with the search endpoint.
+     */
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -236,7 +260,14 @@ class OutlierController extends Controller
         return response()->json(['data' => ['featured' => $video->featured]]);
     }
 
-    /** A single outlier video (with channel) for the breakdown page. */
+    /**
+     * Get an outlier
+     *
+     * A single outlier video with its channel.
+     *
+     * @urlParam platform string required youtube, tiktok, or instagram. Example: youtube
+     * @urlParam videoId string required The platform's video id. Example: dQw4w9WgXcQ
+     */
     public function show(Request $request, string $platform, string $videoId): JsonResponse
     {
         $video = OutlierVideo::with('channel')
@@ -251,6 +282,15 @@ class OutlierController extends Controller
         return response()->json(['success' => true, 'data' => $video]);
     }
 
+    /**
+     * Start an outlier search
+     *
+     * Queue a background scrape for a keyword/topic. Poll the browse endpoint
+     * with the same `query` until its `status` is `done`.
+     *
+     * @bodyParam term string required Keyword or topic. Example: faceless youtube automation
+     * @bodyParam exact_match boolean Match the whole phrase only. Example: false
+     */
     public function search(Request $request): JsonResponse
     {
         $term = $request->input('term');

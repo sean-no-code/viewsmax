@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Jobs\GenerateOutlierBreakdownJob;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Contracts\Support\Arrayable;
@@ -153,6 +154,45 @@ abstract class ViewsMaxTool extends Tool
                 'platform_post_id' => $t->platform_post_id,
                 'published_at' => $t->published_at?->toIso8601String(),
             ])->all(),
+        ];
+    }
+
+    /**
+     * Shape an outlier video (as serialized by the REST controllers, with its
+     * channel) for tool output. Works on the JSON array form so tools can
+     * reuse controller responses unchanged.
+     */
+    protected function serializeOutlier(array $video): array
+    {
+        $platform = (string) ($video['platform'] ?? 'youtube');
+        $videoId = (string) ($video['youtube_video_id'] ?? '');
+        $channel = is_array($video['channel'] ?? null) ? $video['channel'] : null;
+
+        return [
+            'platform' => $platform,
+            'video_id' => $videoId,
+            'url' => GenerateOutlierBreakdownJob::nativeUrl($platform, $videoId, $channel['channel_name'] ?? null),
+            'title' => $video['title'] ?? null,
+            'thumbnail_url' => $video['thumbnail_url'] ?? null,
+            'views' => $video['views'] ?? null,
+            'like_count' => $video['like_count'] ?? null,
+            'comment_count' => $video['comment_count'] ?? null,
+            'outlier_score' => $video['outlier_score'] ?? null,
+            'engagement_rate' => $video['engagement_rate'] ?? null,
+            'duration' => $video['formatted_duration'] ?? $video['duration'] ?? null,
+            'duration_seconds' => $video['duration_in_seconds'] ?? null,
+            'is_short' => $video['is_short'] ?? null,
+            'published_at' => $video['published_at'] ?? null,
+            'featured' => (bool) ($video['featured'] ?? false),
+            'channel' => $channel ? [
+                'id' => $channel['youtube_channel_id'] ?? null,
+                'name' => $channel['channel_name'] ?? null,
+                'platform' => $channel['platform'] ?? $platform,
+                'subscriber_count' => $channel['subscriber_count'] ?? null,
+                'average_views' => $channel['average_views'] ?? null,
+                'country' => $channel['country'] ?? null,
+                'avatar' => $channel['profile_image_url'] ?? null,
+            ] : null,
         ];
     }
 }

@@ -3,9 +3,11 @@
 > ViewsMax is a social posting + link tracking/analytics SaaS for creators and
 > marketers. Compose and schedule posts to YouTube, TikTok, X, LinkedIn,
 > Threads, Instagram, and Bluesky; create offers and tracked links; see which
-> posts and platforms drive clicks, conversions, and revenue. User data is
-> private — AI agents act on a user's behalf via an authenticated MCP server
-> (OAuth 2.1 + PKCE, or a per-user API key) or the REST API.
+> posts and platforms drive clicks, conversions, and revenue; research outlier
+> videos (content that massively over-performed its channel) with AI breakdowns
+> of why they worked. User data is private — AI agents act on a user's behalf
+> via an authenticated MCP server (OAuth 2.1 + PKCE, or a per-user API key) or
+> the REST API.
 
 ## AI & Agent Access
 

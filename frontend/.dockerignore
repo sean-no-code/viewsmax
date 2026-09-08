@@ -1,0 +1,25 @@
+# The Dockerfile runs `npm ci` itself; the host node_modules (macOS-only
+# binaries) must not be copied over it by the later `COPY . .`.
+node_modules
+dist
+dist-ssr
+
+# Secrets and local state
+.env
+.env.*
+!.env.example
+
+# Repo / tooling noise
+.git
+.gitignore
+.github
+.idea
+.vscode
+.fleet
+.zed
+.claude
+*.tsbuildinfo
+*.log
+.DS_Store
+Thumbs.db
+Dockerfile

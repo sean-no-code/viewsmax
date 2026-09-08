@@ -30,6 +30,15 @@ return [
         // upload_media tool, per token (server downloads up to 512MB per call).
         'upload_media_per_hour' => env('MCP_UPLOAD_MEDIA_PER_HOUR', 40),
 
+        // search_outliers tool, per token (each call queues a provider scrape).
+        'search_outliers_per_hour' => env('MCP_SEARCH_OUTLIERS_PER_HOUR', 30),
+
+        // fetch_outlier tool, per token (provider fetch / ingest job per call).
+        'fetch_outlier_per_hour' => env('MCP_FETCH_OUTLIER_PER_HOUR', 60),
+
+        // generate_outlier_breakdown tool, per token (transcript + LLM call).
+        'generate_breakdown_per_hour' => env('MCP_GENERATE_BREAKDOWN_PER_HOUR', 30),
+
         // Failed auth attempts on /mcp, per IP (key brute-force protection).
         'failed_auth_per_minute' => env('MCP_FAILED_AUTH_PER_MINUTE', 20),
 

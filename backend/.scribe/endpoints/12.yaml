@@ -1,47 +1,37 @@
-name: Content
+name: Offers
 description: |-
 
-  Post and manage content (long-form body text + optional media file) that can be
-  attached to an Offer. Media is stored privately and streamed back via the media
-  endpoint. All endpoints are scoped to the authenticated user.
+  Offers are products/campaigns being promoted (stored as tracking events).
+  Each offer has an offer URL and conversion value, owns tracking links, and
+  accumulates clicks and conversions. The stats and timeseries endpoints
+  power the analytics dashboards.
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: 'api/contents/{id}/media'
+    uri: api/tracking-events/offers
     metadata:
       custom: []
-      groupName: Content
+      groupName: Offers
       groupDescription: |-
 
-        Post and manage content (long-form body text + optional media file) that can be
-        attached to an Offer. Media is stored privately and streamed back via the media
-        endpoint. All endpoints are scoped to the authenticated user.
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Download content media'
-      description: 'Streams the stored media file for the content. Useful for large files.'
+      title: 'Get a list of distinct offer URLs used by the authenticated user.'
+      description: ''
       authenticated: true
       deprecated: false
     headers:
       Authorization: 'Bearer vmx_{YOUR_API_KEY}'
       Content-Type: application/json
       Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The content id.'
-        required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
+    urlParameters: []
+    cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -57,12 +47,6 @@ endpoints:
           content-type: application/json
           vary: Origin
         description: null
-      -
-        custom: []
-        status: 404
-        content: '{"message":"This content has no media file."}'
-        headers: []
-        description: 'No media'
     responseFields: []
     auth:
       - headers
@@ -75,19 +59,20 @@ endpoints:
     custom: []
     httpMethods:
       - GET
-    uri: api/contents
+    uri: api/tracking-events/stats
     metadata:
       custom: []
-      groupName: Content
+      groupName: Offers
       groupDescription: |-
 
-        Post and manage content (long-form body text + optional media file) that can be
-        attached to an Offer. Media is stored privately and streamed back via the media
-        endpoint. All endpoints are scoped to the authenticated user.
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
       subgroup: ''
       subgroupDescription: ''
-      title: 'List content'
-      description: "Returns the authenticated user's content, newest first. Optionally filter by offer or status."
+      title: 'Get aggregated stats for tracking events with date filtering and deduplication.'
+      description: ''
       authenticated: true
       deprecated: false
     headers:
@@ -96,42 +81,221 @@ endpoints:
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
-    queryParameters:
-      offer_id:
-        custom: []
-        name: offer_id
-        description: 'Filter to content attached to this offer.'
-        required: false
-        example: 12
-        type: integer
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      status:
-        custom: []
-        name: status
-        description: 'Filter by status (draft|published).'
-        required: false
-        example: published
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-    cleanQueryParameters:
-      offer_id: 12
-      status: published
+    queryParameters: []
+    cleanQueryParameters: []
     bodyParameters: []
     cleanBodyParameters: []
     fileParameters: []
     responses:
       -
         custom: []
-        status: 200
-        content: '{"data":[{"id":1,"user_id":1,"offer_id":12,"title":"Launch post","body":"...","media_filename":"promo.mp4","media_mime":"video/mp4","media_size":8388608,"status":"published","created_at":"2026-06-16T12:00:00.000000Z","updated_at":"2026-06-16T12:00:00.000000Z"}]}'
-        headers: []
-        description: Success
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/tracking-events/timeseries
+    metadata:
+      custom: []
+      groupName: Offers
+      groupDescription: |-
+
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
+      subgroup: ''
+      subgroupDescription: ''
+      title: |-
+        Daily time-series of clicks and attributed revenue for the authenticated
+        user, used by the Analytics overview area charts. Returns one bucket per
+        day across the requested window (gaps filled with zeros).
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/tracking-events/sources
+    metadata:
+      custom: []
+      groupName: Offers
+      groupDescription: |-
+
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'GA-style acquisition tables: where visitors actually came from.'
+      description: |-
+        GET /api/tracking-events/sources?from&to&event_id
+
+        Returns `sources` (grouped by classified platform — google, x, direct…)
+        and `referrers` (grouped by the FULL referrer URL), each with distinct
+        visitors + view counts. Pageview-based; falls back to link-click data
+        (basis: "clicks") until the site has pageview beacons.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/goal-types
+    metadata:
+      custom: []
+      groupName: Offers
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List the predefined conversion goal/event types (seeded reference list).'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/tracking-events
+    metadata:
+      custom: []
+      groupName: Offers
+      groupDescription: |-
+
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
     responseFields: []
     auth:
       - headers
@@ -144,107 +308,192 @@ endpoints:
     custom: []
     httpMethods:
       - POST
-    uri: api/contents
+    uri: api/tracking-events
     metadata:
       custom: []
-      groupName: Content
+      groupName: Offers
       groupDescription: |-
 
-        Post and manage content (long-form body text + optional media file) that can be
-        attached to an Offer. Media is stored privately and streamed back via the media
-        endpoint. All endpoints are scoped to the authenticated user.
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Create content'
-      description: |-
-        Create a content post. Send as `multipart/form-data` when including a media file.
-        The `body` accepts long-form text. `media` accepts a single file up to 50 MB.
+      title: 'Store a newly created resource in storage.'
+      description: ''
       authenticated: true
       deprecated: false
     headers:
       Authorization: 'Bearer vmx_{YOUR_API_KEY}'
-      Content-Type: multipart/form-data
+      Content-Type: application/json
       Accept: application/json
     urlParameters: []
     cleanUrlParameters: []
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      title:
+      name:
         custom: []
-        name: title
-        description: 'The content title.'
+        name: name
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: b
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      offer_url:
+        custom: []
+        name: offer_url
+        description: 'Must be a valid URL.'
         required: true
-        example: '5 ways to grow your channel'
+        example: 'http://bailey.com/'
         type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      body:
-        custom: []
-        name: body
-        description: 'The long-form body text (no length limit).'
-        required: false
-        example: 'Once upon a time...'
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      offer_id:
-        custom: []
-        name: offer_id
-        description: 'The id of an offer (owned by you) to attach this content to.'
-        required: false
-        example: 12
-        type: integer
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      status:
-        custom: []
-        name: status
-        description: 'The status: draft or published. Defaults to draft.'
-        required: false
-        example: published
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      media:
-        custom: []
-        name: media
-        description: 'A media file to attach (image/video/document, max 50 MB).'
-        required: false
-        example: null
-        type: file
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
+      goals:
+        custom: []
+        name: goals
+        description: 'Goals (conversion events) are optional at creation — added later on the offer page.'
+        required: false
+        example: null
+        type: 'object[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      conversion_value:
+        custom: []
+        name: conversion_value
+        description: ''
+        required: false
+        example: 4326.41688
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'goals[].event_type':
+        custom: []
+        name: 'goals[].event_type'
+        description: |-
+          Built-in types (conversion, call booked, email-signup, newsletter, trial) plus
+          arbitrary user-defined "custom" events, which are stored verbatim. Must not be greater than 255 characters.
+        required: true
+        example: m
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'goals[].conversion_url':
+        custom: []
+        name: 'goals[].conversion_url'
+        description: ''
+        required: true
+        example: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'goals[].conversion_value':
+        custom: []
+        name: 'goals[].conversion_value'
+        description: 'Must be at least 0.'
+        required: false
+        example: 8
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      links:
+        custom: []
+        name: links
+        description: ''
+        required: false
+        example:
+          - []
+        type: 'object[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'links[].youtube_video_id':
+        custom: []
+        name: 'links[].youtube_video_id'
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].placement':
+        custom: []
+        name: 'links[].placement'
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].name':
+        custom: []
+        name: 'links[].name'
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].description':
+        custom: []
+        name: 'links[].description'
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: 'Et animi quos velit et fugiat.'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
     cleanBodyParameters:
-      title: '5 ways to grow your channel'
-      body: 'Once upon a time...'
-      offer_id: 12
-      status: published
-    fileParameters:
-      media: null
+      name: b
+      offer_url: 'http://bailey.com/'
+      conversion_value: 4326.41688
+      goals:
+        -
+          event_type: m
+          conversion_url: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+          conversion_value: 8
+      links:
+        -
+          youtube_video_id: architecto
+          placement: architecto
+          name: architecto
+          description: 'Et animi quos velit et fugiat.'
+    fileParameters: []
     responses:
       -
         custom: []
-        status: 201
-        content: '{"data":{"id":1,"user_id":1,"offer_id":12,"title":"Launch post","body":"...","media_filename":"promo.mp4","media_mime":"video/mp4","media_size":8388608,"status":"published"}}'
-        headers: []
-        description: Created
-      -
-        custom: []
-        status: 422
-        content: '{"message":"The title field is required.","errors":{"title":["The title field is required."]}}'
-        headers: []
-        description: 'Validation error'
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
     responseFields: []
     auth:
       - headers
@@ -257,18 +506,19 @@ endpoints:
     custom: []
     httpMethods:
       - GET
-    uri: 'api/contents/{id}'
+    uri: 'api/tracking-events/{id}'
     metadata:
       custom: []
-      groupName: Content
+      groupName: Offers
       groupDescription: |-
 
-        Post and manage content (long-form body text + optional media file) that can be
-        attached to an Offer. Media is stored privately and streamed back via the media
-        endpoint. All endpoints are scoped to the authenticated user.
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Show content'
+      title: 'Display the specified resource.'
       description: ''
       authenticated: true
       deprecated: false
@@ -280,16 +530,16 @@ endpoints:
       id:
         custom: []
         name: id
-        description: 'The content id.'
+        description: 'The ID of the tracking event.'
         required: true
-        example: 1
-        type: integer
+        example: architecto
+        type: string
         enumValues: []
-        exampleWasSpecified: true
+        exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: architecto
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -298,16 +548,13 @@ endpoints:
     responses:
       -
         custom: []
-        status: 200
-        content: '{"data":{"id":1,"title":"Launch post","body":"...","status":"published"}}'
-        headers: []
-        description: Success
-      -
-        custom: []
-        status: 404
-        content: '{"message":"No query results for model [App\\Models\\Content] 1"}'
-        headers: []
-        description: 'Not found'
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
     responseFields: []
     auth:
       - headers
@@ -321,111 +568,213 @@ endpoints:
     httpMethods:
       - PUT
       - PATCH
-    uri: 'api/contents/{id}'
+    uri: 'api/tracking-events/{id}'
     metadata:
       custom: []
-      groupName: Content
+      groupName: Offers
       groupDescription: |-
 
-        Post and manage content (long-form body text + optional media file) that can be
-        attached to an Offer. Media is stored privately and streamed back via the media
-        endpoint. All endpoints are scoped to the authenticated user.
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Update content'
-      description: 'Update fields and/or replace the media file. Send `multipart/form-data` to replace media.'
+      title: 'Update the specified resource in storage.'
+      description: ''
       authenticated: true
       deprecated: false
     headers:
       Authorization: 'Bearer vmx_{YOUR_API_KEY}'
-      Content-Type: multipart/form-data
+      Content-Type: application/json
       Accept: application/json
     urlParameters:
       id:
         custom: []
         name: id
-        description: 'The content id.'
+        description: 'The ID of the tracking event.'
         required: true
-        example: 1
-        type: integer
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: 1
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters:
-      title:
-        custom: []
-        name: title
-        description: 'The content title.'
-        required: false
-        example: 'Updated title'
+        example: architecto
         type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      body:
-        custom: []
-        name: body
-        description: 'The long-form body text.'
-        required: false
-        example: 'New body text...'
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      offer_id:
-        custom: []
-        name: offer_id
-        description: 'The id of an offer (owned by you) to attach.'
-        required: false
-        example: 12
-        type: integer
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      status:
-        custom: []
-        name: status
-        description: 'draft or published.'
-        required: false
-        example: published
-        type: string
-        enumValues: []
-        exampleWasSpecified: true
-        nullable: false
-        deprecated: false
-      media:
-        custom: []
-        name: media
-        description: 'Replacement media file (max 50 MB).'
-        required: false
-        example: null
-        type: file
         enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      name:
+        custom: []
+        name: name
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: b
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      offer_url:
+        custom: []
+        name: offer_url
+        description: 'Must be a valid URL.'
+        required: false
+        example: 'http://bailey.com/'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      goals:
+        custom: []
+        name: goals
+        description: ''
+        required: false
+        example: null
+        type: 'object[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      conversion_value:
+        custom: []
+        name: conversion_value
+        description: ''
+        required: false
+        example: 4326.41688
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      links:
+        custom: []
+        name: links
+        description: ''
+        required: false
+        example: null
+        type: 'object[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'goals[].event_type':
+        custom: []
+        name: 'goals[].event_type'
+        description: 'Must not be greater than 255 characters.'
+        required: true
+        example: m
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'goals[].conversion_url':
+        custom: []
+        name: 'goals[].conversion_url'
+        description: ''
+        required: true
+        example: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      'goals[].conversion_value':
+        custom: []
+        name: 'goals[].conversion_value'
+        description: 'Must be at least 0.'
+        required: false
+        example: 8
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].id':
+        custom: []
+        name: 'links[].id'
+        description: ''
+        required: false
+        example: 16
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].youtube_video_id':
+        custom: []
+        name: 'links[].youtube_video_id'
+        description: 'For updating existing links.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].placement':
+        custom: []
+        name: 'links[].placement'
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].name':
+        custom: []
+        name: 'links[].name'
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      'links[].description':
+        custom: []
+        name: 'links[].description'
+        description: 'Must not be greater than 255 characters.'
+        required: false
+        example: 'Et animi quos velit et fugiat.'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
     cleanBodyParameters:
-      title: 'Updated title'
-      body: 'New body text...'
-      offer_id: 12
-      status: published
-    fileParameters:
-      media: null
+      name: b
+      offer_url: 'http://bailey.com/'
+      conversion_value: 4326.41688
+      goals:
+        -
+          event_type: m
+          conversion_url: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+          conversion_value: 8
+      links:
+        -
+          id: 16
+          youtube_video_id: architecto
+          placement: architecto
+          name: architecto
+          description: 'Et animi quos velit et fugiat.'
+    fileParameters: []
     responses:
       -
         custom: []
-        status: 200
-        content: '{"data":{"id":1,"title":"Updated title","status":"published"}}'
-        headers: []
-        description: Updated
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
     responseFields: []
     auth:
       - headers
@@ -438,19 +787,20 @@ endpoints:
     custom: []
     httpMethods:
       - DELETE
-    uri: 'api/contents/{id}'
+    uri: 'api/tracking-events/{id}'
     metadata:
       custom: []
-      groupName: Content
+      groupName: Offers
       groupDescription: |-
 
-        Post and manage content (long-form body text + optional media file) that can be
-        attached to an Offer. Media is stored privately and streamed back via the media
-        endpoint. All endpoints are scoped to the authenticated user.
+        Offers are products/campaigns being promoted (stored as tracking events).
+        Each offer has an offer URL and conversion value, owns tracking links, and
+        accumulates clicks and conversions. The stats and timeseries endpoints
+        power the analytics dashboards.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Delete content'
-      description: 'Deletes the content and any stored media file.'
+      title: 'Remove the specified resource from storage.'
+      description: ''
       authenticated: true
       deprecated: false
     headers:
@@ -461,16 +811,16 @@ endpoints:
       id:
         custom: []
         name: id
-        description: 'The content id.'
+        description: 'The ID of the tracking event.'
         required: true
-        example: 1
-        type: integer
+        example: architecto
+        type: string
         enumValues: []
-        exampleWasSpecified: true
+        exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanUrlParameters:
-      id: 1
+      id: architecto
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters: []
@@ -479,10 +829,13 @@ endpoints:
     responses:
       -
         custom: []
-        status: 204
-        content: ''
-        headers: []
-        description: Deleted
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
     responseFields: []
     auth:
       - headers

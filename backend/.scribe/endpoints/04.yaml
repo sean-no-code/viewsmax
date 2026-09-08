@@ -1,33 +1,537 @@
-name: 'API Keys'
+name: Outliers
 description: |-
 
-  MCP API key management: one non-expiring key per user,
-  rotate-to-invalidate. The key is a Sanctum personal access token scoped to
-  the `mcp` ability, stored hashed; only a display hint is recoverable, so the
-  plaintext is returned exactly once from rotate(). The key authenticates the
-  MCP server (/api/mcp) and the posts/offers/tracking REST surface; these
-  management endpoints themselves require a login session, not a key.
+  Outlier videos: content that massively over-performed its channel's average
+  (`outlier_score` = views ÷ channel average views) across YouTube, TikTok and
+  Instagram. Browse the shared database, pull in specific URLs, and get AI
+  breakdowns of why a video worked.
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: api/user/api-key
+    uri: api/outliers
     metadata:
       custom: []
-      groupName: 'API Keys'
+      groupName: Outliers
       groupDescription: |-
 
-        MCP API key management: one non-expiring key per user,
-        rotate-to-invalidate. The key is a Sanctum personal access token scoped to
-        the `mcp` ability, stored hashed; only a display hint is recoverable, so the
-        plaintext is returned exactly once from rotate(). The key authenticates the
-        MCP server (/api/mcp) and the posts/offers/tracking REST surface; these
-        management endpoints themselves require a login session, not a key.
+        Outlier videos: content that massively over-performed its channel's average
+        (`outlier_score` = views ÷ channel average views) across YouTube, TikTok and
+        Instagram. Browse the shared database, pull in specific URLs, and get AI
+        breakdowns of why a video worked.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'Browse outliers'
+      description: |-
+        Paginated outlier videos. Without `query` this is the curated feed; with
+        `query` it returns title matches already in the database plus a `status`
+        (queued / in_progress / done) for the background scrape of that term —
+        start one with the search endpoint.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      query:
+        custom: []
+        name: query
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      min_score:
+        custom: []
+        name: min_score
+        description: 'Must be at least 0.'
+        required: false
+        example: 39
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      min_views:
+        custom: []
+        name: min_views
+        description: 'Must be at least 0.'
+        required: false
+        example: 84
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      max_views:
+        custom: []
+        name: max_views
+        description: 'Must be at least 0.'
+        required: false
+        example: 12
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      min_subs:
+        custom: []
+        name: min_subs
+        description: 'Must be at least 0.'
+        required: false
+        example: 77
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      max_subs:
+        custom: []
+        name: max_subs
+        description: 'Must be at least 0.'
+        required: false
+        example: 8
+        type: number
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      published_before:
+        custom: []
+        name: published_before
+        description: 'Must be a valid date.'
+        required: false
+        example: '2026-09-08T09:14:28'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      published_after:
+        custom: []
+        name: published_after
+        description: 'Must be a valid date.'
+        required: false
+        example: '2026-09-08T09:14:28'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      sort_by:
+        custom: []
+        name: sort_by
+        description: ''
+        required: false
+        example: views
+        type: string
+        enumValues:
+          - score
+          - date
+          - views
+          - recent
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      keyword_match:
+        custom: []
+        name: keyword_match
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      duration_type:
+        custom: []
+        name: duration_type
+        description: ''
+        required: false
+        example: null
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      featured:
+        custom: []
+        name: featured
+        description: ''
+        required: false
+        example: false
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      platform:
+        custom: []
+        name: platform
+        description: ''
+        required: false
+        example: tiktok
+        type: string
+        enumValues:
+          - youtube
+          - tiktok
+          - instagram
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      channels:
+        custom: []
+        name: channels
+        description: ''
+        required: false
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      countries:
+        custom: []
+        name: countries
+        description: 'Must contain only letters. Must be 2 characters.'
+        required: false
+        example:
+          - ng
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      page:
+        custom: []
+        name: page
+        description: 'Must be at least 1.'
+        required: false
+        example: 66
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      per_page:
+        custom: []
+        name: per_page
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 17
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      query: architecto
+      min_score: 39
+      min_views: 84
+      max_views: 12
+      min_subs: 77
+      max_subs: 8
+      published_before: '2026-09-08T09:14:28'
+      published_after: '2026-09-08T09:14:28'
+      sort_by: views
+      keyword_match: architecto
+      featured: false
+      platform: tiktok
+      channels:
+        - architecto
+      countries:
+        - ng
+      page: 66
+      per_page: 17
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/outliers/channels
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        Outlier videos: content that massively over-performed its channel's average
+        (`outlier_score` = views ÷ channel average views) across YouTube, TikTok and
+        Instagram. Browse the shared database, pull in specific URLs, and get AI
+        breakdowns of why a video worked.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List outlier channels'
+      description: 'Distinct channels in the outlier database (for the `channels` filter of the browse endpoint).'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      platform:
+        custom: []
+        name: platform
+        description: ''
+        required: false
+        example: tiktok
+        type: string
+        enumValues:
+          - youtube
+          - tiktok
+          - instagram
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      q:
+        custom: []
+        name: q
+        description: ''
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+      limit:
+        custom: []
+        name: limit
+        description: 'Must be at least 1. Must not be greater than 100.'
+        required: false
+        example: 22
+        type: integer
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      platform: tiktok
+      q: architecto
+      limit: 22
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/outliers/search
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        Outlier videos: content that massively over-performed its channel's average
+        (`outlier_score` = views ÷ channel average views) across YouTube, TikTok and
+        Instagram. Browse the shared database, pull in specific URLs, and get AI
+        breakdowns of why a video worked.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Start an outlier search'
+      description: |-
+        Queue a background scrape for a keyword/topic. Poll the browse endpoint
+        with the same `query` until its `status` is `done`.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      term:
+        custom: []
+        name: term
+        description: 'Keyword or topic.'
+        required: true
+        example: 'faceless youtube automation'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      exact_match:
+        custom: []
+        name: exact_match
+        description: 'Match the whole phrase only.'
+        required: false
+        example: false
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      term: 'faceless youtube automation'
+      exact_match: false
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/outliers/fetch
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        Outlier videos: content that massively over-performed its channel's average
+        (`outlier_score` = views ÷ channel average views) across YouTube, TikTok and
+        Instagram. Browse the shared database, pull in specific URLs, and get AI
+        breakdowns of why a video worked.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Fetch an outlier by URL'
+      description: |-
+        Ingest a single video by URL so it can be analysed. Known videos return
+        immediately; otherwise ingestion is queued (HTTP 202, `queued: true`) —
+        poll the show endpoint with the returned platform + video_id. YouTube goes
+        through the YouTube API; TikTok/Instagram go through CaptAPI (no
+        channel-listing endpoint there, so those are pulled one URL at a time).
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      platform:
+        custom: []
+        name: platform
+        description: ''
+        required: true
+        example: instagram
+        type: string
+        enumValues:
+          - youtube
+          - tiktok
+          - instagram
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      url:
+        custom: []
+        name: url
+        description: 'Must be a valid URL.'
+        required: true
+        example: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      platform: instagram
+      url: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/outliers/tags
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        The user's saved-outliers library: bookmarked videos with tags.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'List library tags'
+      description: 'Distinct tag names the user has applied to saved outliers.'
       authenticated: true
       deprecated: false
     headers:
@@ -62,23 +566,118 @@ endpoints:
   -
     custom: []
     httpMethods:
-      - POST
-    uri: api/user/api-key/rotate
+      - GET
+    uri: api/outliers/library
     metadata:
       custom: []
-      groupName: 'API Keys'
+      groupName: Outliers
       groupDescription: |-
 
-        MCP API key management: one non-expiring key per user,
-        rotate-to-invalidate. The key is a Sanctum personal access token scoped to
-        the `mcp` ability, stored hashed; only a display hint is recoverable, so the
-        plaintext is returned exactly once from rotate(). The key authenticates the
-        MCP server (/api/mcp) and the posts/offers/tracking REST surface; these
-        management endpoints themselves require a login session, not a key.
+        The user's saved-outliers library: bookmarked videos with tags.
       subgroup: ''
       subgroupDescription: ''
-      title: ''
-      description: ''
+      title: 'List saved outliers'
+      description: "The user's library, newest first."
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters:
+      q:
+        custom: []
+        name: q
+        description: 'Matches saved title or channel name.'
+        required: false
+        example: hook
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      tags:
+        custom: []
+        name: tags
+        description: 'Only items carrying any of these tag names.'
+        required: false
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      platforms:
+        custom: []
+        name: platforms
+        description: 'youtube, tiktok, instagram.'
+        required: false
+        example:
+          - architecto
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      creator:
+        custom: []
+        name: creator
+        description: 'Channel/creator name filter.'
+        required: false
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanQueryParameters:
+      q: hook
+      tags:
+        - architecto
+      platforms:
+        - architecto
+      creator: architecto
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/outliers/library
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        The user's saved-outliers library: bookmarked videos with tags.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Save an outlier'
+      description: |-
+        Bookmark a video into the library with a snapshot of its stats. Saving the
+        same video again replaces its tags.
       authenticated: true
       deprecated: false
     headers:
@@ -90,21 +689,60 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      access:
+      platform:
         custom: []
-        name: access
+        name: platform
         description: ''
-        required: false
-        example: read
+        required: true
+        example: tiktok
         type: string
         enumValues:
-          - read
-          - full
+          - youtube
+          - tiktok
+          - instagram
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      video_id:
+        custom: []
+        name: video_id
+        description: ''
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      snapshot:
+        custom: []
+        name: snapshot
+        description: ''
+        required: true
+        example: []
+        type: object
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      tags:
+        custom: []
+        name: tags
+        description: 'Must not be greater than 50 characters.'
+        required: false
+        example:
+          - b
+        type: 'string[]'
+        enumValues: []
         exampleWasSpecified: false
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      access: read
+      platform: tiktok
+      video_id: architecto
+      snapshot: []
+      tags:
+        - b
     fileParameters: []
     responses:
       -
@@ -114,8 +752,357 @@ endpoints:
         headers:
           cache-control: 'no-cache, private'
           content-type: application/json
-          x-ratelimit-limit: '12'
-          x-ratelimit-remaining: '11'
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: 'api/outliers/library/{id}'
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        The user's saved-outliers library: bookmarked videos with tags.
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Update a saved outlier's tags"
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the library.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      tags:
+        custom: []
+        name: tags
+        description: 'Must not be greater than 50 characters.'
+        required: false
+        example:
+          - b
+        type: 'string[]'
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      tags:
+        - b
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - DELETE
+    uri: 'api/outliers/library/{id}'
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        The user's saved-outliers library: bookmarked videos with tags.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Remove a saved outlier'
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ID of the library.'
+        required: true
+        example: architecto
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: architecto
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/outliers/{platform}/{videoId}'
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        Outlier videos: content that massively over-performed its channel's average
+        (`outlier_score` = views ÷ channel average views) across YouTube, TikTok and
+        Instagram. Browse the shared database, pull in specific URLs, and get AI
+        breakdowns of why a video worked.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Get an outlier'
+      description: 'A single outlier video with its channel.'
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      platform:
+        custom: []
+        name: platform
+        description: 'youtube, tiktok, or instagram.'
+        required: true
+        example: youtube
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      videoId:
+        custom: []
+        name: videoId
+        description: "The platform's video id."
+        required: true
+        example: dQw4w9WgXcQ
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      platform: youtube
+      videoId: dQw4w9WgXcQ
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/outliers/{platform}/{videoId}/breakdown'
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        AI breakdowns of outlier videos. Generation is queued (transcript fetch +
+        Claude call are slow); the FE polls show() until status is completed/failed.
+        Breakdowns are per-video, not per-user — one generation serves everyone.
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Get an outlier's AI breakdown"
+      description: |-
+        `status` is none (never generated), pending/processing (poll again),
+        completed (`payload` holds the analysis) or failed (`error`).
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      platform:
+        custom: []
+        name: platform
+        description: 'youtube, tiktok, or instagram.'
+        required: true
+        example: youtube
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      videoId:
+        custom: []
+        name: videoId
+        description: "The platform's video id."
+        required: true
+        example: dQw4w9WgXcQ
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      platform: youtube
+      videoId: dQw4w9WgXcQ
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: 'api/outliers/{platform}/{videoId}/breakdown'
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        AI breakdowns of outlier videos. Generation is queued (transcript fetch +
+        Claude call are slow); the FE polls show() until status is completed/failed.
+        Breakdowns are per-video, not per-user — one generation serves everyone.
+      subgroup: ''
+      subgroupDescription: ''
+      title: "Generate an outlier's AI breakdown"
+      description: |-
+        Queues generation (transcript + LLM analysis); poll the GET endpoint until
+        `status` is completed. An existing breakdown is returned, not regenerated.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      platform:
+        custom: []
+        name: platform
+        description: 'youtube, tiktok, or instagram.'
+        required: true
+        example: youtube
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      videoId:
+        custom: []
+        name: videoId
+        description: "The platform's video id."
+        required: true
+        example: dQw4w9WgXcQ
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      platform: youtube
+      videoId: dQw4w9WgXcQ
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
           vary: Origin
         description: null
     responseFields: []

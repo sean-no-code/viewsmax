@@ -52,6 +52,8 @@ class ApiKeyRestAccessTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/tracking-events')->assertOk();
         $this->withHeaders($headers)->getJson('/api/social/accounts')->assertOk();
         $this->withHeaders($headers)->getJson('/api/profile')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/outliers')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/outliers/library')->assertOk();
 
         $this->withHeaders($headers)->postJson('/api/posts', [
             'caption' => 'Posted via API key',
@@ -65,12 +67,15 @@ class ApiKeyRestAccessTest extends TestCase
         $headers = $this->keyHeaders('read');
 
         $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/outliers')->assertOk();
 
         $this->withHeaders($headers)->postJson('/api/posts', [
             'caption' => 'Should be blocked',
             'platforms' => ['x'],
             'status' => 'draft',
         ])->assertForbidden();
+
+        $this->withHeaders($headers)->postJson('/api/outliers/search', ['term' => 'blocked'])->assertForbidden();
     }
 
     public function test_keys_never_reach_account_billing_or_admin_endpoints(): void

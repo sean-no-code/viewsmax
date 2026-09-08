@@ -1,0 +1,39 @@
+# Build context exclusions. The Dockerfile runs `composer install` and
+# `npm install && npm run build` itself, so host-side dependency trees must
+# never be copied in: macOS node_modules carries darwin-only binaries and
+# symlinks that break `vite build` inside the Linux image.
+node_modules
+vendor
+public/build
+public/hot
+
+# Secrets and local state — never bake these into image layers.
+.env
+.env.*
+!.env.example
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/private/*
+storage/app/public/*
+storage/*.key
+auth.json
+
+# Repo / tooling noise
+.git
+.gitignore
+.github
+.idea
+.vscode
+.fleet
+.zed
+.claude
+.phpunit.cache
+.phpunit.result.cache
+.scribe
+tasks
+*.log
+.DS_Store
+Thumbs.db
+docker-compose*.yml

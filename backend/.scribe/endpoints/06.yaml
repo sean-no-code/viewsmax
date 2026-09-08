@@ -1,18 +1,32 @@
-name: 'Feature Requests'
-description: ''
+name: 'API Keys'
+description: |-
+
+  MCP API key management: one non-expiring key per user,
+  rotate-to-invalidate. The key is a Sanctum personal access token scoped to
+  the `mcp` ability, stored hashed; only a display hint is recoverable, so the
+  plaintext is returned exactly once from rotate(). The key authenticates the
+  MCP server (/api/mcp) and the posts/offers/tracking REST surface; these
+  management endpoints themselves require a login session, not a key.
 endpoints:
   -
     custom: []
     httpMethods:
       - GET
-    uri: api/feature-requests
+    uri: api/user/api-key
     metadata:
       custom: []
-      groupName: 'Feature Requests'
-      groupDescription: ''
+      groupName: 'API Keys'
+      groupDescription: |-
+
+        MCP API key management: one non-expiring key per user,
+        rotate-to-invalidate. The key is a Sanctum personal access token scoped to
+        the `mcp` ability, stored hashed; only a display hint is recoverable, so the
+        plaintext is returned exactly once from rotate(). The key authenticates the
+        MCP server (/api/mcp) and the posts/offers/tracking REST surface; these
+        management endpoints themselves require a login session, not a key.
       subgroup: ''
       subgroupDescription: ''
-      title: 'List feature requests, sorted by top votes (default) or newest.'
+      title: ''
       description: ''
       authenticated: true
       deprecated: false
@@ -49,14 +63,21 @@ endpoints:
     custom: []
     httpMethods:
       - POST
-    uri: api/feature-requests
+    uri: api/user/api-key/rotate
     metadata:
       custom: []
-      groupName: 'Feature Requests'
-      groupDescription: ''
+      groupName: 'API Keys'
+      groupDescription: |-
+
+        MCP API key management: one non-expiring key per user,
+        rotate-to-invalidate. The key is a Sanctum personal access token scoped to
+        the `mcp` ability, stored hashed; only a display hint is recoverable, so the
+        plaintext is returned exactly once from rotate(). The key authenticates the
+        MCP server (/api/mcp) and the posts/offers/tracking REST surface; these
+        management endpoints themselves require a login session, not a key.
       subgroup: ''
       subgroupDescription: ''
-      title: 'Create a feature request and auto-upvote it for the creator.'
+      title: ''
       description: ''
       authenticated: true
       deprecated: false
@@ -69,43 +90,21 @@ endpoints:
     queryParameters: []
     cleanQueryParameters: []
     bodyParameters:
-      title:
+      access:
         custom: []
-        name: title
-        description: 'Must not be greater than 255 characters.'
-        required: true
-        example: b
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-      description:
-        custom: []
-        name: description
+        name: access
         description: ''
-        required: true
-        example: 'Eius et animi quos velit et.'
+        required: false
+        example: full
         type: string
-        enumValues: []
+        enumValues:
+          - read
+          - full
         exampleWasSpecified: false
         nullable: false
-        deprecated: false
-      category:
-        custom: []
-        name: category
-        description: 'Must not be greater than 255 characters.'
-        required: false
-        example: v
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: true
         deprecated: false
     cleanBodyParameters:
-      title: b
-      description: 'Eius et animi quos velit et.'
-      category: v
+      access: full
     fileParameters: []
     responses:
       -
@@ -115,62 +114,8 @@ endpoints:
         headers:
           cache-control: 'no-cache, private'
           content-type: application/json
-          vary: Origin
-        description: null
-    responseFields: []
-    auth:
-      - headers
-      - Authorization
-      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
-    controller: null
-    method: null
-    route: null
-  -
-    custom: []
-    httpMethods:
-      - POST
-    uri: 'api/feature-requests/{id}/upvote'
-    metadata:
-      custom: []
-      groupName: 'Feature Requests'
-      groupDescription: ''
-      subgroup: ''
-      subgroupDescription: ''
-      title: "Toggle the caller's vote on a feature request."
-      description: ''
-      authenticated: true
-      deprecated: false
-    headers:
-      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
-      Content-Type: application/json
-      Accept: application/json
-    urlParameters:
-      id:
-        custom: []
-        name: id
-        description: 'The ID of the feature request.'
-        required: true
-        example: architecto
-        type: string
-        enumValues: []
-        exampleWasSpecified: false
-        nullable: false
-        deprecated: false
-    cleanUrlParameters:
-      id: architecto
-    queryParameters: []
-    cleanQueryParameters: []
-    bodyParameters: []
-    cleanBodyParameters: []
-    fileParameters: []
-    responses:
-      -
-        custom: []
-        status: 401
-        content: '{"success":false,"message":"Invalid token"}'
-        headers:
-          cache-control: 'no-cache, private'
-          content-type: application/json
+          x-ratelimit-limit: '12'
+          x-ratelimit-remaining: '11'
           vary: Origin
         description: null
     responseFields: []

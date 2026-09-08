@@ -4,6 +4,79 @@ endpoints:
   -
     custom: []
     httpMethods:
+      - POST
+    uri: api/free-tools/transcript
+    metadata:
+      custom: []
+      groupName: Endpoints
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      platform:
+        custom: []
+        name: platform
+        description: ''
+        required: true
+        example: instagram
+        type: string
+        enumValues:
+          - youtube
+          - tiktok
+          - instagram
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      url:
+        custom: []
+        name: url
+        description: 'Must be a valid URL. Must not be greater than 2048 characters.'
+        required: true
+        example: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+        type: string
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+    cleanBodyParameters:
+      platform: instagram
+      url: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 422
+        content: '{"success":false,"message":"That doesn''t look like a valid instagram link."}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          x-ratelimit-limit: '15'
+          x-ratelimit-remaining: '14'
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
       - GET
     uri: api/health
     metadata:
@@ -31,7 +104,124 @@ endpoints:
       -
         custom: []
         status: 200
-        content: '{"status":"healthy","timestamp":"2026-07-11T05:40:50.086478Z","service":"Title Embedding API","version":"1.0.0"}'
+        content: '{"status":"healthy","timestamp":"2026-09-08T09:14:28.245965Z","service":"Title Embedding API","version":"1.0.0"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: api/user/settings
+    metadata:
+      custom: []
+      groupName: Endpoints
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - PATCH
+    uri: api/user/settings
+    metadata:
+      custom: []
+      groupName: Endpoints
+      groupDescription: ''
+      subgroup: ''
+      subgroupDescription: ''
+      title: ''
+      description: ''
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      notify_post_failures:
+        custom: []
+        name: notify_post_failures
+        description: ''
+        required: false
+        example: true
+        type: boolean
+        enumValues: []
+        exampleWasSpecified: false
+        nullable: false
+        deprecated: false
+      locale:
+        custom: []
+        name: locale
+        description: ''
+        required: false
+        example: pt
+        type: string
+        enumValues:
+          - en
+          - es
+          - de
+          - fr
+          - pt
+        exampleWasSpecified: false
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      notify_post_failures: true
+      locale: pt
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
         headers:
           cache-control: 'no-cache, private'
           content-type: application/json

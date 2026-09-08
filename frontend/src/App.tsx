@@ -46,7 +46,6 @@ import AdminUserEdit from "./pages/admin/AdminUserEdit";
 import AdminOffers from "./pages/admin/AdminOffers";
 import AdminLeadMagnet from "./pages/admin/AdminLeadMagnet";
 import LeadMagnetPrint from "./pages/admin/LeadMagnetPrint";
-import Seo from "./pages/Seo";
 import AdminLinks from "./pages/admin/AdminLinks";
 import Connections from "./pages/Connections";
 import Boosts from "./pages/Boosts";
@@ -261,7 +260,6 @@ const App = () => (
                   <Route path="admin/users/:id/edit" element={<AdminUserEdit />} />
                   <Route path="admin/offers" element={<AdminOffers />} />
                   <Route path="admin/lead-magnet" element={<AdminLeadMagnet />} />
-                  <Route path="seo" element={<Seo />} />
                   <Route path="admin/links" element={<AdminLinks />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="feature-requests" element={<FeatureRequests />} />
