@@ -2,6 +2,10 @@
 <html lang="en">
 
 <head>
+  <!-- Charset must be declared within the first 1024 bytes of the document
+       (browsers stop sniffing after that), so it stays above every script. -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Tracking gate: production domain only, and never for admin users.
        Mirrored by src/lib/tracking.ts — keep the two in sync. -->
   <script>
@@ -33,8 +37,6 @@
       fbq('track', 'PageView');
     }
   </script>
-  <noscript><img height="1" width="1" style="display:none"
-      src="https://www.facebook.com/tr?id=913180045201624&ev=PageView&noscript=1" /></noscript>
   <!-- End Meta Pixel Code -->
   <!-- Google Tag Manager -->
   <script>
@@ -101,8 +103,6 @@
   </script>
   <!-- End ViewsMax -->
 
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ViewsMax — Generate More Leads From Your Content</title>
   <meta name="description" content="ViewsMax helps creators and marketers generate more leads from their content" />
   <meta name="author" content="ViewsMax" />
@@ -162,6 +162,9 @@
 </head>
 
 <body>
+  <!-- Meta Pixel noscript fallback lives in <body>: <img> is not valid inside <head>. -->
+  <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=913180045201624&ev=PageView&noscript=1" /></noscript>
   <!-- Google Tag Manager (noscript) -->
   <script>
     if (window.__vmxTrackingAllowed) {
