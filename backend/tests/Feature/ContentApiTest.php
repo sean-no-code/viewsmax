@@ -119,9 +119,13 @@ class ContentApiTest extends TestCase
             'media' => $file,
         ], $this->auth());
 
+        // The controller records the mime the client declared. Laravel's fake
+        // upload derives that from symfony/mime's extension map, whose first
+        // entry for .mp4 changes between releases (video/mp4 vs application/mp4),
+        // so compare against the fake's own value rather than a literal.
         $response->assertCreated()
             ->assertJsonPath('data.media_filename', 'promo-video.mp4')
-            ->assertJsonPath('data.media_mime', 'video/mp4')
+            ->assertJsonPath('data.media_mime', $file->getClientMimeType())
             ->assertJsonPath('data.media_size', $sizeKb * 1024);
 
         // media_path is hidden from API output but stored on disk.
