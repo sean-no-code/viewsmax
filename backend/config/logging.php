@@ -87,6 +87,30 @@ return [
             'permission' => 0777,
         ],
 
+        // Everything automations-related (Instagram webhook intake → match →
+        // execute) in ONE rotated file so "why didn't my automation fire?" is
+        // answered from a single log. AUTOMATIONS_LOG_ENABLED=false swaps the
+        // whole stack for the null channel; errors are still recorded on
+        // automation_runs.error and in failed_jobs, so nothing is lost
+        // operationally. Toggling needs `php artisan config:clear` when the
+        // config is cached.
+        'automations' => [
+            'driver' => 'stack',
+            'channels' => env('AUTOMATIONS_LOG_ENABLED', true) ? ['automations_file', 'error_slack'] : ['null'],
+            'ignore_exceptions' => false,
+            'permission' => 0777,
+        ],
+
+        'automations_file' => [
+            // Daily rotation (unlike mail.log) — webhooks are chatty.
+            'driver' => 'daily',
+            'path' => storage_path('logs/automations.log'),
+            'level' => env('AUTOMATIONS_LOG_LEVEL', 'debug'),
+            'days' => env('AUTOMATIONS_LOG_DAYS', 14),
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'info_file' => [
             'driver' => 'custom',
             'via' => \App\Logging\CreateInfoOnlyHandler::class,

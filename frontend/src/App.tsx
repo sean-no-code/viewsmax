@@ -49,6 +49,8 @@ import LeadMagnetPrint from "./pages/admin/LeadMagnetPrint";
 import AdminLinks from "./pages/admin/AdminLinks";
 import Connections from "./pages/Connections";
 import Boosts from "./pages/Boosts";
+import Automations from "./pages/automations/Automations";
+import AutomationEditor from "./pages/automations/AutomationEditor";
 import Review from "./pages/Review";
 import ReviewVideo from "./pages/ReviewVideo";
 import Settings from "./pages/Settings";
@@ -248,6 +250,10 @@ const App = () => (
                   <Route path="connections" element={<Connections />} />
                   {/* Boosts — like-threshold automations (auto repost / auto promo) */}
                   <Route path="boosts" element={<Boosts />} />
+                  {/* Automations — Instagram comment / story-reply / DM auto-responders */}
+                  <Route path="automations" element={<Automations />} />
+                  <Route path="automations/new" element={<AutomationEditor />} />
+                  <Route path="automations/:id" element={<AutomationEditor />} />
                   <Route path="review" element={<Review />} />
                   <Route path="review/video/:id" element={<ReviewVideo />} />
                   <Route path="monetization" element={<Monetization />} />

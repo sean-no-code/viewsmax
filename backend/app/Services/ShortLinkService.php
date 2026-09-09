@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AutomationRun;
 use App\Models\Offer;
 use App\Models\Post;
 use App\Models\ShortLink;
@@ -147,6 +148,59 @@ class ShortLinkService
         }
 
         return $data;
+    }
+
+    /**
+     * A tracked link for ONE automation run (= one DM recipient). Always a
+     * fresh row — never firstOrCreate — so a click is attributable to the
+     * person who received it (that's what the automation CTR counts).
+     */
+    public function mintForRun(AutomationRun $run, string $destinationUrl): ShortLink
+    {
+        $destinationUrl = trim($destinationUrl);
+
+        // Our own /l/ links are already tracked; reuse rather than nest.
+        if (str_starts_with($destinationUrl, $this->baseUrl().'/l/')) {
+            $existing = ShortLink::where('slug', basename(parse_url($destinationUrl, PHP_URL_PATH) ?: ''))->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        return ShortLink::create([
+            'user_id' => $run->user_id,
+            'automation_id' => $run->automation_id,
+            'automation_run_id' => $run->id,
+            'destination_url' => $destinationUrl,
+            'slug' => $this->uniqueSlug(),
+        ]);
+    }
+
+    /**
+     * Rewrite every URL in a DM text to a per-run tracked link (one link per
+     * distinct destination within the run).
+     */
+    public function shortenForRun(AutomationRun $run, string $text): string
+    {
+        if (trim($text) === '') {
+            return $text;
+        }
+
+        $base = $this->baseUrl();
+        $minted = [];
+
+        return preg_replace_callback(self::URL_REGEX, function (array $match) use ($run, $base, &$minted) {
+            $url = rtrim($match[0], self::TRAILING_PUNCTUATION);
+            $trailing = substr($match[0], strlen($url));
+
+            if (str_starts_with($url, $base.'/l/')) {
+                return $match[0];
+            }
+
+            $minted[$url] ??= $this->mintForRun($run, $url);
+
+            return $minted[$url]->shortUrl().$trailing;
+        }, $text);
     }
 
     private function uniqueSlug(): string

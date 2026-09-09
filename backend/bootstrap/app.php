@@ -57,6 +57,18 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('boosts:run scheduled run failed'));
 
+        // Automations: keep Instagram webhook subscriptions alive for accounts
+        // with live automations, and trim the inbound-event ledger.
+        $schedule->command('automations:ensure-subscriptions')
+            ->daily()
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('automations:ensure-subscriptions scheduled run failed'));
+
+        $schedule->command('automations:prune-events --days=30')
+            ->dailyAt('03:30')
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('automations:prune-events scheduled run failed'));
+
         // Re-import each connected channel's latest uploads so the "add a video"
         // pickers stay current with videos published after connect-time. Daily
         // because the import uses search.list (100 quota units/call); the

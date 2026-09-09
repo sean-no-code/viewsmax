@@ -57,10 +57,24 @@ return [
             // connect flow (existing accounts must reconnect) and turns on the
             // baseline capture + daily refresh for instagram_media_id links.
             'reach_enabled' => env('INSTAGRAM_REACH_ENABLED', false),
+            // Comment / story-reply / DM automations (ManyChat-style). Off until
+            // Meta App Review grants the comments + messages scopes; flipping it
+            // on adds both scopes to the connect flow (existing accounts must
+            // reconnect), enables the /webhooks/instagram receiver and lets
+            // users create + start automations.
+            'automations_enabled' => env('INSTAGRAM_AUTOMATIONS_ENABLED', false),
+            // Shared secret echoed back during Meta's webhook verification
+            // handshake (GET /webhooks/instagram?hub.verify_token=...).
+            'webhook_verify_token' => env('INSTAGRAM_WEBHOOK_VERIFY_TOKEN'),
+            // X-Hub-Signature-256 verification of webhook payloads. Local-dev
+            // switch only (mirrors Stripe); never disable in production.
+            'webhook_signature_check' => env('INSTAGRAM_WEBHOOK_SIGNATURE_CHECK', true),
             'scopes' => array_values(array_filter([
                 'instagram_business_basic',
                 'instagram_business_content_publish',
                 env('INSTAGRAM_REACH_ENABLED', false) ? 'instagram_business_manage_insights' : null,
+                env('INSTAGRAM_AUTOMATIONS_ENABLED', false) ? 'instagram_business_manage_comments' : null,
+                env('INSTAGRAM_AUTOMATIONS_ENABLED', false) ? 'instagram_business_manage_messages' : null,
             ])),
         ],
 

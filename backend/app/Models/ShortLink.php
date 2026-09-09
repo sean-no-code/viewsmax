@@ -17,6 +17,8 @@ class ShortLink extends Model
         'slug',
         'destination_url',
         'tracking_link_id',
+        'automation_id',
+        'automation_run_id',
         'clicks_count',
         'last_clicked_at',
     ];
@@ -45,6 +47,18 @@ class ShortLink extends Model
     public function trackingLink(): BelongsTo
     {
         return $this->belongsTo(TrackingLink::class);
+    }
+
+    /** The automation that minted this link for a DM button / text link. */
+    public function automation(): BelongsTo
+    {
+        return $this->belongsTo(Automation::class);
+    }
+
+    /** The specific run (= DM recipient) the link was minted for. */
+    public function automationRun(): BelongsTo
+    {
+        return $this->belongsTo(AutomationRun::class);
     }
 
     public function shortUrl(): string

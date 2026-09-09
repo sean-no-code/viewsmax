@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AutomationRun;
 use App\Models\ShortLink;
 use App\Models\ShortLinkClick;
 use Illuminate\Http\Request;
@@ -38,6 +39,14 @@ class ShortLinkRedirectController extends Controller
                 'referer' => Str::limit((string) $request->headers->get('referer'), 1000, ''),
                 'user_agent' => Str::limit((string) $request->userAgent(), 500, ''),
             ]);
+
+            // Automation DM link → mark the run clicked (first click only);
+            // this is the numerator of the automation's CTR.
+            if ($link->automation_run_id) {
+                AutomationRun::whereKey($link->automation_run_id)
+                    ->whereNull('clicked_at')
+                    ->update(['clicked_at' => now()]);
+            }
         });
 
         return redirect()->away($this->destinationFor($link))

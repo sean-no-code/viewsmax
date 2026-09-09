@@ -129,6 +129,14 @@ class AppServiceProvider extends ServiceProvider
 
         // Public discovery endpoint (/api/ai): generous per-IP cap — the
         // payload is cached, this just stops abuse.
+        // Automation DM sends: per-Instagram-account throttle so one viral
+        // post can't burn the account's messaging quota in a burst. Keyed by
+        // the job's socialAccountId (see ExecuteAutomationRunJob::middleware).
+        RateLimiter::for('instagram-automations', function ($job) {
+            return Limit::perMinute((int) config('social.platforms.instagram.automations_per_minute', 20))
+                ->by('ig-automations:'.($job->socialAccountId ?? 0));
+        });
+
         RateLimiter::for('ai-discovery', function (Request $request) {
             return Limit::perMinute(30)->by('ai-discovery:' . $request->ip());
         });

@@ -36,6 +36,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_FREE_CHANNELS', 0),
                 'max_offers' => $num('LIMIT_FREE_OFFERS', 0),
                 'max_posts_per_month' => $num('LIMIT_FREE_POSTS', 0),
+                'max_automations' => $num('LIMIT_FREE_AUTOMATIONS', 1),
                 'stripe_price_id' => null,
                 'is_active' => true,
             ],
@@ -54,6 +55,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_STARTER_CHANNELS', 5),
                 'max_offers' => $num('LIMIT_STARTER_OFFERS', 1),
                 'max_posts_per_month' => $num('LIMIT_STARTER_POSTS', 400),
+                'max_automations' => $num('LIMIT_STARTER_AUTOMATIONS', 3),
                 'stripe_price_id' => env('STRIPE_PRICE_STARTER'),
                 'is_active' => true,
             ],
@@ -72,6 +74,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_CREATOR_CHANNELS', 30),
                 'max_offers' => $num('LIMIT_CREATOR_OFFERS', 5),
                 'max_posts_per_month' => $num('LIMIT_CREATOR_POSTS'), // null = unlimited
+                'max_automations' => $num('LIMIT_CREATOR_AUTOMATIONS', 10),
                 'stripe_price_id' => env('STRIPE_PRICE_CREATOR'),
                 'is_active' => true,
             ],
@@ -90,6 +93,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_PRO_CHANNELS'), // null = unlimited
                 'max_offers' => $num('LIMIT_PRO_OFFERS', 10),
                 'max_posts_per_month' => $num('LIMIT_PRO_POSTS'), // null = unlimited
+                'max_automations' => $num('LIMIT_PRO_AUTOMATIONS'), // null = unlimited,
                 'stripe_price_id' => env('STRIPE_PRICE_PRO'),
                 'is_active' => true,
             ],
@@ -108,6 +112,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_AGENCY_CHANNELS'), // null = unlimited
                 'max_offers' => $num('LIMIT_AGENCY_OFFERS'),   // null = unlimited
                 'max_posts_per_month' => $num('LIMIT_AGENCY_POSTS'), // null = unlimited
+                'max_automations' => $num('LIMIT_AGENCY_AUTOMATIONS'), // null = unlimited,
                 'stripe_price_id' => env('STRIPE_PRICE_AGENCY'),
                 'is_active' => true,
             ],

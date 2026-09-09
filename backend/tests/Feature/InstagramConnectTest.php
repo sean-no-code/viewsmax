@@ -103,4 +103,42 @@ class InstagramConnectTest extends TestCase
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $result->status);
         $this->assertSame('still-good', $result->access_token);
     }
+
+    public function test_connect_stores_metas_granted_permissions_as_scopes(): void
+    {
+        config(['social.platforms.instagram.scopes' => ['instagram_business_basic']]);
+        Http::fake([
+            'api.instagram.com/oauth/access_token' => Http::response([
+                'access_token' => 'short-lived', 'user_id' => 'ig-1',
+                'permissions' => ['instagram_business_basic', 'instagram_business_manage_messages', 'instagram_business_manage_comments'],
+            ], 200),
+            'graph.instagram.com/access_token*' => Http::response(['access_token' => 'long-lived', 'expires_in' => 5184000], 200),
+            'graph.instagram.com/*' => Http::response(['user_id' => 'ig-1', 'username' => 'viewsmax'], 200),
+        ]);
+
+        (new InstagramProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+
+        $account = SocialAccount::sole();
+        $this->assertContains('instagram_business_manage_messages', $account->scopes);
+        $this->assertTrue($account->hasScopes(\App\Models\Automation::REQUIRED_IG_SCOPES));
+        $this->assertTrue($account->canRunAutomations());
+        $this->assertSame([], $account->missingAutomationScopes());
+    }
+
+    public function test_connect_without_permissions_in_response_falls_back_to_configured_scopes(): void
+    {
+        config(['social.platforms.instagram.scopes' => ['instagram_business_basic']]);
+        Http::fake([
+            'api.instagram.com/oauth/access_token' => Http::response(['access_token' => 'short-lived', 'user_id' => 'ig-1'], 200),
+            'graph.instagram.com/access_token*' => Http::response(['access_token' => 'long-lived', 'expires_in' => 5184000], 200),
+            'graph.instagram.com/*' => Http::response(['user_id' => 'ig-1', 'username' => 'viewsmax'], 200),
+        ]);
+
+        (new InstagramProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+
+        $account = SocialAccount::sole();
+        $this->assertSame(['instagram_business_basic'], $account->scopes);
+        $this->assertFalse($account->canRunAutomations());
+        $this->assertSame(\App\Models\Automation::REQUIRED_IG_SCOPES, $account->missingAutomationScopes());
+    }
 }

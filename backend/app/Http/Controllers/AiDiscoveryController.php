@@ -17,7 +17,7 @@ class AiDiscoveryController extends Controller
     /**
      * Bump the suffix whenever build() changes so deploys invalidate cleanly.
      */
-    private const CACHE_KEY = 'ai-discovery:v3';
+    private const CACHE_KEY = 'ai-discovery:v4';
 
     /**
      * AI capability discovery

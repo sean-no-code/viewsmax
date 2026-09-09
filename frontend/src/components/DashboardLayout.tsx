@@ -45,6 +45,9 @@ export default function DashboardLayout() {
     if (path === '/dashboard/post/drafts') return 'Drafts';
     if (path === '/dashboard/post/scheduled') return 'Scheduled';
     if (path === '/dashboard/post/calendar' || path === '/dashboard/calendar') return 'Calendar';
+    if (path === '/dashboard/automations/new') return 'New Automation';
+    if (path.startsWith('/dashboard/automations/')) return 'Edit Automation';
+    if (path === '/dashboard/automations') return 'Automations';
     if (path === '/dashboard/connections') return 'Connections';
     if (path === '/dashboard/channel-analytics') return 'Channel Analytics';
     if (path.startsWith('/dashboard/monetization/offers')) return 'Offers';

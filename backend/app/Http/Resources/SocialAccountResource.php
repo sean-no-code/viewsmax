@@ -30,6 +30,11 @@ class SocialAccountResource extends JsonResource
             'token_valid' => $this->hasUsableCredentials(),
             'token_expires_at' => $this->token_expires_at?->toISOString(),
             'last_error' => $this->last_error,
+            // Granted OAuth scopes + whether comment/DM automations can run
+            // on this account (missing scopes ⇒ the FE shows "Reconnect").
+            'scopes' => $this->scopes ?? [],
+            'can_automate' => $this->canRunAutomations(),
+            'webhook_subscribed_at' => $this->webhook_subscribed_at?->toISOString(),
             'last_synced_at' => $this->last_synced_at?->toISOString(),
             'connected_at' => $this->created_at?->toISOString(),
         ];

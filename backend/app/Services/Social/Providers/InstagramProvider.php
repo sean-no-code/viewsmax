@@ -6,8 +6,11 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\OAuthResult;
+use App\Services\Automations\AutomationLog;
+use App\Services\Social\Contracts\SupportsAutomations;
 use App\Services\Social\Contracts\SupportsComments;
 use App\Services\Social\Data\CommentResult;
+use App\Services\Social\Data\MessageResult;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -22,7 +25,7 @@ use Illuminate\Support\Facades\Log;
  * (~60 day) token, then publish via the graph.instagram.com create-container →
  * publish two-step (polling video containers until processed).
  */
-class InstagramProvider extends AbstractSocialProvider implements SupportsComments
+class InstagramProvider extends AbstractSocialProvider implements SupportsComments, SupportsAutomations
 {
     protected string $platform = 'instagram';
 
@@ -69,6 +72,7 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
 
         $shortToken = $short->json('access_token');
         $userId = $short->json('user_id');
+        $grantedScopes = array_values(array_filter((array) ($short->json('permissions') ?? []), 'is_string'));
         Log::info('[Instagram] short-lived token obtained', ['has_token' => ! empty($shortToken), 'user_id' => $userId]);
 
         // Upgrade to a long-lived (~60 day) token. This must NOT fall back to
@@ -113,7 +117,9 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
             'profile_url' => isset($profile['username']) ? 'https://instagram.com/'.$profile['username'] : null,
             'access_token' => $accessToken,
             'token_expires_at' => now()->addSeconds($expiresIn),
-            'scopes' => $this->config('scopes', []),
+            // Prefer what Meta says it actually granted (the token response
+            // carries `permissions`); fall back to what we asked for.
+            'scopes' => $grantedScopes ?: $this->config('scopes', []),
             'metadata' => ['ig_user_id' => $igUserId, 'account_type' => $profile['account_type'] ?? null],
         ]);
 
@@ -411,5 +417,160 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         }
 
         return CommentResult::success((string) $response->json('id'), $response->json() ?? []);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Automations (comments / story replies / DMs)
+    |--------------------------------------------------------------------------
+    | All calls log through AutomationLog (the dedicated automations channel)
+    | and flag the account for reconnect on an OAuthException 190.
+    */
+
+    public function subscribeWebhooks(SocialAccount $account, array $fields = ['comments', 'messages']): bool
+    {
+        $account = $this->ensureFreshToken($account);
+        $ctx = AutomationLog::context(account: $account) + ['fields' => $fields];
+
+        $response = Http::post($this->graphBase()."/{$account->platform_account_id}/subscribed_apps", [
+            'subscribed_fields' => implode(',', $fields),
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $response->successful() || ! $response->json('success')) {
+            $this->flagIfExpired($account, $response->json());
+            AutomationLog::error('webhook subscription refused', $ctx + ['http_status' => $response->status(), 'body' => $response->body()]);
+
+            return false;
+        }
+
+        $account->forceFill([
+            'webhook_subscribed_at' => now(),
+            'metadata' => array_merge($account->metadata ?? [], ['webhook_fields' => array_values($fields)]),
+        ])->save();
+
+        AutomationLog::info('webhook subscription ok', $ctx);
+
+        return true;
+    }
+
+    public function unsubscribeWebhooks(SocialAccount $account): bool
+    {
+        $response = Http::delete($this->graphBase()."/{$account->platform_account_id}/subscribed_apps", [
+            'access_token' => $account->access_token,
+        ]);
+
+        AutomationLog::info('webhook unsubscribe', AutomationLog::context(account: $account) + ['http_status' => $response->status()]);
+
+        if ($response->successful()) {
+            $account->forceFill(['webhook_subscribed_at' => null])->save();
+        }
+
+        return $response->successful();
+    }
+
+    /**
+     * The account's own posts/reels for the automation post picker.
+     *
+     * @return array{items: array<int, array<string, mixed>>, next_cursor: ?string}
+     */
+    public function listMedia(SocialAccount $account, ?string $after = null, int $limit = 24): array
+    {
+        $account = $this->ensureFreshToken($account);
+        $ctx = AutomationLog::context(account: $account) + ['after' => $after, 'limit' => $limit];
+
+        $response = Http::get($this->graphBase().'/me/media', array_filter([
+            'fields' => 'id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp',
+            'limit' => max(1, min($limit, 50)),
+            'after' => $after,
+            'access_token' => $account->access_token,
+        ]));
+
+        if (! $response->successful()) {
+            $this->flagIfExpired($account, $response->json());
+            AutomationLog::warning('media list failed', $ctx + ['http_status' => $response->status(), 'body' => $response->body()]);
+            $this->fail('media list', $response->status(), $response->body());
+        }
+
+        $items = collect($response->json('data') ?? [])->map(fn (array $m) => [
+            'id' => (string) ($m['id'] ?? ''),
+            'caption' => isset($m['caption']) ? mb_substr((string) $m['caption'], 0, 120) : null,
+            'media_type' => $m['media_type'] ?? null,
+            'media_product_type' => $m['media_product_type'] ?? null,
+            // Videos/reels carry thumbnail_url; images only media_url.
+            'thumbnail_url' => $m['thumbnail_url'] ?? $m['media_url'] ?? null,
+            'permalink' => $m['permalink'] ?? null,
+            'timestamp' => $m['timestamp'] ?? null,
+        ])->filter(fn (array $m) => $m['id'] !== '')->values()->all();
+
+        AutomationLog::debug('media list fetched', $ctx + ['count' => count($items)]);
+
+        return [
+            'items' => $items,
+            'next_cursor' => $response->json('paging.cursors.after') ?: null,
+        ];
+    }
+
+    public function replyToComment(SocialAccount $account, string $commentId, string $text): CommentResult
+    {
+        $ctx = AutomationLog::context(account: $account) + ['comment_id' => $commentId];
+
+        $response = Http::post($this->graphBase()."/{$commentId}/replies", [
+            'message' => $text,
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $response->successful()) {
+            $this->flagIfExpired($account, $response->json());
+            AutomationLog::warning('public reply failed', $ctx + ['http_status' => $response->status(), 'body' => $response->body()]);
+
+            return CommentResult::failure('Instagram reply failed: '.$response->body(), $response->json() ?? []);
+        }
+
+        AutomationLog::info('public reply sent', $ctx + ['reply_id' => $response->json('id')]);
+
+        return CommentResult::success((string) $response->json('id'), $response->json() ?? []);
+    }
+
+    public function sendMessage(SocialAccount $account, string $recipientId, array $message): MessageResult
+    {
+        return $this->postMessage($account, ['id' => $recipientId], $message);
+    }
+
+    public function sendPrivateReply(SocialAccount $account, string $commentId, array $message): MessageResult
+    {
+        return $this->postMessage($account, ['comment_id' => $commentId], $message);
+    }
+
+    /** POST /{ig_user_id}/messages with either {id} or {comment_id} as recipient. */
+    protected function postMessage(SocialAccount $account, array $recipient, array $message): MessageResult
+    {
+        $ctx = AutomationLog::context(account: $account) + ['recipient' => $recipient, 'message_type' => isset($message['attachment']) ? 'card' : 'text'];
+
+        $response = Http::withToken($account->access_token)
+            ->post($this->graphBase()."/{$account->platform_account_id}/messages", [
+                'recipient' => $recipient,
+                'message' => $message,
+            ]);
+
+        if (! $response->successful()) {
+            $this->flagIfExpired($account, $response->json());
+            AutomationLog::warning('dm send failed', $ctx + ['http_status' => $response->status(), 'body' => $response->body()]);
+
+            return MessageResult::failure('Instagram message failed: '.$response->body(), $response->json() ?? [], $response->status());
+        }
+
+        AutomationLog::info('dm sent', $ctx + ['message_id' => $response->json('message_id')]);
+
+        return MessageResult::success($response->json('message_id') ? (string) $response->json('message_id') : null, $response->json() ?? []);
+    }
+
+    /** Flag the account for reconnect when a Graph error is a dead token. */
+    protected function flagIfExpired(SocialAccount $account, ?array $body): void
+    {
+        if ($this->isExpiredTokenError($body)) {
+            $account->markNeedsReauth('Instagram session expired — reconnect the account.');
+            AutomationLog::error('access token expired — flagged for reconnect', AutomationLog::context(account: $account));
+        }
     }
 }

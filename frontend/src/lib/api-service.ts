@@ -225,6 +225,141 @@ export interface BoostCheck {
   setting?: BoostSetting | null;
 }
 
+// Automations — Instagram comment / story-reply / DM auto-responders.
+export type AutomationTrigger = "comment" | "story_reply" | "dm";
+export type AutomationStatus = "live" | "stopped";
+export type AutomationKeywordMode = "any" | "contains" | "exact";
+export type AutomationPostMatch = "specific" | "any";
+
+export interface AutomationPost {
+  id: string;
+  media_type?: string | null;
+  media_product_type?: string | null;
+  thumbnail_url?: string | null;
+  permalink?: string | null;
+  caption?: string | null;
+  timestamp?: string | null;
+}
+
+export interface AutomationAccount {
+  id: number;
+  platform: string;
+  username?: string | null;
+  name?: string | null;
+  avatar_url?: string | null;
+  status: string;
+  token_valid: boolean;
+  has_messaging_scopes: boolean;
+  missing_scopes: string[];
+  can_automate: boolean;
+  webhook_subscribed_at?: string | null;
+}
+
+export interface AutomationStats {
+  runs: number;
+  dms_sent: number;
+  clicked: number;
+  ctr: number | null;
+}
+
+export interface AutomationRun {
+  id: number;
+  automation_id: number;
+  trigger_type: AutomationTrigger;
+  event_id: string;
+  sender_id: string;
+  sender_username?: string | null;
+  media_id?: string | null;
+  inbound_text?: string | null;
+  matched_keyword?: string | null;
+  status: "pending" | "completed" | "partial" | "failed" | "skipped";
+  reply_status?: "sent" | "failed" | "skipped" | null;
+  dm_status?: "sent" | "failed" | "skipped" | null;
+  clicked_at?: string | null;
+  error?: string | null;
+  executed_at?: string | null;
+  created_at: string;
+}
+
+export interface Automation {
+  id: number;
+  user_id: number;
+  social_account_id: number;
+  platform: string;
+  name: string;
+  trigger_type: AutomationTrigger;
+  status: AutomationStatus;
+  post_match: AutomationPostMatch | null;
+  posts: AutomationPost[] | null;
+  include_replies: boolean;
+  keyword_mode: AutomationKeywordMode;
+  keywords: string[] | null;
+  cooldown_hours: number;
+  reply_enabled: boolean;
+  reply_texts: string[] | null;
+  dm_text: string;
+  dm_subtitle?: string | null;
+  dm_image_url?: string | null;
+  dm_button_label?: string | null;
+  dm_button_url?: string | null;
+  last_run_at?: string | null;
+  last_error?: string | null;
+  created_at: string;
+  updated_at: string;
+  trigger_summary: string;
+  stats: AutomationStats;
+  needs_reconnect: boolean;
+  social_account: AutomationAccount | null;
+  recent_runs?: AutomationRun[];
+}
+
+/** Editable fields (create / update). */
+export interface AutomationPayload {
+  social_account_id?: number;
+  name?: string | null;
+  trigger_type?: AutomationTrigger;
+  post_match?: AutomationPostMatch | null;
+  posts?: AutomationPost[] | null;
+  include_replies?: boolean;
+  keyword_mode?: AutomationKeywordMode;
+  keywords?: string[] | null;
+  cooldown_hours?: number;
+  reply_enabled?: boolean;
+  reply_texts?: string[] | null;
+  dm_text?: string;
+  dm_subtitle?: string | null;
+  dm_image_url?: string | null;
+  dm_button_label?: string | null;
+  dm_button_url?: string | null;
+}
+
+export interface AutomationListResponse {
+  automations: Automation[];
+  enabled: boolean;
+  limit: number | null;
+  used: number;
+}
+
+export interface AutomationAccountsResponse {
+  accounts: AutomationAccount[];
+  enabled: boolean;
+  limit: number | null;
+  used: number;
+}
+
+export interface InstagramMediaPage {
+  items: AutomationPost[];
+  next_cursor: string | null;
+}
+
+export interface Paginated<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
 export interface FeatureRequest {
   id: number;
   title: string;
@@ -5586,6 +5721,72 @@ class ViewsMaxApiService {
     } catch (error) {
       return { success: false, error: `Network error: ${error.message}` };
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Automations — Instagram comment / story-reply / DM auto-responders.
+  // Every call shares one wrapper so 422s carry the backend `message` and
+  // `code` (e.g. "reconnect_required") through to the UI.
+  // ---------------------------------------------------------------------------
+
+  private async automationCall<T>(path: string, init: RequestInit = {}, fallback = 'Request failed'): Promise<ApiResponse<T>> {
+    if (isMockApi()) return { success: false, error: 'Not available in demo mode.' };
+    try {
+      const response = await fetch(`${this.baseUrl}${path}`, { headers: this.getAuthHeaders(), ...init });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { success: false, error: result.message || `${fallback}: ${response.status}`, code: result.code };
+      }
+      return { success: true, data: result.data as T, message: result.message };
+    } catch (error) {
+      return { success: false, error: `Network error: ${(error as Error).message}` };
+    }
+  }
+
+  async getAutomations(params: { search?: string; trigger_type?: string; status?: string } = {}): Promise<ApiResponse<AutomationListResponse>> {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (v) qs.set(k, v);
+    const suffix = qs.toString() ? `?${qs}` : '';
+    return this.automationCall<AutomationListResponse>(`/api/automations${suffix}`, { method: 'GET' }, 'Failed to load automations');
+  }
+
+  async getAutomation(id: number): Promise<ApiResponse<Automation>> {
+    return this.automationCall<Automation>(`/api/automations/${id}`, { method: 'GET' }, 'Failed to load the automation');
+  }
+
+  async createAutomation(payload: AutomationPayload): Promise<ApiResponse<Automation>> {
+    return this.automationCall<Automation>('/api/automations', { method: 'POST', body: JSON.stringify(payload) }, 'Failed to create the automation');
+  }
+
+  async updateAutomation(id: number, payload: AutomationPayload): Promise<ApiResponse<Automation>> {
+    return this.automationCall<Automation>(`/api/automations/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, 'Failed to save the automation');
+  }
+
+  async deleteAutomation(id: number): Promise<ApiResponse<null>> {
+    return this.automationCall<null>(`/api/automations/${id}`, { method: 'DELETE' }, 'Failed to delete the automation');
+  }
+
+  async startAutomation(id: number): Promise<ApiResponse<Automation>> {
+    return this.automationCall<Automation>(`/api/automations/${id}/start`, { method: 'POST' }, 'Failed to start the automation');
+  }
+
+  async stopAutomation(id: number): Promise<ApiResponse<Automation>> {
+    return this.automationCall<Automation>(`/api/automations/${id}/stop`, { method: 'POST' }, 'Failed to stop the automation');
+  }
+
+  async getAutomationRuns(id: number, page = 1): Promise<ApiResponse<Paginated<AutomationRun>>> {
+    return this.automationCall<Paginated<AutomationRun>>(`/api/automations/${id}/runs?page=${page}`, { method: 'GET' }, 'Failed to load runs');
+  }
+
+  async getAutomationAccounts(): Promise<ApiResponse<AutomationAccountsResponse>> {
+    return this.automationCall<AutomationAccountsResponse>('/api/automations/accounts', { method: 'GET' }, 'Failed to load Instagram accounts');
+  }
+
+  async getAutomationMedia(socialAccountId: number, after?: string | null, refresh = false): Promise<ApiResponse<InstagramMediaPage>> {
+    const qs = new URLSearchParams({ social_account_id: String(socialAccountId) });
+    if (after) qs.set('after', after);
+    if (refresh) qs.set('refresh', '1');
+    return this.automationCall<InstagramMediaPage>(`/api/automations/media?${qs}`, { method: 'GET' }, 'Failed to load your posts');
   }
 
   // ---------------------------------------------------------------------------

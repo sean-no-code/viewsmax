@@ -1,4 +1,4 @@
-import { BarChart3, DollarSign, Send, Plug, Shield, Zap, CalendarDays, ScrollText, TrendingUp, type LucideIcon } from "lucide-react";
+import { BarChart3, DollarSign, Send, Plug, Shield, Zap, CalendarDays, ScrollText, TrendingUp, Workflow, type LucideIcon } from "lucide-react";
 
 type NavSubItem = { title: string; i18nKey?: string; url: string };
 type NavItem = {
@@ -91,6 +91,7 @@ const allNavigationItems: NavItem[] = [
     ]
   },
   { title: "Boosts", i18nKey: "nav.boosts", url: "/dashboard/boosts", icon: Zap, isProFeature: false },
+  { title: "Automations", i18nKey: "nav.automations", url: "/dashboard/automations", icon: Workflow, isProFeature: false },
   { title: "Calendar", i18nKey: "nav.calendar", url: "/dashboard/calendar", icon: CalendarDays, isProFeature: false },
   { title: "Connections", i18nKey: "nav.connections", url: "/dashboard/connections", icon: Plug, isProFeature: false },
   // Settings lives in the top-nav user menu; feature requests under top-nav Support.

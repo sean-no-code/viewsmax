@@ -2,15 +2,18 @@
 
 namespace App\Mcp;
 
+use App\Mcp\Tools\CreateAutomation;
 use App\Mcp\Tools\CreateFeatureRequest;
 use App\Mcp\Tools\CreateOffer;
 use App\Mcp\Tools\CreatePost;
 use App\Mcp\Tools\CreateTrackingLink;
+use App\Mcp\Tools\DeleteAutomation;
 use App\Mcp\Tools\DeleteOffer;
 use App\Mcp\Tools\DeletePost;
 use App\Mcp\Tools\DisconnectAccount;
 use App\Mcp\Tools\FetchOutlier;
 use App\Mcp\Tools\GenerateOutlierBreakdown;
+use App\Mcp\Tools\GetAutomationRuns;
 use App\Mcp\Tools\GetConnectUrl;
 use App\Mcp\Tools\GetOffer;
 use App\Mcp\Tools\GetOfferStats;
@@ -18,6 +21,7 @@ use App\Mcp\Tools\GetOutlier;
 use App\Mcp\Tools\GetOutlierBreakdown;
 use App\Mcp\Tools\GetPost;
 use App\Mcp\Tools\GetStatsTimeseries;
+use App\Mcp\Tools\ListAutomations;
 use App\Mcp\Tools\ListBrands;
 use App\Mcp\Tools\ListConnectedAccounts;
 use App\Mcp\Tools\ListOffers;
@@ -27,6 +31,9 @@ use App\Mcp\Tools\ListSavedOutliers;
 use App\Mcp\Tools\RemoveSavedOutlier;
 use App\Mcp\Tools\SaveOutlier;
 use App\Mcp\Tools\SearchOutliers;
+use App\Mcp\Tools\StartAutomation;
+use App\Mcp\Tools\StopAutomation;
+use App\Mcp\Tools\UpdateAutomation;
 use App\Mcp\Tools\UpdateOffer;
 use App\Mcp\Tools\UpdatePost;
 use App\Mcp\Tools\UploadMedia;
@@ -55,6 +62,13 @@ class ViewsMaxServer extends Server
         specific URL, generate_outlier_breakdown + get_outlier_breakdown for an
         AI analysis of why a video worked, and save_outlier to bookmark it in
         the user's library.
+        Automations answer Instagram comments, story replies and DMs on
+        autopilot: create_automation (a trigger + keywords + a public reply
+        and/or a DM with a tracked button), start_automation to go live,
+        list_automations for runs and CTR, get_automation_runs for the
+        activity log. The Instagram account must be connected with the
+        comments + messages permissions (list_connected_accounts shows
+        can_automate); otherwise get_connect_url to reconnect.
         TXT;
 
     // Show every tool on the first tools/list page.
@@ -83,6 +97,14 @@ class ViewsMaxServer extends Server
         // Connections
         DisconnectAccount::class,
         GetConnectUrl::class,
+        // Automations (Instagram comment / story-reply / DM auto-responders)
+        ListAutomations::class,
+        CreateAutomation::class,
+        UpdateAutomation::class,
+        StartAutomation::class,
+        StopAutomation::class,
+        DeleteAutomation::class,
+        GetAutomationRuns::class,
         // Feature requests
         CreateFeatureRequest::class,
         // Outliers (research)

@@ -117,6 +117,11 @@ Mcp::web('mcp', \App\Mcp\ViewsMaxServer::class)
 Route::match(['get', 'post'], '/social/{platform}/deauthorize', [SocialWebhookController::class, 'deauthorize']);
 Route::match(['get', 'post'], '/social/{platform}/data-deletion', [SocialWebhookController::class, 'dataDeletion']);
 
+// Instagram comment / message webhooks for automations. Public — GET is
+// Meta's verify handshake, POST is authenticated by X-Hub-Signature-256.
+Route::get('/webhooks/instagram', [\App\Http\Controllers\InstagramWebhookController::class, 'verify']);
+Route::post('/webhooks/instagram', [\App\Http\Controllers\InstagramWebhookController::class, 'receive']);
+
 // Protected routes (authentication required)
 Route::middleware('api.auth')->group(function () {
 
@@ -131,6 +136,21 @@ Route::middleware('api.auth')->group(function () {
     // Per-user preference toggles (e.g. publish-failure emails)
     Route::get('/user/settings', [\App\Http\Controllers\UserSettingsController::class, 'show']);
     Route::patch('/user/settings', [\App\Http\Controllers\UserSettingsController::class, 'update']);
+
+    // Automations — comment / story-reply / DM auto-responders (Instagram).
+    // Static paths before the {id} routes so "accounts"/"media" never bind.
+    Route::prefix('automations')->group(function () {
+        Route::get('/', [\App\Http\Controllers\AutomationController::class, 'index']);
+        Route::get('/accounts', [\App\Http\Controllers\AutomationController::class, 'accounts']);
+        Route::get('/media', [\App\Http\Controllers\AutomationController::class, 'media']);
+        Route::post('/', [\App\Http\Controllers\AutomationController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\AutomationController::class, 'show'])->whereNumber('id');
+        Route::put('/{id}', [\App\Http\Controllers\AutomationController::class, 'update'])->whereNumber('id');
+        Route::delete('/{id}', [\App\Http\Controllers\AutomationController::class, 'destroy'])->whereNumber('id');
+        Route::post('/{id}/start', [\App\Http\Controllers\AutomationController::class, 'start'])->whereNumber('id');
+        Route::post('/{id}/stop', [\App\Http\Controllers\AutomationController::class, 'stop'])->whereNumber('id');
+        Route::get('/{id}/runs', [\App\Http\Controllers\AutomationController::class, 'runs'])->whereNumber('id');
+    });
 
     // Boosts — like-threshold automations per connected X account
     Route::get('/boosts/settings', [\App\Http\Controllers\BoostSettingController::class, 'index']);

@@ -372,6 +372,12 @@ class User extends Authenticatable implements Wallet
         return $this->hasMany(Offer::class);
     }
 
+    /** Comment / story-reply / DM automations owned by the user. */
+    public function automations(): HasMany
+    {
+        return $this->hasMany(Automation::class);
+    }
+
     public function beehiivConnection(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(BeehiivConnection::class);

@@ -71,3 +71,73 @@ POST   /social/posts/{id}/retry          retry failed targets
 - Media must be **publicly reachable URLs** (several platforms fetch them server-side).
 - Conservative privacy defaults: YouTube `private`, TikTok `SELF_ONLY` — change in the
   respective providers after audits pass.
+
+## Automations (Instagram comment / story-reply / DM auto-responders)
+
+ManyChat-style automations: when someone comments on a post or reel, replies
+to a story, or DMs the account (optionally containing keywords), ViewsMax
+posts an optional public reply and sends a DM — plain text, or a card with
+one tracked button so the index can show CTR. Instagram only for now
+(TikTok has no public DM API or comment webhooks).
+
+### Pieces
+
+- **Config** — `config/social.php` → `platforms.instagram.automations_enabled`
+  adds the `instagram_business_manage_comments` + `instagram_business_manage_messages`
+  scopes to the connect flow (existing accounts must reconnect) and gates
+  create/start. Both scopes need **Meta App Review**.
+- **Webhook intake** — `GET|POST /api/webhooks/instagram`
+  (`InstagramWebhookController`): GET is Meta's verify handshake
+  (`INSTAGRAM_WEBHOOK_VERIFY_TOKEN`), POST is verified with
+  `X-Hub-Signature-256` over the raw body, written to the `automation_events`
+  ledger (unique per event → redeliveries are no-ops) and queued.
+- **Pipeline** — `ProcessInstagramInboundEventJob` (normalize → `AutomationMatcher`
+  → one `automation_runs` row) then `ExecuteAutomationRunJob` (public reply →
+  DM via private reply / direct message, per-run tracked links minted by
+  `ShortLinkService::mintForRun`). Per-account throttle: `instagram-automations`
+  rate limiter (20/min).
+- **API** — `/api/automations` (index, accounts, media picker, CRUD, start,
+  stop, runs). Plan cap: `plans.max_automations` (NULL = unlimited).
+- **MCP tools** — `list_automations`, `create_automation`, `update_automation`,
+  `start_automation`, `stop_automation`, `delete_automation`, `get_automation_runs`.
+- **Housekeeping** — `automations:ensure-subscriptions` (daily) re-subscribes
+  stale accounts with live automations; `automations:prune-events --days=30`
+  trims the ledger.
+- **Logging** — everything goes to the `automations` channel
+  (`storage/logs/automations-YYYY-MM-DD.log`, rotated daily). Turn it off with
+  `AUTOMATIONS_LOG_ENABLED=false`; tune with `AUTOMATIONS_LOG_LEVEL` /
+  `AUTOMATIONS_LOG_DAYS`. Run `php artisan config:clear` after changing them
+  when config is cached.
+
+### Meta dashboard checklist
+
+1. Instagram product → Webhooks: callback URL `https://<api>/api/webhooks/instagram`,
+   verify token = `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`, subscribe to `comments` and `messages`.
+2. App Review: request `instagram_business_manage_comments` and
+   `instagram_business_manage_messages` (until approved only app testers get events).
+3. Set `INSTAGRAM_AUTOMATIONS_ENABLED=true`, reconnect each Instagram account
+   (the Automations page shows a "Reconnect Instagram" notice until it carries the scopes).
+4. Start an automation — that account is subscribed via `/{ig-user-id}/subscribed_apps`
+   and `social_accounts.webhook_subscribed_at` is set.
+
+### Env vars
+
+```
+INSTAGRAM_AUTOMATIONS_ENABLED=false      # flip on after App Review
+INSTAGRAM_WEBHOOK_VERIFY_TOKEN=          # any long random string, same value in the Meta dashboard
+INSTAGRAM_WEBHOOK_SIGNATURE_CHECK=true   # local-dev switch only; never false in production
+AUTOMATIONS_LOG_ENABLED=true             # false = silence the automations log entirely
+AUTOMATIONS_LOG_LEVEL=debug              # info hides raw-payload lines
+AUTOMATIONS_LOG_DAYS=14                  # rotation
+LIMIT_FREE_AUTOMATIONS=1 LIMIT_STARTER_AUTOMATIONS=3 LIMIT_CREATOR_AUTOMATIONS=10   # PlanSeeder; pro/agency unlimited
+```
+
+### Gotchas
+
+- Meta allows **one** private reply per comment, so a DM with a button is a
+  single generic-template card (title ≤ 80 chars). Text DMs keep 1000 chars.
+- Story replies / DMs must be answered within 24h of the person's message —
+  a queue backlog past that shows as `outside_24h_window` on the run.
+- Our own public replies come back as `comments` events and our DMs as
+  `is_echo` messages; the normalizer drops both. The per-sender cooldown
+  (default 24h) stops "DM contains any word" answering every follow-up.

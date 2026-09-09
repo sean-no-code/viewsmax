@@ -171,6 +171,21 @@ class SocialAccountController extends Controller
             ], 422);
         }
 
+        // A reconnect mints a new token: re-subscribe accounts that already
+        // have live automations so comment/DM webhooks keep flowing. Best
+        // effort — the daily automations:ensure-subscriptions catches misses.
+        if ($platform === 'instagram' && config('social.platforms.instagram.automations_enabled')) {
+            foreach ($accounts as $account) {
+                if ($account->automations()->live()->exists()) {
+                    try {
+                        app(\App\Services\Automations\AutomationSubscriptionService::class)->ensureSubscribed($account, force: true);
+                    } catch (Throwable $e) {
+                        \App\Services\Automations\AutomationLog::warning('re-subscribe after reconnect failed', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+                    }
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => $accounts->count().' '.$platform.' account(s) connected.',

@@ -29,11 +29,13 @@ class SocialAccount extends Model
         'status',
         'last_error',
         'last_synced_at',
+        'webhook_subscribed_at',
     ];
 
     protected $casts = [
         'token_expires_at' => 'datetime',
         'last_synced_at' => 'datetime',
+        'webhook_subscribed_at' => 'datetime',
         'scopes' => 'array',
         'metadata' => 'array',
         // Encrypt OAuth secrets at rest. Laravel transparently encrypts on
@@ -58,6 +60,38 @@ class SocialAccount extends Model
     public function postTargets(): HasMany
     {
         return $this->hasMany(SocialPostTarget::class);
+    }
+
+    public function automations(): HasMany
+    {
+        return $this->hasMany(Automation::class);
+    }
+
+    /**
+     * Whether every scope in $required was granted at connect time. Scopes
+     * are stored from the connect flow, so an account connected before a
+     * scope was added to config reads as missing it until it reconnects.
+     */
+    public function hasScopes(array $required): bool
+    {
+        return empty(array_diff($required, $this->scopes ?? []));
+    }
+
+    /**
+     * Can this account run comment/DM automations without user action?
+     * Needs usable credentials AND the comments + messages scopes.
+     */
+    public function canRunAutomations(): bool
+    {
+        return $this->platform === 'instagram'
+            && $this->hasUsableCredentials()
+            && $this->hasScopes(Automation::REQUIRED_IG_SCOPES);
+    }
+
+    /** @return array<int, string> */
+    public function missingAutomationScopes(): array
+    {
+        return array_values(array_diff(Automation::REQUIRED_IG_SCOPES, $this->scopes ?? []));
     }
 
     /**

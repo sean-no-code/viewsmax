@@ -19,6 +19,7 @@ class Plan extends Model
         'max_channels',
         'max_offers',
         'max_posts_per_month',
+        'max_automations',
         'stripe_price_id',
     ];
 
@@ -29,6 +30,7 @@ class Plan extends Model
         'max_channels' => 'integer',
         'max_offers' => 'integer',
         'max_posts_per_month' => 'integer',
+        'max_automations' => 'integer',
     ];
 
     /**

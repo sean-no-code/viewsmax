@@ -207,3 +207,29 @@ GOOGLE_REDIRECT_URI=
   token encryption/decryption, JSON hiding, and post status-sync logic.
 
 See `README/SOCIAL_PUBLISHING.md` for the full API contract.
+
+---
+
+# Automations — Instagram comment / story-reply / DM auto-responders (2026-09-09)
+
+Plan: ~/.claude/plans/i-need-a-feature-goofy-glacier.md. Docs: README/SOCIAL_PUBLISHING.md → "Automations".
+
+- [x] Config flag + scopes (`INSTAGRAM_AUTOMATIONS_ENABLED`), `SocialAccount::hasScopes/canRunAutomations`, granted `permissions` stored on connect
+- [x] Dedicated `automations` log channel + file + `AUTOMATIONS_LOG_ENABLED` off-switch, `AutomationLog` wrapper
+- [x] Migrations: `automations`, `automation_events`, `automation_runs`; `plans.max_automations`, `social_accounts.webhook_subscribed_at`, `short_links.automation_id/automation_run_id`; PlanSeeder limits
+- [x] Provider: `subscribeWebhooks`, `listMedia`, `replyToComment`, `sendMessage`, `sendPrivateReply` + `MessageResult`
+- [x] Webhook intake `/api/webhooks/instagram` (verify + signed receive + ledger)
+- [x] Matcher (post filter, keyword modes, thread replies, cooldown, priority) + inbound job
+- [x] Executor job (reply → DM card/text, per-run tracked links, reauth / window / rate-limit handling), redirect marks `clicked_at`
+- [x] Subscription service + `automations:ensure-subscriptions` / `automations:prune-events` scheduled, re-subscribe after reconnect
+- [x] CRUD API `/api/automations` with plan cap, reconnect hint, media picker cache
+- [x] MCP tools (7) + discovery + API-key allowlist
+- [x] Frontend: index, trigger picker, editor (post picker, keywords, reply, DM composer, phone preview, runs), routes/nav/titles/i18n
+- [x] Docs + env vars
+- [ ] Ops (outside the code): Meta App Review for the two scopes, register the webhook URL + verify token, flip the flag, reconnect Instagram accounts
+- [ ] Phase 2: TikTok comment automations via TikTok Business API polling
+
+## Review
+Backend: 66 automation tests + 7 MCP/discovery tests green; full suite 725 passed, 7 pre-existing failures (ApiTest error-shape checks, ShockingTruthsHookSeederTest, ViewsMaxApiTest onboarding copy) unrelated to this work. Frontend: `npm run build` green, Vitest helpers spec green, no new type errors.
+
+New env vars: INSTAGRAM_AUTOMATIONS_ENABLED, INSTAGRAM_WEBHOOK_VERIFY_TOKEN, INSTAGRAM_WEBHOOK_SIGNATURE_CHECK, AUTOMATIONS_LOG_ENABLED, AUTOMATIONS_LOG_LEVEL, AUTOMATIONS_LOG_DAYS, LIMIT_*_AUTOMATIONS.
