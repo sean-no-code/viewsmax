@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
     Search, Users, Globe, ChevronDown, RotateCcw, Save, FolderOpen,
-    TrendingUp, Loader2, Check, Eye, Heart,
+    TrendingUp, Loader2, Check, Eye, Heart, Plus,
 } from 'lucide-react';
 import { COUNTRIES, countryFlag, countryName } from '@/components/outliers/countries';
+import { parseProfileInput } from '@/components/outliers/profile-input';
 import {
     searchOutliers, startSearchOutliers, getOutlierChannels, fetchOutlierByUrl, toggleOutlierFeature,
     getSavedFilters, saveFilter, deleteSavedFilter, getLibrary, saveOutlier, deleteSavedOutlier,
-    type OutlierVideo, type OutlierFilters, type OutlierChannelOption, type SavedFilter,
+    addOutlierChannel, getOutlierChannelIngest,
+    type OutlierVideo, type OutlierFilters, type OutlierChannelOption, type SavedFilter, type AddedChannel, type OutlierPlatform,
 } from '@/lib/outlier-service';
 import OutlierCard from '@/components/outliers/OutlierCard';
 import SaveOutlierModal from '@/components/outliers/SaveOutlierModal';
@@ -66,6 +68,12 @@ export default function Outliers() {
     const [channelsOpen, setChannelsOpen] = useState(false);
     const [channelQuery, setChannelQuery] = useState('');
     const [channelOptions, setChannelOptions] = useState<OutlierChannelOption[]>([]);
+    // "Add a creator channel" from the channel picker: a pasted profile URL /
+    // @handle pulls the creator's recent videos in the background, then the
+    // channel is selected as the filter.
+    const [channelAdd, setChannelAdd] = useState<{ status: 'idle' | 'adding' | 'failed'; message?: string; handle?: string }>({ status: 'idle' });
+    const addPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const profileInput = parseProfileInput(channelQuery);
 
     // Countries multi-select (auto-saved; restored on the next visit)
     const [selectedCountries, setSelectedCountries] = useState<string[]>(loadPersistedCountries);
@@ -185,8 +193,82 @@ export default function Outliers() {
 
     const stopPoll = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
 
+    const stopAddPoll = () => { if (addPollRef.current) { clearInterval(addPollRef.current); addPollRef.current = null; } };
+    useEffect(() => stopAddPoll, []);
+
+    /** A channel just landed (or was already fresh): select it and show its videos. */
+    const applyAddedChannel = (channel: AddedChannel) => {
+        const option: OutlierChannelOption = { id: channel.id, name: channel.name, avatar: channel.avatar, platform: channel.platform, subscriber_count: channel.subscriber_count };
+        setChannelOptions((prev) => [option, ...prev.filter((c) => c.id !== option.id)]);
+        setSelectedChannels([channel.id]);
+        // Every recent video of the creator is stored, most far below the 20x gate —
+        // scoped to one channel the point is to see them all, ranked.
+        const nextDuration: 'long' | 'shorts' = channel.platform === 'youtube' ? durationFilter : 'shorts';
+        setDurationFilter(nextDuration);
+        setMinScore(1);
+        setDefaultFeed(false);
+        setChannelQuery('');
+        setChannelsOpen(false);
+        setChannelAdd({ status: 'idle' });
+        // Explicit filters: this runs from a poll timer whose closure predates the
+        // state above, and the refetch effect doesn't watch channels anyway.
+        setLoading(true);
+        searchOutliers({ ...buildFilters(1), query: '', channels: [channel.id], min_score: 1, duration_type: nextDuration, featured: undefined, page: 1 })
+            .then((res) => { setShowingCurated(false); applyResults(res.data, 1, res.total, res.last_page); })
+            .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to load outliers'))
+            .finally(() => setLoading(false));
+    };
+
+    /** Kick off "add channel" for the picker's current input; `platform` disambiguates a bare @handle. */
+    const startChannelAdd = async (platform?: OutlierPlatform) => {
+        const parsed = parseProfileInput(channelQuery);
+        const target = parsed?.platform ?? platform;
+        if (!parsed || !target) return;
+        stopAddPoll();
+        setChannelAdd({ status: 'adding', handle: parsed.handle });
+        setVideos([]); // the results area shows the pull spinner until the channel lands
+        try {
+            const res = await addOutlierChannel(channelQuery.trim(), target);
+            if (!res.queued && res.channel) {
+                toast.success(`${res.channel.name} is already in — showing their recent videos`);
+                applyAddedChannel(res.channel);
+                return;
+            }
+            const ingestId = res.ingest_id;
+            if (!ingestId) throw new Error('Could not start the channel import');
+            let attempts = 0;
+            addPollRef.current = setInterval(async () => {
+                attempts += 1;
+                try {
+                    const ingest = await getOutlierChannelIngest(ingestId);
+                    if (ingest.status === 'done' && ingest.channel) {
+                        stopAddPoll();
+                        toast.success(`Pulled in ${ingest.videos_added} recent videos from @${ingest.handle}`);
+                        applyAddedChannel(ingest.channel);
+                    } else if (ingest.status === 'failed' || attempts > 100) {
+                        stopAddPoll();
+                        setChannelAdd({ status: 'failed', message: ingest.error || 'That took too long — try again in a minute.' });
+                    }
+                } catch (e) {
+                    stopAddPoll();
+                    setChannelAdd({ status: 'failed', message: e instanceof Error ? e.message : 'Could not add that channel' });
+                }
+            }, 3000);
+        } catch (e) {
+            setChannelAdd({ status: 'failed', message: e instanceof Error ? e.message : 'Could not add that channel' });
+        }
+    };
+
     const handleSearch = useCallback(async () => {
         stopPoll();
+        // A creator profile / @handle belongs to the channel picker — hand it over
+        // (previously this hit the video endpoint and errored).
+        if (parseProfileInput(query)) {
+            setChannelQuery(query.trim());
+            setQuery('');
+            setChannelsOpen(true);
+            return;
+        }
         // A pasted video URL (any platform) fetches that video and opens its breakdown.
         const trimmed = query.trim();
         const asUrl = trimmed.startsWith('www.') ? `https://${trimmed}` : trimmed;
@@ -276,9 +358,10 @@ export default function Outliers() {
         }).catch(() => {});
     }, []);
 
-    // Channel options for the modal (all platforms, debounced)
+    // Channel options for the modal (all platforms, debounced). A pasted profile
+    // URL / @handle is an "add channel" request, not a name filter.
     useEffect(() => {
-        if (!channelsOpen) return;
+        if (!channelsOpen || parseProfileInput(channelQuery)) return;
         const t = setTimeout(() => {
             getOutlierChannels(channelQuery).then(setChannelOptions).catch(() => setChannelOptions([]));
         }, 250);
@@ -448,8 +531,48 @@ export default function Outliers() {
                         {channelsOpen && (
                             <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30, minWidth: 260, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', overflow: 'hidden' }}>
                                 <div style={{ padding: 8, borderBottom: '1px solid var(--line-1)' }}>
-                                    <input autoFocus value={channelQuery} onChange={(e) => setChannelQuery(e.target.value)} placeholder="Filter channels…" style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, outline: 'none' }} />
+                                    <input
+                                        autoFocus
+                                        value={channelQuery}
+                                        onChange={(e) => { setChannelQuery(e.target.value); if (channelAdd.status === 'failed') setChannelAdd({ status: 'idle' }); }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' && profileInput?.platform && channelAdd.status !== 'adding') startChannelAdd(); }}
+                                        placeholder="Filter channels, or paste a channel URL / @handle"
+                                        style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, outline: 'none' }}
+                                    />
                                 </div>
+                                {profileInput ? (
+                                    <div style={{ padding: '4px 0' }}>
+                                        {channelAdd.status === 'adding' ? (
+                                            <div style={{ ...rowBtn(false), cursor: 'default', color: 'var(--ink-on-paper-2)', fontSize: 13 }}>
+                                                <Loader2 size={15} className="animate-spin" />
+                                                Pulling in @{profileInput.handle}'s last 10 videos…
+                                            </div>
+                                        ) : profileInput.platform ? (
+                                            <button onClick={() => startChannelAdd()} style={rowBtn(false)}>
+                                                <Plus size={15} stroke="#D60B27" />
+                                                <span style={{ fontSize: 13, color: 'var(--ink-on-paper-1)' }}>
+                                                    Add channel <strong>@{profileInput.handle}</strong>
+                                                    <span style={{ color: 'var(--ink-on-paper-3)', textTransform: 'capitalize' }}> · {profileInput.platform}</span>
+                                                </span>
+                                            </button>
+                                        ) : (
+                                            <div style={{ padding: '6px 12px' }}>
+                                                <div style={{ fontSize: 12.5, color: 'var(--ink-on-paper-2)', marginBottom: 6 }}>Add <strong>@{profileInput.handle}</strong> from:</div>
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    {(['youtube', 'tiktok', 'instagram'] as const).map((p) => (
+                                                        <button key={p} onClick={() => startChannelAdd(p)} style={{ ...actionBtn, padding: '5px 10px', fontSize: 12.5, textTransform: 'capitalize' }}>{p}</button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {channelAdd.status === 'failed' && (
+                                            <div style={{ padding: '6px 12px 8px', fontSize: 12.5, color: 'var(--vm-red-deep)' }}>{channelAdd.message}</div>
+                                        )}
+                                        <div style={{ padding: '6px 12px 8px', fontSize: 11.5, color: 'var(--ink-on-paper-3)' }}>
+                                            Pulls their last 10 videos and scores them against each other.
+                                        </div>
+                                    </div>
+                                ) : (
                                 <div style={{ maxHeight: 230, overflowY: 'auto' }}>
                                     <button onClick={() => setSelectedChannels([])} style={rowBtn(false)}>
                                         <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>All channels</span>
@@ -467,9 +590,10 @@ export default function Outliers() {
                                         );
                                     })}
                                     {channelOptions.length === 0 && (
-                                        <div style={{ padding: 12, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>No channels loaded yet.</div>
+                                        <div style={{ padding: 12, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>No channels match — paste a channel URL or @handle to add one.</div>
                                     )}
                                 </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -634,11 +758,19 @@ export default function Outliers() {
             )}
 
             {/* Grid */}
-            {loading && videos.length === 0 ? (
+            {channelAdd.status === 'adding' && videos.length === 0 ? (
+                <div style={{ ...CARD, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 60, color: 'var(--ink-on-paper-3)' }}>
+                    <Loader2 size={28} className="animate-spin" />
+                    <div style={{ fontSize: 14, color: 'var(--ink-on-paper-2)' }}>
+                        Pulling in <strong>@{channelAdd.handle}</strong>'s last 10 videos…
+                    </div>
+                    <div style={{ fontSize: 12.5 }}>Instagram profiles can take a minute or two to scrape.</div>
+                </div>
+            ) : loading && videos.length === 0 ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 60, color: 'var(--ink-on-paper-3)' }}><Loader2 size={28} className="animate-spin" /></div>
             ) : videos.length === 0 ? (
                 <div style={{ ...CARD, padding: 48, textAlign: 'center', color: 'var(--ink-on-paper-3)' }}>
-                    No outliers yet — search a topic to discover breakout videos, or paste a YouTube/TikTok/Instagram URL into the search bar.
+                    No outliers yet — search a topic to discover breakout videos, paste a YouTube/TikTok/Instagram video URL into the search bar, or add a creator's channel from the Channels menu.
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 20 }}>

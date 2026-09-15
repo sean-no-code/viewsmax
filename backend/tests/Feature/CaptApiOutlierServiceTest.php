@@ -21,6 +21,8 @@ class CaptApiOutlierServiceTest extends TestCase
         parent::setUp();
         config()->set('services.captapi.api_key', 'capt_test_key');
         config()->set('services.captapi.base_url', 'https://api.captapi.com/v1');
+        // These tests count provider calls; thumbnail re-hosting is covered in CaptApiChannelIngestTest.
+        config()->set('services.outliers.rehost_thumbnails', false);
     }
 
     private function fakeTiktok(): void

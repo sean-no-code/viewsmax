@@ -264,6 +264,50 @@ export async function refreshOutlierMedia(platform: OutlierPlatform, videoId: st
     return json.data;
 }
 
+// ---- Add a creator channel (by profile URL / @handle) ----
+export type ChannelIngestStatus = 'queued' | 'processing' | 'done' | 'failed';
+
+/** Channel picker shape (`id` = platform-native channel id) plus the ingest extras. */
+export interface AddedChannel extends OutlierChannelOption {
+    channel_id: number;
+    handle: string | null;
+    average_views: number | null;
+    last_ingested_at?: string | null;
+}
+
+export interface AddChannelResult {
+    status: ChannelIngestStatus;
+    /** true → poll getOutlierChannelIngest(ingest_id); false → `channel` is ready now. */
+    queued: boolean;
+    ingest_id?: number;
+    platform: OutlierPlatform;
+    handle: string;
+    channel?: AddedChannel;
+}
+
+export interface ChannelIngest {
+    ingest_id: number;
+    status: ChannelIngestStatus;
+    error: string | null;
+    platform: OutlierPlatform;
+    handle: string;
+    videos_added: number;
+    channel: AddedChannel | null;
+}
+
+/** Pull a creator's recent videos into the outlier DB. `platform` is required for a bare @handle. */
+export async function addOutlierChannel(input: string, platform?: OutlierPlatform, maxVideos?: number): Promise<AddChannelResult> {
+    return apiJson<AddChannelResult>('/api/outliers/channels/add', {
+        method: 'POST',
+        body: JSON.stringify({ input, platform, max_videos: maxVideos }),
+    });
+}
+
+export async function getOutlierChannelIngest(id: number): Promise<ChannelIngest> {
+    const json = await apiJson<{ data: ChannelIngest }>(`/api/outliers/channels/ingests/${id}`);
+    return json.data;
+}
+
 // ---- Competitor channels ----
 export interface CompetitorChannel {
     channel_id: number;

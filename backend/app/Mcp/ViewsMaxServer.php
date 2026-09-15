@@ -2,6 +2,7 @@
 
 namespace App\Mcp;
 
+use App\Mcp\Tools\AddOutlierChannel;
 use App\Mcp\Tools\CreateFeatureRequest;
 use App\Mcp\Tools\CreateOffer;
 use App\Mcp\Tools\CreatePost;
@@ -16,6 +17,7 @@ use App\Mcp\Tools\GetOffer;
 use App\Mcp\Tools\GetOfferStats;
 use App\Mcp\Tools\GetOutlier;
 use App\Mcp\Tools\GetOutlierBreakdown;
+use App\Mcp\Tools\GetOutlierChannelIngest;
 use App\Mcp\Tools\GetPost;
 use App\Mcp\Tools\GetStatsTimeseries;
 use App\Mcp\Tools\ListBrands;
@@ -54,7 +56,9 @@ class ViewsMaxServer extends Server
         (search_outliers to scrape a new topic), fetch_outlier to pull in a
         specific URL, generate_outlier_breakdown + get_outlier_breakdown for an
         AI analysis of why a video worked, and save_outlier to bookmark it in
-        the user's library.
+        the user's library. To research a specific creator, add_outlier_channel
+        with their profile URL or @handle pulls in their recent videos (poll
+        get_outlier_channel_ingest, then list_outliers with channels: [id]).
         TXT;
 
     // Show every tool on the first tools/list page.
@@ -95,6 +99,8 @@ class ViewsMaxServer extends Server
         ListSavedOutliers::class,
         SaveOutlier::class,
         RemoveSavedOutlier::class,
+        AddOutlierChannel::class,
+        GetOutlierChannelIngest::class,
     ];
 
     /**

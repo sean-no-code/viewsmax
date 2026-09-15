@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "defaultMode": "auto",
+    "allow": [
+      "Bash(cd *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(grep *)",
+      "Bash(sed -n *)",
+      "Bash(awk *)",
+      "Bash(find *)",
+      "Bash(git status *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git diff)",
+      "Bash(git log *)",
+      "Bash(git stash *)",
+      "Bash(php artisan test *)",
+      "Bash(php artisan test)",
+      "Bash(php artisan route:list *)",
+      "Bash(composer test *)",
+      "Bash(composer test)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(npx eslint *)",
+      "Bash(docker compose ps *)",
+      "Bash(docker compose ps)",
+      "Bash(docker compose logs *)",
+      "Bash(docker compose exec * php artisan tinker *)",
+      "Bash(docker ps *)",
+      "Bash(docker ps)",
+      "Bash(docker context ls *)",
+      "Bash(docker context ls)",
+      "Bash(docker logs *)",
+      "Bash(echo *)",
+      "Bash(python3 *)",
+      "Bash(true)"
+    ]
+  }
+}

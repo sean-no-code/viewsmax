@@ -139,8 +139,12 @@ class YouTubeSearchService
         // platform filter (blended browse) the gate applies to non-IG rows only.
         // Manually-added videos (pasted URLs) are deliberate — never score-gated.
         // Featured (admin-curated) requests skip the gate entirely: curation wins.
+        // Scoping to specific channels without an explicit min_score means "show
+        // me this creator's recent output ranked" — an added channel stores all
+        // its recent videos, most of them far below the outlier threshold.
         $platform = $filters['platform'] ?? null;
-        if ($platform !== 'instagram' && empty($filters['featured'])) {
+        $channelScoped = ! empty($filters['channels']) && ! isset($filters['min_score']);
+        if ($platform !== 'instagram' && empty($filters['featured']) && ! $channelScoped) {
             $minScore = $filters['min_score'] ?? OutlierVideo::minScore();
             if ($platform === null) {
                 $query->where(function ($q) use ($minScore) {

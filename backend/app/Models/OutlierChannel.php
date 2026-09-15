@@ -15,6 +15,7 @@ class OutlierChannel extends Model
     protected $fillable = [
         'platform',
         'youtube_channel_id',
+        'handle',
         'channel_name',
         'profile_image_url',
         'subscriber_count',
@@ -22,13 +23,23 @@ class OutlierChannel extends Model
         'country',
         'average_views',
         'average_calculated_at',
-        'average_video_ids'
+        'average_video_ids',
+        'last_ingested_at',
     ];
 
     protected $casts = [
         'average_calculated_at' => 'datetime',
         'average_video_ids' => 'array',
+        'last_ingested_at' => 'datetime',
     ];
+
+    /** Lowercase handle without "@" — the shape stored in `handle` and used for lookups. */
+    public static function normalizeHandle(?string $handle): ?string
+    {
+        $handle = strtolower(trim(ltrim((string) $handle, '@')));
+
+        return $handle === '' ? null : $handle;
+    }
 
     public function videos()
     {

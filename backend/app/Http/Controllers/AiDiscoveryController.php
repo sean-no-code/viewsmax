@@ -17,7 +17,7 @@ class AiDiscoveryController extends Controller
     /**
      * Bump the suffix whenever build() changes so deploys invalidate cleanly.
      */
-    private const CACHE_KEY = 'ai-discovery:v3';
+    private const CACHE_KEY = 'ai-discovery:v4';
 
     /**
      * AI capability discovery
@@ -98,6 +98,7 @@ class AiDiscoveryController extends Controller
                 'search_outliers_per_hour' => (int) config('mcp.rate_limits.search_outliers_per_hour'),
                 'fetch_outlier_per_hour' => (int) config('mcp.rate_limits.fetch_outlier_per_hour'),
                 'generate_outlier_breakdown_per_hour' => (int) config('mcp.rate_limits.generate_breakdown_per_hour'),
+                'add_outlier_channel_per_hour' => (int) config('mcp.rate_limits.add_outlier_channel_per_hour'),
             ],
         ];
     }

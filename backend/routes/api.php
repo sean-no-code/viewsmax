@@ -204,6 +204,10 @@ Route::middleware('api.auth')->group(function () {
     Route::prefix('outliers')->group(function () {
         Route::get('/', [App\Http\Controllers\OutlierController::class, 'index']);
         Route::get('/channels', [App\Http\Controllers\OutlierController::class, 'channels']);
+        // Add a creator channel by profile URL / @handle (background pull of recent videos)
+        Route::post('/channels/add', [App\Http\Controllers\OutlierChannelIngestController::class, 'store'])
+            ->middleware('throttle:outlier-channel-add');
+        Route::get('/channels/ingests/{id}', [App\Http\Controllers\OutlierChannelIngestController::class, 'show'])->whereNumber('id');
         Route::post('/search', [App\Http\Controllers\OutlierController::class, 'search']);
         Route::post('/fetch', [App\Http\Controllers\OutlierController::class, 'fetchByUrl']);
 

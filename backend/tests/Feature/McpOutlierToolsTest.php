@@ -96,18 +96,50 @@ class McpOutlierToolsTest extends TestCase
             'list_outliers', 'search_outliers', 'get_outlier', 'fetch_outlier',
             'get_outlier_breakdown', 'generate_outlier_breakdown',
             'list_saved_outliers', 'save_outlier', 'remove_saved_outlier',
+            'add_outlier_channel', 'get_outlier_channel_ingest',
         ] as $tool) {
             $this->assertContains($tool, $full, "Missing tool {$tool}");
         }
 
         // Read-only keys see the read tools and none of the writes.
         $read = $names($this->mcpKey(User::factory()->create(), 'read'));
-        foreach (['list_outliers', 'get_outlier', 'get_outlier_breakdown', 'list_saved_outliers'] as $tool) {
+        foreach (['list_outliers', 'get_outlier', 'get_outlier_breakdown', 'list_saved_outliers', 'get_outlier_channel_ingest'] as $tool) {
             $this->assertContains($tool, $read);
         }
-        foreach (['search_outliers', 'fetch_outlier', 'generate_outlier_breakdown', 'save_outlier', 'remove_saved_outlier'] as $tool) {
+        foreach (['search_outliers', 'fetch_outlier', 'generate_outlier_breakdown', 'save_outlier', 'remove_saved_outlier', 'add_outlier_channel'] as $tool) {
             $this->assertNotContains($tool, $read, "Read-only key should not see {$tool}");
         }
+
+        // Feature flag off → neither channel tool is advertised.
+        config()->set('services.outliers.channel_ingest_enabled', false);
+        $flagged = $names($this->mcpKey(User::factory()->create()));
+        $this->assertNotContains('add_outlier_channel', $flagged);
+        $this->assertNotContains('get_outlier_channel_ingest', $flagged);
+    }
+
+    public function test_add_outlier_channel_queues_an_ingest_and_can_be_polled(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+
+        $queued = $this->toolJson($this->callTool($key, 'add_outlier_channel', ['input' => 'https://www.tiktok.com/@khaby.lame']));
+        $this->assertTrue($queued['queued']);
+        $this->assertSame('queued', $queued['status']);
+        $this->assertSame('tiktok', $queued['platform']);
+        $this->assertSame('khaby.lame', $queued['handle']);
+        $this->assertIsInt($queued['ingest_id']);
+        Queue::assertPushed(\App\Jobs\IngestOutlierChannelJob::class, 1);
+
+        $polled = $this->toolJson($this->callTool($key, 'get_outlier_channel_ingest', ['ingest_id' => $queued['ingest_id']]));
+        $this->assertSame('queued', $polled['status']);
+        $this->assertNull($polled['channel']);
+
+        // Video links and bare handles without a platform are rejected with guidance.
+        $this->assertToolError($this->callTool($key, 'add_outlier_channel', ['input' => 'https://www.tiktok.com/@x/video/1']), 'video link');
+        $this->assertToolError($this->callTool($key, 'add_outlier_channel', ['input' => '@someone']), 'platform');
+
+        // Someone else's ingest is not visible.
+        $otherKey = $this->mcpKey(User::factory()->create());
+        $this->assertToolError($this->callTool($otherKey, 'get_outlier_channel_ingest', ['ingest_id' => $queued['ingest_id']]));
     }
 
     public function test_list_outliers_returns_serialized_videos_with_channel(): void

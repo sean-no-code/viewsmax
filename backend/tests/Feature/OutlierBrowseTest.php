@@ -53,6 +53,35 @@ class OutlierBrowseTest extends TestCase
         $this->assertSame(['instagram', 'youtube'], $platforms);
     }
 
+    public function test_channel_scoped_browse_skips_the_default_score_gate(): void
+    {
+        // A channel pulled in via "add channel" stores every recent video, most
+        // of them well under the 20x outlier threshold. Scoping to that channel
+        // means "show me this creator's recent output ranked", so the default
+        // gate is skipped — but only when no explicit min_score is sent.
+        $ch = OutlierChannel::create(['platform' => 'tiktok', 'youtube_channel_id' => 'tt-creator', 'channel_name' => 'Creator', 'average_views' => 300]);
+        $other = OutlierChannel::create(['platform' => 'tiktok', 'youtube_channel_id' => 'tt-other', 'channel_name' => 'Other']);
+        $base = ['platform' => 'tiktok', 'thumbnail_url' => 'x', 'published_at' => now(), 'is_short' => true];
+        OutlierVideo::create($base + ['channel_id' => $ch->id, 'youtube_video_id' => 'low', 'title' => 'Low', 'views' => 100, 'outlier_score' => 0.3]);
+        OutlierVideo::create($base + ['channel_id' => $ch->id, 'youtube_video_id' => 'high', 'title' => 'High', 'views' => 9000, 'outlier_score' => 30]);
+        OutlierVideo::create($base + ['channel_id' => $other->id, 'youtube_video_id' => 'otherlow', 'title' => 'Other low', 'views' => 100, 'outlier_score' => 0.5]);
+        $headers = $this->authHeaders();
+
+        $scoped = collect($this->withHeaders($headers)->getJson('/api/outliers?channels[]=tt-creator&duration_type=shorts')->assertOk()->json('data'))
+            ->pluck('youtube_video_id')->sort()->values()->all();
+        $this->assertSame(['high', 'low'], $scoped);
+
+        // Explicit min_score still wins inside a channel scope.
+        $strict = collect($this->withHeaders($headers)->getJson('/api/outliers?channels[]=tt-creator&duration_type=shorts&min_score=20')->json('data'))
+            ->pluck('youtube_video_id')->all();
+        $this->assertSame(['high'], $strict);
+
+        // Unscoped browse keeps gating: bulk-ingested low scorers stay out of everyone's feed.
+        $unscoped = collect($this->withHeaders($headers)->getJson('/api/outliers?duration_type=shorts')->json('data'))
+            ->pluck('youtube_video_id')->all();
+        $this->assertSame(['high'], $unscoped);
+    }
+
     private function seedCountries(): void
     {
         $us = OutlierChannel::create(['platform' => 'youtube', 'youtube_channel_id' => 'UCus', 'channel_name' => 'US Tuber', 'subscriber_count' => 1000, 'country' => 'US']);

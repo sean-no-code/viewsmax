@@ -146,6 +146,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by('x-mention:' . ($request->user()?->id ?? $request->ip()));
         });
 
+        // "Add a creator channel": each call pulls ~30 videos from YouTube or
+        // CaptAPI, so it shares the MCP tool's hourly budget.
+        RateLimiter::for('outlier-channel-add', function (Request $request) use ($limits) {
+            return Limit::perHour($limits('add_outlier_channel_per_hour'))
+                ->by('outlier-channel-add:' . ($request->user()?->id ?? $request->ip()));
+        });
+
         RateLimiter::for('mcp', function (Request $request) use ($limits) {
             $token = \App\Http\Middleware\McpAuth::resolveToken($request);
             $accessToken = $token ? PersonalAccessToken::findToken($token) : null;

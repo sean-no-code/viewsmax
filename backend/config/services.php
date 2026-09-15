@@ -32,6 +32,16 @@ return [
         'min_outlier_score' => env('YOUTUBE_MIN_OUTLIER_SCORE', 20),
     ],
 
+    'outliers' => [
+        // "Add a creator channel by @handle" (REST endpoint + MCP tools). Kill switch:
+        // each add spends YouTube quota or CaptAPI credits.
+        'channel_ingest_enabled' => env('OUTLIER_CHANNEL_INGEST_ENABLED', true),
+        // Copy TikTok/Instagram thumbnails onto the media disk at ingest. Their CDN
+        // URLs are signed and expire within days, and fbcdn is on most tracker
+        // blocklists, so the raw URLs don't render reliably in the app.
+        'rehost_thumbnails' => env('OUTLIER_REHOST_THUMBNAILS', true),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
