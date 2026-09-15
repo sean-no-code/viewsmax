@@ -235,6 +235,67 @@ class CaptApiChannelIngestTest extends TestCase
         $this->assertSame('https://expired.example.org/DDD.jpg', $expired->fresh()->thumbnail_url);
     }
 
+    public function test_channel_avatar_is_rehosted_at_ingest(): void
+    {
+        $this->fakeTiktokChannel([$this->tiktokPost('57', 100)]);
+
+        app(CaptApiOutlierService::class)->ingestChannel('tiktok', 'khaby.lame');
+
+        $channel = OutlierChannel::where('platform', 'tiktok')->firstOrFail();
+        Storage::disk('public')->assertExists('outliers/avatars/tiktok/127905465618821121.jpg');
+        $this->assertStringContainsString('/outliers/avatars/tiktok/127905465618821121.jpg', $channel->profile_image_url);
+    }
+
+    public function test_pasted_instagram_url_rehosts_the_channel_avatar(): void
+    {
+        Http::fake(['*/instagram/details*' => Http::response(['success' => true, 'data' => [
+            'platform' => 'instagram', 'id' => '1', 'shortcode' => 'DbYaLffE2DD', 'caption' => 'Suit up!',
+            'publishedAt' => '2026-07-29T15:12:56.000Z', 'thumbnailUrl' => 'https://example.com/ig.jpg',
+            'author' => ['id' => '38480006832', 'username' => 'nasa', 'displayName' => 'NASA', 'avatar' => 'https://example.com/nasa.jpg', 'followers' => 642],
+            'engagement' => ['likes' => 1, 'comments' => 1, 'views' => 516],
+        ]], 200)]);
+
+        app(CaptApiOutlierService::class)->fetchAndStore('instagram', 'https://www.instagram.com/p/DbYaLffE2DD/');
+
+        $channel = OutlierChannel::where('platform', 'instagram')->where('youtube_channel_id', 'nasa')->firstOrFail();
+        Storage::disk('public')->assertExists('outliers/avatars/instagram/nasa.jpg');
+        $this->assertStringContainsString('/outliers/avatars/instagram/nasa.jpg', $channel->profile_image_url);
+    }
+
+    public function test_avatar_rehost_falls_back_to_the_cdn_url_when_the_download_fails(): void
+    {
+        Http::fake(['blocked.example.org/*' => Http::response('', 403)]);
+        $post = $this->tiktokPost('58', 100);
+        Http::fake([
+            '*/tiktok/channel-details*' => Http::response(['success' => true, 'data' => [
+                'platform' => 'tiktok', 'id' => '127905465618821121', 'handle' => 'khaby.lame', 'displayName' => 'Khabane lame',
+                'followers' => 1, 'postCount' => 1, 'avatar' => 'https://blocked.example.org/avatar.jpg',
+            ]], 200),
+            '*/tiktok/channel-posts*' => Http::response(['success' => true, 'data' => ['items' => [$post], 'nextCursor' => null, 'hasMore' => false]], 200),
+        ]);
+
+        app(CaptApiOutlierService::class)->ingestChannel('tiktok', 'khaby.lame');
+
+        $this->assertSame('https://blocked.example.org/avatar.jpg', OutlierChannel::where('platform', 'tiktok')->value('profile_image_url'));
+        Storage::disk('public')->assertMissing('outliers/avatars/tiktok/127905465618821121.jpg');
+    }
+
+    public function test_backfill_command_rehosts_channel_avatars(): void
+    {
+        $cdn = OutlierChannel::create(['platform' => 'instagram', 'youtube_channel_id' => 'raycfu', 'channel_name' => 'Ray', 'profile_image_url' => 'https://example.com/raycfu.jpg']);
+        $hosted = OutlierChannel::create(['platform' => 'instagram', 'youtube_channel_id' => 'nasa', 'channel_name' => 'NASA', 'profile_image_url' => 'http://localhost/storage/outliers/avatars/instagram/nasa.jpg']);
+        $youtube = OutlierChannel::create(['platform' => 'youtube', 'youtube_channel_id' => 'UC123', 'channel_name' => 'YT', 'profile_image_url' => 'https://example.com/yt.jpg']);
+
+        $this->artisan('outliers:rehost-thumbnails')
+            ->expectsOutputToContain('Re-hosted 1 avatar(s)')
+            ->assertSuccessful();
+
+        Storage::disk('public')->assertExists('outliers/avatars/instagram/raycfu.jpg');
+        $this->assertStringContainsString('/outliers/avatars/instagram/raycfu.jpg', $cdn->fresh()->profile_image_url);
+        $this->assertSame('http://localhost/storage/outliers/avatars/instagram/nasa.jpg', $hosted->fresh()->profile_image_url);
+        $this->assertSame('https://example.com/yt.jpg', $youtube->fresh()->profile_image_url);
+    }
+
     public function test_empty_channel_is_rejected(): void
     {
         $this->fakeTiktokChannel([]);

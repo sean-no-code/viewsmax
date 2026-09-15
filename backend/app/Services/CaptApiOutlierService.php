@@ -274,14 +274,27 @@ class CaptApiOutlierService
         return $key !== null && (string) $key !== '' ? (string) $key : null;
     }
 
+    /** Provider avatar URL → our hosted copy, or the CDN URL itself when re-hosting is off/fails. */
+    private function hostedAvatar(string $platform, string $channelKey, ?string $url): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        return $this->rehostAvatar($platform, $channelKey, $url) ?? $url;
+    }
+
     private function upsertChannel(string $platform, string $handle, array $details, array $author): OutlierChannel
     {
+        $key = $this->channelKey($platform, $author, $details, $handle) ?? $handle;
+        $avatar = $details['avatar'] ?? $details['profileImage'] ?? $author['avatar'] ?? $author['profileImage'] ?? null;
+
         return OutlierChannel::updateOrCreate(
-            ['platform' => $platform, 'youtube_channel_id' => $this->channelKey($platform, $author, $details, $handle) ?? $handle],
+            ['platform' => $platform, 'youtube_channel_id' => $key],
             array_filter([
                 'handle' => $handle,
                 'channel_name' => $details['displayName'] ?? $author['displayName'] ?? $author['username'] ?? $details['handle'] ?? $handle,
-                'profile_image_url' => $details['avatar'] ?? $details['profileImage'] ?? $author['avatar'] ?? $author['profileImage'] ?? null,
+                'profile_image_url' => $this->hostedAvatar($platform, $key, $avatar),
                 'subscriber_count' => $details['followers'] ?? $author['followers'] ?? null,
                 'video_count' => $details['postCount'] ?? null,
             ], fn ($v) => $v !== null),
@@ -324,11 +337,12 @@ class CaptApiOutlierService
         $eng = $d['engagement'] ?? [];
         $videoId = $this->videoIdFrom('tiktok', $d);
 
+        $key = (string) ($author['id'] ?? $author['username'] ?? '');
         $channel = OutlierChannel::updateOrCreate(
-            ['platform' => 'tiktok', 'youtube_channel_id' => (string) ($author['id'] ?? $author['username'] ?? '')],
+            ['platform' => 'tiktok', 'youtube_channel_id' => $key],
             [
                 'channel_name' => $author['displayName'] ?? $author['username'] ?? 'Unknown',
-                'profile_image_url' => $author['avatar'] ?? $author['profileImage'] ?? null,
+                'profile_image_url' => $this->hostedAvatar('tiktok', $key, $author['avatar'] ?? $author['profileImage'] ?? null),
                 'subscriber_count' => $author['followers'] ?? null,
             ],
         );
@@ -352,11 +366,12 @@ class CaptApiOutlierService
         $eng = $d['engagement'] ?? [];
         $videoId = $this->videoIdFrom('instagram', $d);
 
+        $key = (string) ($author['username'] ?? '');
         $channel = OutlierChannel::updateOrCreate(
-            ['platform' => 'instagram', 'youtube_channel_id' => (string) ($author['username'] ?? '')],
+            ['platform' => 'instagram', 'youtube_channel_id' => $key],
             array_filter([
                 'channel_name' => $author['displayName'] ?? $author['username'] ?? 'Unknown',
-                'profile_image_url' => $author['avatar'] ?? $author['profileImage'] ?? null,
+                'profile_image_url' => $this->hostedAvatar('instagram', $key, $author['avatar'] ?? $author['profileImage'] ?? null),
                 'subscriber_count' => $author['followers'] ?? null,
             ], fn ($v) => $v !== null),
         );
@@ -469,7 +484,23 @@ class CaptApiOutlierService
      */
     public function rehostThumbnail(string $platform, string $videoId, string $url): ?string
     {
-        if (! config('services.outliers.rehost_thumbnails') || $videoId === '') {
+        return $this->rehostImage("outliers/thumbs/{$platform}", $videoId, $url, ['platform' => $platform, 'video_id' => $videoId]);
+    }
+
+    /**
+     * Same as rehostThumbnail for a channel's profile picture. Instagram/TikTok
+     * avatars sit on the same expiring, tracker-blocked CDNs as thumbnails, so
+     * the raw URL breaks in the app within days of ingest.
+     */
+    public function rehostAvatar(string $platform, string $channelKey, string $url): ?string
+    {
+        return $this->rehostImage("outliers/avatars/{$platform}", $channelKey, $url, ['platform' => $platform, 'channel_key' => $channelKey]);
+    }
+
+    private function rehostImage(string $dir, string $name, string $url, array $context): ?string
+    {
+        $name = (string) preg_replace('/[^A-Za-z0-9._-]+/', '_', $name);
+        if (! config('services.outliers.rehost_thumbnails') || $name === '') {
             return null;
         }
         $disk = config('filesystems.media_disk') ?: config('filesystems.default');
@@ -481,18 +512,18 @@ class CaptApiOutlierService
             $response = Http::timeout(20)->get($url);
             $mime = strtolower(trim(explode(';', (string) $response->header('Content-Type'))[0]));
             if (! $response->successful() || ! isset(self::THUMBNAIL_MIMES[$mime]) || $response->body() === '') {
-                Log::info('[outlier-thumbs] skipped', ['platform' => $platform, 'video_id' => $videoId, 'status' => $response->status(), 'mime' => $mime]);
+                Log::info('[outlier-thumbs] skipped', $context + ['status' => $response->status(), 'mime' => $mime]);
 
                 return null;
             }
 
-            $path = sprintf('outliers/thumbs/%s/%s.%s', $platform, $videoId, self::THUMBNAIL_MIMES[$mime]);
+            $path = sprintf('%s/%s.%s', $dir, $name, self::THUMBNAIL_MIMES[$mime]);
             Storage::disk($disk)->put($path, $response->body());
             $hosted = Storage::disk($disk)->url($path);
 
             return preg_match('#^https?://#i', $hosted) ? $hosted : url($hosted);
         } catch (\Throwable $e) {
-            Log::warning('[outlier-thumbs] failed', ['platform' => $platform, 'video_id' => $videoId, 'error' => $e->getMessage()]);
+            Log::warning('[outlier-thumbs] failed', $context + ['error' => $e->getMessage()]);
 
             return null;
         }
@@ -507,7 +538,9 @@ class CaptApiOutlierService
         $disk = config('filesystems.media_disk') ?: config('filesystems.default');
         $base = rtrim((string) config("filesystems.disks.{$disk}.url"), '/');
 
-        return ($base !== '' && str_starts_with($url, $base.'/')) || str_contains($url, '/outliers/thumbs/');
+        return ($base !== '' && str_starts_with($url, $base.'/'))
+            || str_contains($url, '/outliers/thumbs/')
+            || str_contains($url, '/outliers/avatars/');
     }
 
     /** Instagram rows without a caption get a descriptive title instead of "Untitled". */
