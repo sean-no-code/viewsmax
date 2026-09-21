@@ -3,9 +3,17 @@
 namespace App\Mcp\Tools;
 
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Get a post')]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 class GetPost extends ViewsMaxTool
 {
     protected function requiresWrite(): bool
@@ -26,7 +34,7 @@ class GetPost extends ViewsMaxTool
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
-        return $schema->integer('id')->description('The post id.');
+        return $schema->integer('id')->description('The post id.')->required();
     }
 
     public function handle(array $arguments): ToolResult

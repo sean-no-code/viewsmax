@@ -136,6 +136,20 @@ class McpOutlierToolsTest extends TestCase
         $this->assertSame(['tt1'], array_column($only['outliers'], 'video_id'));
     }
 
+    public function test_outlier_tools_that_read_the_database_work_without_a_youtube_api_key(): void
+    {
+        // Browsing stored outliers never calls the YouTube API, so a missing
+        // YOUTUBE_API_KEY (fresh checkout, self-hosted install, CI) must not
+        // stop the controller from being constructed.
+        config(['services.youtube.key' => null]);
+        $this->seedOutlier('youtube', 'nokey1');
+        $key = $this->mcpKey(User::factory()->create());
+
+        $data = $this->toolJson($this->callTool($key, 'get_outlier', ['platform' => 'youtube', 'video_id' => 'nokey1']));
+
+        $this->assertSame('nokey1', $data['video_id']);
+    }
+
     public function test_list_outliers_rejects_bad_arguments(): void
     {
         $key = $this->mcpKey(User::factory()->create());

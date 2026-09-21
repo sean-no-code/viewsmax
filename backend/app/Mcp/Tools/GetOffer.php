@@ -4,9 +4,17 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\TrackingEventController;
 use App\Http\Controllers\TrackingLinkController;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Get an offer')]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 class GetOffer extends ViewsMaxTool
 {
     protected function requiresWrite(): bool
@@ -26,13 +34,15 @@ class GetOffer extends ViewsMaxTool
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
-        return $schema->integer('id')->description('The offer id.');
+        return $schema->integer('id')->description('The offer id.')->required();
     }
 
     public function handle(array $arguments): ToolResult
     {
         return $this->callController(
             fn () => app(TrackingEventController::class)->show((string) ($arguments['id'] ?? '')),
+            [],
+            fn (array $data) => self::withTrackedUrls($data)
         );
     }
 }

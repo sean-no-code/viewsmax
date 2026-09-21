@@ -2,6 +2,7 @@
 
 namespace App\Mcp;
 
+use App\Mcp\Methods\SafeCallTool;
 use App\Mcp\Tools\CreateFeatureRequest;
 use App\Mcp\Tools\CreateOffer;
 use App\Mcp\Tools\CreatePost;
@@ -40,18 +41,21 @@ class ViewsMaxServer extends Server
 
     public string $instructions = <<<'TXT'
         ViewsMax lets you compose social posts and publish them to the user's
-        connected accounts (YouTube, TikTok, X, LinkedIn, Threads, Instagram).
+        connected accounts ({platforms}).
         Typical flow: list_connected_accounts to see what is connected, then
         create_post with the target platforms — as a draft, immediately
         (status "posted"), or scheduled (status "scheduled" + scheduled_at).
         TikTok/Instagram/YouTube posts need a video or image: host it with
         upload_media first and pass the returned media entry to create_post.
+        {privacy_rules}
+        Plans and billing are managed in the ViewsMax web app ({app_url}); this
+        connector can't view or change them.
         Brands are named groups of connected accounts: list_brands shows them,
         and create_post accepts brand_id to post to a whole brand at once.
         Publishing is asynchronous; poll get_post to see per-platform results.
         Outliers are videos that massively over-performed their channel's
         average — use them for research and ideation: list_outliers to browse
-        (search_outliers to scrape a new topic), fetch_outlier to pull in a
+        (search_outliers to search YouTube for a new topic), fetch_outlier to pull in a
         specific URL, generate_outlier_breakdown + get_outlier_breakdown for an
         AI analysis of why a video worked, and save_outlier to bookmark it in
         the user's library.
@@ -96,6 +100,23 @@ class ViewsMaxServer extends Server
         SaveOutlier::class,
         RemoveSavedOutlier::class,
     ];
+
+    /**
+     * Swap in a tools/call handler that turns unexpected crashes into a
+     * friendly isError tool result instead of leaking the raw exception
+     * message — see SafeCallTool for the directory rules behind it.
+     */
+    public function boot()
+    {
+        $this->addMethod('tools/call', SafeCallTool::class);
+
+        // Name only the platforms that are set up, matching create_post.
+        $this->instructions = str_replace(
+            ['{platforms}', '{privacy_rules}', '{app_url}'],
+            [implode(', ', CreatePost::availablePlatforms()), CreatePost::privacyRules(), config('mcp.frontend_url')],
+            $this->instructions
+        );
+    }
 
     /**
      * laravel/mcp v0.1.1 rejects initialize requests carrying a protocol

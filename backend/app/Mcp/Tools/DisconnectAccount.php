@@ -3,9 +3,17 @@
 namespace App\Mcp\Tools;
 
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Disconnect a social account')]
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(false)]
 class DisconnectAccount extends ViewsMaxTool
 {
     public function name(): string
@@ -22,7 +30,7 @@ class DisconnectAccount extends ViewsMaxTool
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
-        return $schema->string('platform')->description('Platform to disconnect.');
+        return $schema->string('platform')->description('Platform to disconnect.')->required();
     }
 
     public function handle(array $arguments): ToolResult

@@ -3,9 +3,17 @@
 namespace App\Mcp\Tools;
 
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Get the connect-account page URL')]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 class GetConnectUrl extends ViewsMaxTool
 {
     public function name(): string
@@ -23,7 +31,7 @@ class GetConnectUrl extends ViewsMaxTool
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
-        return $schema->string('platform')->description('Platform to connect (e.g. youtube, instagram, linkedin, x).');
+        return $schema->string('platform')->description('Platform to connect (e.g. youtube, instagram, linkedin, x).')->required();
     }
 
     public function handle(array $arguments): ToolResult
@@ -37,8 +45,17 @@ class GetConnectUrl extends ViewsMaxTool
         $known = array_keys((array) config('social.platforms'));
         if (! in_array($platform, $known, true)) {
             return ToolResult::error(
-                "Unknown platform '{$platform}'. Known platforms: " . implode(', ', $known) . '.'
+                "Unknown platform '{$platform}'. Platforms you can connect: "
+                . implode(', ', CreatePost::availablePlatforms()) . '.'
             );
+        }
+
+        // Offer only platforms the user can post to once connected: without
+        // app credentials the Connections page shows "Coming soon", and some
+        // backend-only platforms (Google Business) have no publisher at all.
+        $available = CreatePost::availablePlatforms();
+        if (! in_array($platform, $available, true)) {
+            return ToolResult::error(CreatePost::notSetUpError($platform, $available));
         }
 
         $frontend = rtrim((string) config('mcp.frontend_url'), '/');

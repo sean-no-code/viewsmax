@@ -108,9 +108,9 @@ abstract class ViewsMaxTool extends Tool
             $data = $response->getData(true);
 
             if ($response->getStatusCode() >= 400) {
-                return ToolResult::error(
+                return ToolResult::error($this->userFacingError(
                     is_array($data) ? ($data['message'] ?? json_encode($data)) : (string) $data
-                );
+                ));
             }
 
             $data = is_array($data) ? $data : ['data' => $data];
@@ -136,6 +136,55 @@ abstract class ViewsMaxTool extends Tool
     }
 
     /**
+     * Reword controller errors that don't suit an AI client.
+     *
+     * The web app's plan-limit message ends with "or upgrade your plan to add
+     * more". OpenAI's plugin guidelines say a plugin "must not… promote
+     * upgrades", while it may "explain that a certain feature is not available
+     * with the user's current plan". The web app keeps its own wording; only
+     * what the AI sees is rewritten.
+     */
+    /**
+     * The link the user actually shares: the offer page plus ?trk={parameter_id},
+     * built the same way the web app builds it (TrackingEventForm) so clicks
+     * are attributed. The API only returns the parameter id.
+     */
+    protected static function trackedUrl(string $offerUrl, string $parameterId): string
+    {
+        return $offerUrl . (str_contains($offerUrl, '?') ? '&' : '?') . 'trk=' . $parameterId;
+    }
+
+    /** Add a `url` to each of an offer's tracking links. */
+    protected static function withTrackedUrls(array $offer): array
+    {
+        if (! is_array($offer['links'] ?? null)) {
+            return $offer;
+        }
+
+        $offerUrl = (string) ($offer['offer_url'] ?? '');
+        $offer['links'] = array_map(
+            fn ($link) => is_array($link) && isset($link['parameter_id'])
+                ? $link + ['url' => self::trackedUrl($offerUrl, (string) $link['parameter_id'])]
+                : $link,
+            $offer['links']
+        );
+
+        return $offer;
+    }
+
+    private function userFacingError(string $message): string
+    {
+        if (preg_match("/plan's limit of (\d+) (\w+)/i", $message, $matches) === 1) {
+            $noun = rtrim($matches[2], 's');
+
+            return "Your current ViewsMax plan allows {$matches[1]} {$noun}(s), and you've reached that limit. "
+                . "Delete an existing {$noun} to add another.";
+        }
+
+        return $message;
+    }
+
+    /**
      * Shape a post (with targets) for tool output.
      */
     protected function serializePost(Post $post): array
@@ -154,6 +203,53 @@ abstract class ViewsMaxTool extends Tool
                 'platform_post_id' => $t->platform_post_id,
                 'published_at' => $t->published_at?->toIso8601String(),
             ])->all(),
+            'publish_result' => $this->publishResult($post),
+        ];
+    }
+
+    /**
+     * A plain overall result for the AI to relay. The post's own status turns
+     * "posted" as soon as publishing starts, and clients read that as success
+     * even while platforms are still publishing or have failed.
+     */
+    private function publishResult(Post $post): array
+    {
+        if ($post->status === Post::STATUS_DRAFT) {
+            return ['state' => 'draft', 'message' => 'Saved as a draft. Nothing has been published.'];
+        }
+
+        if ($post->status === Post::STATUS_SCHEDULED) {
+            return [
+                'state' => 'scheduled',
+                'message' => 'Scheduled for ' . $post->scheduled_at?->toIso8601String() . '. Nothing has been published yet.',
+            ];
+        }
+
+        $byStatus = $post->targets->groupBy('status')->map(fn ($targets) => $targets->pluck('platform')->all());
+        $inProgress = array_merge($byStatus['pending'] ?? [], $byStatus['publishing'] ?? []);
+        $published = $byStatus['published'] ?? [];
+        $failed = $byStatus['failed'] ?? [];
+
+        if ($inProgress !== []) {
+            return [
+                'state' => 'in_progress',
+                'message' => 'Still publishing on ' . implode(', ', $inProgress) . '. Check again with get_post '
+                    . "in a few seconds, and don't report it as published or failed until then.",
+            ];
+        }
+
+        if ($failed === []) {
+            return ['state' => 'published', 'message' => 'Published on ' . implode(', ', $published) . '.'];
+        }
+
+        if ($published === []) {
+            return ['state' => 'failed', 'message' => 'Failed on ' . implode(', ', $failed) . '. See targets[].error.'];
+        }
+
+        return [
+            'state' => 'partly_failed',
+            'message' => 'Published on ' . implode(', ', $published) . '; failed on ' . implode(', ', $failed)
+                . '. See targets[].error.',
         ];
     }
 

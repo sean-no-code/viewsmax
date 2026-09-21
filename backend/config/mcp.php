@@ -16,6 +16,20 @@ return [
     // Max size (MB) of a file the upload_media tool will download and host.
     'upload_max_mb' => env('MCP_UPLOAD_MAX_MB', 100),
 
+    /*
+    |--------------------------------------------------------------------------
+    | OpenAI plugin domain verification
+    |--------------------------------------------------------------------------
+    |
+    | OpenAI's plugin submission portal proves we control this domain by
+    | fetching /.well-known/openai-apps-challenge and comparing the response
+    | with a token it generates. Paste that token into the env var at
+    | submission time; the route 404s while this is empty.
+    |
+    */
+
+    'openai_apps_challenge_token' => env('OPENAI_APPS_CHALLENGE_TOKEN'),
+
     // SPA base URL, used by tools that hand the user a page to open
     // (e.g. get_connect_url -> the Connections page).
     'frontend_url' => env('FRONTEND_URL', env('APP_URL')),

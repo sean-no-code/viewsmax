@@ -10,6 +10,26 @@
             <span class="muted">Signed in as {{ $user->email }}</span>
         </p>
 
+        @php
+            // The app's name is self-reported when it registers; the redirect
+            // host isn't, so show it. See App\Support\OAuthClientRedirects.
+            $redirectHosts = \App\Support\OAuthClientRedirects::hosts($client->redirect_uris ?? []);
+            $isLocalApp = \App\Support\OAuthClientRedirects::isLoopbackOnly($client->redirect_uris ?? []);
+        @endphp
+
+        @if ($isLocalApp)
+            <p class="muted" style="font-size: 13px; margin: 0 0 20px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;">
+                After you approve, you'll be sent back to an app running on
+                <strong>this computer</strong> ({{ implode(', ', $redirectHosts) }}).
+                Only approve this if you started the connection yourself.
+            </p>
+        @elseif ($redirectHosts !== [])
+            <p class="muted" style="font-size: 13px; margin: 0 0 20px;">
+                After you approve, you'll be sent back to
+                <strong>{{ implode(', ', $redirectHosts) }}</strong>.
+            </p>
+        @endif
+
         <form id="mcp-approve" method="post" action="{{ route('passport.authorizations.approve') }}">
             @csrf
             <input type="hidden" name="auth_token" value="{{ $authToken }}">

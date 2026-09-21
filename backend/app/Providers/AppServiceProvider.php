@@ -152,11 +152,19 @@ class AppServiceProvider extends ServiceProvider
             $isMcpKey = $accessToken
                 && array_intersect(['mcp', 'mcp:read', 'mcp:write'], $accessToken->abilities ?? []);
 
-            // Valid MCP keys get their own budget; anything else (missing or
-            // invalid key) shares a per-IP budget to slow key brute-forcing.
-            return $isMcpKey
-                ? Limit::perMinute($limits('per_minute'))->by('mcp:' . $accessToken->id)
-                : Limit::perMinute($limits('failed_auth_per_minute'))->by('mcp-anon:' . $request->ip());
+            // Valid MCP keys and OAuth users get their own budget. Anything
+            // else (missing or invalid token) shares a per-IP budget to slow
+            // brute-forcing. OAuth clients call from a few shared IPs, so they
+            // must not fall into that shared budget.
+            if ($isMcpKey) {
+                return Limit::perMinute($limits('per_minute'))->by('mcp:' . $accessToken->id);
+            }
+
+            if ($oauthUserId = \App\Http\Middleware\McpAuth::oauthUserId($request)) {
+                return Limit::perMinute($limits('per_minute'))->by('mcp-oauth:' . $oauthUserId);
+            }
+
+            return Limit::perMinute($limits('failed_auth_per_minute'))->by('mcp-anon:' . $request->ip());
         });
     }
 
@@ -181,6 +189,10 @@ class AppServiceProvider extends ServiceProvider
         // scope check. Default to full access (read + write); the consent
         // screen lets the user downgrade a connection to read-only.
         Passport::defaultScopes(['mcp:read', 'mcp:write']);
+
+        // Access tokens name this MCP server in their audience — see
+        // App\Support\McpAccessToken for the directory rules behind it.
+        Passport::useAccessTokenEntity(\App\Support\McpAccessToken::class);
 
         Passport::tokensExpireIn(now()->addHour());
         Passport::refreshTokensExpireIn(now()->addDays(30));

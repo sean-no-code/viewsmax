@@ -6,9 +6,17 @@ use App\Http\Controllers\PostController;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Update a post')]
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(true)]
 class UpdatePost extends ViewsMaxTool
 {
     public function name(): string
@@ -21,13 +29,14 @@ class UpdatePost extends ViewsMaxTool
         return 'Edit a draft or scheduled post: caption, media, platforms, schedule, '
             . 'or status. Setting status to "posted" publishes immediately. Posts '
             . 'that have already been published cannot be edited. '
+            . CreatePost::privacyRules() . ' '
             . 'Caption character limits: ' . CreatePost::formatCharLimits() . '.';
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
         return $schema
-            ->integer('id')->description('The post id.')
+            ->integer('id')->description('The post id.')->required()
             ->string('caption')->description('New caption.')->optional()
             ->string('status')->description('draft, scheduled, or posted.')->optional()
             ->string('scheduled_at')->description('ISO-8601 datetime for scheduled posts.')->optional()
@@ -103,6 +112,11 @@ class UpdatePost extends ViewsMaxTool
             ? $arguments['status']
             : $post->status;
         $media = is_array($arguments['media'] ?? null) ? $arguments['media'] : ($post->media ?? []);
+
+        $scheduledAt = $arguments['scheduled_at'] ?? $post->scheduled_at?->toIso8601String();
+        if ($error = CreatePost::pastScheduleError($status, $scheduledAt)) {
+            return ToolResult::error($error);
+        }
         $checkPlatforms = $platforms ?? $post->targets->pluck('platform')->all();
         if ($error = CreatePost::videoRuleError($status, $checkPlatforms, $media)) {
             return ToolResult::error($error);
@@ -111,9 +125,9 @@ class UpdatePost extends ViewsMaxTool
         // PostController::update owns the payload rules and partial-update
         // semantics; only pass platforms once normalized (a present-but-null
         // key would wipe the targets).
-        $params = array_intersect_key($arguments, array_flip([
+        $params = CreatePost::scheduledAtInUtc(array_intersect_key($arguments, array_flip([
             'caption', 'media', 'status', 'scheduled_at', 'overrides', 'options', 'comments', 'shorten_links',
-        ]));
+        ])));
         if ($platforms !== null) {
             $params['platforms'] = $platforms;
         }

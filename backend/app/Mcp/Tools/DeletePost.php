@@ -3,9 +3,17 @@
 namespace App\Mcp\Tools;
 
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Delete a post')]
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(false)]
 class DeletePost extends ViewsMaxTool
 {
     public function name(): string
@@ -21,7 +29,7 @@ class DeletePost extends ViewsMaxTool
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
-        return $schema->integer('id')->description('The post id.');
+        return $schema->integer('id')->description('The post id.')->required();
     }
 
     public function handle(array $arguments): ToolResult

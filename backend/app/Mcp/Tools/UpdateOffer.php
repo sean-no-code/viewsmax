@@ -4,9 +4,17 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\TrackingEventController;
 use App\Http\Controllers\TrackingLinkController;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Update an offer')]
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(false)]
 class UpdateOffer extends ViewsMaxTool
 {
     public function name(): string
@@ -22,7 +30,7 @@ class UpdateOffer extends ViewsMaxTool
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
         return $schema
-            ->integer('id')->description('The offer id.')
+            ->integer('id')->description('The offer id.')->required()
             ->string('name')->description('New display name.')->optional()
             ->string('offer_url')->description('New landing page URL.')->optional()
             ->raw('goals', [

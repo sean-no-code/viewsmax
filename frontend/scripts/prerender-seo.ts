@@ -1,7 +1,8 @@
 // Build-time SEO prerender (head injection — no headless browser).
 //
 // After `vite build`, this writes a per-route static index.html for the free-tools
-// pages with the real <title>, meta, canonical, and JSON-LD baked into the served
+// pages and the static pages in src/lib/static-page-seo.ts (privacy, terms, /ai)
+// with the real <title>, meta, canonical, and JSON-LD baked into the served
 // HTML (so crawlers and social scrapers get correct tags without executing JS).
 // The page body still hydrates via React on load. Runs as `postbuild` (see
 // package.json), pure Node + tsx — no Chromium, CI-safe.
@@ -9,6 +10,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PLATFORM_LIST, HUB_SEO, buildJsonLd } from "../src/lib/transcript-tools";
+import { STATIC_PAGE_SEO } from "../src/lib/static-page-seo";
 
 const distDir = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 const ORIGIN = "https://viewsmax.com";
@@ -46,6 +48,9 @@ const routes: Route[] = [
     keywords: p.seo.keywords,
     jsonLd: buildJsonLd(p),
   })),
+  // Privacy, terms, and AI docs: without a file per route the host serves
+  // them with HTTP 404 (see src/lib/static-page-seo.ts).
+  ...STATIC_PAGE_SEO.map((p) => ({ ...p, jsonLd: [] })),
 ];
 
 for (const r of routes) {
