@@ -340,11 +340,13 @@ class CaptApiOutlierService
         $key = (string) ($author['id'] ?? $author['username'] ?? '');
         $channel = OutlierChannel::updateOrCreate(
             ['platform' => 'tiktok', 'youtube_channel_id' => $key],
-            [
+            array_filter([
+                // The @handle is what native URLs need (display names carry spaces/emoji).
+                'handle' => OutlierChannel::normalizeHandle($author['username'] ?? null),
                 'channel_name' => $author['displayName'] ?? $author['username'] ?? 'Unknown',
                 'profile_image_url' => $this->hostedAvatar('tiktok', $key, $author['avatar'] ?? $author['profileImage'] ?? null),
                 'subscriber_count' => $author['followers'] ?? null,
-            ],
+            ], fn ($v) => $v !== null),
         );
 
         $views = (int) ($eng['views'] ?? 0);
@@ -370,6 +372,7 @@ class CaptApiOutlierService
         $channel = OutlierChannel::updateOrCreate(
             ['platform' => 'instagram', 'youtube_channel_id' => $key],
             array_filter([
+                'handle' => OutlierChannel::normalizeHandle($author['username'] ?? null),
                 'channel_name' => $author['displayName'] ?? $author['username'] ?? 'Unknown',
                 'profile_image_url' => $this->hostedAvatar('instagram', $key, $author['avatar'] ?? $author['profileImage'] ?? null),
                 'subscriber_count' => $author['followers'] ?? null,

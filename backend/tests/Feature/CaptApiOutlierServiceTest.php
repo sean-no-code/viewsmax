@@ -108,6 +108,9 @@ class CaptApiOutlierServiceTest extends TestCase
         $this->assertSame('tiktok', $channel->platform);
         $this->assertSame('127905465618821121', $channel->youtube_channel_id);
         $this->assertSame(162476412, (int) $channel->subscriber_count);
+        // The @handle is stored so native URLs (breakdown transcript fetch) use it, not the display name.
+        $this->assertSame('khaby.lame', $channel->handle);
+        $this->assertSame('Khabane lame', $channel->channel_name);
 
         // TikTok is short-form by definition — flagged at ingest, no YouTube probe.
         $this->assertTrue($video->is_short);

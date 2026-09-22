@@ -305,6 +305,24 @@ class OutlierBrowseTest extends TestCase
         $this->assertSame(['Grammer', 'Tuber'], $names);
     }
 
+    public function test_channels_endpoint_matches_handle_and_platform_id_not_just_display_name(): void
+    {
+        OutlierChannel::create(['platform' => 'instagram', 'youtube_channel_id' => 'raycfu', 'handle' => 'raycfu', 'channel_name' => 'Ray Fu', 'subscriber_count' => 10]);
+        OutlierChannel::create(['platform' => 'youtube', 'youtube_channel_id' => 'UCabc', 'handle' => 'mrbeast', 'channel_name' => 'MrBeast', 'subscriber_count' => 20]);
+        OutlierChannel::create(['platform' => 'tiktok', 'youtube_channel_id' => '999', 'channel_name' => 'Nobody', 'subscriber_count' => 5]);
+
+        $names = fn (string $q) => collect($this->withHeaders($this->authHeaders())
+            ->getJson('/api/outliers/channels?q='.urlencode($q))
+            ->assertOk()
+            ->json('data'))->pluck('name')->all();
+
+        $this->assertSame(['Ray Fu'], $names('raycfu'), 'matches the stored handle');
+        $this->assertSame(['Ray Fu'], $names('@raycfu'), 'a leading @ is ignored');
+        $this->assertSame(['MrBeast'], $names('UCabc'), 'matches the platform-native id');
+        $this->assertSame(['MrBeast'], $names('beast'), 'still matches the display name');
+        $this->assertSame([], $names('zzz'));
+    }
+
     public function test_search_results_match_only_the_full_phrase_not_individual_words(): void
     {
         $yt = OutlierChannel::create(['platform' => 'youtube', 'youtube_channel_id' => 'UC9', 'channel_name' => 'Maker', 'subscriber_count' => 1000]);

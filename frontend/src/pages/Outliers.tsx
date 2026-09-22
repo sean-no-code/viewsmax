@@ -359,11 +359,13 @@ export default function Outliers() {
     }, []);
 
     // Channel options for the modal (all platforms, debounced). A pasted profile
-    // URL / @handle is an "add channel" request, not a name filter.
+    // URL / @handle offers "add channel", but the creator may already be in —
+    // look them up by handle so an existing channel is a one-click pick.
     useEffect(() => {
-        if (!channelsOpen || parseProfileInput(channelQuery)) return;
+        if (!channelsOpen) return;
+        const q = parseProfileInput(channelQuery)?.handle ?? channelQuery;
         const t = setTimeout(() => {
-            getOutlierChannels(channelQuery).then(setChannelOptions).catch(() => setChannelOptions([]));
+            getOutlierChannels(q).then(setChannelOptions).catch(() => setChannelOptions([]));
         }, 250);
         return () => clearTimeout(t);
     }, [channelsOpen, channelQuery]);
@@ -493,6 +495,20 @@ export default function Outliers() {
     const gridCols = variant === 'shorts' ? 'repeat(auto-fill, minmax(220px,1fr))' : 'repeat(auto-fill, minmax(300px,1fr))';
     const pickedChannelNames = channelOptions.filter((c) => selectedChannels.includes(c.id)).map((c) => c.name);
 
+    const channelRow = (c: OutlierChannelOption) => {
+        const picked = selectedChannels.includes(c.id);
+        return (
+            <button key={c.id} onClick={() => toggleChannel(c.id)} style={rowBtn(picked)}>
+                {c.avatar
+                    ? <img src={c.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover', background: 'var(--ink-800)' }}
+                        onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
+                    : <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ink-800)' }} />}
+                <span style={{ fontSize: 13, color: 'var(--ink-on-paper-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                {picked && <Check size={15} stroke="#D60B27" style={{ marginLeft: 'auto' }} />}
+            </button>
+        );
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: 'var(--font-body)' }}>
             {/* Filter bar */}
@@ -542,6 +558,12 @@ export default function Outliers() {
                                 </div>
                                 {profileInput ? (
                                     <div style={{ padding: '4px 0' }}>
+                                        {channelAdd.status !== 'adding' && channelOptions.length > 0 && (
+                                            <div style={{ maxHeight: 160, overflowY: 'auto', borderBottom: '1px solid var(--line-1)', marginBottom: 4 }}>
+                                                <div style={{ padding: '6px 12px 2px', fontSize: 11.5, color: 'var(--ink-on-paper-3)' }}>Already in</div>
+                                                {channelOptions.map(channelRow)}
+                                            </div>
+                                        )}
                                         {channelAdd.status === 'adding' ? (
                                             <div style={{ ...rowBtn(false), cursor: 'default', color: 'var(--ink-on-paper-2)', fontSize: 13 }}>
                                                 <Loader2 size={15} className="animate-spin" />
@@ -577,18 +599,7 @@ export default function Outliers() {
                                     <button onClick={() => setSelectedChannels([])} style={rowBtn(false)}>
                                         <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>All channels</span>
                                     </button>
-                                    {channelOptions.map((c) => {
-                                        const picked = selectedChannels.includes(c.id);
-                                        return (
-                                            <button key={c.id} onClick={() => toggleChannel(c.id)} style={rowBtn(picked)}>
-                                                {c.avatar
-                                                    ? <img src={c.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />
-                                                    : <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--ink-800)' }} />}
-                                                <span style={{ fontSize: 13, color: 'var(--ink-on-paper-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                                                {picked && <Check size={15} stroke="#D60B27" style={{ marginLeft: 'auto' }} />}
-                                            </button>
-                                        );
-                                    })}
+                                    {channelOptions.map(channelRow)}
                                     {channelOptions.length === 0 && (
                                         <div style={{ padding: 12, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>No channels match — paste a channel URL or @handle to add one.</div>
                                     )}

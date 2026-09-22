@@ -27,6 +27,8 @@ export interface OutlierVideo {
     video_url_expires_at?: string | null;
     channel?: {
         channel_name: string;
+        // Lowercase @handle without "@" (TikTok/Instagram); what native URLs need.
+        handle?: string | null;
         profile_image_url: string | null;
         subscriber_count: number | null;
         average_views?: number | null;

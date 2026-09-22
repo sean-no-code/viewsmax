@@ -55,8 +55,15 @@ class OutlierController extends Controller
             $query->where('platform', $validated['platform']);
         }
 
-        if (! empty($validated['q'])) {
-            $query->where('channel_name', 'like', '%'.$validated['q'].'%');
+        // Match the display name, the @handle (as typed, "@" optional), or the
+        // platform-native id — an IG/TikTok creator is usually known by handle.
+        $q = ltrim(trim((string) ($validated['q'] ?? '')), '@');
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('channel_name', 'like', "%{$q}%")
+                    ->orWhere('handle', 'like', "%{$q}%")
+                    ->orWhere('youtube_channel_id', 'like', "%{$q}%");
+            });
         }
 
         $channels = $query->orderByDesc('subscriber_count')
