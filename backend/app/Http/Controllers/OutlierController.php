@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateOutlierBreakdownJob;
 use App\Jobs\IngestOutlierByUrlJob;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierChannel;
@@ -117,6 +118,15 @@ class OutlierController extends Controller
             $existing = OutlierVideo::with('channel')
                 ->where('platform', $platform)->where('youtube_video_id', $videoId)->first();
             if ($existing) {
+                // Re-pasting a link whose breakdown failed is a retry: requeue it so the
+                // page polls a fresh run instead of showing the stale error.
+                $failed = OutlierBreakdown::where('platform', $platform)->where('video_id', $videoId)
+                    ->where('status', OutlierBreakdown::STATUS_FAILED)->first();
+                if ($failed) {
+                    $failed->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
+                    GenerateOutlierBreakdownJob::dispatch($platform, $videoId);
+                }
+
                 return response()->json(['data' => $existing, 'queued' => false, 'video_id' => $videoId, 'platform' => $platform]);
             }
 

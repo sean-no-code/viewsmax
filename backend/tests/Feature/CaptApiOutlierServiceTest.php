@@ -343,6 +343,30 @@ class CaptApiOutlierServiceTest extends TestCase
         \Illuminate\Support\Facades\Queue::assertNothingPushed();
     }
 
+    public function test_fetch_endpoint_requeues_a_failed_breakdown_for_an_existing_video(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->fakeTiktok();
+        app(CaptApiOutlierService::class)->fetchAndStore('tiktok', 'https://www.tiktok.com/@khaby.lame/video/7646812028874673439');
+        $breakdown = \App\Models\OutlierBreakdown::create([
+            'platform' => 'tiktok', 'video_id' => '7646812028874673439',
+            'status' => \App\Models\OutlierBreakdown::STATUS_FAILED, 'error' => "That's a TikTok profile, not a video.",
+        ]);
+
+        // Re-pasting the link is a retry: the stale failure is reset and a fresh job queued.
+        $this->withHeaders($this->authHeaders())
+            ->postJson('/api/outliers/fetch', [
+                'platform' => 'tiktok',
+                'url' => 'https://www.tiktok.com/@khaby.lame/video/7646812028874673439',
+            ])
+            ->assertOk()
+            ->assertJsonPath('queued', false);
+
+        $this->assertSame(\App\Models\OutlierBreakdown::STATUS_PENDING, $breakdown->fresh()->status);
+        $this->assertNull($breakdown->fresh()->error);
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\GenerateOutlierBreakdownJob::class, 1);
+    }
+
     public function test_ingest_job_stores_video_and_chains_breakdown(): void
     {
         \Illuminate\Support\Facades\Queue::fake();
