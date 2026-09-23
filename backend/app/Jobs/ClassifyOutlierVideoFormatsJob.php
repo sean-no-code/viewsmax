@@ -28,10 +28,19 @@ class ClassifyOutlierVideoFormatsJob implements ShouldQueue
     /** Seconds to wait before retrying the remainder after a rate-limit signal. */
     public const RETRY_AFTER = 300;
 
-    /** @param string[] $videoIds YouTube video ids */
-    public function __construct(public array $videoIds)
-    {
-    }
+    /**
+     * How many times a batch may re-dispatch itself after rate-limit signals.
+     * Without a cap, a permanent condition (a bot wall the probe can't clear)
+     * spawns a job chain that re-runs every RETRY_AFTER seconds forever. Rows
+     * left unclassified are picked up by the daily outliers:classify-formats.
+     */
+    public const MAX_RETRIES = 3;
+
+    /**
+     * @param  string[]  $videoIds  YouTube video ids
+     * @param  int  $attempt  1 for the initial dispatch; incremented on each requeue
+     */
+    public function __construct(public array $videoIds, public int $attempt = 1) {}
 
     public function handle(VideoFormatClassifier $classifier): void
     {
@@ -49,10 +58,17 @@ class ClassifyOutlierVideoFormatsJob implements ShouldQueue
                 $result = $classifier->ensureClassified($video);
             } catch (ProbeRateLimited $e) {
                 $remaining = $videos->slice($i)->pluck('youtube_video_id')->values()->all();
-                Log::warning('[shorts-probe] rate limited — retrying the rest later', [
-                    'remaining' => count($remaining), 'error' => $e->getMessage(),
-                ]);
-                static::dispatch($remaining)->delay(now()->addSeconds(self::RETRY_AFTER));
+                $context = ['remaining' => count($remaining), 'attempt' => $this->attempt, 'error' => $e->getMessage()];
+
+                if ($this->attempt >= self::MAX_RETRIES) {
+                    Log::warning('[shorts-probe] rate limited — giving up on this batch; the daily backfill will retry', $context);
+
+                    return;
+                }
+
+                Log::warning('[shorts-probe] rate limited — retrying the rest later', $context);
+                static::dispatch($remaining, $this->attempt + 1)
+                    ->delay(now()->addSeconds(self::RETRY_AFTER * $this->attempt));
 
                 return;
             }

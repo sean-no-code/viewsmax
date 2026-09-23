@@ -74,9 +74,18 @@ class VideoFormatClassifierTest extends TestCase
         $this->assertNull($this->classifier()->classify('youtube', 'slow'));
     }
 
-    public function test_redirect_to_consent_page_raises_rate_limited(): void
+    public function test_redirect_to_consent_page_is_unknown_not_rate_limited(): void
     {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 302, ['Location' => 'https://consent.youtube.com/m?continue=...'])]);
+        // UK/EU egress gets this deterministically without a consent cookie; it must
+        // not be treated as throttling (that requeued the batch every 5 min forever).
+        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 302, ['Location' => 'https://consent.youtube.com/m?continue=https%3A%2F%2Fwww.youtube.com%2Fshorts%2Fabc123&gl=GB'])]);
+
+        $this->assertNull($this->classifier()->classify('youtube', 'abc123'));
+    }
+
+    public function test_redirect_to_sorry_page_raises_rate_limited(): void
+    {
+        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 302, ['Location' => 'https://www.google.com/sorry/index?continue=...'])]);
 
         $this->expectException(ProbeRateLimited::class);
         $this->classifier()->classify('youtube', 'abc123');
@@ -97,6 +106,15 @@ class VideoFormatClassifierTest extends TestCase
         $this->classifier()->classify('youtube', 'abc123');
 
         Http::assertSent(fn ($r) => $r->method() === 'HEAD' && str_contains($r->url(), 'youtube.com/shorts/abc123'));
+    }
+
+    public function test_probe_sends_pre_accepted_consent_cookies(): void
+    {
+        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 200)]);
+
+        $this->classifier()->classify('youtube', 'abc123');
+
+        Http::assertSent(fn ($r) => str_contains((string) $r->header('Cookie')[0], 'SOCS=CAI'));
     }
 
     public function test_ensure_classified_skips_rows_already_classified(): void

@@ -23,6 +23,9 @@ class VideoFormatClassifier
 
     private const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
+    /** Anonymous "consent accepted" cookies YouTube honours (the same ones yt-dlp sends). */
+    public const CONSENT_COOKIE = 'SOCS=CAI; CONSENT=YES+cb';
+
     /** true = Short, false = long-form, null = unknown (leave for the duration fallback). */
     public function classify(string $platform, string $videoId): ?bool
     {
@@ -47,7 +50,13 @@ class VideoFormatClassifier
             $response = Http::withoutRedirecting()
                 ->timeout(5)
                 ->connectTimeout(3)
-                ->withHeaders(['User-Agent' => self::USER_AGENT, 'Accept-Language' => 'en-US,en;q=0.9'])
+                ->withHeaders([
+                    'User-Agent' => self::USER_AGENT,
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                    // Pre-accepted cookie consent: without it, UK/EU egress IPs get
+                    // a deterministic redirect to consent.youtube.com instead of an answer.
+                    'Cookie' => self::CONSENT_COOKIE,
+                ])
                 ->head(sprintf(self::PROBE_URL, $videoId));
         } catch (ConnectionException $e) {
             Log::info('[shorts-probe] connection failed', ['video_id' => $videoId, 'error' => $e->getMessage()]);
@@ -66,7 +75,15 @@ class VideoFormatClassifier
             if (str_contains($location, '/watch')) {
                 return false;
             }
-            // consent.youtube.com / /sorry/ — a bot check, not an answer.
+            // The consent wall is a fixed property of the egress region, not throttling:
+            // retrying never clears it. Record "unknown" (stamps format_checked_at) so
+            // the batch keeps moving and the daily backfill re-probes it later.
+            if (str_contains($location, 'consent.youtube.com')) {
+                Log::warning('[shorts-probe] consent wall despite cookie — recording unknown', ['video_id' => $videoId]);
+
+                return null;
+            }
+            // /sorry/ and other interstitials — a bot check, not an answer.
             throw new ProbeRateLimited("YouTube redirected /shorts/{$videoId} to {$location}");
         }
 
