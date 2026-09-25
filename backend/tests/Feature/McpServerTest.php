@@ -210,6 +210,10 @@ class McpServerTest extends TestCase
         'list_saved_outliers' => [true, false, false],
         'save_outlier' => [false, true, false],
         'remove_saved_outlier' => [false, true, false],
+        // Pulling a creator's recent videos reaches YouTube/TikTok/Instagram
+        // but only adds to ViewsMax's outlier database; checking it is a read.
+        'add_outlier_channel' => [false, false, true],
+        'get_outlier_channel_ingest' => [true, false, false],
     ];
 
     public function test_every_tool_declares_a_title_and_all_three_safety_hints(): void
@@ -580,6 +584,7 @@ class McpServerTest extends TestCase
         // Without "required" in the schema, clients show every input as
         // optional and the AI can call e.g. update_post with no id.
         $expected = [
+            'add_outlier_channel' => ['input'],
             'create_feature_request' => ['description', 'title'],
             'create_offer' => ['offer_url'],
             'create_tracking_link' => ['tracking_event_id'],
@@ -591,6 +596,7 @@ class McpServerTest extends TestCase
             'get_connect_url' => ['platform'],
             'get_offer' => ['id'],
             'get_outlier' => ['platform', 'video_id'],
+            'get_outlier_channel_ingest' => ['ingest_id'],
             'get_outlier_breakdown' => ['platform', 'video_id'],
             'get_post' => ['id'],
             'remove_saved_outlier' => ['id'],
