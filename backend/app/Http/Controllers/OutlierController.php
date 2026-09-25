@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateOutlierBreakdownJob;
 use App\Jobs\IngestOutlierByUrlJob;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierChannel;
@@ -55,8 +56,15 @@ class OutlierController extends Controller
             $query->where('platform', $validated['platform']);
         }
 
-        if (! empty($validated['q'])) {
-            $query->where('channel_name', 'like', '%'.$validated['q'].'%');
+        // Match the display name, the @handle (as typed, "@" optional), or the
+        // platform-native id — an IG/TikTok creator is usually known by handle.
+        $q = ltrim(trim((string) ($validated['q'] ?? '')), '@');
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('channel_name', 'like', "%{$q}%")
+                    ->orWhere('handle', 'like', "%{$q}%")
+                    ->orWhere('youtube_channel_id', 'like', "%{$q}%");
+            });
         }
 
         $channels = $query->orderByDesc('subscriber_count')
@@ -110,6 +118,15 @@ class OutlierController extends Controller
             $existing = OutlierVideo::with('channel')
                 ->where('platform', $platform)->where('youtube_video_id', $videoId)->first();
             if ($existing) {
+                // Re-pasting a link whose breakdown failed is a retry: requeue it so the
+                // page polls a fresh run instead of showing the stale error.
+                $failed = OutlierBreakdown::where('platform', $platform)->where('video_id', $videoId)
+                    ->where('status', OutlierBreakdown::STATUS_FAILED)->first();
+                if ($failed) {
+                    $failed->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
+                    GenerateOutlierBreakdownJob::dispatch($platform, $videoId);
+                }
+
                 return response()->json(['data' => $existing, 'queued' => false, 'video_id' => $videoId, 'platform' => $platform]);
             }
 

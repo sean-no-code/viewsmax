@@ -77,7 +77,6 @@ import { AIModelProcessingProvider } from "./contexts/AIModelProcessingContext";
 import { UserCreditsProvider } from "./contexts/UserCreditsContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProFeatureRoute from "./components/ProFeatureRoute";
-import { MetaPixel } from "./components/MetaPixel";
 import Outliers from "./pages/Outliers";
 import OutliersLibrary from "./pages/OutliersLibrary";
 import OutlierBreakdown from "./pages/OutlierBreakdown";
@@ -101,7 +100,6 @@ const ParamRedirect = ({ base }: { base: string }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <MetaPixel />
       <Toaster />
       <Sonner />
       <BrowserRouter>

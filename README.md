@@ -95,6 +95,14 @@ After editing, apply the change:
 docker compose restart app
 ```
 
+### Analytics and pixels
+
+No tracking is built in. Google Analytics, Tag Manager, Meta Pixel, Microsoft
+Clarity, Rewardful and the ViewsMax tracker each load only when their ID is set
+in `frontend/.env` (see the analytics block in `frontend/.env.example`), and
+only on the hostname named by `VITE_TRACKING_HOSTNAME`. Leave them blank and
+the frontend makes no third-party calls.
+
 ### File storage
 
 Uploads are written to local disk by default, which needs no account.

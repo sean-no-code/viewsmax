@@ -267,7 +267,7 @@ abstract class ViewsMaxTool extends Tool
         return [
             'platform' => $platform,
             'video_id' => $videoId,
-            'url' => GenerateOutlierBreakdownJob::nativeUrl($platform, $videoId, $channel['channel_name'] ?? null),
+            'url' => GenerateOutlierBreakdownJob::nativeUrl($platform, $videoId, $channel['handle'] ?? $channel['channel_name'] ?? null),
             'title' => $video['title'] ?? null,
             'thumbnail_url' => $video['thumbnail_url'] ?? null,
             'views' => $video['views'] ?? null,

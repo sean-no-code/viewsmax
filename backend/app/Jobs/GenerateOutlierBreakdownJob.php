@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
 use App\Services\AnthropicService;
+use App\Services\CaptApiOutlierService;
 use App\Services\CaptApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,7 +32,7 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
         protected string $videoId,
     ) {}
 
-    public function handle(CaptApiService $captApi, AnthropicService $anthropic): void
+    public function handle(CaptApiService $captApi, AnthropicService $anthropic, CaptApiOutlierService $captApiOutliers): void
     {
         $breakdown = OutlierBreakdown::where('platform', $this->platform)
             ->where('video_id', $this->videoId)
@@ -53,7 +54,7 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
                 throw new \RuntimeException('Video not found.');
             }
 
-            $url = self::nativeUrl($this->platform, $this->videoId, $video->channel?->channel_name);
+            $url = $this->videoUrl($video, $captApiOutliers);
             $transcript = $captApi->getTranscript($this->platform, $url)['transcript'];
 
             if (trim((string) $transcript->text) === '') {
@@ -93,11 +94,37 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
         }
     }
 
+    /**
+     * The URL CaptAPI gets for the transcript. TikTok links need the creator's
+     * real @handle in the path — CaptAPI parses it, and a display name ("Tunde
+     * Alao") makes it read the link as a profile. Channels ingested before we
+     * stored handles get one back-filled here via a single video-details call.
+     */
+    private function videoUrl(OutlierVideo $video, CaptApiOutlierService $captApiOutliers): string
+    {
+        $channel = $video->channel;
+
+        if ($this->platform === 'tiktok' && $channel && $channel->handle === null) {
+            try {
+                $captApiOutliers->fetchAndStore('tiktok', self::nativeUrl('tiktok', $this->videoId, $channel->channel_name));
+                $channel->refresh();
+            } catch (\Throwable $e) {
+                Log::info('GenerateOutlierBreakdownJob could not back-fill the TikTok handle', [
+                    'video_id' => $this->videoId, 'channel_id' => $channel->id, 'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return self::nativeUrl($this->platform, $this->videoId, $channel?->handle ?? $channel?->channel_name);
+    }
+
     /** Canonical native watch/permalink URL (mirror of the FE's outlierUrl helper). */
     public static function nativeUrl(string $platform, string $videoId, ?string $handle = null): string
     {
         return match ($platform) {
-            'tiktok' => 'https://www.tiktok.com/@'.ltrim((string) $handle, '@').'/video/'.$videoId,
+            // TikTok handles are [A-Za-z0-9._]; strip anything else so a display
+            // name passed by a legacy caller still yields a parseable video link.
+            'tiktok' => 'https://www.tiktok.com/@'.preg_replace('/[^A-Za-z0-9._]/', '', (string) $handle).'/video/'.$videoId,
             'instagram' => "https://www.instagram.com/p/{$videoId}/",
             default => "https://www.youtube.com/watch?v={$videoId}",
         };

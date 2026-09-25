@@ -9,6 +9,7 @@ use App\Models\OutlierVideo;
 use App\Models\Transcript;
 use App\Models\User;
 use App\Services\AnthropicService;
+use App\Services\CaptApiOutlierService;
 use App\Services\CaptApiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -218,5 +219,107 @@ class OutlierBreakdownTest extends TestCase
         $breakdown->refresh();
         $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
         $this->assertStringContainsString('transcript', strtolower($breakdown->error));
+    }
+
+    // ---- TikTok: transcript URL must carry the creator's @handle ----
+
+    private function makeTiktokVideo(?string $handle, string $displayName = 'Tunde Alao'): OutlierVideo
+    {
+        $channel = OutlierChannel::create([
+            'platform' => 'tiktok',
+            'youtube_channel_id' => '7000000000000000001',
+            'handle' => $handle,
+            'channel_name' => $displayName,
+        ]);
+
+        return OutlierVideo::create([
+            'platform' => 'tiktok',
+            'channel_id' => $channel->id,
+            'youtube_video_id' => '7685768676645113110',
+            'title' => 'How I got my first 10k',
+            'views' => 500000,
+            'duration' => 'PT41S',
+            'published_at' => now()->subDays(3),
+        ]);
+    }
+
+    private function fakeBreakdownAi(): void
+    {
+        $this->mock(AnthropicService::class, function ($mock) {
+            $mock->shouldReceive('generateOutlierBreakdown')->once()->andReturn([
+                'idea' => ['topic' => 't', 'idea_seed' => 's', 'unique_angle' => 'a'],
+                'hook' => [], 'structure' => ['summary' => '', 'beats' => []], 'visual' => [], 'transcript' => [],
+            ]);
+        });
+    }
+
+    public function test_native_url_uses_handle_and_strips_display_name_noise(): void
+    {
+        $this->assertSame(
+            'https://www.tiktok.com/@itstundealao/video/1',
+            GenerateOutlierBreakdownJob::nativeUrl('tiktok', '1', '@itstundealao'),
+        );
+        // A display name with spaces/emoji must never reach CaptAPI as-is — it reads as a profile link.
+        $this->assertSame(
+            'https://www.tiktok.com/@TundeAlao/video/1',
+            GenerateOutlierBreakdownJob::nativeUrl('tiktok', '1', 'Tunde Alao 🔥'),
+        );
+    }
+
+    public function test_tiktok_job_requests_transcript_with_stored_handle(): void
+    {
+        $this->makeTiktokVideo('itstundealao');
+        $breakdown = OutlierBreakdown::create([
+            'platform' => 'tiktok', 'video_id' => '7685768676645113110', 'status' => OutlierBreakdown::STATUS_PENDING,
+        ]);
+        $transcript = Transcript::create([
+            'platform' => 'tiktok', 'source_url' => 'x', 'url_hash' => hash('sha256', 'tt'), 'text' => 'hello', 'segments' => [],
+        ]);
+
+        $this->mock(CaptApiOutlierService::class, fn ($m) => $m->shouldNotReceive('fetchAndStore'));
+        $this->mock(CaptApiService::class, function ($mock) use ($transcript) {
+            $mock->shouldReceive('getTranscript')->once()
+                ->with('tiktok', 'https://www.tiktok.com/@itstundealao/video/7685768676645113110')
+                ->andReturn(['transcript' => $transcript, 'cached' => false]);
+        });
+        $this->fakeBreakdownAi();
+
+        app()->call([new GenerateOutlierBreakdownJob('tiktok', '7685768676645113110'), 'handle']);
+
+        $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->fresh()->status);
+    }
+
+    public function test_tiktok_job_backfills_missing_handle_before_fetching_transcript(): void
+    {
+        // Channel ingested before handles were stored: only the display name is known.
+        $video = $this->makeTiktokVideo(null);
+        $breakdown = OutlierBreakdown::create([
+            'platform' => 'tiktok', 'video_id' => '7685768676645113110', 'status' => OutlierBreakdown::STATUS_PENDING,
+        ]);
+        $transcript = Transcript::create([
+            'platform' => 'tiktok', 'source_url' => 'x', 'url_hash' => hash('sha256', 'tt2'), 'text' => 'hello', 'segments' => [],
+        ]);
+
+        $this->mock(CaptApiOutlierService::class, function ($mock) use ($video) {
+            // One video-details call (with a parseable placeholder handle) stores the real @handle.
+            $mock->shouldReceive('fetchAndStore')->once()
+                ->with('tiktok', 'https://www.tiktok.com/@TundeAlao/video/7685768676645113110')
+                ->andReturnUsing(function () use ($video) {
+                    $video->channel->update(['handle' => 'itstundealao']);
+
+                    return $video;
+                });
+        });
+        $this->mock(CaptApiService::class, function ($mock) use ($transcript) {
+            $mock->shouldReceive('getTranscript')->once()
+                ->with('tiktok', 'https://www.tiktok.com/@itstundealao/video/7685768676645113110')
+                ->andReturn(['transcript' => $transcript, 'cached' => false]);
+        });
+        $this->fakeBreakdownAi();
+
+        app()->call([new GenerateOutlierBreakdownJob('tiktok', '7685768676645113110'), 'handle']);
+
+        $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->fresh()->status);
+        $this->assertSame('itstundealao', $video->channel->fresh()->handle);
     }
 }

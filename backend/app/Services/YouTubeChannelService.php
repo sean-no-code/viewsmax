@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ClassifyOutlierVideoFormatsJob;
 use App\Models\Channel;
 use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
@@ -220,18 +221,126 @@ class YouTubeChannelService
     }
 
     /**
-     * Raw fetch of recent videos for a channel (used for average calculation).
-     * Returns Collection of videos with 'id', 'title', 'views', 'duration'.
-     * Does NOT save to DB.
+     * Resolve what a user typed for a channel into a YouTube channel id, or null
+     * when YouTube doesn't know it. $kind is from OutlierProfileInput::parse():
+     * 'channel_id' needs no lookup, 'handle' uses forHandle, 'username' the
+     * legacy forUsername filter.
      */
-    public function fetchRecentChannelVideosFromApi(string $youtubeChannelId, ?string $excludeVideoId = null, ?bool $includeShorts = true): Collection
+    public function resolveChannelId(string $value, string $kind = 'handle'): ?string
+    {
+        if ($kind === 'channel_id') {
+            return $value;
+        }
+
+        $params = [
+            'part' => 'id',
+            $kind === 'username' ? 'forUsername' : 'forHandle' => $kind === 'username' ? $value : '@' . ltrim($value, '@'),
+            'key' => $this->apiKey,
+        ];
+
+        $this->logYouTubeRequest('/channels', $params);
+        $response = Http::get(self::API_BASE_URL . '/channels', $params);
+
+        // An unknown handle is an empty item list, not a 4xx.
+        return $response->successful() ? ($response->json('items.0.id') ?: null) : null;
+    }
+
+    /**
+     * Pull a creator's recent uploads into the outlier DB, scored against their
+     * median, and queue Shorts classification for the new rows. Every video is
+     * kept (the browse gate is skipped when scoped to a channel), so a creator
+     * gets a real baseline from the first add.
+     *
+     * @return array{channel: OutlierChannel, video_ids: string[]}
+     */
+    public function ingestChannelRecentVideos(string $youtubeChannelId, int $limit = 30): array
+    {
+        $channelData = $this->fetchChannelDetailsFromApi($youtubeChannelId);
+        if (! $channelData) {
+            throw new \InvalidArgumentException('That YouTube channel could not be found.');
+        }
+
+        $items = $this->fetchRecentChannelVideoItems($youtubeChannelId, $limit);
+        if ($items->isEmpty()) {
+            throw new \RuntimeException('That channel has no public videos to import.');
+        }
+
+        $views = $items->map(fn ($item) => (int) ($item['statistics']['viewCount'] ?? 0));
+        $median = (int) $views->median();
+
+        $channel = OutlierChannel::updateOrCreate(
+            ['youtube_channel_id' => $youtubeChannelId],
+            $this->channelAttributesFrom($channelData) + [
+                'platform' => 'youtube',
+                'average_views' => $median,
+                'average_calculated_at' => now(),
+                'average_video_ids' => $items->pluck('id')->all(),
+            ],
+        );
+
+        $ids = [];
+        foreach ($items as $item) {
+            $videoDbData = $this->mapVideoDataToDatabase($item);
+            $videoDbData['views'] = (int) ($videoDbData['view_count'] ?? 0);
+            // No is_short here on purpose: the /shorts/ probe job is authoritative.
+            $video = $this->saveOutlierVideo($videoDbData, $channel, $this->computeOutlierScore($videoDbData['views'], (float) $median), true);
+            if ($video) {
+                $ids[] = $video->youtube_video_id;
+            }
+        }
+
+        if ($median > 0) {
+            OutlierVideo::where('platform', 'youtube')->where('channel_id', $channel->id)
+                ->whereNotIn('youtube_video_id', $ids)
+                ->get()
+                ->each(fn (OutlierVideo $v) => $v->forceFill([
+                    'outlier_score' => $this->computeOutlierScore((int) $v->views, (float) $median),
+                ])->save());
+        }
+
+        if ($ids !== []) {
+            ClassifyOutlierVideoFormatsJob::dispatch($ids);
+        }
+
+        return ['channel' => $channel->fresh(), 'video_ids' => $ids];
+    }
+
+    /**
+     * OutlierChannel columns derived from a /channels API item. Country and
+     * handle are only set when YouTube sends them — a refresh without them must
+     * not null out values we already have (e.g. from the country backfill).
+     */
+    public function channelAttributesFrom(array $channelData): array
+    {
+        $attributes = [
+            'channel_name'      => $channelData['snippet']['title'] ?? null,
+            'profile_image_url' => $channelData['snippet']['thumbnails']['high']['url']
+                ?? $channelData['snippet']['thumbnails']['default']['url'] ?? null,
+            'subscriber_count'  => (int)($channelData['statistics']['subscriberCount'] ?? 0),
+            'video_count'       => (int)($channelData['statistics']['videoCount'] ?? 0),
+        ];
+        if (! empty($channelData['snippet']['country'])) {
+            $attributes['country'] = strtoupper($channelData['snippet']['country']);
+        }
+        if ($handle = OutlierChannel::normalizeHandle($channelData['snippet']['customUrl'] ?? null)) {
+            $attributes['handle'] = $handle;
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Raw /videos API items for a channel's most recent uploads (newest first),
+     * up to $limit. Walks the uploads playlist page by page and hydrates each
+     * page with statistics + contentDetails + snippet. Does NOT save to DB.
+     */
+    public function fetchRecentChannelVideoItems(string $youtubeChannelId, int $limit, ?string $excludeVideoId = null): Collection
     {
         $uploadsPlaylistId = 'UU' . substr($youtubeChannelId, 2);
-        $validVideos = collect();
+        $items = collect();
         $nextPageToken = null;
         $pagesFetched = 0;
         $maxPages = config('services.youtube.max_pages', 5);
-        $sampleSize = $this->sampleSize;
 
         do {
             $pagesFetched++;
@@ -253,53 +362,69 @@ class YouTubeChannelService
             }
 
             $nextPageToken = $playlistResponse->json('nextPageToken');
-            $items = collect($playlistResponse->json('items') ?? [])
-                ->reject(fn($item) => $item['contentDetails']['videoId'] === $excludeVideoId);
+            $videoIds = collect($playlistResponse->json('items') ?? [])
+                ->pluck('contentDetails.videoId')
+                ->filter()
+                ->reject(fn ($id) => $id === $excludeVideoId)
+                ->values();
 
-            if ($items->isEmpty()) {
+            if ($videoIds->isEmpty()) {
                 break;
             }
 
-            $videoIds = $items->pluck('contentDetails.videoId')->toArray();
-
             $statsParams = [
                 'part' => 'statistics,contentDetails,snippet',
-                'id'   => implode(',', $videoIds),
+                'id'   => $videoIds->implode(','),
                 'key'  => $this->apiKey,
             ];
 
             $this->logYouTubeRequest('/videos', $statsParams);
             $statsResponse = Http::get(self::API_BASE_URL . '/videos', $statsParams);
-            $statsItems = collect($statsResponse->json('items') ?? []);
+            $items = $items->concat($statsResponse->json('items') ?? []);
+        } while ($nextPageToken && $pagesFetched < $maxPages && $items->count() < $limit);
 
-            foreach ($statsItems as $item) {
-                // Determine if valid based on shorts logic
-                $durationIso = $item['contentDetails']['duration'] ?? null;
-                $isShort = false;
-                
-                if ($durationIso) {
-                    try {
-                        $interval = new \DateInterval($durationIso);
-                        $seconds = ($interval->d * 86400) + ($interval->h * 3600) + ($interval->i * 60) + $interval->s;
-                        if ($seconds <= 180) $isShort = true;
-                    } catch (\Exception $e) { $isShort = true; }
-                } else {
-                    $isShort = true;
-                }
+        return $items->take($limit)->values();
+    }
 
-                if (!$includeShorts && $isShort) continue;
+    /**
+     * Raw fetch of recent videos for a channel (used for average calculation).
+     * Returns Collection of videos with 'id', 'title', 'views', 'duration'.
+     * Does NOT save to DB.
+     */
+    public function fetchRecentChannelVideosFromApi(string $youtubeChannelId, ?string $excludeVideoId = null, ?bool $includeShorts = true): Collection
+    {
+        $validVideos = collect();
 
-                $validVideos->push([
-                    'id' => $item['id'],
-                    'title' => $item['snippet']['title'] ?? 'Unknown Title',
-                    'views' => (int) ($item['statistics']['viewCount'] ?? 0),
-                    'duration' => $durationIso ?? 'PT0S',
-                ]);
+        // Shorts may be filtered out below, so over-fetch when they're excluded
+        // and stop once the sample is full.
+        $items = $this->fetchRecentChannelVideoItems($youtubeChannelId, $includeShorts ? $this->sampleSize : $this->sampleSize * 2, $excludeVideoId);
 
-                if ($validVideos->count() >= $sampleSize) break 2;
+        foreach ($items as $item) {
+            // Determine if valid based on shorts logic
+            $durationIso = $item['contentDetails']['duration'] ?? null;
+            $isShort = false;
+
+            if ($durationIso) {
+                try {
+                    $interval = new \DateInterval($durationIso);
+                    $seconds = ($interval->d * 86400) + ($interval->h * 3600) + ($interval->i * 60) + $interval->s;
+                    if ($seconds <= 180) $isShort = true;
+                } catch (\Exception $e) { $isShort = true; }
+            } else {
+                $isShort = true;
             }
 
-        } while ($nextPageToken && $pagesFetched < $maxPages && $validVideos->count() < $sampleSize);
+            if (!$includeShorts && $isShort) continue;
+
+            $validVideos->push([
+                'id' => $item['id'],
+                'title' => $item['snippet']['title'] ?? 'Unknown Title',
+                'views' => (int) ($item['statistics']['viewCount'] ?? 0),
+                'duration' => $durationIso ?? 'PT0S',
+            ]);
+
+            if ($validVideos->count() >= $this->sampleSize) break;
+        }
 
         return $validVideos;
     }
@@ -342,21 +467,7 @@ class YouTubeChannelService
         // Use pre-fetched batch data if available, otherwise fall back to individual API call
         $channelData = $prefetchedChannelData ?? $this->fetchChannelDetailsFromApi($youtubeChannelId);
 
-        $channelAttributes = [];
-        if ($channelData) {
-            $channelAttributes = [
-                'channel_name'      => $channelData['snippet']['title'] ?? null,
-                'profile_image_url' => $channelData['snippet']['thumbnails']['high']['url']
-                    ?? $channelData['snippet']['thumbnails']['default']['url'] ?? null,
-                'subscriber_count'  => (int)($channelData['statistics']['subscriberCount'] ?? 0),
-                'video_count'       => (int)($channelData['statistics']['videoCount'] ?? 0),
-            ];
-            // Only set when YouTube sends one — a refresh without it must not
-            // null out a country we already have (e.g. from the backfill).
-            if (! empty($channelData['snippet']['country'])) {
-                $channelAttributes['country'] = strtoupper($channelData['snippet']['country']);
-            }
-        }
+        $channelAttributes = $channelData ? $this->channelAttributesFrom($channelData) : [];
 
         // Fetch Recent Videos for Average Calculation
         Log::info("Fetching channel median for {$youtubeChannelId} from Public API");

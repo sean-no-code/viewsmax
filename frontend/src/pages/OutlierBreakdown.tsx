@@ -379,7 +379,7 @@ export default function OutlierBreakdown() {
                         <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--ink-on-paper-1)' }}>{video?.title || ''}</span>
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-on-paper-3)' }}>{handle}{durationLabel ? ` · ${durationLabel}` : ''}</span>
                         <a
-                            href={outlierUrl(platform, videoId, handle)}
+                            href={outlierUrl(platform, videoId, video?.channel?.handle || handle)}
                             target="_blank" rel="noopener noreferrer"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 12.5, fontWeight: 700, color: 'var(--vm-red)', textDecoration: 'none' }}
                         >

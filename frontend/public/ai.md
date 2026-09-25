@@ -90,7 +90,7 @@ curl -H "Authorization: Bearer vmx_YOUR_KEY" https://api.viewsmax.com/api/posts
 Responses use a `{ success, message, data }` envelope. Full reference:
 <https://api.viewsmax.com/docs>.
 
-## What agents can do (28 MCP tools)
+## What agents can do (30 MCP tools)
 
 `list_connected_accounts`, `list_brands`, `upload_media`, `create_post`,
 `list_posts`, `get_post`, `update_post`, `delete_post`, `list_offers`,
@@ -99,7 +99,8 @@ Responses use a `{ success, message, data }` envelope. Full reference:
 `disconnect_account`, `get_connect_url`, `create_feature_request`,
 `list_outliers`, `search_outliers`, `get_outlier`, `fetch_outlier`,
 `get_outlier_breakdown`, `generate_outlier_breakdown`, `list_saved_outliers`,
-`save_outlier`, `remove_saved_outlier`.
+`save_outlier`, `remove_saved_outlier`, `add_outlier_channel`,
+`get_outlier_channel_ingest`.
 
 Typical posting flow: `list_connected_accounts` → `upload_media` (TikTok /
 Instagram / YouTube need a video or image) → `create_post` (status `draft`,
@@ -121,6 +122,13 @@ a new topic, then `fetch_outlier` for a specific URL →
 `generate_outlier_breakdown` → poll `get_outlier_breakdown` until `completed`
 → `save_outlier` with tags to keep it in the user's library.
 
+Researching a specific creator: `add_outlier_channel` with their profile URL
+or @handle (YouTube, TikTok, Instagram) pulls their ~30 most recent videos in,
+scored against that channel's own median, and follows the channel as a
+competitor → poll `get_outlier_channel_ingest` until `done` → `list_outliers`
+with `channels: [channel.id]` (add `duration_type: shorts` for TikTok /
+Instagram). Video links belong to `fetch_outlier`, not this tool.
+
 ## Security & limits
 
 - Read-only credentials cannot write, anywhere.
@@ -128,5 +136,6 @@ a new topic, then `fetch_outlier` for a specific URL →
   Assistant Access → activity).
 - Rate limits: 120 MCP requests/min per token; 180 `create_post`/hour;
   40 `upload_media`/hour; 30 `search_outliers`/hour; 60 `fetch_outlier`/hour;
-  30 `generate_outlier_breakdown`/hour. HTTP 429 = back off.
+  30 `generate_outlier_breakdown`/hour; 10 `add_outlier_channel`/hour.
+  HTTP 429 = back off.
 - Rotate the API key any time to revoke access instantly.

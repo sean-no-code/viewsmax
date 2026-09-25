@@ -53,6 +53,10 @@ return [
         // generate_outlier_breakdown tool, per token (transcript + LLM call).
         'generate_breakdown_per_hour' => env('MCP_GENERATE_BREAKDOWN_PER_HOUR', 30),
 
+        // add_outlier_channel tool AND the matching REST endpoint, per user
+        // (each add pulls ~30 videos from YouTube or CaptAPI).
+        'add_outlier_channel_per_hour' => env('MCP_ADD_OUTLIER_CHANNEL_PER_HOUR', 10),
+
         // Failed auth attempts on /mcp, per IP (key brute-force protection).
         'failed_auth_per_minute' => env('MCP_FAILED_AUTH_PER_MINUTE', 20),
 

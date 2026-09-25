@@ -151,7 +151,21 @@ class OutlierSearchIngestTest extends TestCase
         $this->assertTrue($first->fresh()->is_short);
         $this->assertNull($second->fresh()->is_short);
         $this->assertNull($third->fresh()->is_short);
-        // The rest is retried later rather than hammering YouTube now.
-        Queue::assertPushed(ClassifyOutlierVideoFormatsJob::class, fn ($job) => $job->videoIds === ['vid2', 'vid3']);
+        // The rest is retried later rather than hammering YouTube now — as attempt 2 of a capped chain.
+        Queue::assertPushed(ClassifyOutlierVideoFormatsJob::class, fn ($job) => $job->videoIds === ['vid2', 'vid3'] && $job->attempt === 2);
+    }
+
+    public function test_classify_job_stops_requeueing_after_max_retries(): void
+    {
+        Queue::fake();
+        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 429)]);
+        $video = $this->makeYoutubeVideo('vid1');
+
+        // A permanent bot wall must not spawn an immortal chain: the last allowed
+        // attempt logs and stops, leaving the rows for the daily backfill.
+        app()->call([new ClassifyOutlierVideoFormatsJob(['vid1'], ClassifyOutlierVideoFormatsJob::MAX_RETRIES), 'handle']);
+
+        $this->assertNull($video->fresh()->is_short);
+        Queue::assertNothingPushed();
     }
 }

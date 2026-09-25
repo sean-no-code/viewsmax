@@ -17,3 +17,6 @@ Thumbs.db
 
 tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
+
+viewsmax-plugin/
+tasks/
