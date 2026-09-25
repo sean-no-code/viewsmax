@@ -32,7 +32,8 @@ class ListSavedOutliers extends ViewsMaxTool
     {
         return 'The user\'s saved-outliers library (videos they bookmarked with save_outlier), '
             . 'newest first, with tags and the video snapshot taken when saved. Filter by a '
-            . 'title/channel query, tag names, platforms, or creator name.';
+            . 'title/channel query, tag names, platforms, or creator name. Returns one page at '
+            . 'a time (' . self::PAGE_SIZE . ' by default); when has_more is true, ask for the next page.';
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
@@ -41,7 +42,9 @@ class ListSavedOutliers extends ViewsMaxTool
             ->string('q')->description('Matches saved title or channel name.')->optional()
             ->raw('tags', ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Only items carrying any of these tag names.'])->optional()
             ->raw('platforms', ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'youtube, tiktok, instagram.'])->optional()
-            ->string('creator')->description('Channel/creator name filter.')->optional();
+            ->string('creator')->description('Channel/creator name filter.')->optional()
+            ->integer('limit')->description('Saved items per page (1-' . self::MAX_PAGE_SIZE . ', default ' . self::PAGE_SIZE . ').')->optional()
+            ->integer('page')->description('Page number, starting at 1. Check has_more in the reply for further pages.')->optional();
     }
 
     public function handle(array $arguments): ToolResult
@@ -53,14 +56,13 @@ class ListSavedOutliers extends ViewsMaxTool
             'platforms' => 'nullable|array',
             'platforms.*' => 'string|in:youtube,tiktok,instagram',
             'creator' => 'nullable|string|max:200',
+            ...self::pageRules(),
         ]);
 
         return $this->callController(
             fn (Request $request) => app(SavedOutlierController::class)->index($request),
-            array_filter($validated, fn ($v) => $v !== null),
-            fn (array $data) => [
-                'saved' => array_map(fn ($row) => $this->serializeSaved((array) $row), $data['data'] ?? []),
-            ]
+            array_filter(array_diff_key($validated, self::pageRules()), fn ($v) => $v !== null),
+            fn (array $data) => self::pageOf($data['data'] ?? [], $validated, 'saved', fn ($row) => $this->serializeSaved((array) $row))
         );
     }
 

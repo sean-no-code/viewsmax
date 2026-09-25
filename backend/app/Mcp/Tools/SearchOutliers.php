@@ -29,8 +29,9 @@ class SearchOutliers extends ViewsMaxTool
             . 'matching a keyword/topic. Returns immediately with status "queued"; results '
             . 'land in the shared outlier database over the next minute or two — poll '
             . 'list_outliers with the same `query` until its status is "done". Use '
-            . 'exact_match to require the whole phrase. TikTok and Instagram videos are '
-            . 'added one URL at a time with fetch_outlier instead.';
+            . 'exact_match to require the whole phrase. This search covers YouTube only: '
+            . 'for TikTok and Instagram, add a single video by its link with fetch_outlier, '
+            . "or add a creator's channel with add_outlier_channel to pull in their recent videos.";
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema

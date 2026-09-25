@@ -117,6 +117,14 @@ class McpOfferConnectionToolsTest extends TestCase
         $this->assertCount(4, $this->toolJson($this->callTool($key, 'list_offers'))['data']);
         $this->assertCount(2, $this->toolJson($this->callTool($key, 'list_offers', ['limit' => 2]))['data']);
         $this->assertToolError($this->callTool($key, 'list_offers', ['limit' => 500]));
+
+        // A capped list has to say there is more, or the AI reports the first
+        // page as everything the user has.
+        $first = $this->toolJson($this->callTool($key, 'list_offers', ['limit' => 3]));
+        $this->assertSame([1, 4, true], [$first['page'], $first['total'], $first['has_more']]);
+        $second = $this->toolJson($this->callTool($key, 'list_offers', ['limit' => 3, 'page' => 2]));
+        $this->assertCount(1, $second['data']);
+        $this->assertFalse($second['has_more']);
     }
 
     public function test_plan_limit_error_explains_the_limit_without_promoting_an_upgrade(): void

@@ -149,6 +149,41 @@ abstract class ViewsMaxTool extends Tool
      * built the same way the web app builds it (TrackingEventForm) so clicks
      * are attributed. The API only returns the parameter id.
      */
+    /** Page size for list tools, matching the common MCP pattern (Notion, GitHub). */
+    protected const PAGE_SIZE = 25;
+
+    protected const MAX_PAGE_SIZE = 100;
+
+    /** Validation rules for a list tool's `limit` and `page` inputs. */
+    protected static function pageRules(): array
+    {
+        return [
+            'limit' => 'nullable|integer|min:1|max:' . self::MAX_PAGE_SIZE,
+            'page' => 'nullable|integer|min:1',
+        ];
+    }
+
+    /**
+     * One page of a list, plus how many there are in total and whether more
+     * pages follow. Anthropic asks servers to be frugal with tokens, and a
+     * capped list without "has_more" lets the AI report the first page as
+     * everything the user has.
+     */
+    protected static function pageOf(iterable $items, array $validated, string $key, ?callable $map = null): array
+    {
+        $all = collect($items)->values();
+        $limit = (int) ($validated['limit'] ?? self::PAGE_SIZE);
+        $page = (int) ($validated['page'] ?? 1);
+        $slice = $all->slice(($page - 1) * $limit, $limit)->values();
+
+        return [
+            $key => ($map ? $slice->map($map) : $slice)->all(),
+            'page' => $page,
+            'total' => $all->count(),
+            'has_more' => $all->count() > $page * $limit,
+        ];
+    }
+
     protected static function trackedUrl(string $offerUrl, string $parameterId): string
     {
         return $offerUrl . (str_contains($offerUrl, '?') ? '&' : '?') . 'trk=' . $parameterId;

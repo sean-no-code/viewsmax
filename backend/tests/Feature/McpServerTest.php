@@ -707,6 +707,13 @@ class McpServerTest extends TestCase
 
         $data = $this->toolJson($this->callTool($key, 'list_posts', ['limit' => 2]));
         $this->assertCount(2, $data['posts']);
+        // The reply says there is more, so the AI doesn't report two posts as
+        // all the user has, and the next page returns the rest.
+        $this->assertSame([1, 3, true], [$data['page'], $data['total'], $data['has_more']]);
+
+        $data = $this->toolJson($this->callTool($key, 'list_posts', ['limit' => 2, 'page' => 2]));
+        $this->assertCount(1, $data['posts']);
+        $this->assertFalse($data['has_more']);
 
         $data = $this->toolJson($this->callTool($key, 'list_posts', ['status' => 'posted']));
         $this->assertCount(0, $data['posts']);

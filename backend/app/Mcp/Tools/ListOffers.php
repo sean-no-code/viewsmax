@@ -18,10 +18,6 @@ use Laravel\Mcp\Server\Tools\ToolResult;
 #[IsOpenWorld(false)]
 class ListOffers extends ViewsMaxTool
 {
-    private const DEFAULT_LIMIT = 25;
-
-    private const MAX_LIMIT = 100;
-
     protected function requiresWrite(): bool
     {
         return false;
@@ -36,7 +32,8 @@ class ListOffers extends ViewsMaxTool
     {
         return 'List the user\'s offers (tracked promotions) with their tracking links, '
             . 'goals, and per-offer click/conversion stats. Optional from/to date filter. '
-            . 'Returns at most `limit` offers (default ' . self::DEFAULT_LIMIT . ').';
+            . 'Returns one page at a time (' . self::PAGE_SIZE . ' by default); when has_more is true, '
+            . 'ask for the next page.';
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
@@ -44,7 +41,8 @@ class ListOffers extends ViewsMaxTool
         return $schema
             ->string('from')->description('Earliest created_at (ISO-8601 date).')->optional()
             ->string('to')->description('Latest created_at (ISO-8601 date).')->optional()
-            ->integer('limit')->description('Max offers to return (1-' . self::MAX_LIMIT . ', default ' . self::DEFAULT_LIMIT . ').')->optional();
+            ->integer('limit')->description('Offers per page (1-' . self::MAX_PAGE_SIZE . ', default ' . self::PAGE_SIZE . ').')->optional()
+            ->integer('page')->description('Page number, starting at 1. Check has_more in the reply for further pages.')->optional();
     }
 
     public function handle(array $arguments): ToolResult
@@ -52,23 +50,22 @@ class ListOffers extends ViewsMaxTool
         $validated = Validator::validate($arguments, [
             'from' => 'nullable|date',
             'to' => 'nullable|date',
-            'limit' => 'nullable|integer|min:1|max:' . self::MAX_LIMIT,
+            ...self::pageRules(),
         ]);
 
-        $limit = $validated['limit'] ?? self::DEFAULT_LIMIT;
-
         // The controller has no limit concept (the web app lists everything),
-        // so trim afterwards to keep tool responses small.
+        // so page afterwards to keep tool responses small. Offers arrive as
+        // models; decode them the way the response would serialize them
+        // before adding each link's URL.
         return $this->callController(
             fn ($request) => app(TrackingEventController::class)->index($request),
             array_intersect_key($validated, array_flip(['from', 'to'])),
-            fn (array $data) => ['data' => collect($data['data'] ?? [])
-                ->take($limit)
-                // Offers arrive as models; decode them the way the response
-                // would serialize them before adding each link's URL.
-                ->map(fn ($offer) => self::withTrackedUrls(json_decode(json_encode($offer), true)))
-                ->values()
-                ->all()]
+            fn (array $data) => self::pageOf(
+                $data['data'] ?? [],
+                $validated,
+                'data',
+                fn ($offer) => self::withTrackedUrls(json_decode(json_encode($offer), true))
+            )
         );
     }
 }
