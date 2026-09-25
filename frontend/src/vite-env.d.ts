@@ -5,6 +5,15 @@ interface ImportMetaEnv {
   readonly VITE_YOUTUBE_API_KEY: string
   readonly VITE_PAYPAL_CLIENT_ID: string
   readonly VITE_PAYPAL_PLAN_ID: string
+  readonly VITE_API_BASE_URL?: string
+  // Analytics / tracking — all optional, see src/lib/tracking.ts
+  readonly VITE_TRACKING_HOSTNAME?: string
+  readonly VITE_META_PIXEL_ID?: string
+  readonly VITE_GTM_ID?: string
+  readonly VITE_GA_MEASUREMENT_ID?: string
+  readonly VITE_CLARITY_ID?: string
+  readonly VITE_REWARDFUL_ID?: string
+  readonly VITE_VIEWSMAX_TRACKER_USER?: string
 }
 
 interface ImportMeta {

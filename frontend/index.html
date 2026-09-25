@@ -6,102 +6,9 @@
        (browsers stop sniffing after that), so it stays above every script. -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Tracking gate: production domain only, and never for admin users.
-       Mirrored by src/lib/tracking.ts — keep the two in sync. -->
-  <script>
-    window.__vmxTrackingAllowed = (function () {
-      if (window.location.hostname !== 'viewsmax.com') return false;
-      try {
-        var s = JSON.parse(localStorage.getItem('auth_session') || 'null');
-        if (s && s.user && s.user.is_admin === true) return false;
-      } catch (e) { }
-      return true;
-    })();
-  </script>
-
-  <!-- Meta Pixel Code -->
-  <script>
-    if (window.__vmxTrackingAllowed) {
-      !function (f, b, e, v, n, t, s) {
-        if (f.fbq) return; n = f.fbq = function () {
-          n.callMethod ?
-          n.callMethod.apply(n, arguments) : n.queue.push(arguments)
-        };
-        if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
-        n.queue = []; t = b.createElement(e); t.async = !0;
-        t.src = v; s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s)
-      }(window, document, 'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '913180045201624');
-      fbq('track', 'PageView');
-    }
-  </script>
-  <!-- End Meta Pixel Code -->
-  <!-- Google Tag Manager -->
-  <script>
-    if (window.__vmxTrackingAllowed) {
-      (function (w, d, s, l, i) {
-        w[l] = w[l] || []; w[l].push({
-          'gtm.start':
-            new Date().getTime(), event: 'gtm.js'
-        }); var f = d.getElementsByTagName(s)[0],
-          j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
-            'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
-      })(window, document, 'script', 'dataLayer', 'GTM-P6XJZMLH');
-    }
-  </script>
-  <!-- End Google Tag Manager -->
-
-  <!-- Google tag (gtag.js) -->
-  <script>
-    if (window.__vmxTrackingAllowed) {
-      var script = document.createElement('script');
-      script.async = true;
-      script.src = 'https://www.googletagmanager.com/gtag/js?id=G-4PSTL2CRK5';
-      document.head.appendChild(script);
-
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      gtag('js', new Date());
-      gtag('config', 'G-4PSTL2CRK5');
-    }
-  </script>
-
-  <!-- Microsoft Clarity -->
-  <script type="text/javascript">
-    if (window.__vmxTrackingAllowed) {
-      (function (c, l, a, r, i, t, y) {
-        c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
-        t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
-        y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-      })(window, document, "clarity", "script", "ugl62povwd");
-    }
-  </script>
-
-  <!-- Rewardful (affiliate tracking) -->
-  <script>(function (w, r) { w._rwq = r; w[r] = w[r] || function () { (w[r].q = w[r].q || []).push(arguments) } })(window, 'rewardful');</script>
-  <script>
-    if (window.__vmxTrackingAllowed) {
-      var rw = document.createElement('script');
-      rw.async = true;
-      rw.src = 'https://r.wdfl.co/rw.js';
-      rw.setAttribute('data-rewardful', 'c70e5d');
-      document.head.appendChild(rw);
-    }
-  </script>
-
-  <!-- ViewsMax Universal Tracking -->
-  <meta name="viewsmax-user" content="cefa1539-2c9e-4280-ac4f-b00edd2d6652">
-  <script>
-    if (window.__vmxTrackingAllowed) {
-      var vmx = document.createElement('script');
-      vmx.src = 'https://api.viewsmax.com/tracker.js';
-      vmx.defer = true;
-      document.head.appendChild(vmx);
-    }
-  </script>
-  <!-- End ViewsMax -->
+  <!-- Analytics / pixels are NOT inlined here. They load from src/lib/tracking.ts,
+       driven by VITE_* env vars (see .env.example), and only on the configured
+       production hostname — so this open-source tree ships with no tracking IDs. -->
 
   <title>ViewsMax — Generate More Leads From Your Content</title>
   <meta name="description" content="ViewsMax helps creators and marketers generate more leads from their content" />
@@ -165,17 +72,6 @@
 </head>
 
 <body>
-  <!-- Meta Pixel noscript fallback lives in <body>: <img> is not valid inside <head>. -->
-  <noscript><img height="1" width="1" style="display:none"
-      src="https://www.facebook.com/tr?id=913180045201624&ev=PageView&noscript=1" /></noscript>
-  <!-- Google Tag Manager (noscript) -->
-  <script>
-    if (window.__vmxTrackingAllowed) {
-      document.write('<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-P6XJZMLH" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>');
-    }
-  </script>
-  <!-- End Google Tag Manager (noscript) -->
-
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
