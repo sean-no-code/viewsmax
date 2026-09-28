@@ -123,6 +123,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.auth' => \App\Http\Middleware\ApiAuth::class,
             'mcp.auth' => \App\Http\Middleware\McpAuth::class,
             'mcp.audit' => \App\Http\Middleware\McpAuditLog::class,
+            'mcp.notifications' => \App\Http\Middleware\McpAcceptNotifications::class,
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
             'restrict.free' => \App\Http\Middleware\RestrictFreePlan::class,
         ]);
@@ -130,8 +131,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Dynamic Client Registration (RFC 7591) is a plain JSON API call made
         // directly by an OAuth client (e.g. Claude), not a browser form
         // submission — it has no CSRF token and shouldn't need one. It's
-        // registered via Mcp::oauthRoutes() in routes/web.php so it inherits
-        // the 'web' group's CSRF middleware unless excluded here.
+        // registered in routes/web.php so it inherits the 'web' group's CSRF
+        // middleware unless excluded here.
         $middleware->validateCsrfTokens(except: [
             'oauth/register',
         ]);

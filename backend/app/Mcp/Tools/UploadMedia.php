@@ -6,9 +6,17 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Upload media from a URL')]
+#[IsReadOnly(false)]
+#[IsDestructive(false)]
+#[IsOpenWorld(true)]
 class UploadMedia extends ViewsMaxTool
 {
     /** Mime => [media type, file extension]. */
@@ -30,12 +38,13 @@ class UploadMedia extends ViewsMaxTool
     {
         return 'Download a file from a URL and host it on ViewsMax storage for use in '
             . 'posts. Returns a media entry ({type, url, path}) to pass to create_post. '
-            . 'Supports jpeg/png/webp/gif images and mp4/mov video.';
+            . 'Supports jpeg/png/webp/gif images and mp4/mov video. '
+            . "Each call stores a new copy of the file, so don't repeat a call that already succeeded.";
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
     {
-        return $schema->string('url')->description('Publicly reachable https URL of the image or video.');
+        return $schema->string('url')->description('Publicly reachable https URL of the image or video.')->required();
     }
 
     public function handle(array $arguments): ToolResult

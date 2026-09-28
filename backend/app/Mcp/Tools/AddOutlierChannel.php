@@ -5,9 +5,17 @@ namespace App\Mcp\Tools;
 use App\Http\Controllers\OutlierChannelIngestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title("Add a creator's channel to outlier research")]
+#[IsReadOnly(false)]
+#[IsDestructive(false)]
+#[IsOpenWorld(true)]
 class AddOutlierChannel extends ViewsMaxTool
 {
     public function shouldRegister(): bool

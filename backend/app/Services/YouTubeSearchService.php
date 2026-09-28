@@ -33,7 +33,10 @@ class YouTubeSearchService
     public function __construct(
         private YouTubeChannelService $channelService
     ) {
-        $this->apiKey = config('services.youtube.key');
+        // Cast so a missing YOUTUBE_API_KEY doesn't break construction: this
+        // service is injected into OutlierController, whose database-only
+        // endpoints must work without a key. API calls fail on their own.
+        $this->apiKey = (string) config('services.youtube.key');
     }
 
     /**

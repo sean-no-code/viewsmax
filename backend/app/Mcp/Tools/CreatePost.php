@@ -5,11 +5,21 @@ namespace App\Mcp\Tools;
 use App\Http\Controllers\PostController;
 use App\Models\Post;
 use App\Services\Social\PostPublishDispatcher;
+use App\Services\Social\SocialProviderManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Create or publish a post')]
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(true)]
 class CreatePost extends ViewsMaxTool
 {
     /** Common names AI clients use for platforms we support. */
@@ -33,6 +43,27 @@ class CreatePost extends ViewsMaxTool
         'bluesky' => 300,
     ];
 
+    /**
+     * TikTok's Content Sharing Guidelines: "Users must manually select the
+     * privacy status ... there should be no default value." Clients without
+     * our skills have picked a value on their own, so the tools say it too.
+     */
+    public const TIKTOK_PRIVACY_RULE = 'Ask the user which TikTok privacy_level to use and wait for '
+        . 'their answer; never choose it for them.';
+
+    /**
+     * YouTube API Services policy: clients "must clearly identify any content
+     * visibility settings that will be set". A YouTube upload with no
+     * privacy_status goes out public, so the AI has to ask first.
+     */
+    public const YOUTUBE_PRIVACY_RULE = 'Ask the user which YouTube privacy_status to use (public, '
+        . 'unlisted, or private) and wait for their answer; without it the video is public.';
+
+    public static function privacyRules(): string
+    {
+        return self::TIKTOK_PRIVACY_RULE . ' ' . self::YOUTUBE_PRIVACY_RULE;
+    }
+
     public function name(): string
     {
         return 'create_post';
@@ -40,7 +71,7 @@ class CreatePost extends ViewsMaxTool
 
     public function description(): string
     {
-        $platforms = implode(', ', PostPublishDispatcher::platforms());
+        $platforms = implode(', ', self::availablePlatforms());
 
         return "Compose a social post for one or more platforms ({$platforms}). "
             . 'Target either platforms[] or brand_id (from list_brands, posts to '
@@ -56,14 +87,17 @@ class CreatePost extends ViewsMaxTool
             . 'Publishing/scheduling to TikTok requires options.tiktok.privacy_level '
             . '(one of PUBLIC_TO_EVERYONE, MUTUAL_FOLLOW_FRIENDS, FOLLOWER_OF_CREATOR, '
             . 'SELF_ONLY) — there is no default; branded_content cannot be SELF_ONLY. '
+            . self::privacyRules() . ' '
             . 'Caption character limits: ' . self::formatCharLimits() . '. '
-            . 'Publishing is asynchronous: check per-platform results with get_post.';
+            . 'Publishing is asynchronous: check per-platform results with get_post. '
+            . "Each call creates a new post, so don't repeat a call that already succeeded.";
     }
 
     /** e.g. "tiktok: 2200, youtube: 5000, x: 280, ..." */
     public static function formatCharLimits(): string
     {
         return collect(self::PLATFORM_CHAR_LIMITS)
+            ->only(self::availablePlatforms())
             ->map(fn ($limit, $platform) => "{$platform}: {$limit}")
             ->implode(', ');
     }
@@ -74,7 +108,7 @@ class CreatePost extends ViewsMaxTool
             ->raw('platforms', [
                 'type' => 'array',
                 'items' => ['type' => 'string'],
-                'description' => 'Target platforms: ' . implode(', ', PostPublishDispatcher::platforms())
+                'description' => 'Target platforms: ' . implode(', ', self::availablePlatforms())
                     . '. Omit when brand_id is given.',
             ])
             ->integer('brand_id')->description('Post to every connected account in this brand (see list_brands) instead of platforms.')->optional()
@@ -144,9 +178,13 @@ class CreatePost extends ViewsMaxTool
             : Post::STATUS_DRAFT;
         $media = is_array($arguments['media'] ?? null) ? $arguments['media'] : [];
 
-        $params = array_intersect_key($arguments, array_flip([
+        if ($error = self::pastScheduleError($status, $arguments['scheduled_at'] ?? null)) {
+            return ToolResult::error($error);
+        }
+
+        $params = self::scheduledAtInUtc(array_intersect_key($arguments, array_flip([
             'caption', 'status', 'scheduled_at', 'media', 'overrides', 'options', 'comments', 'shorten_links',
-        ]));
+        ])));
 
         if (! empty($arguments['brand_id'])) {
             if (! empty($arguments['platforms'])) {
@@ -227,15 +265,92 @@ class CreatePost extends ViewsMaxTool
             ->all();
     }
 
+    /**
+     * A scheduled time that has already passed publishes on the scheduler's
+     * next tick. AI clients without a clock have scheduled "in 2 minutes" for
+     * a time in the past, so refuse it and tell them the real time.
+     */
+    public static function pastScheduleError(string $status, mixed $scheduledAt): ?string
+    {
+        if ($status !== Post::STATUS_SCHEDULED || ! is_string($scheduledAt) || $scheduledAt === '') {
+            return null;
+        }
+
+        try {
+            $when = Carbon::parse($scheduledAt);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if ($when->isFuture()) {
+            return null;
+        }
+
+        return 'scheduled_at ' . $when->utc()->toIso8601ZuluString() . ' is in the past, so the post would '
+            . 'publish immediately. The current time is ' . now()->utc()->toIso8601ZuluString()
+            . '. Work out the time again from that, or ask the user.';
+    }
+
+    /**
+     * The model stores a datetime's wall-clock time and drops its offset, so
+     * "11:55+03:00" would be saved as 11:55 UTC and publish three hours late.
+     * AI clients send local offsets; convert to UTC before saving.
+     */
+    public static function scheduledAtInUtc(array $params): array
+    {
+        if (! is_string($params['scheduled_at'] ?? null) || $params['scheduled_at'] === '') {
+            return $params;
+        }
+
+        try {
+            $params['scheduled_at'] = Carbon::parse($params['scheduled_at'])->utc()->toIso8601ZuluString();
+        } catch (\Throwable) {
+            // Leave it for the controller's validation to report.
+        }
+
+        return $params;
+    }
+
+    /**
+     * Platforms the AI may offer: they have a publisher and app credentials.
+     * Without credentials the Connections page shows the platform as
+     * "Coming soon", so nobody can connect an account to post to.
+     */
+    public static function availablePlatforms(): array
+    {
+        $providers = app(SocialProviderManager::class);
+
+        return array_values(array_filter(
+            PostPublishDispatcher::platforms(),
+            fn (string $platform) => $providers->isConfigured($platform)
+        ));
+    }
+
     public static function unsupportedPlatformError(array $platforms): ?string
     {
-        $supported = PostPublishDispatcher::platforms();
-        $unsupported = array_values(array_diff($platforms, $supported));
+        $available = self::availablePlatforms();
+        $unsupported = array_values(array_diff($platforms, PostPublishDispatcher::platforms()));
 
-        return $unsupported
-            ? 'Unsupported platform(s): ' . implode(', ', $unsupported)
-                . '. Supported platforms: ' . implode(', ', $supported) . '.'
+        if ($unsupported) {
+            return 'Unsupported platform(s): ' . implode(', ', $unsupported)
+                . '. Supported platforms: ' . implode(', ', $available) . '.';
+        }
+
+        $notSetUp = array_values(array_diff($platforms, $available));
+
+        return $notSetUp
+            ? self::notSetUpError($notSetUp[0], $available)
             : null;
+    }
+
+    public static function notSetUpError(string $platform, array $available): string
+    {
+        $label = config("social.platforms.{$platform}.label", ucfirst($platform));
+
+        return "{$label} isn't available to connect on ViewsMax yet. "
+            . ($available
+                ? 'Platforms you can use: ' . implode(', ', $available) . '.'
+                : 'No platforms are available right now.');
     }
 
     /**

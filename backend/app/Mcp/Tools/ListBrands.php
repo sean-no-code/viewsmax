@@ -2,8 +2,16 @@
 
 namespace App\Mcp\Tools;
 
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('List brands')]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 class ListBrands extends ViewsMaxTool
 {
     protected function requiresWrite(): bool

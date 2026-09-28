@@ -2,14 +2,18 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Oauth\McpOAuthMetadataController;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request as LaravelRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response as ResponseFacade;
 use Laravel\Sanctum\PersonalAccessToken;
+use Lcobucci\JWT\Encoding\JoseEncoder;
+use Lcobucci\JWT\Token\Parser;
 use League\OAuth2\Server\Exception\OAuthServerException;
 use League\OAuth2\Server\ResourceServer;
+use Psr\Http\Message\ServerRequestInterface;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -64,7 +68,8 @@ class McpAuth
                 'message' => 'Unauthenticated. Provide an MCP API key or OAuth access token as a Bearer token.',
             ], 401)->header(
                 'WWW-Authenticate',
-                'Bearer resource_metadata="' . url('/.well-known/oauth-protected-resource') . '"'
+                'Bearer resource_metadata="' . McpOAuthMetadataController::resourceMetadataUrl() . '", '
+                . 'scope="' . implode(' ', McpOAuthMetadataController::MCP_SCOPES) . '"'
             );
         }
 
@@ -117,15 +122,9 @@ class McpAuth
      */
     private function resolveOAuthUser(LaravelRequest $request): ?User
     {
-        if (! $request->bearerToken()) {
-            return null;
-        }
+        $psr = self::validatedOAuthRequest($request);
 
-        try {
-            $psr = app(ResourceServer::class)->validateAuthenticatedRequest(
-                (new PsrHttpFactory)->createRequest($request)
-            );
-        } catch (OAuthServerException) {
+        if (! $psr) {
             return null;
         }
 
@@ -138,5 +137,62 @@ class McpAuth
         $request->attributes->set(self::SCOPES_ATTRIBUTE, $scopes);
 
         return User::find($psr->getAttribute('oauth_user_id'));
+    }
+
+    /**
+     * The signed-in user behind a valid OAuth access token, or null. The
+     * rate limiter runs before this middleware and uses it to give each
+     * OAuth user their own budget.
+     */
+    public static function oauthUserId(LaravelRequest $request): ?string
+    {
+        $userId = self::validatedOAuthRequest($request)?->getAttribute('oauth_user_id');
+
+        return $userId === null ? null : (string) $userId;
+    }
+
+    /**
+     * Validate the Bearer token as one of our OAuth access tokens, once per
+     * request (the rate limiter and the middleware both need the result).
+     */
+    private static function validatedOAuthRequest(LaravelRequest $request): ?ServerRequestInterface
+    {
+        if ($request->attributes->has('mcp_oauth_request')) {
+            return $request->attributes->get('mcp_oauth_request');
+        }
+
+        $psr = null;
+
+        if ($request->bearerToken()) {
+            try {
+                $psr = app(ResourceServer::class)->validateAuthenticatedRequest(
+                    (new PsrHttpFactory)->createRequest($request)
+                );
+            } catch (OAuthServerException) {
+                $psr = null;
+            }
+
+            // MCP spec: servers "MUST reject tokens that do not include them in
+            // the audience claim". The signature was just verified above, so the
+            // claims can be read as-is.
+            if ($psr && ! self::namesThisServerAsAudience((string) $request->bearerToken())) {
+                $psr = null;
+            }
+        }
+
+        $request->attributes->set('mcp_oauth_request', $psr);
+
+        return $psr;
+    }
+
+    private static function namesThisServerAsAudience(string $jwt): bool
+    {
+        try {
+            $audience = (new Parser(new JoseEncoder))->parse($jwt)->claims()->get('aud', []);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return in_array(McpOAuthMetadataController::resource(), (array) $audience, true);
     }
 }

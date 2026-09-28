@@ -168,6 +168,20 @@ class McpOutlierToolsTest extends TestCase
         $this->assertSame(['tt1'], array_column($only['outliers'], 'video_id'));
     }
 
+    public function test_outlier_tools_that_read_the_database_work_without_a_youtube_api_key(): void
+    {
+        // Browsing stored outliers never calls the YouTube API, so a missing
+        // YOUTUBE_API_KEY (fresh checkout, self-hosted install, CI) must not
+        // stop the controller from being constructed.
+        config(['services.youtube.key' => null]);
+        $this->seedOutlier('youtube', 'nokey1');
+        $key = $this->mcpKey(User::factory()->create());
+
+        $data = $this->toolJson($this->callTool($key, 'get_outlier', ['platform' => 'youtube', 'video_id' => 'nokey1']));
+
+        $this->assertSame('nokey1', $data['video_id']);
+    }
+
     public function test_list_outliers_rejects_bad_arguments(): void
     {
         $key = $this->mcpKey(User::factory()->create());
@@ -242,6 +256,46 @@ class McpOutlierToolsTest extends TestCase
 
         // Unknown video cannot be generated.
         $this->assertToolError($this->callTool($key, 'generate_outlier_breakdown', ['platform' => 'youtube', 'video_id' => 'nope']), 'not found');
+    }
+
+    public function test_saved_outliers_come_back_a_page_at_a_time(): void
+    {
+        // Anthropic Directory Policy 5B: servers "must be frugal with their use
+        // of tokens". The whole library used to come back in one reply.
+        $user = User::factory()->create();
+        $key = $this->mcpKey($user);
+        foreach (range(1, 27) as $i) {
+            $this->seedOutlier('youtube', "pg{$i}");
+            $this->toolJson($this->callTool($key, 'save_outlier', ['platform' => 'youtube', 'video_id' => "pg{$i}"]));
+        }
+
+        $first = $this->toolJson($this->callTool($key, 'list_saved_outliers'));
+        $this->assertCount(25, $first['saved']);
+        $this->assertSame(['page' => 1, 'total' => 27, 'has_more' => true],
+            array_intersect_key($first, array_flip(['page', 'total', 'has_more'])));
+
+        $second = $this->toolJson($this->callTool($key, 'list_saved_outliers', ['page' => 2]));
+        $this->assertCount(2, $second['saved']);
+        $this->assertFalse($second['has_more']);
+
+        $this->assertCount(10, $this->toolJson($this->callTool($key, 'list_saved_outliers', ['limit' => 10]))['saved']);
+        $this->assertToolError($this->callTool($key, 'list_saved_outliers', ['limit' => 500]));
+    }
+
+    public function test_search_outliers_description_names_every_way_to_add_tiktok_and_instagram(): void
+    {
+        // Topic search is YouTube only. The description used to say TikTok and
+        // Instagram videos could only be added one link at a time, which hid
+        // add_outlier_channel from the AI.
+        $key = $this->mcpKey(User::factory()->create());
+        $tools = collect($this->withHeaders(['Authorization' => 'Bearer ' . $key, 'Accept' => 'application/json'])
+            ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list', 'params' => ['per_page' => 50]])
+            ->json('result.tools'))->keyBy('name');
+
+        $description = $tools['search_outliers']['description'];
+        $this->assertStringContainsString('fetch_outlier', $description);
+        $this->assertStringContainsString('add_outlier_channel', $description);
+        $this->assertStringNotContainsString('one URL at a time', $description);
     }
 
     public function test_save_list_and_remove_saved_outliers(): void

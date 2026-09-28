@@ -5,9 +5,17 @@ namespace App\Mcp\Tools;
 use App\Http\Controllers\OutlierController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Search for outlier videos')]
+#[IsReadOnly(false)]
+#[IsDestructive(false)]
+#[IsOpenWorld(true)]
 class SearchOutliers extends ViewsMaxTool
 {
     public function name(): string
@@ -17,11 +25,13 @@ class SearchOutliers extends ViewsMaxTool
 
     public function description(): string
     {
-        return 'Start a background scrape for outlier videos matching a keyword/topic. '
-            . 'Returns immediately with status "queued"; results land in the shared '
-            . 'outlier database over the next minute or two — poll list_outliers with the '
-            . 'same `query` until its status is "done". Use exact_match to require the '
-            . 'whole phrase.';
+        return 'Start a background YouTube search (YouTube Data API) for outlier videos '
+            . 'matching a keyword/topic. Returns immediately with status "queued"; results '
+            . 'land in the shared outlier database over the next minute or two — poll '
+            . 'list_outliers with the same `query` until its status is "done". Use '
+            . 'exact_match to require the whole phrase. This search covers YouTube only: '
+            . 'for TikTok and Instagram, add a single video by its link with fetch_outlier, '
+            . "or add a creator's channel with add_outlier_channel to pull in their recent videos.";
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
