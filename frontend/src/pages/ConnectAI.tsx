@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-service";
+import { AGENT_LIST, AGENTS, MCP_TOOLS } from "@/lib/agent-pages";
 
 const MCP_ENDPOINT = `${API_BASE_URL}/api/mcp`;
 const DISCOVERY_URL = `${API_BASE_URL}/api/ai`;
 const OPENAPI_URL = `${API_BASE_URL}/docs.openapi`;
 const DOCS_URL = `${API_BASE_URL}/docs`;
 
-const TOOLS = [
-  "list_connected_accounts", "upload_media", "create_post", "list_posts",
-  "get_post", "update_post", "delete_post", "list_offers", "create_offer",
-  "get_offer", "update_offer", "delete_offer", "create_tracking_link",
-  "get_offer_stats", "get_stats_timeseries", "disconnect_account",
-  "get_connect_url", "create_feature_request",
-];
+/** "Full guide" link to an agent's own setup page. */
+const Guide = ({ slug }: { slug: keyof typeof AGENTS }) => (
+  <p className="text-muted-foreground leading-relaxed mt-3">
+    <Link className="underline underline-offset-2" to={AGENTS[slug].slug}>Full {AGENTS[slug].name} guide →</Link>
+  </p>
+);
 
 /** Code block with a copy button, used for every setup snippet. */
 const Snippet = ({ id, code, copied, onCopy }: {
@@ -77,6 +77,17 @@ const ConnectAI = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl flex-1">
+        <Section id="agents" title="Pick your AI agent">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {AGENT_LIST.map((a) => (
+              <Link key={a.key} to={a.slug} className="block rounded-md border p-4 hover:border-foreground transition-colors">
+                <span className="block font-semibold text-foreground">{a.name}</span>
+                <span className="block text-sm text-muted-foreground mt-0.5">{a.card}</span>
+              </Link>
+            ))}
+          </div>
+        </Section>
+
         <Section id="endpoints" title="Endpoints">
           <ul className="list-disc list-inside text-muted-foreground space-y-2">
             <li>MCP endpoint (Streamable HTTP): <code className="bg-muted px-2 py-1 rounded">{MCP_ENDPOINT}</code></li>
@@ -106,16 +117,18 @@ const ConnectAI = () => {
 
         <Section id="claude" title="Claude (claude.ai / Desktop)">
           <p className="text-muted-foreground leading-relaxed mb-3">
-            Settings → Connectors → Add custom connector → paste the MCP endpoint →
-            complete the sign-in approval.
+            Customize → Connectors → + → Add custom connector → paste the MCP endpoint →
+            Add → Connect and complete the sign-in approval. The connector also works in
+            the mobile apps and Cowork.
           </p>
           <Snippet id="claude" code={MCP_ENDPOINT} copied={copied} onCopy={copy} />
+          <Guide slug="claude" />
         </Section>
 
         <Section id="cli" title="Claude Code">
           <Snippet
             id="claude-code"
-            code={`claude mcp add --transport http viewsmax ${MCP_ENDPOINT}`}
+            code={`claude mcp add --transport http --scope user viewsmax ${MCP_ENDPOINT}`}
             copied={copied}
             onCopy={copy}
           />
@@ -126,15 +139,30 @@ const ConnectAI = () => {
             copied={copied}
             onCopy={copy}
           />
+          <p className="text-muted-foreground leading-relaxed mt-3">
+            Then run <code className="bg-muted px-1 rounded">/mcp</code> inside Claude Code and sign in.
+          </p>
+          <Guide slug="claude-code" />
         </Section>
 
         <Section id="chatgpt" title="ChatGPT">
           <p className="text-muted-foreground leading-relaxed">
-            Settings → Apps &amp; Connectors → enable Developer mode → add a connector with
-            the MCP URL and complete OAuth. ViewsMax is an <em>action</em> connector
-            (create/schedule posts, read stats) — use it from regular chats with
-            connectors enabled.
+            Settings → Security and login → turn on Developer mode. Then go to
+            chatgpt.com/plugins → + → paste the MCP URL and complete OAuth. ViewsMax is
+            an <em>action</em> connector (create/schedule posts, read stats) — use it from
+            regular chats.
           </p>
+          <Guide slug="chatgpt" />
+        </Section>
+
+        <Section id="codex" title="Codex">
+          <Snippet
+            id="codex"
+            code={`codex mcp add viewsmax --url ${MCP_ENDPOINT}\ncodex mcp login viewsmax`}
+            copied={copied}
+            onCopy={copy}
+          />
+          <Guide slug="codex" />
         </Section>
 
         <Section id="cursor" title="Cursor">
@@ -145,6 +173,7 @@ const ConnectAI = () => {
             copied={copied}
             onCopy={copy}
           />
+          <Guide slug="cursor" />
         </Section>
 
         <Section id="openclaw" title="OpenClaw">
@@ -156,15 +185,18 @@ const ConnectAI = () => {
             The skill drives the REST API; alternatively point OpenClaw's MCP support at the
             endpoint above.
           </p>
+          <Guide slug="openclaw" />
         </Section>
 
         <Section id="hermes" title="Hermes Agent">
+          <p className="text-muted-foreground leading-relaxed mb-3"><code className="bg-muted px-1 rounded">~/.hermes/config.yaml</code>:</p>
           <Snippet
             id="hermes"
-            code={`{ "viewsmax": { "transport": "http", "url": "${MCP_ENDPOINT}", "headers": { "Authorization": "Bearer vmx_YOUR_KEY" } } }`}
+            code={`mcp_servers:\n  viewsmax:\n    url: "${MCP_ENDPOINT}"\n    auth: oauth`}
             copied={copied}
             onCopy={copy}
           />
+          <Guide slug="hermes" />
         </Section>
 
         <Section id="rest" title="Plain REST / curl">
@@ -180,9 +212,9 @@ const ConnectAI = () => {
           </p>
         </Section>
 
-        <Section id="tools" title="What agents can do (18 MCP tools)">
+        <Section id="tools" title={`What agents can do (${MCP_TOOLS.length} MCP tools)`}>
           <div className="flex flex-wrap gap-2 mb-4">
-            {TOOLS.map((t) => (
+            {MCP_TOOLS.map((t) => (
               <code key={t} className="bg-muted px-2 py-1 rounded text-xs">{t}</code>
             ))}
           </div>

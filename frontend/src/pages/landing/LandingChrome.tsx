@@ -7,6 +7,7 @@ import { ChevronDown } from "lucide-react";
 import logoLight from "@/assets/logo-lockup-light.svg";
 import logoDark from "@/assets/logo-lockup-dark.svg";
 import { API_BASE_URL } from "@/lib/api-service";
+import { AGENT_LIST } from "@/lib/agent-pages";
 
 const AUTH = "/auth";
 const API_DOCS = `${API_BASE_URL}/docs`;
@@ -26,6 +27,7 @@ const FREE_TOOLS: typeof RESOURCES = [
   { label: "Thumbnail Preview", desc: "See your thumbnail on YouTube's home page", href: "/thumbnail-preview" },
   { label: "Revenue Calculator", desc: "Estimate your YouTube earnings", href: "/youtube-monetization-calculator" },
 ];
+const AI_AGENTS: typeof RESOURCES = AGENT_LIST.map((a) => ({ label: a.name, desc: a.card, href: a.slug }));
 const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 /* ---------- Button (shared with the landing sections) ---------- */
@@ -87,9 +89,10 @@ export function LandingNav() {
       <style>{CHROME_CSS}</style>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", gap: 24 }}>
         <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "block" }}><img src={logoLight} alt="ViewsMax" style={{ height: 30, display: "block" }} /></a>
-        <div className="nav-links" style={{ display: "flex", gap: 28, marginLeft: 16 }}>
-          {links.map(([l, id]) => <a key={l} href={`/#${id}`} onClick={(e) => { e.preventDefault(); goToSection(id); }} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5 }}>{l}</a>)}
+        <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: 28, marginLeft: 16 }}>
+          {links.map(([l, id]) => <a key={l} href={`/#${id}`} onClick={(e) => { e.preventDefault(); goToSection(id); }} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center" }}>{l}</a>)}
           <NavDropdown label="Free Tools" href="/free-tools" items={FREE_TOOLS} />
+          <NavDropdown label="AI Agents" href="/ai" items={AI_AGENTS} />
           <NavDropdown label="Resources" href="/ai" items={RESOURCES} />
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
@@ -107,11 +110,12 @@ export function LandingFooter() {
     ["Product", [{ label: "Scheduler", href: "#" }, { label: "Sales tracking", href: "#" }, { label: "Analytics", href: "#" }, { label: "Channels", href: "#" }, { label: "Pricing", href: "#" }]],
     ["Company", [{ label: "About", href: "#" }, { label: "Careers", href: "#" }, { label: "Blog", href: BLOG }, { label: "Contact", href: "#" }, { label: "Affiliates", href: "https://viewsmax.getrewardful.com/signup" }]],
     ["Resources", [{ label: "API docs", href: API_DOCS }, { label: "Install MCP", href: "/ai" }, { label: "CLI setup", href: "/ai#cli" }]],
+    ["AI agents", AI_AGENTS.map(({ label, href }) => ({ label, href }))],
     ["Free tools", [{ label: "YouTube Transcript", href: "/free-tools/youtube-transcript" }, { label: "TikTok Transcript", href: "/free-tools/tiktok-transcript" }, { label: "Instagram Transcript", href: "/free-tools/instagram-transcript" }, { label: "Thumbnail Preview", href: "/thumbnail-preview" }, { label: "Revenue Calculator", href: "/youtube-monetization-calculator" }]],
   ];
   return (
     <footer className="vm-foot" style={{ background: "var(--ink-900)", color: "var(--fg-2)" }}>
-      <div className="vm-foot-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 40px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr", gap: 32 }}>
+      <div className="vm-foot-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 40px", display: "grid", gridTemplateColumns: "1.4fr repeat(5, 1fr)", gap: 32 }}>
         <div>
           <img src={logoDark} alt="ViewsMax" style={{ height: 30 }} />
           <p style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--fg-3)", lineHeight: 1.5, marginTop: 16, maxWidth: 240 }}>Make content that makes sales.</p>

@@ -11,6 +11,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import ConnectAI from "./pages/ConnectAI";
+import AgentPage from "./components/agents/AgentPage";
+import { AGENT_LIST } from "./lib/agent-pages";
 import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 // Thumbnails + AI models pages retired from the dashboard (routes commented out below).
@@ -112,6 +114,10 @@ const App = () => (
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/ai" element={<ConnectAI />} />
+                {/* Per-agent setup guides: /claude, /chatgpt, /cursor, ... (src/lib/agent-pages.ts) */}
+                {AGENT_LIST.map((a) => (
+                  <Route key={a.key} path={a.slug} element={<AgentPage agent={a.key} />} />
+                ))}
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/youtube-monetization-calculator" element={<RevenueCalculator />} />
                 <Route path="/thumbnail-preview" element={<ThumbnailPreview />} />

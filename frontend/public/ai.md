@@ -12,6 +12,14 @@ authenticated.
 - **Capability discovery (JSON):** `https://api.viewsmax.com/api/ai`
 - **REST API:** `https://api.viewsmax.com/api` — [OpenAPI spec](https://api.viewsmax.com/docs.openapi) · [API reference](https://api.viewsmax.com/docs)
 
+Step-by-step guides per agent: [Claude](https://viewsmax.com/claude) ·
+[Claude Code](https://viewsmax.com/claude-code) ·
+[Claude Cowork](https://viewsmax.com/claude-cowork) ·
+[ChatGPT](https://viewsmax.com/chatgpt) · [Codex](https://viewsmax.com/codex) ·
+[Cursor](https://viewsmax.com/cursor) · [OpenClaw](https://viewsmax.com/openclaw) ·
+[Hermes Agent](https://viewsmax.com/hermes). Each has a plain-markdown setup brief at
+`/<agent>.md` (e.g. <https://viewsmax.com/claude.md>).
+
 ## Credentials
 
 Two options, both sent as a Bearer token:
@@ -26,15 +34,17 @@ Two options, both sent as a Bearer token:
    the old one. The same key works on the REST API (posts, offers, tracking,
    stats, outliers — read-only keys are limited to GET).
 
-## Claude (claude.ai / Claude Desktop)
+## Claude (claude.ai / Claude Desktop / mobile / Cowork)
 
-Settings → Connectors → **Add custom connector** → URL
-`https://api.viewsmax.com/api/mcp` → complete the sign-in approval.
+Customize → Connectors → **+** → **Add custom connector** → URL
+`https://api.viewsmax.com/api/mcp` → Add → Connect and complete the sign-in
+approval. Free Claude plans can add one custom connector; on Team/Enterprise an
+owner adds it first under Organization settings → Connectors.
 
 ## Claude Code
 
 ```bash
-claude mcp add --transport http viewsmax https://api.viewsmax.com/api/mcp
+claude mcp add --transport http --scope user viewsmax https://api.viewsmax.com/api/mcp
 ```
 
 or in `.mcp.json`:
@@ -43,15 +53,28 @@ or in `.mcp.json`:
 { "mcpServers": { "viewsmax": { "type": "http", "url": "https://api.viewsmax.com/api/mcp" } } }
 ```
 
-OAuth prompts on first use. For headless use add
-`"headers": { "Authorization": "Bearer vmx_YOUR_KEY" }`.
+Then run `/mcp` inside Claude Code and sign in. For headless use add
+`--header "Authorization: Bearer vmx_YOUR_KEY"` (or
+`"headers": { "Authorization": "Bearer vmx_YOUR_KEY" }` in `.mcp.json`).
 
 ## ChatGPT
 
-Settings → Apps & Connectors → enable **Developer mode** → add a connector
-with the MCP URL above and complete OAuth. ViewsMax is an *action* connector
+Settings → Security and login → turn on **Developer mode**. Then go to
+<https://chatgpt.com/plugins> → **+** → paste the MCP URL above and complete
+OAuth. ViewsMax is an *action* connector
 (create/schedule posts, read stats) — use it from regular chats with
 connectors enabled; it is not a deep-research search/fetch source.
+
+## Codex
+
+```bash
+codex mcp add viewsmax --url https://api.viewsmax.com/api/mcp
+codex mcp login viewsmax
+```
+
+The Codex CLI, IDE extension, and ChatGPT desktop app share this setup. For
+headless use, set `bearer_token_env_var = "VIEWSMAX_API_KEY"` under
+`[mcp_servers.viewsmax]` in `~/.codex/config.toml`.
 
 ## Cursor
 
@@ -66,20 +89,30 @@ connectors enabled; it is not a deep-research search/fetch source.
 ## OpenClaw
 
 Install the ViewsMax skill (SKILL.md drives the REST API):
-download it from <https://viewsmax.com/skills/viewsmax/SKILL.md> into your
-agent's skills directory, then set `VIEWSMAX_API_KEY` in the agent's
-environment (full-access key). Alternatively point OpenClaw's MCP support at
+
+```bash
+mkdir -p viewsmax && curl -o viewsmax/SKILL.md https://viewsmax.com/skills/viewsmax/SKILL.md
+openclaw skills install ./viewsmax --global
+```
+
+Then set `VIEWSMAX_API_KEY` (full-access key) under
+`skills.entries.viewsmax.env` in `~/.openclaw/openclaw.json`. Alternatively point OpenClaw's MCP support at
 the MCP endpoint above.
 
 ## Hermes Agent
 
-Add to your MCP servers config:
+Add to `~/.hermes/config.yaml` (Hermes opens a browser to sign in on first
+connection):
 
-```json
-{ "viewsmax": { "transport": "http",
-  "url": "https://api.viewsmax.com/api/mcp",
-  "headers": { "Authorization": "Bearer vmx_YOUR_KEY" } } }
+```yaml
+mcp_servers:
+  viewsmax:
+    url: "https://api.viewsmax.com/api/mcp"
+    auth: oauth
 ```
+
+For a server with no browser, replace `auth: oauth` with
+`headers: { Authorization: "Bearer vmx_YOUR_KEY" }`.
 
 ## Plain REST / curl
 

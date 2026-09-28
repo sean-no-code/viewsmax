@@ -1,7 +1,22 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { AGENT_LIST, briefPath, buildAgentMarkdown } from "./src/lib/agent-pages";
+
+// Serves each agent setup brief (/claude.md, ...) in dev. The production build writes these files in
+// scripts/prerender-seo.ts from the same buildAgentMarkdown().
+const agentMarkdown = (env: Record<string, string>): Plugin => ({
+  name: "viewsmax-agent-markdown",
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const agent = AGENT_LIST.find((a) => req.url?.split("?")[0] === briefPath(a));
+      if (!agent) return next();
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.end(buildAgentMarkdown(agent, env));
+    });
+  },
+});
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -19,6 +34,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      agentMarkdown(env),
       mode === 'development' &&
       componentTagger(),
     ].filter(Boolean),
