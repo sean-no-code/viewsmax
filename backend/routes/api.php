@@ -109,7 +109,7 @@ Route::post('/webhooks/comfyui/completion', [ComfyUIWebhookController::class, 'h
 // token or an MCP API key, both as a Bearer header — see McpAuth. Throttle
 // runs first so invalid keys burn the per-IP budget.
 Mcp::web('mcp', \App\Mcp\ViewsMaxServer::class)
-    ->middleware(['throttle:mcp', 'mcp.auth', 'mcp.audit']);
+    ->middleware(['throttle:mcp', 'mcp.auth', 'mcp.audit', 'mcp.notifications']);
 
 // Meta platform lifecycle webhooks (Threads/Facebook/Instagram). Public — the
 // signed_request signature is the authentication. Required callback URLs when

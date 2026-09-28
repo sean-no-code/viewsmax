@@ -1,30 +1,32 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Oauth\McpClientRegistrationController;
+use App\Http\Controllers\Oauth\McpOAuthMetadataController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Mcp\Server\Facades\Mcp;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
 // OAuth 2.1 discovery for the MCP server: protected-resource metadata,
-// authorization-server metadata, and Dynamic Client Registration. These are
-// well-known URIs and must live at the true root, not under /api's prefix —
-// that's why this call is here rather than in routes/api.php.
-Mcp::oauthRoutes();
+// authorization-server metadata, and Dynamic Client Registration. Well-known
+// URIs must live at the true root, not under /api's prefix — that's why these
+// are here rather than in routes/api.php. RFC 9728: for a resource at /api/mcp,
+// clients try the path-suffixed document first, then the root one; both
+// describe /api/mcp.
+Route::get('/.well-known/oauth-protected-resource', [McpOAuthMetadataController::class, 'protectedResource']);
+Route::get('/.well-known/oauth-protected-resource/api/mcp', [McpOAuthMetadataController::class, 'protectedResource']);
+Route::get('/.well-known/oauth-authorization-server', [McpOAuthMetadataController::class, 'authorizationServer']);
+Route::post('/oauth/register', [McpClientRegistrationController::class, 'store']);
 
-// RFC 9728 path-suffixed variant: for a resource at /api/mcp, clients try
-// /.well-known/oauth-protected-resource/api/mcp before the root document
-// Mcp::oauthRoutes() serves. Here the resource field carries the full
-// resource URL (including path), which must exactly match the URL clients
-// were given.
-Route::get('/.well-known/oauth-protected-resource/api/mcp', function () {
-    return response()->json([
-        'resource' => url('/api/mcp'),
-        'authorization_server' => url('/.well-known/oauth-authorization-server'),
-    ]);
+// OpenAI plugin domain verification: returns the submission token as plain
+// text, and nothing else, so their portal can confirm we control this domain.
+Route::get('/.well-known/openai-apps-challenge', function () {
+    abort_unless($token = config('mcp.openai_apps_challenge_token'), 404);
+
+    return response((string) $token, 200, ['Content-Type' => 'text/plain']);
 });
 
 // This app is otherwise API-only (the SPA does its own token-based login),

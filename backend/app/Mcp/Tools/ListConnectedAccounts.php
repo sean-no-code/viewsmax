@@ -2,8 +2,16 @@
 
 namespace App\Mcp\Tools;
 
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('List connected accounts')]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 class ListConnectedAccounts extends ViewsMaxTool
 {
     protected function requiresWrite(): bool
@@ -18,8 +26,8 @@ class ListConnectedAccounts extends ViewsMaxTool
 
     public function description(): string
     {
-        return 'List every social account the user has connected (YouTube, TikTok, X, '
-            . 'LinkedIn, Threads, Instagram, Beehiiv) — a platform can appear more '
+        return 'List every social account the user has connected, plus a Beehiiv '
+            . 'newsletter connection if there is one — a platform can appear more '
             . 'than once when several accounts are connected on it. Each entry '
             . 'carries social_account_id or connection_id (matching list_brands) '
             . 'plus its store. Posts can only publish to connected platforms; use '
@@ -70,8 +78,13 @@ class ListConnectedAccounts extends ViewsMaxTool
             ]);
         }
 
+        // Name what's supported, so a missing platform isn't read as "connect
+        // it first" when it can't be connected at all.
         return ToolResult::json([
             'accounts' => $accounts->concat($legacy)->concat($beehiiv)->values()->all(),
+            'supported_platforms' => CreatePost::availablePlatforms(),
+            'note' => "Only the supported platforms can be connected and posted to. Other platforms can't "
+                . 'be connected on ViewsMax yet.',
         ]);
     }
 }

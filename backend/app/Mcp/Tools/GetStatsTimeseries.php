@@ -4,9 +4,17 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\TrackingEventController;
 use App\Http\Controllers\TrackingLinkController;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\Title;
 use Laravel\Mcp\Server\Tools\ToolInputSchema;
 use Laravel\Mcp\Server\Tools\ToolResult;
 
+#[Title('Get stats over time')]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 class GetStatsTimeseries extends ViewsMaxTool
 {
     protected function requiresWrite(): bool
