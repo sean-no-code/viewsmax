@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Locks a promotional customer whose free window has closed (and who has not
+ * subscribed since) to the endpoints needed to pick a plan. Everything else
+ * answers 403 with `code: access_expired` so the SPA can send them to Billing.
+ * Applied after `api.auth` on the whole protected group.
+ */
+class EnsureAccessActive
+{
+    /**
+     * Routes an expired user may still call: their own profile/session, plan
+     * listings, and the Stripe checkout/portal endpoints. Patterns go to
+     * Request::is(), so wildcards are explicit.
+     */
+    public const ALLOWED_PATTERNS = [
+        'api/profile',
+        'api/logout',
+        'api/refresh',
+        'api/plans', 'api/plans/*',
+        'api/user-plans/*',
+        'api/billing/*',
+        'api/subscriptions/*',
+    ];
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        $user = $request->user();
+
+        if ($user && $user->accessExpired() && ! $request->is(...self::ALLOWED_PATTERNS)) {
+            return response()->json([
+                'success' => false,
+                'code' => 'access_expired',
+                'message' => 'Your free access has ended. Choose a plan to keep using ViewsMax.',
+            ], 403);
+        }
+
+        return $next($request);
+    }
+}

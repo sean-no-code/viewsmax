@@ -10,7 +10,7 @@ import { useState } from "react";
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [isComplete, setIsComplete] = useState(false);
 
   // Get plan details from URL params or use defaults
@@ -39,6 +39,9 @@ const Checkout = () => {
   const handleSubscribed = () => {
     setIsComplete(true);
     toast.success("Your free trial has started!");
+    // Re-read the profile so a promotional customer whose window had closed
+    // is unlocked (has_active_plan) before we land back in the dashboard.
+    void refreshUser();
     setTimeout(() => {
       navigate("/dashboard/billing", { replace: true });
     }, 1500);

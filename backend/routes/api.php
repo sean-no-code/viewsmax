@@ -117,8 +117,9 @@ Mcp::web('mcp', \App\Mcp\ViewsMaxServer::class)
 Route::match(['get', 'post'], '/social/{platform}/deauthorize', [SocialWebhookController::class, 'deauthorize']);
 Route::match(['get', 'post'], '/social/{platform}/data-deletion', [SocialWebhookController::class, 'dataDeletion']);
 
-// Protected routes (authentication required)
-Route::middleware('api.auth')->group(function () {
+// Protected routes (authentication required). `access.active` locks a
+// promotional customer whose free window has closed to the billing endpoints.
+Route::middleware(['api.auth', 'access.active'])->group(function () {
 
     // Outlier Multiplier Endpoint
     Route::get('/multiplier/{videoId}', [OutlierController::class, 'getMultiplier']);
@@ -459,6 +460,7 @@ Route::middleware('api.auth')->group(function () {
         Route::get('/admin/links', [\App\Http\Controllers\Admin\AnalyticsMonitorController::class, 'links']);
 
         Route::get('/admin/users', [\App\Http\Controllers\Admin\UserAdminController::class, 'index']);
+        Route::post('/admin/users', [\App\Http\Controllers\Admin\UserAdminController::class, 'store']);
         Route::get('/admin/users/stats', [\App\Http\Controllers\Admin\UserAdminController::class, 'stats']);
         Route::get('/admin/users/suggest', [\App\Http\Controllers\Admin\UserAdminController::class, 'suggest']);
         Route::delete('/admin/users/{user}', [\App\Http\Controllers\Admin\UserAdminController::class, 'destroy']);

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES } from "@/i18n";
 import { viewsMaxApi } from "@/lib/api-service";
 import { useAuth } from "@/hooks/useAuth";
+import { isAccessExpired } from "@/lib/access";
 import { useUserCredits } from "@/contexts/UserCreditsContext";
 import { Link } from "react-router-dom";
 import {
@@ -27,6 +28,11 @@ export default function DashboardLayout() {
     void viewsMaxApi.updateUserSettings({ locale: code }); // best-effort server sync
   };
   const { credits, isAnimating } = useUserCredits();
+  // Expired promotional customer: nav is reduced to Billing + sign out.
+  const locked = isAccessExpired(user);
+  const promoEndedOn = user?.promo_expires_at
+    ? new Date(user.promo_expires_at).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })
+    : null;
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -108,7 +114,7 @@ export default function DashboardLayout() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu modal={false}>
+              {!locked && <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">
                     <HelpCircle className="w-4 h-4" />
@@ -129,7 +135,7 @@ export default function DashboardLayout() {
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu>}
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="!ring-0 !ring-offset-0 !outline-none focus:!ring-0 focus:!outline-none focus-visible:!ring-0 focus-visible:!outline-none active:!ring-0 active:!outline-none data-[state=open]:!ring-0 data-[state=closed]:!ring-0">
@@ -140,12 +146,12 @@ export default function DashboardLayout() {
                   <DropdownMenuItem disabled>
                     {user?.email}
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
+                  {!locked && <DropdownMenuItem asChild>
                     <Link to="/dashboard/settings" className="flex items-center">
                       <Settings className="w-4 h-4 mr-2" />
                       Settings
                     </Link>
-                  </DropdownMenuItem>
+                  </DropdownMenuItem>}
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/billing" className="flex items-center">
                       <Crown className="w-4 h-4 mr-2" />
@@ -161,6 +167,12 @@ export default function DashboardLayout() {
             </div>
           </header>
 
+          {locked && (
+            <div className="border-b border-destructive/40 bg-destructive/10 px-6 py-3 text-sm text-foreground">
+              <span className="font-semibold">Your free access ended{promoEndedOn ? ` on ${promoEndedOn}` : ""}.</span>{" "}
+              Choose a plan below to keep using ViewsMax.
+            </div>
+          )}
           <main className="flex-1 p-6">
             <Outlet />
           </main>

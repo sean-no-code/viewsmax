@@ -126,6 +126,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'mcp.notifications' => \App\Http\Middleware\McpAcceptNotifications::class,
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
             'restrict.free' => \App\Http\Middleware\RestrictFreePlan::class,
+            'access.active' => \App\Http\Middleware\EnsureAccessActive::class,
         ]);
 
         // Dynamic Client Registration (RFC 7591) is a plain JSON API call made

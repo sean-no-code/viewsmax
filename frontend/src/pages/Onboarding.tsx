@@ -37,6 +37,10 @@ const Onboarding = () => {
 
   // Derive the starting step from the user's current state (reload mid-flow
   // resumes; an already-subscribed user completes immediately).
+  // A promotional customer (free window, no card) counts as subscribed but has
+  // no plan row: they see the connect step and skip the card step entirely.
+  const promoOnly = !!user?.has_active_subscription && user?.has_active_plan === false;
+
   useEffect(() => {
     if (!user) return;
     const connected = (user.connections_count ?? 0) > 0;
@@ -44,7 +48,8 @@ const Onboarding = () => {
     setHasConnection(connected);
 
     // Subscription is the only hard requirement; connecting is optional.
-    if (subscribed) {
+    // Card-backed subscribers finish at once; promo users finish once connected.
+    if (subscribed && (!promoOnly || connected)) {
       if (!autoCompleted.current) {
         autoCompleted.current = true;
         void finishOnboarding();
@@ -71,7 +76,13 @@ const Onboarding = () => {
 
   const handleConnectContinue = async () => {
     await refreshUser();
-    setStep("trial");
+    if (promoOnly) await finishOnboarding();
+    else setStep("trial");
+  };
+
+  const skipConnect = () => {
+    if (promoOnly) void finishOnboarding();
+    else setStep("trial");
   };
 
   const handleSubscribed = async () => {
@@ -82,7 +93,8 @@ const Onboarding = () => {
     await finishOnboarding();
   };
 
-  const currentIndex = STEPS.findIndex((s) => s.key === step);
+  const steps = promoOnly ? STEPS.filter((s) => s.key !== "trial") : STEPS;
+  const currentIndex = steps.findIndex((s) => s.key === step);
 
   if (finishing) {
     return (
@@ -117,7 +129,7 @@ const Onboarding = () => {
 
         {/* Two-step progress */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, margin: "26px 0 30px" }}>
-          {STEPS.map((s, i) => {
+          {steps.map((s, i) => {
             const isComplete = i < currentIndex;
             const isCurrent = i === currentIndex;
             return (
@@ -145,7 +157,7 @@ const Onboarding = () => {
                     {s.label}
                   </span>
                 </div>
-                {i < STEPS.length - 1 && <div style={{ width: 36, height: 1, background: "var(--line-2)" }} />}
+                {i < steps.length - 1 && <div style={{ width: 36, height: 1, background: "var(--line-2)" }} />}
               </div>
             );
           })}
@@ -164,7 +176,7 @@ const Onboarding = () => {
               Continue
             </button>
             <button
-              onClick={() => setStep("trial")}
+              onClick={skipConnect}
               style={{ width: "100%", marginTop: 12, background: "transparent", border: "none", color: "var(--ink-on-paper-3)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
               Skip for now

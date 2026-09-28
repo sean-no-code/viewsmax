@@ -101,6 +101,10 @@ interface User {
   onboarding_completed_at?: string | null;
   connections_count?: number;
   has_active_subscription?: boolean;
+  // Promotional access (see src/lib/access.ts).
+  has_active_plan?: boolean;
+  promo_expires_at?: string | null;
+  access_expired?: boolean;
 }
 
 export type OAuthProvider = 'youtube' | 'tiktok' | 'instagram';
@@ -740,6 +744,10 @@ export interface AdminUser {
   subscribed: boolean;
   plan: string | null;
   onboarded: boolean;
+  // First role name (admin / customer / promotional_customer) and, for a
+  // promotional customer, when their free window closes (null = unlimited).
+  role: string | null;
+  promo_expires_at: string | null;
   posts_count: number;
   posts_posted_count: number;
   // Sum of both connection stores (legacy connections + social accounts).
@@ -782,8 +790,17 @@ export interface AdminRole {
 }
 
 export interface AdminUserDetail {
-  user: { id: number; name: string | null; email: string; created_at: string | null; roles: string[] };
+  user: { id: number; name: string | null; email: string; created_at: string | null; roles: string[]; promo_expires_at: string | null };
   roles: AdminRole[];
+}
+
+export interface AdminCreateUserInput {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  // Free-access window in days for a promotional customer; null = unlimited.
+  promo_days: number | null;
 }
 
 export interface AdminUserStatsPoint {
@@ -1398,12 +1415,32 @@ class ViewsMaxApiService {
     }
   }
 
-  async updateAdminUserRole(id: number, role: string): Promise<ApiResponse<AdminUserDetail['user']>> {
+  async createAdminUser(input: AdminCreateUserInput): Promise<ApiResponse<AdminUserDetail['user']>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/users`, {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const firstError = body.errors ? (Object.values(body.errors)[0] as string[] | undefined)?.[0] : undefined;
+        return { success: false, error: firstError || body.message || `Failed to create user: ${response.status}` };
+      }
+      return { success: true, data: body.data?.user };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // `promoDays` only matters for promotional_customer: days from today, null =
+  // unlimited, undefined = keep the current window.
+  async updateAdminUserRole(id: number, role: string, promoDays?: number | null): Promise<ApiResponse<AdminUserDetail['user']>> {
     try {
       const response = await fetch(`${this.baseUrl}/api/admin/users/${id}/role`, {
         method: 'PUT',
         headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify(promoDays === undefined ? { role } : { role, promo_days: promoDays }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) return { success: false, error: body.message || `Failed to update role: ${response.status}` };

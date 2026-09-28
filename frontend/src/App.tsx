@@ -45,6 +45,7 @@ import ContentCalendarPage from "./pages/CalendarPage";
 import AdminPosts from "./pages/admin/AdminPosts";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminUserEdit from "./pages/admin/AdminUserEdit";
+import AdminUserCreate from "./pages/admin/AdminUserCreate";
 import AdminOffers from "./pages/admin/AdminOffers";
 import AdminLeadMagnet from "./pages/admin/AdminLeadMagnet";
 import LeadMagnetPrint from "./pages/admin/LeadMagnetPrint";
@@ -261,6 +262,7 @@ const App = () => (
                   <Route path="tracking/edit/:id" element={<TrackingEdit />} />
                   <Route path="admin/posts" element={<AdminPosts />} />
                   <Route path="admin/users" element={<AdminUsers />} />
+                  <Route path="admin/users/new" element={<AdminUserCreate />} />
                   <Route path="admin/users/:id/edit" element={<AdminUserEdit />} />
                   <Route path="admin/offers" element={<AdminOffers />} />
                   <Route path="admin/lead-magnet" element={<AdminLeadMagnet />} />

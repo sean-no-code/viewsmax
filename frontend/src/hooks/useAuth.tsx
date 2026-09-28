@@ -12,6 +12,10 @@ interface CustomUser {
   onboarding_completed_at?: string | null;
   connections_count?: number;
   has_active_subscription?: boolean;
+  // Promotional access (see src/lib/access.ts).
+  has_active_plan?: boolean;
+  promo_expires_at?: string | null;
+  access_expired?: boolean;
   is_admin?: boolean;
 }
 
@@ -143,6 +147,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           token: parsedSession.token,
           token_type: parsedSession.token_type
         });
+
+        // The cached user can be stale (e.g. a promotional window closed since
+        // the last login), so re-read the profile once per page load. A failed
+        // refresh keeps the cached copy — it never signs the user out.
+        viewsMaxApi.getUserProfile().then((response) => {
+          if (!response.success || !response.data) return;
+          const refreshed = { ...parsedSession, user: response.data.user };
+          setUser(refreshed.user);
+          setSession(refreshed);
+          localStorage.setItem('auth_session', JSON.stringify(refreshed));
+        }).catch(() => { /* keep cached user */ });
       } catch (error) {
         console.error('Error parsing stored session:', error);
         localStorage.removeItem('auth_session');

@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Post;
+use App\Models\Role;
 use App\Models\User;
+use App\Services\CreditService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 
@@ -74,7 +78,7 @@ class UserAdminController extends Controller implements HasMiddleware
         $query = User::query()
             ->select('users.*') // explicit: the addSelects below would otherwise drop the default *
             ->whereBetween('users.created_at', [$from, $to])
-            ->with(['plans' => fn ($q) => $q->wherePivotIn('status', $statuses)])
+            ->with(['roles', 'plans' => fn ($q) => $q->wherePivotIn('status', $statuses)])
             ->withCount([
                 'posts',
                 'posts as posts_posted_count' => fn ($q) => $q->where('status', Post::STATUS_POSTED),
@@ -164,6 +168,8 @@ class UserAdminController extends Controller implements HasMiddleware
                 'subscribed' => ! is_null($plan),
                 'plan' => $plan?->name,
                 'onboarded' => ! is_null($u->onboarding_completed_at),
+                'role' => $u->roles->first()?->name,
+                'promo_expires_at' => optional($u->promo_expires_at)->toISOString(),
                 'posts_count' => (int) $u->posts_count,
                 'posts_posted_count' => (int) $u->posts_posted_count,
                 'accounts_count' => (int) $u->accounts_count,
@@ -341,21 +347,75 @@ class UserAdminController extends Controller implements HasMiddleware
     }
 
     /**
+     * Free-access window for a promotional customer, in days. Null = unlimited.
+     * Ignored (and cleared) for every other role.
+     */
+    private const PROMO_DAYS_RULE = ['nullable', 'integer', 'min:1', 'max:3650'];
+
+    /**
+     * Create a user by hand. Admin-created accounts skip email verification
+     * (the admin vouches for the address) but still go through onboarding;
+     * a promotional customer just won't see the card step there.
+     */
+    public function store(Request $request, CreditService $creditService): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+            'role' => ['required', Rule::in(['customer', User::PROMO_ROLE]), 'exists:roles,name'],
+            'promo_days' => self::PROMO_DAYS_RULE,
+        ]);
+
+        // forceFill: email_verified_at is deliberately not mass-assignable.
+        $user = (new User)->forceFill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'email_verified_at' => now(),
+            'onboarding_completed_at' => null,
+            'promo_expires_at' => $this->promoExpiry($validated['role'], $validated['promo_days'] ?? null),
+        ]);
+        $user->save();
+        $user->roles()->sync([Role::where('name', $validated['role'])->value('id')]);
+        $creditService->addCredits($user, config('credits.registration_bonus'), 'Registration Bonus');
+
+        return response()->json(['data' => ['user' => $this->userWithRoles($user->fresh())]], 201);
+    }
+
+    /**
      * Replace the user's role. Single-role by design (the UI is a picker).
      * Guard: an admin cannot change their own role — no locking yourself out.
+     * For a promotional customer, `promo_days` (re)sets the free window from
+     * now (null = unlimited); omit it to keep the current window. Any other
+     * role clears the window.
      */
     public function updateRole(Request $request, User $user): JsonResponse
     {
-        $validated = $request->validate(['role' => 'required|string|exists:roles,name']);
+        $validated = $request->validate([
+            'role' => 'required|string|exists:roles,name',
+            'promo_days' => self::PROMO_DAYS_RULE,
+        ]);
 
         if ($request->user()?->id === $user->id) {
             return response()->json(['message' => 'You cannot change your own role.'], 422);
         }
 
-        $role = \App\Models\Role::where('name', $validated['role'])->first();
+        $role = Role::where('name', $validated['role'])->first();
         $user->roles()->sync([$role->id]);
 
+        if ($role->name !== User::PROMO_ROLE) {
+            $user->forceFill(['promo_expires_at' => null])->save();
+        } elseif ($request->exists('promo_days')) {
+            $user->forceFill(['promo_expires_at' => $this->promoExpiry($role->name, $validated['promo_days'])])->save();
+        }
+
         return response()->json(['data' => ['user' => $this->userWithRoles($user->fresh())]]);
+    }
+
+    private function promoExpiry(string $role, ?int $days): ?Carbon
+    {
+        return $role === User::PROMO_ROLE && $days !== null ? now()->addDays($days) : null;
     }
 
     private function userWithRoles(User $user): array
@@ -366,6 +426,7 @@ class UserAdminController extends Controller implements HasMiddleware
             'email' => $user->email,
             'created_at' => optional($user->created_at)->toISOString(),
             'roles' => $user->roles()->pluck('name')->values(),
+            'promo_expires_at' => optional($user->promo_expires_at)->toISOString(),
         ];
     }
 

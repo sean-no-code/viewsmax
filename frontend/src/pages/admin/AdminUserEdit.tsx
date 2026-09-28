@@ -1,11 +1,14 @@
-// Admin — edit one user. Currently: change their role (single-role picker).
-// Server-gated by role:admin; the backend also refuses changing your own role.
+// Admin — edit one user: change their role (single-role picker) and, for a
+// promotional customer, the free-access window. Server-gated by role:admin;
+// the backend also refuses changing your own role.
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon, SectionHead } from "@/components/analytics/primitives";
 import { AnalyticsLoading } from "@/components/analytics/useAnalytics";
 import { PostShell } from "@/components/post/PostList";
+import PromoWindowSelect, { type PromoWindowChoice } from "@/components/admin/PromoWindowSelect";
 import { useAuth } from "@/hooks/useAuth";
+import { PROMO_ROLE, promoWindowLabel } from "@/lib/access";
 import { viewsMaxApi, type AdminUserDetail } from "@/lib/api-service";
 import { toast } from "sonner";
 
@@ -19,6 +22,8 @@ export default function AdminUserEdit() {
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<string>("");
+  // "keep" = leave the current window alone; otherwise days from today / null.
+  const [promoDays, setPromoDays] = useState<PromoWindowChoice>("keep");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -45,16 +50,31 @@ export default function AdminUserEdit() {
   }
 
   const isSelf = detail?.user.id === user.id;
-  const dirty = detail != null && role !== (detail.user.roles[0] ?? "customer");
+  const currentRole = detail?.user.roles[0] ?? "customer";
+  const wasPromo = currentRole === PROMO_ROLE;
+  const isPromo = role === PROMO_ROLE;
+  const roleChanged = detail != null && role !== currentRole;
+  const windowChanged = isPromo && promoDays !== "keep";
+  const dirty = roleChanged || windowChanged;
+
+  const pickRole = (name: string) => {
+    setRole(name);
+    // Switching someone onto promo needs a window; switching back doesn't.
+    if (name === PROMO_ROLE && !wasPromo) setPromoDays(7);
+    else setPromoDays("keep");
+  };
 
   const save = async () => {
     if (!detail || !dirty) return;
     setSaving(true);
-    const res = await viewsMaxApi.updateAdminUserRole(detail.user.id, role);
+    const res = await viewsMaxApi.updateAdminUserRole(detail.user.id, role, isPromo && promoDays !== "keep" ? promoDays : undefined);
     setSaving(false);
     if (res.success && res.data) {
       setDetail({ ...detail, user: res.data });
-      toast.success(`${detail.user.email} is now ${role}.`);
+      setPromoDays("keep");
+      toast.success(isPromo
+        ? `${detail.user.email} is now ${role} (${promoWindowLabel(res.data.promo_expires_at)}).`
+        : `${detail.user.email} is now ${role}.`);
     } else {
       toast.error(res.error || "Couldn't update role.");
     }
@@ -91,7 +111,7 @@ export default function AdminUserEdit() {
               {detail.roles.map((r) => {
                 const on = role === r.name;
                 return (
-                  <button key={r.id} onClick={() => !isSelf && setRole(r.name)} disabled={isSelf}
+                  <button key={r.id} onClick={() => !isSelf && pickRole(r.name)} disabled={isSelf}
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 999, cursor: isSelf ? "not-allowed" : "pointer", border: "1px solid " + (on ? "var(--ink-900)" : "var(--line-2)"), background: on ? "var(--ink-900)" : "var(--paper-0)", color: on ? "#fff" : "var(--ink-on-paper-2)", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13.5, opacity: isSelf ? 0.6 : 1 }}>
                     {on && <Icon name="check" size={14} stroke="var(--vm-volt)" />}
                     {r.display_name || r.name}
@@ -105,6 +125,15 @@ export default function AdminUserEdit() {
               </div>
             )}
           </div>
+
+          {isPromo && !isSelf && (
+            <PromoWindowSelect
+              value={promoDays}
+              onChange={setPromoDays}
+              currentExpiresAt={detail.user.promo_expires_at}
+              showKeep={wasPromo}
+            />
+          )}
 
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={save} disabled={!dirty || saving || isSelf}

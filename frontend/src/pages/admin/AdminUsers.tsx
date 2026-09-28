@@ -13,6 +13,7 @@ import { AnalyticsLoading } from "@/components/analytics/useAnalytics";
 import { PostShell } from "@/components/post/PostList";
 import { useAuth } from "@/hooks/useAuth";
 import { viewsMaxApi, type AdminUser, type AdminUserAccount, type AdminUserSort, type AdminUserStats } from "@/lib/api-service";
+import { PROMO_ROLE, promoWindowLabel } from "@/lib/access";
 import { durationBetween } from "@/lib/format-duration";
 import { toast } from "sonner";
 
@@ -291,7 +292,12 @@ export default function AdminUsers() {
 
   return (
     <PostShell max={1560}>
-      <SectionHead eyebrow="Admin" title="Users" />
+      <SectionHead eyebrow="Admin" title="Users" right={
+        <button onClick={() => navigate("/dashboard/admin/users/new")}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 999, border: "none", background: "var(--vm-red)", color: "#fff", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          <Icon name="plus" size={14} stroke="#fff" /> New user
+        </button>
+      } />
 
       {/* Widgets (follow the date range) */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
@@ -386,7 +392,14 @@ export default function AdminUsers() {
                     <td style={{ ...td, textAlign: "center" }}>
                       {u.has_card ? <Icon name="check" size={16} stroke="var(--vm-volt-deep)" /> : <span style={{ color: "var(--ink-on-paper-3)" }}>—</span>}
                     </td>
-                    <td style={{ ...td, color: u.subscribed ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>{u.plan || (u.subscribed ? "—" : "Free")}</td>
+                    <td style={{ ...td, color: u.subscribed ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>
+                      {u.plan || (u.role === PROMO_ROLE ? (
+                        <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+                          <span style={{ color: "var(--vm-volt-deep)", fontWeight: 600 }}>Promo</span>
+                          <span style={{ ...mono, fontSize: 10.5, color: "var(--ink-on-paper-3)" }}>{promoWindowLabel(u.promo_expires_at)}</span>
+                        </span>
+                      ) : u.subscribed ? "—" : "Free")}
+                    </td>
                     <td style={{ ...td, textAlign: "center" }}>
                       {u.posts_count > 0 ? (
                         <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>

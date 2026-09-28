@@ -635,9 +635,10 @@ class TrackingEventController extends Controller
         // Enforce the plan's offer limit. Without an active subscription the user
         // falls back to the Free tier's cap (so a lapsed/past_due/never-subscribed
         // user is gated, NOT given unlimited). A null limit means unlimited.
-        // Soft-deleted offers don't count.
+        // A promotional customer inside their free window has no plan row and is
+        // uncapped for the duration. Soft-deleted offers don't count.
         $plan = Auth::user()->activePlan()
-            ?? Plan::where('name', 'free')->where('is_active', true)->first();
+            ?? (Auth::user()->hasActivePromo() ? null : Plan::where('name', 'free')->where('is_active', true)->first());
         if ($plan && $plan->max_offers !== null) {
             $activeOffers = Auth::user()->offers()->count();
             if ($activeOffers >= $plan->max_offers) {

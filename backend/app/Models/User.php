@@ -60,6 +60,7 @@ class User extends Authenticatable implements Wallet
         'stripe_customer_id',
         'notify_post_failures',
         'locale',
+        'promo_expires_at',
     ];
 
     /**
@@ -85,6 +86,7 @@ class User extends Authenticatable implements Wallet
             'email_verified_at' => 'datetime',
             'onboarding_completed_at' => 'datetime',
             'card_added_at' => 'datetime',
+            'promo_expires_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'youtube_token_expires_at' => 'datetime',
@@ -202,11 +204,42 @@ class User extends Authenticatable implements Wallet
 
     /**
      * Whether the user has a subscription that is active or trialing
-     * (PayPal or Stripe). Drives the onboarding gate and user payload.
+     * (PayPal or Stripe) OR an open promotional window. Drives the onboarding
+     * gate (card step) and the `has_active_subscription` payload flag.
      */
     public function hasActiveSubscription(): bool
     {
-        return $this->hasActivePlan();
+        return $this->hasActivePlan() || $this->hasActivePromo();
+    }
+
+    public const PROMO_ROLE = 'promotional_customer';
+
+    public function isPromotional(): bool
+    {
+        return $this->hasRole(self::PROMO_ROLE);
+    }
+
+    /**
+     * Promotional customer whose free window is still open. A null
+     * promo_expires_at on a promotional customer means it never closes.
+     */
+    public function hasActivePromo(): bool
+    {
+        return $this->isPromotional()
+            && (is_null($this->promo_expires_at) || $this->promo_expires_at->isFuture());
+    }
+
+    /**
+     * Promotional customer whose window has closed and who hasn't subscribed
+     * since. EnsureAccessActive locks these users to the billing endpoints and
+     * the SPA pins them to the Billing page.
+     */
+    public function accessExpired(): bool
+    {
+        return $this->isPromotional()
+            && ! is_null($this->promo_expires_at)
+            && $this->promo_expires_at->isPast()
+            && ! $this->hasActivePlan();
     }
 
     /**
@@ -256,6 +289,11 @@ class User extends Authenticatable implements Wallet
             'onboarding_completed_at' => optional($this->onboarding_completed_at)->toIso8601String(),
             'connections_count' => $this->connections()->count(),
             'has_active_subscription' => $this->hasActiveSubscription(),
+            // Promotional access: a card-backed plan vs a free window, and
+            // whether that window has closed without a plan replacing it.
+            'has_active_plan' => $this->hasActivePlan(),
+            'promo_expires_at' => optional($this->promo_expires_at)->toIso8601String(),
+            'access_expired' => $this->accessExpired(),
             'is_admin' => $this->isAdmin(),
             // Legacy extras retained for backward compatibility.
             'roles' => $this->roles,

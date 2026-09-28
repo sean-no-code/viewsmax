@@ -24,6 +24,11 @@ class RoleSeeder extends Seeder
                 'display_name' => 'Customer',
                 'description' => 'Standard user with plan-based access',
             ],
+            [
+                'name' => 'promotional_customer',
+                'display_name' => 'Promotional customer',
+                'description' => 'Free access for a fixed window (or unlimited) with no card on file',
+            ],
         ];
 
         foreach ($roles as $role) {

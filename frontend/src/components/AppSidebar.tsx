@@ -1,4 +1,4 @@
-import { BarChart3, DollarSign, Send, Plug, Shield, Zap, CalendarDays, ScrollText, TrendingUp, type LucideIcon } from "lucide-react";
+import { BarChart3, DollarSign, Send, Plug, Shield, Zap, CalendarDays, ScrollText, TrendingUp, Crown, type LucideIcon } from "lucide-react";
 
 type NavSubItem = { title: string; i18nKey?: string; url: string };
 type NavItem = {
@@ -13,6 +13,7 @@ import { NavLink, useLocation, Link } from "react-router-dom";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { isAccessExpired } from "@/lib/access";
 
 import {
   Sidebar,
@@ -128,7 +129,10 @@ export function AppSidebar() {
       : item,
   );
 
-  const navigationItems = isAdmin ? [...baseItems, adminNavigationItem] : baseItems;
+  // An expired promotional customer can only reach Billing until they subscribe.
+  const navigationItems: NavItem[] = isAccessExpired(user)
+    ? [{ title: "Billing", url: "/dashboard/billing", icon: Crown, isProFeature: false }]
+    : isAdmin ? [...baseItems, adminNavigationItem] : baseItems;
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>

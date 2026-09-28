@@ -513,4 +513,173 @@ class AdminUsersTest extends TestCase
         $this->withHeaders($headers)->getJson("/api/admin/users/{$target->id}")->assertForbidden();
         $this->withHeaders($headers)->putJson("/api/admin/users/{$target->id}/role", ['role' => 'admin'])->assertForbidden();
     }
+
+    // --- Create user + promotional access ------------------------------------
+
+    private function promoRole(): Role
+    {
+        return Role::firstOrCreate(['name' => 'promotional_customer'], ['display_name' => 'Promotional customer']);
+    }
+
+    public function test_admin_can_create_a_promotional_customer_with_a_free_window(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->promoRole();
+        Carbon::setTestNow('2026-09-28 10:00:00');
+
+        $data = $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson('/api/admin/users', [
+                'name' => 'Promo Pat',
+                'email' => 'pat@example.com',
+                'password' => 'Str0ng-passw0rd',
+                'role' => 'promotional_customer',
+                'promo_days' => 14,
+            ])
+            ->assertCreated()
+            ->json('data.user');
+
+        $this->assertSame(['promotional_customer'], $data['roles']);
+        $this->assertSame('2026-10-12T10:00:00.000000Z', $data['promo_expires_at']);
+
+        $user = User::where('email', 'pat@example.com')->first();
+        $this->assertNotNull($user->email_verified_at, 'admin-created users skip email verification');
+        $this->assertNull($user->onboarding_completed_at, 'they still go through onboarding (minus the card step)');
+        $this->assertTrue($user->hasActiveSubscription());
+
+        // The new user can log in with the password the admin set.
+        $this->postJson('/api/login', ['email' => 'pat@example.com', 'password' => 'Str0ng-passw0rd'])
+            ->assertOk()
+            ->assertJsonPath('data.user.has_active_subscription', true);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_admin_can_create_an_unlimited_promotional_customer(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->promoRole();
+
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson('/api/admin/users', [
+                'name' => 'Forever Fran',
+                'email' => 'fran@example.com',
+                'password' => 'Str0ng-passw0rd',
+                'role' => 'promotional_customer',
+                'promo_days' => null,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.user.promo_expires_at', null)
+            ->assertJsonPath('data.user.roles', ['promotional_customer']);
+
+        $this->assertTrue(User::where('email', 'fran@example.com')->first()->hasActiveSubscription());
+    }
+
+    public function test_admin_can_create_a_plain_customer(): void
+    {
+        $admin = $this->makeAdmin();
+        Role::firstOrCreate(['name' => 'customer'], ['display_name' => 'Customer']);
+
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson('/api/admin/users', [
+                'name' => 'Plain Pam',
+                'email' => 'pam@example.com',
+                'password' => 'Str0ng-passw0rd',
+                'role' => 'customer',
+                'promo_days' => 7, // ignored for non-promo roles
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.user.roles', ['customer'])
+            ->assertJsonPath('data.user.promo_expires_at', null);
+
+        $this->assertFalse(User::where('email', 'pam@example.com')->first()->hasActiveSubscription());
+    }
+
+    public function test_create_user_validates_input(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->promoRole();
+        User::factory()->create(['email' => 'taken@example.com']);
+        $headers = $this->tokenHeaders($admin);
+
+        $base = ['name' => 'X', 'email' => 'new@example.com', 'password' => 'Str0ng-passw0rd', 'role' => 'promotional_customer'];
+
+        $this->withHeaders($headers)->postJson('/api/admin/users', array_merge($base, ['email' => 'taken@example.com']))
+            ->assertStatus(422)->assertJsonValidationErrors('email');
+        $this->withHeaders($headers)->postJson('/api/admin/users', array_merge($base, ['password' => 'short']))
+            ->assertStatus(422)->assertJsonValidationErrors('password');
+        $this->withHeaders($headers)->postJson('/api/admin/users', array_merge($base, ['role' => 'admin']))
+            ->assertStatus(422)->assertJsonValidationErrors('role');
+        $this->withHeaders($headers)->postJson('/api/admin/users', array_merge($base, ['promo_days' => 0]))
+            ->assertStatus(422)->assertJsonValidationErrors('promo_days');
+    }
+
+    public function test_non_admin_cannot_create_users(): void
+    {
+        $user = User::factory()->create();
+
+        $this->withHeaders($this->tokenHeaders($user))
+            ->postJson('/api/admin/users', ['name' => 'X', 'email' => 'x@example.com', 'password' => 'Str0ng-passw0rd', 'role' => 'customer'])
+            ->assertForbidden();
+    }
+
+    public function test_role_change_to_promotional_sets_the_free_window(): void
+    {
+        $admin = $this->makeAdmin();
+        $this->promoRole();
+        $target = User::factory()->create();
+        Carbon::setTestNow('2026-09-28 10:00:00');
+
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->putJson("/api/admin/users/{$target->id}/role", ['role' => 'promotional_customer', 'promo_days' => 30])
+            ->assertOk()
+            ->assertJsonPath('data.user.roles', ['promotional_customer'])
+            ->assertJsonPath('data.user.promo_expires_at', '2026-10-28T10:00:00.000000Z');
+
+        // Omitting promo_days keeps the existing window.
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->putJson("/api/admin/users/{$target->id}/role", ['role' => 'promotional_customer'])
+            ->assertOk()
+            ->assertJsonPath('data.user.promo_expires_at', '2026-10-28T10:00:00.000000Z');
+
+        // Explicit null = unlimited.
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->putJson("/api/admin/users/{$target->id}/role", ['role' => 'promotional_customer', 'promo_days' => null])
+            ->assertOk()
+            ->assertJsonPath('data.user.promo_expires_at', null);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_role_change_away_from_promotional_clears_the_free_window(): void
+    {
+        $admin = $this->makeAdmin();
+        Role::firstOrCreate(['name' => 'customer'], ['display_name' => 'Customer']);
+        $target = User::factory()->create(['promo_expires_at' => now()->addDays(3)]);
+        $target->roles()->attach($this->promoRole()->id);
+
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->putJson("/api/admin/users/{$target->id}/role", ['role' => 'customer'])
+            ->assertOk()
+            ->assertJsonPath('data.user.roles', ['customer'])
+            ->assertJsonPath('data.user.promo_expires_at', null);
+
+        $this->assertNull($target->fresh()->promo_expires_at);
+    }
+
+    public function test_index_exposes_role_and_promo_window(): void
+    {
+        $admin = $this->makeAdmin();
+        $promo = User::factory()->create(['email' => 'promo@example.com', 'promo_expires_at' => Carbon::parse('2026-12-01 00:00:00')]);
+        $promo->roles()->attach($this->promoRole()->id);
+
+        $rows = collect($this->withHeaders($this->tokenHeaders($admin))
+            ->getJson('/api/admin/users')
+            ->assertOk()
+            ->json('data.users'));
+
+        $row = $rows->firstWhere('email', 'promo@example.com');
+        $this->assertSame('promotional_customer', $row['role']);
+        $this->assertSame('2026-12-01T00:00:00.000000Z', $row['promo_expires_at']);
+        $this->assertFalse($row['subscribed']);
+    }
 }
