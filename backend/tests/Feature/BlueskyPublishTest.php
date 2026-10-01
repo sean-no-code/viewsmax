@@ -105,6 +105,63 @@ class BlueskyPublishTest extends TestCase
         $this->assertSame('fresh-access', $account->fresh()->access_token);
     }
 
+    public function test_session_refresh_sends_no_request_body(): void
+    {
+        // Live Bluesky rejects a refresh that carries any body with 400
+        // "A request body was provided when none was expected", which used to
+        // flip every account to needs-reauth an hour after connecting.
+        Http::fake([
+            'bsky.social/xrpc/com.atproto.server.refreshSession' => fn ($request) => $request->body() === ''
+                ? Http::response(['accessJwt' => 'fresh-access', 'refreshJwt' => 'fresh-refresh'])
+                : Http::response(['error' => 'InvalidRequest', 'message' => 'A request body was provided when none was expected'], 400),
+            'bsky.social/xrpc/com.atproto.repo.createRecord' => Http::response([
+                'uri' => 'at://did:plc:abc123/app.bsky.feed.post/rkey2',
+            ]),
+        ]);
+        $account = $this->connectBluesky(['token_expires_at' => now()->subMinute()]);
+        $target = $this->makeTarget('no body please', [], $account->id);
+
+        $this->runJob($target);
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->fresh()->status, (string) $target->fresh()->error);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
+    }
+
+    public function test_session_expiry_comes_from_the_token_bluesky_issues(): void
+    {
+        // Bluesky access tokens carry their own expiry (two hours on the live
+        // service); the stored expiry must follow it instead of a guess.
+        $connectExp = now()->addHours(2)->startOfSecond();
+        $refreshExp = now()->addHours(3)->startOfSecond();
+        Http::fake([
+            'bsky.social/xrpc/com.atproto.server.createSession' => Http::response([
+                'did' => 'did:plc:new',
+                'handle' => 'new.bsky.social',
+                'accessJwt' => $this->jwt($connectExp->timestamp),
+                'refreshJwt' => 'refresh-jwt',
+            ]),
+            'bsky.social/xrpc/com.atproto.server.refreshSession' => Http::response([
+                'accessJwt' => $this->jwt($refreshExp->timestamp),
+                'refreshJwt' => 'refresh-jwt-2',
+            ]),
+        ]);
+        $provider = app(SocialProviderManager::class)->for('bluesky');
+
+        $account = $provider->connectWithCredentials($this->user, ['identifier' => 'new.bsky.social', 'password' => 'app-pass'])->first();
+        $this->assertTrue($connectExp->equalTo($account->fresh()->token_expires_at));
+
+        $account->forceFill(['token_expires_at' => now()->subMinute()])->save();
+        $provider->ensureFreshToken($account->fresh());
+        $this->assertTrue($refreshExp->equalTo($account->fresh()->token_expires_at));
+    }
+
+    private function jwt(int $exp): string
+    {
+        $part = fn (array $data) => rtrim(strtr(base64_encode(json_encode($data)), '+/', '-_'), '=');
+
+        return $part(['typ' => 'at+jwt', 'alg' => 'ES256K']).'.'.$part(['exp' => $exp, 'sub' => 'did:plc:new']).'.signature';
+    }
+
     public function test_video_media_fails_with_clear_note(): void
     {
         Http::fake();

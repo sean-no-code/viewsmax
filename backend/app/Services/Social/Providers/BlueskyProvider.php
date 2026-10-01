@@ -6,6 +6,7 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\PublishResult;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -69,8 +70,7 @@ class BlueskyProvider extends AbstractSocialProvider
             'profile_url' => isset($data['handle']) ? 'https://bsky.app/profile/'.$data['handle'] : null,
             'access_token' => $data['accessJwt'] ?? null,
             'refresh_token' => $data['refreshJwt'] ?? null,
-            // Access JWTs are short-lived; refresh on demand.
-            'token_expires_at' => now()->addHours(1),
+            'token_expires_at' => $this->accessExpiry($data['accessJwt'] ?? null),
             'metadata' => [
                 'did' => $data['did'] ?? null,
                 'handle' => $data['handle'] ?? $identifier,
@@ -79,6 +79,20 @@ class BlueskyProvider extends AbstractSocialProvider
         ]);
 
         return collect([$account]);
+    }
+
+    /**
+     * When the access JWT expires, read from its own `exp` claim. Bluesky
+     * sets the lifetime (two hours on the live service); fall back to one
+     * hour only if the token can't be read.
+     */
+    protected function accessExpiry(?string $jwt): Carbon
+    {
+        $payload = json_decode((string) base64_decode(strtr(explode('.', (string) $jwt)[1] ?? '', '-_', '+/')), true);
+
+        return isset($payload['exp']) && is_numeric($payload['exp'])
+            ? Carbon::createFromTimestamp((int) $payload['exp'])
+            : now()->addHour();
     }
 
     public function ensureFreshToken(SocialAccount $account): SocialAccount
@@ -94,11 +108,16 @@ class BlueskyProvider extends AbstractSocialProvider
         }
 
         return $this->refreshingSafely($account, function (SocialAccount $account) {
+            // refreshSession takes no input, and Bluesky rejects any request
+            // body (even "[]"), so send the POST without one.
             $response = Http::withToken($account->refresh_token)
-                ->post($this->serviceUrl().'/xrpc/com.atproto.server.refreshSession');
+                ->send('POST', $this->serviceUrl().'/xrpc/com.atproto.server.refreshSession');
 
             if (! $response->successful()) {
                 if ($this->isDefinitiveAuthFailure($response->status())) {
+                    Log::warning('Bluesky session refresh rejected', [
+                        'account_id' => $account->id, 'status' => $response->status(), 'body' => $response->body(),
+                    ]);
                     $account->markNeedsReauth('Bluesky session was rejected — reconnect with your app password.');
                 } else {
                     Log::warning('Bluesky session refresh failed transiently', [
@@ -113,7 +132,7 @@ class BlueskyProvider extends AbstractSocialProvider
             $account->update([
                 'access_token' => $data['accessJwt'] ?? $account->access_token,
                 'refresh_token' => $data['refreshJwt'] ?? $account->refresh_token,
-                'token_expires_at' => now()->addHours(1),
+                'token_expires_at' => $this->accessExpiry($data['accessJwt'] ?? null),
                 'status' => SocialAccount::STATUS_CONNECTED,
                 'last_error' => null,
             ]);
