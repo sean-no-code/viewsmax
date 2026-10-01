@@ -18,7 +18,7 @@ const Privacy = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Introduction</h2>
             <p className="text-muted-foreground leading-relaxed">
-              ViewsMax ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our YouTube analytics and content optimization platform. By using our service, you agree to the practices described in this policy.
+              ViewsMax ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform for publishing social content, tracking offers, and researching and analyzing videos. By using our service, you agree to the practices described in this policy.
             </p>
           </section>
 
@@ -27,16 +27,17 @@ const Privacy = () => {
             
             <h3 className="text-xl font-medium mb-3">YouTube Data Access</h3>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              When you connect your YouTube channel to our platform, we request read-only access to:
+              When you connect your YouTube channel to our platform, we request access to:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">
               <li>Your channel metadata (name, description, subscriber count, total views)</li>
               <li>Your video information (titles, descriptions, thumbnails, statistics, tags)</li>
               <li>Your playlists and their contents</li>
               <li>Analytics data including views over time, watch time, audience demographics, and geographic data</li>
+              <li>Uploading videos to your channel, used only when you publish or schedule a post to YouTube</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed">
-              This data is accessed through Google's YouTube Data API v3 and YouTube Analytics API using OAuth 2.0 authentication with scopes: <code className="bg-muted px-2 py-1 rounded">youtube.readonly</code> and <code className="bg-muted px-2 py-1 rounded">yt-analytics.readonly</code>.
+              This data is accessed through Google's YouTube Data API v3 and YouTube Analytics API using OAuth 2.0 authentication with scopes: <code className="bg-muted px-2 py-1 rounded">youtube.readonly</code>, <code className="bg-muted px-2 py-1 rounded">yt-analytics.readonly</code>, and <code className="bg-muted px-2 py-1 rounded">youtube.upload</code>.
             </p>
 
             <h3 className="text-xl font-medium mb-3 mt-6">Account Information</h3>
@@ -48,6 +49,24 @@ const Privacy = () => {
             <p className="text-muted-foreground leading-relaxed">
               We automatically collect information about how you use our platform, including pages visited, features used, and interaction patterns to improve our service.
             </p>
+
+            <h3 className="text-xl font-medium mb-3 mt-6">Connected Social Accounts</h3>
+            <p className="text-muted-foreground leading-relaxed">
+              When you connect a social account (YouTube, TikTok, X, LinkedIn, Threads, Instagram, or Bluesky), we store the account's name and the access tokens that platform gives us. We use them only to publish, schedule, and check the status of posts you create. Disconnecting an account from the Connections page deletes its stored tokens.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">AI Assistant Connections</h2>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              You can connect AI assistants such as Claude and ChatGPT to your ViewsMax account, by signing in to ViewsMax and approving access or by using an API key. A connected assistant can then read and act on your ViewsMax data on your behalf: your posts and schedule, offers and their statistics, connected account names, and saved outliers. It can publish posts to your connected social accounts when you ask it to.
+            </p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">
+              <li><strong>What we receive:</strong> only the tool requests the assistant sends to ViewsMax, such as "create a post" with its caption. We do not receive your conversation with the assistant.</li>
+              <li><strong>Activity log:</strong> for each tool request we record the tool name, the inputs the assistant sent, whether it succeeded, how the assistant signed in, and the time. You can view this log under Settings → AI Assistant Access.</li>
+              <li><strong>Access limits:</strong> each sign-in is valid for one hour and renews automatically; if an assistant isn't used for 30 days, you need to sign in again. Read-only access cannot change anything in your account.</li>
+              <li><strong>Plans and billing:</strong> AI assistants cannot view or change your plan or payment details.</li>
+            </ul>
           </section>
 
           <section className="mb-8">
@@ -69,14 +88,14 @@ const Privacy = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Data Storage and Security</h2>
             
-            <h3 className="text-xl font-medium mb-3">Client-Side Storage</h3>
+            <h3 className="text-xl font-medium mb-3">Account Tokens</h3>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Your YouTube OAuth tokens and cached analytics data are stored locally in your browser's localStorage. This data remains on your device and is not transmitted to our servers.
+              The access tokens for your connected accounts (YouTube and other social platforms) are stored encrypted on our servers, so we can publish and schedule the posts you create. They are deleted when you disconnect the account.
             </p>
 
             <h3 className="text-xl font-medium mb-3">Server-Side Processing</h3>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              We use Supabase for secure data processing and storage. Any data processed on our servers is encrypted in transit and at rest. Our edge functions process video analysis requests using only public video IDs and metadata. We only share limited video metadata (title, description, and videoId) with OpenAI for content analysis. We never transmit personally identifiable Google account data or analytics data to third parties.
+              Data processed on our servers is encrypted in transit. AI features send AI providers only the content needed for the task, such as a video's title, description, or transcript. We never transmit personally identifiable Google account data or analytics data to third parties.
             </p>
 
             <h3 className="text-xl font-medium mb-3">Security Measures</h3>
@@ -91,7 +110,7 @@ const Privacy = () => {
               We access Google user data solely to provide user-facing features in our app and in accordance with Google API Services User Data Policy, including the Limited Use requirements. We do not sell or transfer Google user data except as necessary to provide the service with your consent, for security, to comply with law, or as part of a business transfer with explicit user consent. We do not allow human access to Google user data unless you provide explicit consent or it is required for security, legal compliance, or troubleshooting at your request.
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2">
-              <li>Scopes requested are limited to what is necessary: <code className="bg-muted px-2 py-1 rounded">youtube.readonly</code>, <code className="bg-muted px-2 py-1 rounded">yt-analytics.readonly</code>, and <code className="bg-muted px-2 py-1 rounded">userinfo.profile</code>.</li>
+              <li>Scopes requested are limited to what is necessary: <code className="bg-muted px-2 py-1 rounded">youtube.readonly</code>, <code className="bg-muted px-2 py-1 rounded">yt-analytics.readonly</code>, <code className="bg-muted px-2 py-1 rounded">youtube.upload</code>, and <code className="bg-muted px-2 py-1 rounded">userinfo.profile</code>.</li>
               <li>No ads personalization, retargeting, or data broker transfers using Google user data.</li>
               <li>Data is secured in transit and at rest and access is restricted.</li>
             </ul>
@@ -107,6 +126,7 @@ const Privacy = () => {
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2">
               <li><strong>Service Providers:</strong> We may share data with trusted third-party services (like OpenAI for content analysis) that help us operate our platform</li>
+              <li><strong>Social Platforms:</strong> When you publish or schedule a post, its content and media are sent to the social platforms you chose</li>
               <li><strong>Legal Requirements:</strong> When required by law, court order, or government regulation</li>
               <li><strong>Business Transfers:</strong> In connection with any merger, acquisition, or sale of assets</li>
               <li><strong>Consent:</strong> When you explicitly consent to sharing your information</li>
@@ -141,7 +161,8 @@ const Privacy = () => {
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">
               <li>We retain Google user data only as long as needed to provide the service.</li>
               <li>Upon your request or if authorization is revoked, we delete Google user data promptly and within 30 days.</li>
-              <li>Local tokens and caches are cleared immediately when you disconnect or revoke access.</li>
+              <li>Stored tokens are deleted when you disconnect an account.</li>
+              <li>The AI assistant activity log is kept while your account exists and is deleted with your account.</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed">
               To request deletion beyond the controls above, contact us at the email below. We will complete deletion within 30 days of receipt.
