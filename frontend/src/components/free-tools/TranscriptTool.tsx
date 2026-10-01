@@ -1,15 +1,16 @@
 // Shared page for the free transcript tools. Layout from the Claude Design
 // handoff (design-import/tiktok-transcript-with-ads.dc.html): bookmark strip
-// under the nav, then ads | tool | ads on wide screens, styled with the
-// design-system tokens in index.css.
-import { useState } from "react";
+// under the nav, then ads | tool | ads on wide screens. Below 1240px the rails
+// are hidden, so the same ads interleave with the transcript instead — see
+// AD_PLACEMENT below. Styled with the design-system tokens in index.css.
+import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Youtube, Instagram, Music2, Copy, Download, Check, Captions, ChevronRight, Sparkles, Loader2, AlertCircle, type LucideIcon,
 } from "lucide-react";
 import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import BookmarkBar from "@/components/free-tools/BookmarkBar";
-import { AdRail, TOOL_ADS } from "@/components/free-tools/ToolAds";
+import { AdRail, AdStrip, TOOL_ADS } from "@/components/free-tools/ToolAds";
 import { useSeo } from "@/hooks/useSeo";
 import { PLATFORMS, PLATFORM_LIST, buildJsonLd, type PlatformKey } from "@/lib/transcript-tools";
 import { viewsMaxApi } from "@/lib/api-service";
@@ -44,6 +45,21 @@ const downloadFile = (filename: string, content: string) => {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+};
+
+/**
+ * AD_PLACEMENT — below 1240px there are no side rails, so the house ads travel
+ * with the transcript: the first sits above it, and the rest are spaced evenly
+ * through the lines (thirds, for the default four ads). A short transcript takes
+ * fewer inline ads so the list never turns into a stack of ads; whatever is left
+ * over goes under the card.
+ */
+const MIN_LINES_PER_AD = 3;
+
+/** Split into at most `n` runs of equal length, in order (thirds for n = 3). */
+const chunk = <T,>(items: T[], n: number): T[][] => {
+  const size = Math.ceil(items.length / n);
+  return Array.from({ length: n }, (_, i) => items.slice(i * size, (i + 1) * size)).filter((g) => g.length > 0);
 };
 
 const CARD = "rounded-[18px] border border-line-1 bg-paper-0";
@@ -90,6 +106,11 @@ export default function TranscriptTool({ platform }: { platform: PlatformKey }) 
         ? [{ time: "", text: result.text }]
         : [];
   const plainText = result?.text || lines.map((l) => l.text).join(" ");
+
+  const [leadAd, ...flowAds] = TOOL_ADS;
+  const inlineAds = flowAds.slice(0, Math.floor(lines.length / MIN_LINES_PER_AD));
+  const lineGroups = chunk(lines, Math.max(inlineAds.length, 1));
+  const trailingAds = flowAds.slice(inlineAds.length);
 
   const copy = async () => {
     try {
@@ -146,6 +167,7 @@ export default function TranscriptTool({ platform }: { platform: PlatformKey }) 
           <p className="mb-[30px] mt-3.5 text-xs font-semibold text-ink-on-paper-3">No login · No watermark · Free forever</p>
 
           {/* Result / loading / error */}
+          {result && <AdStrip ads={[leadAd]} platform={cfg.name} className="mb-3" />}
           {(loading || error || result) && (
             <div className={`${CARD} w-full max-w-[740px] overflow-hidden`} aria-live="polite">
               {loading ? (
@@ -177,20 +199,26 @@ export default function TranscriptTool({ platform }: { platform: PlatformKey }) 
                       ) : null}
                     </div>
                   </div>
-                  <div className="max-h-[380px] overflow-y-auto px-5 py-3.5">
-                    {lines.map((l, i) => (
-                      <div key={i} className="flex gap-3 py-[7px] text-[15px] leading-[1.4]">
-                        {l.time && (
-                          <span className="min-w-[34px] shrink-0 pt-0.5 font-mono text-[12.5px] tabular-nums text-ink-on-paper-3">{l.time}</span>
-                        )}
-                        <span>{l.text}</span>
-                      </div>
+                  <div className="px-5 py-3.5 min-[1240px]:max-h-[380px] min-[1240px]:overflow-y-auto">
+                    {lineGroups.map((group, g) => (
+                      <Fragment key={g}>
+                        {group.map((l, i) => (
+                          <div key={i} className="flex gap-3 py-[7px] text-[15px] leading-[1.4]">
+                            {l.time && (
+                              <span className="min-w-[34px] shrink-0 pt-0.5 font-mono text-[12.5px] tabular-nums text-ink-on-paper-3">{l.time}</span>
+                            )}
+                            <span>{l.text}</span>
+                          </div>
+                        ))}
+                        {inlineAds[g] && <AdStrip ads={[inlineAds[g]]} platform={cfg.name} className="my-3.5" />}
+                      </Fragment>
                     ))}
                   </div>
                 </>
               ) : null}
             </div>
           )}
+          {result && <AdStrip ads={trailingAds} platform={cfg.name} className="mt-3" />}
 
           {/* How it works */}
           <section className="w-full pt-16">
