@@ -84,4 +84,26 @@ class OAuthLoginBridgeTest extends TestCase
         $response->assertStatus(401);
         $response->assertJsonStructure(['message', 'api_login_url']);
     }
+
+    public function test_oauth_screens_load_the_viewsmax_tracker_when_configured(): void
+    {
+        config(['mcp.tracker_user' => 'pub_abc123']);
+
+        $response = $this->get('/login');
+
+        $response->assertOk();
+        $response->assertSee('<meta name="viewsmax-user" content="pub_abc123">', false);
+        $response->assertSee('src="' . url('/tracker.js') . '"', false);
+    }
+
+    public function test_oauth_screens_have_no_tracker_by_default(): void
+    {
+        config(['mcp.tracker_user' => null]);
+
+        $response = $this->get('/login');
+
+        $response->assertOk();
+        $response->assertDontSee('viewsmax-user');
+        $response->assertDontSee('tracker.js');
+    }
 }

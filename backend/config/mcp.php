@@ -34,6 +34,20 @@ return [
     // (e.g. get_connect_url -> the Connections page).
     'frontend_url' => env('FRONTEND_URL', env('APP_URL')),
 
+    /*
+    |--------------------------------------------------------------------------
+    | ViewsMax tracker on the OAuth screens
+    |--------------------------------------------------------------------------
+    |
+    | Public tracker id (the same value as the SPA's VITE_VIEWSMAX_TRACKER_USER)
+    | for the backend-rendered OAuth login and consent pages, so connector
+    | sign-ins show up in ViewsMax's own visit tracking. Leave empty to ship
+    | those pages with no tracker, which is the open-source default.
+    |
+    */
+
+    'tracker_user' => env('MCP_TRACKER_USER'),
+
     'rate_limits' => [
         // All MCP calls, per token.
         'per_minute' => env('MCP_RATE_PER_MINUTE', 120),

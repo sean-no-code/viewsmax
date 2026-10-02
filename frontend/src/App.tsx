@@ -11,6 +11,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import ConnectAI from "./pages/ConnectAI";
+import McpLanding from "./pages/McpLanding";
 import AgentPage from "./components/agents/AgentPage";
 import { AGENT_LIST } from "./lib/agent-pages";
 import DashboardLayout from "./components/DashboardLayout";
@@ -115,6 +116,7 @@ const App = () => (
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/ai" element={<ConnectAI />} />
+                <Route path="/mcp" element={<McpLanding />} />
                 {/* Per-agent setup guides: /claude, /chatgpt, /cursor, ... (src/lib/agent-pages.ts) */}
                 {AGENT_LIST.map((a) => (
                   <Route key={a.key} path={a.slug} element={<AgentPage agent={a.key} />} />

@@ -1,15 +1,17 @@
 // Build-time prerender for the per-agent setup guides (/claude, /chatgpt, ...)
-// in src/lib/agent-pages.ts, plus their plain-markdown briefs (/claude.md).
+// in src/lib/agent-pages.ts and the /mcp landing page in src/lib/mcp-page.ts,
+// plus their plain-markdown twins (/claude.md, /mcp.md).
 //
 // Runs right after scripts/prerender-seo.ts (see `postbuild` in package.json)
 // and injects head tags the same way: real <title>, meta, canonical, and
-// JSON-LD baked into dist/<agent>/index.html, which S3 serves with HTTP 200.
-// Kept as its own script so prerender-seo.ts stays untouched by this feature.
+// JSON-LD baked into dist/<path>/index.html, which S3 serves with HTTP 200.
+// Kept as its own script so prerender-seo.ts stays untouched by these pages.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "vite";
 import { AGENT_LIST, briefPath, buildAgentJsonLd, buildAgentMarkdown } from "../src/lib/agent-pages";
+import { MCP_MD_PATH, MCP_PAGE_SEO, MCP_PATH, buildMcpJsonLd, buildMcpMarkdown } from "../src/lib/mcp-page";
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = join(rootDir, "dist");
@@ -34,9 +36,14 @@ const cleanHead = (html: string) =>
 
 const shell = cleanHead(readFileSync(join(distDir, "index.html"), "utf8"));
 
-for (const a of AGENT_LIST) {
-  const url = `${ORIGIN}${a.slug}`;
-  const { title, description, keywords } = a.seo;
+interface Seo {
+  title: string;
+  description: string;
+  keywords: string;
+}
+
+function writeRoute(path: string, { title, description, keywords }: Seo, jsonLd: Record<string, unknown>[]) {
+  const url = `${ORIGIN}${path}`;
   const head =
     `\n  <meta name="description" content="${esc(description)}" />` +
     `\n  <meta name="keywords" content="${esc(keywords)}" />` +
@@ -50,19 +57,29 @@ for (const a of AGENT_LIST) {
     `\n  <meta name="twitter:title" content="${esc(title)}" />` +
     `\n  <meta name="twitter:description" content="${esc(description)}" />` +
     `\n  <meta name="twitter:image" content="${OG_IMAGE}" />` +
-    buildAgentJsonLd(a).map((d) => `\n  <script type="application/ld+json">${JSON.stringify(d)}</script>`).join("");
+    jsonLd.map((d) => `\n  <script type="application/ld+json">${JSON.stringify(d)}</script>`).join("");
 
   const html = shell
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`)
     .replace("</head>", `${head}\n</head>`);
 
-  const outDir = join(distDir, a.slug.replace(/^\//, ""));
+  const outDir = join(distDir, path.replace(/^\//, ""));
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, "index.html"), html);
-  console.log(`prerendered ${a.slug}`);
-
-  // Plain-markdown setup brief, alongside /ai.md, for agents that read docs
-  // directly and for the page's "View plain text" link.
-  writeFileSync(join(distDir, briefPath(a).replace(/^\//, "")), buildAgentMarkdown(a, env));
-  console.log(`wrote ${briefPath(a)}`);
+  console.log(`prerendered ${path}`);
 }
+
+// Plain-markdown twin, alongside /ai.md, for agents that read docs directly
+// and for the page's "View plain text" link.
+function writeMd(path: string, markdown: string) {
+  writeFileSync(join(distDir, path.replace(/^\//, "")), markdown);
+  console.log(`wrote ${path}`);
+}
+
+for (const a of AGENT_LIST) {
+  writeRoute(a.slug, a.seo, buildAgentJsonLd(a));
+  writeMd(briefPath(a), buildAgentMarkdown(a, env));
+}
+
+writeRoute(MCP_PATH, MCP_PAGE_SEO, buildMcpJsonLd());
+writeMd(MCP_MD_PATH, buildMcpMarkdown());

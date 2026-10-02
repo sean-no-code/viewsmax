@@ -43,9 +43,9 @@ export const TOOL_ADS: ToolAd[] = [
   {
     icon: Bot,
     title: "Use ViewsMax with your AI agents",
-    body: "Plug analytics, transcripts and trends into Claude, ChatGPT or any MCP-ready agent.",
+    body: "Post, track offers and research outliers from Claude, ChatGPT or any MCP client.",
     cta: "Connect an agent",
-    href: "/ai",
+    href: "/mcp",
     bg: "#E9E6FF",
     border: "#CFC9F7",
     accent: "#4B3FBF",

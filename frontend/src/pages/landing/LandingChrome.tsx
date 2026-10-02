@@ -14,7 +14,7 @@ const API_DOCS = `${API_BASE_URL}/docs`;
 const BLOG = "https://blog.viewsmax.com";
 const RESOURCES: { label: string; desc: string; href: string; external?: boolean }[] = [
   { label: "API docs", desc: "REST API reference & OpenAPI spec", href: API_DOCS, external: true },
-  { label: "Install MCP", desc: "Connect Claude, ChatGPT, Cursor & more", href: "/ai" },
+  { label: "Install MCP", desc: "The ViewsMax MCP server: address, auth & 30 tools", href: "/mcp" },
   { label: "CLI setup", desc: "Use ViewsMax from Claude Code", href: "/ai#cli" },
   { label: "Blog", desc: "Growth tactics & product updates", href: BLOG, external: true },
   { label: "Support", desc: "Join our Discord for help & updates", href: "https://discord.gg/Wwe57w3Dv5", external: true },
@@ -109,7 +109,7 @@ export function LandingFooter() {
   const cols: [string, { label: string; href: string }[]][] = [
     ["Product", [{ label: "Scheduler", href: "#" }, { label: "Sales tracking", href: "#" }, { label: "Analytics", href: "#" }, { label: "Channels", href: "#" }, { label: "Pricing", href: "#" }]],
     ["Company", [{ label: "About", href: "#" }, { label: "Careers", href: "#" }, { label: "Blog", href: BLOG }, { label: "Contact", href: "#" }, { label: "Affiliates", href: "https://viewsmax.getrewardful.com/signup" }]],
-    ["Resources", [{ label: "API docs", href: API_DOCS }, { label: "Install MCP", href: "/ai" }, { label: "CLI setup", href: "/ai#cli" }]],
+    ["Resources", [{ label: "API docs", href: API_DOCS }, { label: "Install MCP", href: "/mcp" }, { label: "CLI setup", href: "/ai#cli" }]],
     ["AI agents", AI_AGENTS.map(({ label, href }) => ({ label, href }))],
     ["Free tools", [{ label: "YouTube Transcript", href: "/free-tools/youtube-transcript" }, { label: "TikTok Transcript", href: "/free-tools/tiktok-transcript" }, { label: "Instagram Transcript", href: "/free-tools/instagram-transcript" }, { label: "Thumbnail Preview", href: "/thumbnail-preview" }, { label: "Revenue Calculator", href: "/youtube-monetization-calculator" }]],
   ];

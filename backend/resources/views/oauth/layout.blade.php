@@ -4,6 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'ViewsMax')</title>
+    @if (($trackerUser = config('mcp.tracker_user')) && ! auth('web')->user()?->isAdmin())
+        {{-- ViewsMax visit tracking (mirrors the SPA's loadViewsmaxTracker): tracker.js reads the public id from this meta tag. --}}
+        <meta name="viewsmax-user" content="{{ $trackerUser }}">
+        <script defer src="{{ url('/tracker.js') }}"></script>
+    @endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>

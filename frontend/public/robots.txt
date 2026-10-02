@@ -10,8 +10,9 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-# AI crawlers & agents welcome — start at https://viewsmax.com/llms.txt
-# and https://viewsmax.com/ai.md (agent setup + MCP endpoint).
+# AI crawlers & agents welcome — start at https://viewsmax.com/llms.txt,
+# https://viewsmax.com/mcp.md (the MCP server: tools, auth, limits) and
+# https://viewsmax.com/ai.md (setup per agent + MCP endpoint).
 User-agent: GPTBot
 Allow: /
 

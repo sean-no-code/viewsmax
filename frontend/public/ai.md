@@ -11,6 +11,7 @@ authenticated.
 - **MCP endpoint:** `https://api.viewsmax.com/api/mcp` (Streamable HTTP)
 - **Capability discovery (JSON):** `https://api.viewsmax.com/api/ai`
 - **REST API:** `https://api.viewsmax.com/api` — [OpenAPI spec](https://api.viewsmax.com/docs.openapi) · [API reference](https://api.viewsmax.com/docs)
+- **MCP server overview:** <https://viewsmax.com/mcp> (plain text: <https://viewsmax.com/mcp.md>) — what it exposes, auth modes, rate limits, and all 30 tools grouped by job
 
 Step-by-step guides per agent: [Claude](https://viewsmax.com/claude) ·
 [Claude Code](https://viewsmax.com/claude-code) ·

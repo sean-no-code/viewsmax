@@ -72,6 +72,8 @@ const ConnectAI = () => {
             your connected social accounts, manage offers and tracked links, and read
             your analytics — on your behalf, with your permission. Machine-readable
             version of this page: <a className="underline underline-offset-2" href="/ai.md">/ai.md</a>.
+            New to MCP? Start with the <a className="underline underline-offset-2" href="/mcp">MCP server overview</a> —
+            what it exposes, how auth works, and every tool grouped by job.
           </p>
         </div>
       </header>
@@ -224,6 +226,7 @@ const ConnectAI = () => {
             <code className="bg-muted px-1 rounded text-xs">create_post</code> (draft / posted / scheduled) →
             publishing is asynchronous, so poll{" "}
             <code className="bg-muted px-1 rounded text-xs">get_post</code> for per-platform results.
+            The same tools grouped by job, with what each needs: <a className="underline underline-offset-2" href="/mcp#tools">/mcp</a>.
           </p>
         </Section>
 

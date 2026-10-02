@@ -25,6 +25,7 @@
       "Bash(composer test)",
       "Bash(npx vitest *)",
       "Bash(npx tsc --noEmit *)",
+      "Bash(npx tsc --noEmit)",
       "Bash(npx eslint *)",
       "Bash(npm run build)",
       "Bash(npm run build *)",
