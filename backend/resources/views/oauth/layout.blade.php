@@ -4,10 +4,28 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'ViewsMax')</title>
-    @if (($trackerUser = config('mcp.tracker_user')) && ! auth('web')->user()?->isAdmin())
-        {{-- ViewsMax visit tracking (mirrors the SPA's loadViewsmaxTracker): tracker.js reads the public id from this meta tag. --}}
-        <meta name="viewsmax-user" content="{{ $trackerUser }}">
-        <script defer src="{{ url('/tracker.js') }}"></script>
+    @php
+        // Analytics for the connector sign-in funnel. Mirrors the SPA's
+        // loadClarity / loadGa (frontend/src/lib/tracking.ts); admins are
+        // skipped there too.
+        $clarityId = config('mcp.tracking.clarity_id');
+        $gaId = config('mcp.tracking.ga_measurement_id');
+        $trackingAllowed = ! auth('web')->user()?->isAdmin();
+    @endphp
+    @if ($clarityId && $trackingAllowed)
+        <script>
+            window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };
+        </script>
+        <script async src="https://www.clarity.ms/tag/{{ rawurlencode($clarityId) }}"></script>
+    @endif
+    @if ($gaId && $trackingAllowed)
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ rawurlencode($gaId) }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', @json($gaId));
+        </script>
     @endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">

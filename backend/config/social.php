@@ -106,15 +106,15 @@ return [
             'client_id' => env('X_CLIENT_ID'),
             'client_secret' => env('X_CLIENT_SECRET'),
             // X uses OAuth 2.0 with PKCE.
-            // NOTE: `media.write` is only valid for apps enrolled in v2 media
-            // upload — including it otherwise makes X render a BLANK consent
-            // screen after login. Re-add it once the app has media access
-            // (image upload to X needs it; text tweets do not).
+            // media.write is what image upload (POST /2/media/upload) needs;
+            // text tweets work without it. Accounts connected before it was
+            // requested must reconnect to pick it up — XProvider tells them so.
             'scopes' => [
                 'tweet.read',
                 'tweet.write',
                 'users.read',
                 'offline.access',
+                'media.write',
             ],
         ],
 

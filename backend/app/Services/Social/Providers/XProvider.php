@@ -393,18 +393,38 @@ class XProvider extends AbstractSocialProvider implements SupportsComments
         return CommentResult::success((string) $response->json('data.id'), $response->json() ?? []);
     }
 
+    public const MEDIA_SCOPE = 'media.write';
+
+    public const RECONNECT_HINT = 'reconnect X under Dashboard → Connections to grant image upload, then try again.';
+
     /**
      * Upload up to 4 images via the v2 media endpoint (media.write scope).
      * A refused upload is a loud failure — silently posting text-only when the
      * user attached images would misrepresent their post.
      *
+     * The scope is checked up front: a token minted without media.write is a
+     * guaranteed 403, and the fix (reconnecting) is something only the user
+     * can do, so say that instead of relaying X's bare `Forbidden`.
+     *
      * @return array{0: array<int, string>, 1: ?string} [mediaIds, error]
      */
     protected function uploadImages(SocialAccount $account, SocialPost $post): array
     {
+        $images = array_slice($this->mediaItems($post, 'image'), 0, CaptionRules::X_MAX_IMAGES);
+        if ($images === []) {
+            return [[], null];
+        }
+
+        // Scopes are what X granted at connect time. Unknown (empty) is left
+        // to the upload itself; a known list without media.write is not.
+        $scopes = (array) $account->scopes;
+        if ($scopes !== [] && ! in_array(self::MEDIA_SCOPE, $scopes, true)) {
+            return [[], 'X image upload needs a permission this connection was made without — '.self::RECONNECT_HINT];
+        }
+
         $ids = [];
 
-        foreach (array_slice($this->mediaItems($post, 'image'), 0, CaptionRules::X_MAX_IMAGES) as $img) {
+        foreach ($images as $img) {
             $binary = Http::get($img['url']);
             if (! $binary->successful()) {
                 return [[], 'X image upload failed: could not fetch '.$img['url']];
@@ -418,7 +438,17 @@ class XProvider extends AbstractSocialProvider implements SupportsComments
 
             $id = $upload->json('data.id') ?? $upload->json('media_id_string');
             if (! $id) {
-                return [[], 'X image upload was refused: '.$upload->body()];
+                \Illuminate\Support\Facades\Log::warning('X image upload refused', [
+                    'social_account_id' => $account->id,
+                    'status' => $upload->status(),
+                    'body' => $upload->body(),
+                ]);
+
+                // 403 with the scope present means X still sees an old token
+                // (or the app lost media access) — reconnecting fixes both.
+                $hint = $upload->status() === 403 ? ' — '.self::RECONNECT_HINT : '';
+
+                return [[], 'X image upload was refused: '.$upload->body().$hint];
             }
 
             $ids[] = (string) $id;

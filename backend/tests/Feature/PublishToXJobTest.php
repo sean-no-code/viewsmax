@@ -32,7 +32,7 @@ class PublishToXJobTest extends TestCase
             'username' => 'tester',
             'access_token' => 'token',
             'token_expires_at' => now()->addDay(),
-            'scopes' => ['tweet.write'],
+            'scopes' => ['tweet.write', 'media.write'],
             'status' => SocialAccount::STATUS_CONNECTED,
         ]);
     }
@@ -151,6 +151,51 @@ class PublishToXJobTest extends TestCase
         $target->refresh();
         $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
         $this->assertStringContainsStringIgnoringCase('image', (string) $target->error);
+        $this->assertStringContainsStringIgnoringCase('reconnect', (string) $target->error);
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+    }
+
+    /**
+     * A token minted before media.write was requested is a guaranteed 403, so
+     * the publisher says "reconnect" up front instead of relaying X's bare
+     * `Forbidden` — and makes no request at all.
+     */
+    public function test_image_upload_without_media_write_scope_asks_to_reconnect(): void
+    {
+        Http::fake();
+
+        $user = User::factory()->create();
+        $this->connectX($user)->update(['scopes' => ['tweet.read', 'tweet.write', 'users.read', 'offline.access']]);
+        $target = $this->makeTarget($user, 'One pic', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+        ]);
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertStringContainsStringIgnoringCase('reconnect', (string) $target->error);
+        Http::assertNothingSent();
+    }
+
+    /** Text-only posts never needed media.write, so the scope guard must not touch them. */
+    public function test_text_post_ignores_missing_media_write_scope(): void
+    {
+        Http::fake(['api.twitter.com/2/tweets' => Http::response(['data' => ['id' => 't1']])]);
+
+        $user = User::factory()->create();
+        $this->connectX($user)->update(['scopes' => ['tweet.write']]);
+        $target = $this->makeTarget($user, 'Just words');
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+    }
+
+    /** The connect flow must request what the publisher needs, or every image post 403s. */
+    public function test_connect_flow_requests_media_write_by_default(): void
+    {
+        $this->assertContains('media.write', config('social.platforms.x.scopes'));
     }
 }

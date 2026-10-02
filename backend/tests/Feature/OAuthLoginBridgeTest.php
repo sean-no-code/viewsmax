@@ -85,25 +85,37 @@ class OAuthLoginBridgeTest extends TestCase
         $response->assertJsonStructure(['message', 'api_login_url']);
     }
 
-    public function test_oauth_screens_load_the_viewsmax_tracker_when_configured(): void
+    public function test_oauth_screens_load_clarity_when_configured(): void
     {
-        config(['mcp.tracker_user' => 'pub_abc123']);
+        config(['mcp.tracking' => ['clarity_id' => 'clar1ty', 'ga_measurement_id' => null]]);
 
         $response = $this->get('/login');
 
         $response->assertOk();
-        $response->assertSee('<meta name="viewsmax-user" content="pub_abc123">', false);
-        $response->assertSee('src="' . url('/tracker.js') . '"', false);
+        $response->assertSee('src="https://www.clarity.ms/tag/clar1ty"', false);
+        $response->assertDontSee('googletagmanager.com');
     }
 
-    public function test_oauth_screens_have_no_tracker_by_default(): void
+    public function test_oauth_screens_load_google_analytics_when_configured(): void
     {
-        config(['mcp.tracker_user' => null]);
+        config(['mcp.tracking' => ['clarity_id' => null, 'ga_measurement_id' => 'G-TEST123']]);
 
         $response = $this->get('/login');
 
         $response->assertOk();
-        $response->assertDontSee('viewsmax-user');
-        $response->assertDontSee('tracker.js');
+        $response->assertSee('src="https://www.googletagmanager.com/gtag/js?id=G-TEST123"', false);
+        $response->assertSee('gtag(\'config\', "G-TEST123")', false);
+        $response->assertDontSee('clarity.ms');
+    }
+
+    public function test_oauth_screens_have_no_tracking_by_default(): void
+    {
+        config(['mcp.tracking' => ['clarity_id' => null, 'ga_measurement_id' => null]]);
+
+        $response = $this->get('/login');
+
+        $response->assertOk();
+        $response->assertDontSee('clarity.ms');
+        $response->assertDontSee('googletagmanager.com');
     }
 }

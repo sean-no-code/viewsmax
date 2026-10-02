@@ -41,7 +41,7 @@ class PublishToXThreadTest extends TestCase
             'username' => 'tester',
             'access_token' => 'token',
             'token_expires_at' => now()->addDay(),
-            'scopes' => ['tweet.write'],
+            'scopes' => ['tweet.write', 'media.write'],
             'status' => SocialAccount::STATUS_CONNECTED,
         ]);
     }
