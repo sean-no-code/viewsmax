@@ -1,18 +1,37 @@
-// Build-time SEO prerender (head injection — no headless browser).
+// Build-time SEO prerender (no headless browser).
 //
 // After `vite build`, this writes a per-route static index.html for the free-tools
 // pages and the static pages in src/lib/static-page-seo.ts (privacy, terms, /ai)
 // with the real <title>, meta, canonical, and JSON-LD baked into the served
 // HTML (so crawlers and social scrapers get correct tags without executing JS).
-// The page body still hydrates via React on load. Runs as `postbuild` (see
-// package.json), pure Node + tsx — no Chromium, CI-safe.
+// The static pages also get their body text baked in (src/lib/static-page-body.tsx):
+// the plugin directory reviews read the privacy policy and terms without running
+// JavaScript. Other routes keep an empty root that React fills on load. Runs as
+// `postbuild` (see package.json), pure Node + tsx — no Chromium, CI-safe.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
 import { PLATFORM_LIST, HUB_SEO, buildJsonLd } from "../src/lib/transcript-tools";
 import { STATIC_PAGE_SEO } from "../src/lib/static-page-seo";
 
-const distDir = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
+const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
+const distDir = join(rootDir, "dist");
+const ROOT_DIV = '<div id="root"></div>';
+
+// The pages import assets, `@/` aliases and import.meta.env, so they load
+// through Vite rather than plain tsx. api-service reads localStorage on
+// import; there is no session at build time.
+globalThis.localStorage ??= { getItem: () => null, setItem() {}, removeItem() {} } as unknown as Storage;
+const vite = await createServer({
+  root: rootDir,
+  mode: "production",
+  server: { middlewareMode: true },
+  appType: "custom",
+  logLevel: "error",
+});
+const { renderStaticPageBody } = (await vite.ssrLoadModule("/src/lib/static-page-body.tsx")) as
+  typeof import("../src/lib/static-page-body");
 const ORIGIN = "https://viewsmax.com";
 const OG_IMAGE = `${ORIGIN}/og-image.png`;
 
@@ -70,12 +89,21 @@ for (const r of routes) {
     `\n  <meta name="twitter:image" content="${OG_IMAGE}" />` +
     r.jsonLd.map((d) => `\n  <script type="application/ld+json">${JSON.stringify(d)}</script>`).join("");
 
-  const html = shell
+  let html = shell
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(r.title)}</title>`)
     .replace("</head>", `${head}\n</head>`);
+
+  const body = renderStaticPageBody(r.path);
+  if (body !== null) {
+    // Fail the build rather than ship a policy page with no text.
+    if (!html.includes(ROOT_DIV)) throw new Error(`${r.path}: no ${ROOT_DIV} in dist/index.html to fill`);
+    html = html.replace(ROOT_DIV, () => `<div id="root">${body}</div>`);
+  }
 
   const outDir = join(distDir, r.path.replace(/^\//, ""));
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, "index.html"), html);
-  console.log(`prerendered ${r.path}`);
+  console.log(`prerendered ${r.path}${body !== null ? " (with body)" : ""}`);
 }
+
+await vite.close();

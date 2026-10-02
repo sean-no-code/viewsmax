@@ -5,7 +5,9 @@
 // automated URL checks — such as the Claude and ChatGPT plugin directory
 // reviews, which link the privacy policy, terms, and /ai docs — see "not
 // found". scripts/prerender-seo.ts writes dist/<path>/index.html for every
-// entry, which S3 serves as a 302 to <path>/ followed by 200.
+// entry, which S3 serves as a 302 to <path>/ followed by 200. Those reviews
+// don't run JavaScript either, so each page's text is baked into that file
+// too — add the page to src/lib/static-page-body.tsx when adding one here.
 export interface StaticPageSeo {
   path: string;
   title: string;
