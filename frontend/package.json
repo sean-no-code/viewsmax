@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "tsx scripts/prerender-seo.ts && tsx scripts/prerender-agents.ts",
+    "postbuild": "tsx scripts/prerender-seo.ts && tsx scripts/prerender-agents.ts && tsx scripts/prerender-bodies.ts",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
