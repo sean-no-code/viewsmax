@@ -4,14 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\SocialAccountResource;
 use App\Models\SocialAccount;
-use App\Services\Social\FollowUs;
+use App\Services\Social\SocialConnect;
+use App\Services\Social\SocialConnectException;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Throwable;
 
 /**
  * @group Connections
@@ -22,7 +20,7 @@ use Throwable;
  */
 class SocialAccountController extends Controller
 {
-    public function __construct(protected SocialProviderManager $manager, protected FollowUs $followUs) {}
+    public function __construct(protected SocialProviderManager $manager, protected SocialConnect $connect) {}
 
     /**
      * List every platform the app supports plus whether it is configured.
@@ -61,9 +59,7 @@ class SocialAccountController extends Controller
             return $response;
         }
 
-        $provider = $this->manager->for($platform);
-
-        if (! $provider->usesOAuth()) {
+        if (! $this->manager->for($platform)->usesOAuth()) {
             return response()->json([
                 'success' => false,
                 'message' => ucfirst($platform).' does not use OAuth. Use the connect endpoint instead.',
@@ -86,40 +82,11 @@ class SocialAccountController extends Controller
             ], 422);
         }
 
-        $state = Str::random(40);
-        $options = [];
-        $stateData = [
-            'user_id' => Auth::id(),
-            'platform' => $platform,
-            'redirect_uri' => $redirectUri,
-        ];
-
-        // X requires PKCE: keep the verifier server-side, send the challenge.
-        if ($platform === 'x') {
-            $verifier = Str::random(64);
-            $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
-            $options['code_challenge'] = $challenge;
-            $stateData['code_verifier'] = $verifier;
-        }
-
-        // "Follow us" left ticked: ask for the follow permission now and
-        // remember the choice for exchange(). Skipped when we have no account
-        // to follow on this platform.
-        if ($request->boolean('follow_us') && $this->followUs->handle($platform)) {
-            $options['follow_us'] = true;
-            $stateData['follow_us'] = true;
-        }
-
-        // Stash state for CSRF protection + verifier retrieval at exchange time.
-        Cache::put($this->stateKey($state), $stateData, now()->addMinutes(15));
+        $built = $this->connect->authorizationUrl(Auth::user(), $platform, $redirectUri, $request->boolean('follow_us'));
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'authorization_url' => $provider->getAuthorizationUrl($redirectUri, $state, $options),
-                'state' => $state,
-                'redirect_uri' => $redirectUri,
-            ],
+            'data' => $built + ['redirect_uri' => $redirectUri],
         ]);
     }
 
@@ -139,51 +106,10 @@ class SocialAccountController extends Controller
             return $response;
         }
 
-        $user = Auth::user();
-        $redirectUri = $validated['redirect_uri'] ?? config('social.default_redirect_uri');
-        $options = [];
-        $followUs = false;
-
-        // Validate the state token and recover PKCE verifier / redirect URI.
-        if (! empty($validated['state'])) {
-            $stateData = Cache::pull($this->stateKey($validated['state']));
-
-            if (! $stateData || ($stateData['user_id'] ?? null) !== $user->id || ($stateData['platform'] ?? null) !== $platform) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid or expired OAuth state.',
-                ], 422);
-            }
-
-            $redirectUri = $stateData['redirect_uri'] ?? $redirectUri;
-            if (! empty($stateData['code_verifier'])) {
-                $options['code_verifier'] = $stateData['code_verifier'];
-            }
-            $followUs = ! empty($stateData['follow_us']);
-        }
-
         try {
-            $accounts = $this->manager->for($platform)
-                ->connectFromCode($user, $validated['code'], $redirectUri, $options);
-        } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to connect '.$platform.': '.$e->getMessage(),
-            ], 422);
-        }
-
-        // OAuth can succeed yet yield no usable account (e.g. an Instagram login
-        // with no Business account linked to a Page). Report that as a failure so
-        // the UI shows a real error instead of a misleading "connected".
-        if ($accounts->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => $this->noAccountsMessage($platform),
-            ], 422);
-        }
-
-        if ($followUs) {
-            $this->followUs->followFrom($accounts);
+            $accounts = $this->connect->complete(Auth::user(), $platform, $validated['code'], $validated['state'] ?? null, $validated['redirect_uri'] ?? null);
+        } catch (SocialConnectException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
 
         return response()->json([
@@ -202,8 +128,7 @@ class SocialAccountController extends Controller
             return response()->json(['success' => false, 'message' => 'Unsupported platform.'], 404);
         }
 
-        $provider = $this->manager->for($platform);
-        if ($provider->usesOAuth()) {
+        if ($this->manager->for($platform)->usesOAuth()) {
             return response()->json([
                 'success' => false,
                 'message' => ucfirst($platform).' connects via OAuth. Use the auth-url endpoint.',
@@ -211,16 +136,9 @@ class SocialAccountController extends Controller
         }
 
         try {
-            $accounts = $provider->connectWithCredentials(Auth::user(), $request->all());
-        } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to connect '.$platform.': '.$e->getMessage(),
-            ], 422);
-        }
-
-        if ($request->boolean('follow_us')) {
-            $this->followUs->followFrom($accounts);
+            $accounts = $this->connect->connectWithCredentials(Auth::user(), $platform, $request->all(), $request->boolean('follow_us'));
+        } catch (SocialConnectException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
 
         return response()->json([
@@ -262,22 +180,5 @@ class SocialAccountController extends Controller
         }
 
         return true;
-    }
-
-    protected function stateKey(string $state): string
-    {
-        return 'social_oauth_state:'.$state;
-    }
-
-    /**
-     * Human-friendly explanation when OAuth succeeds but no account is usable.
-     */
-    protected function noAccountsMessage(string $platform): string
-    {
-        return match ($platform) {
-            'instagram' => 'Could not connect Instagram. Make sure you are logging in with an Instagram Business or Creator account.',
-            'facebook' => 'No Facebook Page was found. You need to manage at least one Facebook Page and grant access to it.',
-            default => 'No '.ucfirst($platform).' account could be connected. Check that you granted the requested permissions.',
-        };
     }
 }

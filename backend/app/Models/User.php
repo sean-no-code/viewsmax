@@ -61,7 +61,18 @@ class User extends Authenticatable implements Wallet
         'notify_post_failures',
         'locale',
         'promo_expires_at',
+        'signup_source',
+        'signup_client',
     ];
+
+    /** Where the account was created; see the signup_source migration. */
+    public const SIGNUP_SOURCE_APP = 'app';
+
+    public const SIGNUP_SOURCE_AGENT = 'agent';
+
+    public const SIGNUP_SOURCE_ADMIN = 'admin';
+
+    public const SIGNUP_SOURCES = [self::SIGNUP_SOURCE_APP, self::SIGNUP_SOURCE_AGENT, self::SIGNUP_SOURCE_ADMIN];
 
     /**
      * The attributes that should be hidden for serialization.

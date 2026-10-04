@@ -43,10 +43,18 @@ const CANCELLED_OPTIONS = [
   { value: "no", label: "Not cancelled" },
 ];
 
+const SOURCE_OPTIONS = [
+  { value: "app", label: "App" },
+  { value: "agent", label: "AI agent" },
+  { value: "admin", label: "Admin-created" },
+];
+const SOURCE_LABEL: Record<string, string> = { app: "App", agent: "AI agent", admin: "Admin" };
+
 const COLUMNS: { key: AdminUserSort; label: string; align?: "left" | "center" }[] = [
   { key: "name", label: "Name" },
   { key: "email", label: "Email" },
   { key: "created_at", label: "Signed up" },
+  { key: "signup_source", label: "Signup" },
   { key: "last_login_at", label: "Last login" },
   { key: "has_card", label: "Card", align: "center" },
   { key: "plan", label: "Plan" },
@@ -188,6 +196,7 @@ export default function AdminUsers() {
   const card = useMemo(() => (sp.get("card") ? sp.get("card")!.split(",") : []), [sp]);
   const plan = useMemo(() => (sp.get("plan") ? sp.get("plan")!.split(",") : []), [sp]);
   const cancelled = useMemo(() => (sp.get("cancelled") ? sp.get("cancelled")!.split(",") : []), [sp]);
+  const source = useMemo(() => (sp.get("source") ? sp.get("source")!.split(",") : []), [sp]);
   const sort = (sp.get("sort") as AdminUserSort) || "created_at";
   const dir = (sp.get("dir") === "asc" ? "asc" : "desc") as "asc" | "desc";
   const page = Math.max(1, Number(sp.get("page") || "1"));
@@ -220,7 +229,7 @@ export default function AdminUsers() {
     setLoading(true);
     const [s, u] = await Promise.all([
       viewsMaxApi.getAdminUserStats({ from, to }),
-      viewsMaxApi.getAdminUsers({ from, to, name: name || undefined, email: email || undefined, card, plan, cancelled, sort, dir, page }),
+      viewsMaxApi.getAdminUsers({ from, to, name: name || undefined, email: email || undefined, card, plan, cancelled, source, sort, dir, page }),
     ]);
     if (s.success && s.data) setStats(s.data);
     if (u.success && u.data) {
@@ -229,16 +238,16 @@ export default function AdminUsers() {
       setLastPage(u.data.last_page || 1);
     }
     setLoading(false);
-  }, [from, to, name, email, card, plan, cancelled, sort, dir, page]);
+  }, [from, to, name, email, card, plan, cancelled, source, sort, dir, page]);
 
   useEffect(() => { if (user?.is_admin) load(); }, [load, user?.is_admin]);
 
   const series = useMemo(() => stats?.series ?? [], [stats]);
-  const totals = stats?.totals ?? { signups: 0, added_card: 0, subscribed: 0 };
+  const totals = stats?.totals ?? { signups: 0, added_card: 0, subscribed: 0, agent_signups: 0 };
 
   const dateActive = sp.has("from") || sp.has("to");
-  const activeCount = (name ? 1 : 0) + (email ? 1 : 0) + (card.length ? 1 : 0) + (plan.length ? 1 : 0) + (cancelled.length ? 1 : 0) + (dateActive ? 1 : 0);
-  const clearAll = () => setParam({ name: null, email: null, card: null, plan: null, cancelled: null, from: null, to: null });
+  const activeCount = (name ? 1 : 0) + (email ? 1 : 0) + (card.length ? 1 : 0) + (plan.length ? 1 : 0) + (cancelled.length ? 1 : 0) + (source.length ? 1 : 0) + (dateActive ? 1 : 0);
+  const clearAll = () => setParam({ name: null, email: null, card: null, plan: null, cancelled: null, source: null, from: null, to: null });
 
   const onSort = (key: AdminUserSort) => {
     if (sort === key) setParam({ sort: key, dir: dir === "asc" ? "desc" : "asc" });
@@ -321,6 +330,7 @@ export default function AdminUsers() {
         <Widget label="Signups" value={totals.signups} data={series.map((p) => p.signups)} color="var(--ink-on-paper-1)" sub="new accounts in range" />
         <Widget label="Added card" value={totals.added_card} data={series.map((p) => p.added_card)} color="var(--vm-volt-deep)" sub="entered card details" />
         <Widget label="Subscribed" value={totals.subscribed} data={series.map((p) => p.subscribed)} color="var(--up)" sub="active or trialing plan" />
+        <Widget label="Agent signups" value={totals.agent_signups} data={series.map((p) => p.agent_signups)} color="var(--vm-red)" sub="signed up via an AI agent" />
       </div>
 
       {/* Filters toolbar */}
@@ -344,6 +354,7 @@ export default function AdminUsers() {
             <MultiSelect label="Card" options={CARD_OPTIONS} value={card} onChange={(v) => setParam({ card: v.length ? v.join(",") : null })} />
             <MultiSelect label="Plan" options={planOptions} value={plan} onChange={(v) => setParam({ plan: v.length ? v.join(",") : null })} />
             <MultiSelect label="Cancelled" options={CANCELLED_OPTIONS} value={cancelled} onChange={(v) => setParam({ cancelled: v.length ? v.join(",") : null })} />
+            <MultiSelect label="Signup" options={SOURCE_OPTIONS} value={source} onChange={(v) => setParam({ source: v.length ? v.join(",") : null })} />
             <div>
               <div style={{ ...mono, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--ink-on-paper-3)", marginBottom: 5 }}>Signed up</div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -371,7 +382,7 @@ export default function AdminUsers() {
       ) : (
         <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.04)" }}>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1180 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1300 }}>
               <thead>
                 <tr>
                   {COLUMNS.map((c) => {
@@ -392,6 +403,12 @@ export default function AdminUsers() {
                     <td style={{ ...td, fontWeight: 600 }}>{u.name || "—"}</td>
                     <td style={{ ...td, fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-2)" }}>{u.email}</td>
                     <td style={{ ...td, color: "var(--ink-on-paper-2)" }}>{fmtDate(u.created_at)}</td>
+                    <td style={{ ...td, color: u.signup_source === "agent" ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-2)" }}>
+                      <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+                        <span>{SOURCE_LABEL[u.signup_source] ?? u.signup_source}</span>
+                        {u.signup_client && <span style={{ ...mono, fontSize: 10.5, color: "var(--ink-on-paper-3)" }}>{u.signup_client}</span>}
+                      </span>
+                    </td>
                     <td style={{ ...td, color: "var(--ink-on-paper-2)" }}>
                       {u.last_login_at ? (
                         <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>

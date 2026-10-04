@@ -35,7 +35,7 @@ class UserAdminController extends Controller implements HasMiddleware
     // falls back to created_at, so an unknown ?sort can't inject.
     private const SORTABLE = [
         'name', 'email', 'created_at', 'has_card', 'plan', 'last_login_at',
-        'posts_count', 'accounts_count', 'offers_count', 'first_action_at', 'subscription_cancelled_at',
+        'posts_count', 'accounts_count', 'offers_count', 'first_action_at', 'subscription_cancelled_at', 'signup_source',
     ];
 
     /**
@@ -126,6 +126,18 @@ class UserAdminController extends Controller implements HasMiddleware
             $query->whereRaw($this->latestCancelledAtSql().($cancelled[0] === 'yes' ? ' is not null' : ' is null'));
         }
 
+        // Signup source multi-select (app / agent / admin). Rows from before
+        // attribution existed are NULL and count as "app".
+        $sources = array_values(array_intersect($this->csv($request->input('source')), User::SIGNUP_SOURCES));
+        if (! empty($sources)) {
+            $query->where(function ($w) use ($sources) {
+                $w->whereIn('users.signup_source', $sources);
+                if (in_array(User::SIGNUP_SOURCE_APP, $sources, true)) {
+                    $w->orWhereNull('users.signup_source');
+                }
+            });
+        }
+
         // Sorting (allowlisted column + direction).
         $dir = strtolower((string) $request->input('dir')) === 'asc' ? 'asc' : 'desc';
         $sort = in_array($request->input('sort'), self::SORTABLE, true) ? $request->input('sort') : 'created_at';
@@ -150,6 +162,7 @@ class UserAdminController extends Controller implements HasMiddleware
             'subscription_cancelled_at' => $query->orderByRaw(
                 $this->latestCancelledAtSql().' is null, '.$this->latestCancelledAtSql().' '.$dir
             ),
+            'signup_source' => $query->orderByRaw("coalesce(users.signup_source, 'app') ".$dir.', users.signup_client '.$dir),
             default => $query->orderBy('users.created_at', $dir),
         };
 
@@ -171,6 +184,8 @@ class UserAdminController extends Controller implements HasMiddleware
                 'onboarded' => ! is_null($u->onboarding_completed_at),
                 'role' => $u->roles->first()?->name,
                 'promo_expires_at' => optional($u->promo_expires_at)->toISOString(),
+                'signup_source' => $u->signup_source ?? User::SIGNUP_SOURCE_APP,
+                'signup_client' => $u->signup_client,
                 'posts_count' => (int) $u->posts_count,
                 'posts_posted_count' => (int) $u->posts_posted_count,
                 'accounts_count' => (int) $u->accounts_count,
@@ -246,6 +261,7 @@ class UserAdminController extends Controller implements HasMiddleware
         $signups = $byDay(User::query());
         $cards = $byDay(User::query()->whereNotNull('card_added_at'));
         $subs = $byDay(User::query()->whereHas('plans', fn ($q) => $q->whereIn('user_plans.status', User::ACTIVE_SUBSCRIPTION_STATUSES)));
+        $agents = $byDay(User::query()->where('signup_source', User::SIGNUP_SOURCE_AGENT));
 
         // Continuous daily series so the sparklines have no gaps.
         $series = [];
@@ -256,6 +272,7 @@ class UserAdminController extends Controller implements HasMiddleware
                 'signups' => (int) ($signups[$key] ?? 0),
                 'added_card' => (int) ($cards[$key] ?? 0),
                 'subscribed' => (int) ($subs[$key] ?? 0),
+                'agent_signups' => (int) ($agents[$key] ?? 0),
             ];
         }
 
@@ -266,6 +283,7 @@ class UserAdminController extends Controller implements HasMiddleware
                 'signups' => (int) $signups->sum(),
                 'added_card' => (int) $cards->sum(),
                 'subscribed' => (int) $subs->sum(),
+                'agent_signups' => (int) $agents->sum(),
             ],
             'series' => $series,
         ]]);
@@ -376,6 +394,7 @@ class UserAdminController extends Controller implements HasMiddleware
             'email_verified_at' => now(),
             'onboarding_completed_at' => null,
             'promo_expires_at' => $this->promoExpiry($validated['role'], $validated['promo_days'] ?? null),
+            'signup_source' => User::SIGNUP_SOURCE_ADMIN,
         ]);
         $user->save();
         $user->roles()->sync([Role::where('name', $validated['role'])->value('id')]);

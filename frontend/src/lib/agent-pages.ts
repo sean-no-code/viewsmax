@@ -56,6 +56,8 @@ export interface Listing {
   label: string; // button text, e.g. "Add to Claude"
   steps: string; // what the user does once they reach the listing
   code?: { label: string; text: string };
+  /** Section label on the page; defaults to "Plugin (easiest)". */
+  heading?: string;
 }
 
 export interface AgentConfig {
@@ -75,6 +77,8 @@ export interface AgentConfig {
   tip?: string;
   /** The manual "add ViewsMax to <agent>" steps. */
   install: InstallStep[];
+  /** Section label for the manual steps; defaults by transport (see manualHeading()). */
+  manualHeading?: string;
   /** Optional API-key route for headless / scripted use. */
   apiKeyRoute?: InstallStep;
   firstTask: string;
@@ -91,14 +95,14 @@ const CLAUDE_LISTING: Listing = {
   env: "VITE_CLAUDE_CONNECTOR_URL",
   label: "Add to Claude",
   steps:
-    "ViewsMax is in the Claude connector directory. Select Connect on the listing, log in to ViewsMax on the approval screen, and pick read-only or full access.",
+    "Press Add to Claude. Claude sends you to ViewsMax, where you create an account or sign in, connect your channels, then pick Full access or Read-only and press Approve. Nothing to paste.",
 };
 
 const CHATGPT_LISTING: Listing = {
   env: "VITE_CHATGPT_PLUGIN_URL",
   label: "Open in ChatGPT",
   steps:
-    "ViewsMax is in the ChatGPT plugin directory. Install it from the listing, log in to ViewsMax on the approval screen, and pick read-only or full access.",
+    "Open ViewsMax in the ChatGPT plugin directory and press Install. ChatGPT sends you to ViewsMax, where you create an account or sign in, connect your channels, then pick Full access or Read-only and press Approve. Nothing to paste.",
 };
 
 // Claude Code picks up connectors from the claude.ai account it's logged in
@@ -108,7 +112,7 @@ const CLAUDE_CODE_LISTING: Listing = {
   env: "VITE_CLAUDE_CONNECTOR_URL",
   label: "Add to Claude",
   steps:
-    "Connect ViewsMax from its Claude directory listing. Claude Code shares connectors with the claude.ai account you log in with, so ViewsMax appears there with no extra setup — /mcp lists it.",
+    "Connect ViewsMax from its Claude directory listing (create an account or sign in on the ViewsMax screen, then Approve). Claude Code shares connectors with the claude.ai account you log in with, so ViewsMax appears there with no extra setup — /mcp lists it.",
   code: { label: "Inside Claude Code", text: "/mcp" },
 };
 
@@ -118,7 +122,7 @@ const CODEX_LISTING: Listing = {
   env: "VITE_CHATGPT_PLUGIN_URL",
   label: "View in the plugin directory",
   steps:
-    "Codex reads from the same plugin directory as ChatGPT. Type /plugins in the Codex CLI, look up ViewsMax, install it, and confirm on the ViewsMax login screen.",
+    "Codex reads from the same plugin directory as ChatGPT. Type /plugins in the Codex CLI, look up ViewsMax, install it, then create an account or sign in on the ViewsMax screen and press Approve.",
   code: { label: "Inside Codex", text: "/plugins" },
 };
 
@@ -702,6 +706,16 @@ export const AGENT_LIST: AgentConfig[] = [
 
 type Env = Record<string, string | boolean | undefined>;
 
+/** Label for the directory ("plugin") route on the page. */
+export function listingHeading(agent: AgentConfig): string {
+  return agent.listing?.heading ?? "Plugin (easiest)";
+}
+
+/** Label for the manual steps. MCP agents add a custom connector; skill agents set up by hand. */
+export function manualHeading(agent: AgentConfig): string {
+  return agent.manualHeading ?? (agent.transport === "mcp" ? "Custom connector" : "Set up by hand");
+}
+
 /** The agent's directory listing URL, or undefined while ViewsMax isn't listed there. */
 export function agentListingUrl(agent: AgentConfig, env: Env): string | undefined {
   if (!agent.listing) return undefined;
@@ -728,7 +742,7 @@ export function buildAgentMarkdown(agent: AgentConfig, env: Env): string {
   const listing = agentListingUrl(agent, env);
   const listingCode = agent.listing?.code ? ["", "```", agent.listing.code.text, "```"] : [];
   const add = listing
-    ? [`${agent.listing!.steps} Listing: ${listing}`, ...listingCode, "", "Manual setup:", "", ...agent.install.map(mdStep)]
+    ? [`${listingHeading(agent)}: ${agent.listing!.steps} Listing: ${listing}`, ...listingCode, "", `${manualHeading(agent)}:`, "", ...agent.install.map(mdStep)]
     : [...(agent.tip ? [agent.tip, ""] : []), ...agent.install.map(mdStep)];
 
   return [

@@ -28,7 +28,7 @@
         </script>
     @endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         /* Mirrors the SPA's design tokens (src/index.css): Max Red primary,
            Archivo display / Hanken Grotesk body, shadcn-style card + inputs. */
@@ -46,31 +46,98 @@
             --shadow-card: 0 4px 20px -2px hsl(225 25% 12% / 0.08);
             --font-display: 'Archivo', system-ui, sans-serif;
             --font-body: 'Hanken Grotesk', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+            /* Landing tokens (src/index.css) for the shared header + footer. */
+            --vm-red: #FF1F3D;
+            --vm-red-hot: #FF4D63;
+            --vm-volt: #16E0C4;
+            --ink-900: #0A0A0C;
+            --ink-850: #101014;
+            --ink-700: #22222B;
+            --fg-1: #F6F6F8;
+            --fg-2: #B3B3BE;
+            --fg-3: #76767F;
+            --paper-0: #FFFFFF;
+            --paper-1: #FAFAF8;
+            --paper-2: #F2F2EE;
+            --line-1: #E4E4DE;
+            --line-2: #D2D2CA;
+            --ink-on-paper-1: #0A0A0C;
+            --ink-on-paper-2: #45454D;
+            --ink-on-paper-3: #76767F;
+            --dur: 200ms;
         }
         * { box-sizing: border-box; border-color: var(--border); }
         body {
             margin: 0;
             min-height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--background);
+            flex-direction: column;
+            background: var(--paper-1);
             color: var(--foreground);
             font-family: var(--font-body);
-            padding: 16px;
         }
-        .brand {
+        main.site-main {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            margin-bottom: 24px;
+            padding: 48px 16px;
         }
-        .brand span {
-            font-family: var(--font-display);
-            font-weight: 800;
-            font-size: 20px;
-            letter-spacing: -0.02em;
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 400;
+            margin: 0 0 16px;
+            cursor: pointer;
+        }
+        .checkbox-row input { width: auto; height: auto; margin: 0; }
+        .status {
+            border: 1px solid #B9EBD7;
+            background: #E9FBF2;
+            color: #0F6B46;
+            border-radius: calc(var(--radius) - 2px);
+            padding: 12px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        /* ---- Site header (mirrors LandingNav in LandingChrome.tsx) ---- */
+        .site-nav { position: sticky; top: 0; z-index: 50; background: rgba(250,250,248,.82); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line-1); }
+        .site-nav-inner { max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 24px; }
+        .site-logo { display: block; line-height: 0; }
+        .site-nav a, .site-foot a { transition: color var(--dur); text-decoration: none; }
+        .site-nav a:hover, .site-foot a:hover { color: var(--vm-red); }
+        .nav-links { display: flex; align-items: center; gap: 28px; margin-left: 16px; }
+        .nav-links > a, .nav-dd > a { color: var(--ink-on-paper-2); font-weight: 600; font-size: 14.5px; display: inline-flex; align-items: center; gap: 4px; }
+        .nav-links a:hover { color: var(--ink-on-paper-1); }
+        .nav-dd { position: relative; }
+        .nav-dd-panel { position: absolute; top: 100%; left: -12px; padding-top: 10px; opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity var(--dur), transform var(--dur); }
+        .nav-dd:hover .nav-dd-panel, .nav-dd:focus-within .nav-dd-panel { opacity: 1; pointer-events: auto; transform: none; }
+        .nav-dd-card { min-width: 260px; background: var(--paper-0); border: 1px solid var(--line-1); border-radius: 14px; padding: 8px; box-shadow: 0 16px 40px rgba(16,14,12,.12); }
+        .nav-dd-card a { display: block; padding: 9px 12px; border-radius: 8px; }
+        .nav-dd-card a:hover { background: var(--paper-2); }
+        .nav-dd-label { display: block; font-weight: 700; font-size: 14px; color: var(--ink-on-paper-1); }
+        .nav-dd-desc { display: block; font-size: 12.5px; color: var(--ink-on-paper-2); margin-top: 2px; }
+        .nav-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+        .nav-login { color: var(--ink-on-paper-1); font-weight: 700; font-size: 14.5px; white-space: nowrap; }
+        .btn-pill { background: var(--vm-red); color: #fff !important; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; white-space: nowrap; transition: background var(--dur); }
+        .btn-pill:hover { background: var(--vm-red-hot); }
+
+        /* ---- Site footer (mirrors LandingFooter) ---- */
+        .site-foot { background: var(--ink-900); color: var(--fg-2); }
+        .site-foot-grid { max-width: 1200px; margin: 0 auto; padding: 64px 24px 40px; display: grid; grid-template-columns: 1.4fr repeat(5, 1fr); gap: 32px; }
+        .site-foot-tagline { font-size: 14px; color: var(--fg-3); line-height: 1.5; margin: 16px 0 0; max-width: 240px; }
+        .site-foot-heading { font-weight: 700; font-size: 13px; color: var(--fg-1); margin-bottom: 14px; }
+        .site-foot-links { display: flex; flex-direction: column; gap: 10px; }
+        .site-foot-links a, .site-foot-legal a { font-size: 14px; color: var(--fg-3); }
+        .site-foot-bar { border-top: 1px solid var(--ink-700); }
+        .site-foot-bar-inner { max-width: 1200px; margin: 0 auto; padding: 20px 24px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--fg-3); }
+        .site-foot-legal { display: flex; gap: 20px; }
+        @media (max-width: 860px) {
+            .nav-links { display: none; }
+            .site-foot-grid { grid-template-columns: 1fr 1fr; }
         }
         .card {
             width: 100%;
@@ -164,18 +231,12 @@
     </style>
 </head>
 <body>
-    <div style="width: 100%; max-width: 28rem;">
-        <div class="brand">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <rect x="1" y="1" width="30" height="30" rx="8" fill="#FF1F3D" />
-                <circle cx="9.5" cy="16" r="2.6" fill="#fff" />
-                <circle cx="22" cy="9.5" r="2.6" fill="#fff" />
-                <circle cx="22" cy="22.5" r="2.6" fill="#16E0C4" />
-                <path d="M11.6 14.7 L20 10.4 M11.6 17.3 L20 21.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
-            </svg>
-            <span>ViewsMax</span>
+    @include('partials.site-header')
+    <main class="site-main">
+        <div style="width: 100%; max-width: @yield('width', '28rem');">
+            @yield('content')
         </div>
-        @yield('content')
-    </div>
+    </main>
+    @include('partials.site-footer')
 </body>
 </html>

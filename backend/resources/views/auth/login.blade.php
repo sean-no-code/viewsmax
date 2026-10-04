@@ -23,8 +23,7 @@
         </form>
 
         <p class="card-footer">
-            No account yet?
-            <a href="{{ rtrim(config('app.frontend_url'), '/') }}/auth">Create one</a>, then come back here to connect.
+            No account yet? <a href="{{ route('register') }}">Create one</a>
         </p>
     </div>
 @endsection

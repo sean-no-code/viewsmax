@@ -56,6 +56,13 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `SocialPost`/`SocialPostTarget`. One composed post fans out to many per-platform targets. Real
   publish-to-platform is still being built; compose/create endpoints (`POST /posts`) exist.
 
+- **Signup source.** `users.signup_source` is `app` (SPA `/api/register`), `agent` (the API host's
+  browser `/register`, reached mid OAuth from Claude/ChatGPT; `signup_client` holds the client name)
+  or `admin`. NULL = before this existed and is treated as `app`. All signups go through
+  `App\Services\Registration`. The agent flow continues to `/register/setup` (connect channels on
+  this host via `App\Services\Social\SocialConnect` + `/connect/{platform}/callback`) and then back
+  to the Passport consent screen; every provider app must allow that callback URL.
+
 ## Conventions
 
 - API responses use a `{ success, message, data }` shape (see existing controllers).

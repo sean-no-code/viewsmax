@@ -51,6 +51,15 @@ class KitNewsletterSignupTest extends TestCase
             && $r['api_key'] === 'test-kit-key');
     }
 
+    public function test_api_registration_records_the_app_signup_source(): void
+    {
+        Http::fake();
+
+        $this->register(consent: false)->assertStatus(201);
+
+        $this->assertDatabaseHas('users', ['email' => 'jane@example.com', 'signup_source' => 'app', 'signup_client' => null]);
+    }
+
     public function test_registration_without_consent_does_not_touch_kit(): void
     {
         Http::fake();

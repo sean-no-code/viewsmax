@@ -3,12 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PasswordResetMail;
-use App\Mail\VerifyEmailMail;
-use App\Models\Role;
 use App\Models\User;
-use App\Services\CreditService;
-use App\Services\KitService;
-use Illuminate\Auth\Events\Registered;
+use App\Services\Registration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -31,7 +27,7 @@ class AuthController extends Controller
      *
      * @unauthenticated
      */
-    public function register(Request $request, CreditService $creditService)
+    public function register(Request $request, Registration $registration)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
@@ -49,45 +45,14 @@ class AuthController extends Controller
         }
 
         try {
-            // Create the user UNVERIFIED and NOT onboarded. Registration does not
-            // log the user in — they must verify their email via the magic link first.
-            // No card is needed for the first User::CARD_FREE_DAYS days.
-            $user = User::create([
+            // Registration does not log the user in — they verify their email
+            // via the magic link first. Side effects live in Registration.
+            $user = $registration->register([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'email_verified_at' => null,
-                'onboarding_completed_at' => null,
-                'promo_expires_at' => now()->addDays(User::CARD_FREE_DAYS),
-                'marketing_consented_at' => $request->boolean('marketing_consent') ? now() : null,
-            ]);
-
-            // Assign customer role by default
-            $customerRole = Role::where('name', 'customer')->first();
-            if ($customerRole) {
-                $user->roles()->attach($customerRole->id);
-            }
-
-            // Add registration bonus credits
-            $registrationBonus = config('credits.registration_bonus');
-            $creditService->addCredits($user, $registrationBonus, 'Registration Bonus');
-
-            event(new Registered($user));
-
-            // Add consenting signups to the Kit newsletter right here. A Kit outage
-            // must never block registration — the account already exists.
-            if ($user->marketing_consented_at) {
-                try {
-                    app(KitService::class)->subscribe($user->email, $user->name);
-                } catch (\Throwable $e) {
-                    Log::warning('Kit signup subscribe failed for '.$user->email.': '.$e->getMessage());
-                }
-            }
-
-            // Send the magic-link verification email. A delivery failure is logged
-            // (see sendVerificationEmail) but must NOT fail registration — the
-            // account already exists and the user can trigger a resend.
-            $this->sendVerificationEmail($user);
+                'password' => $request->password,
+                'marketing_consent' => $request->boolean('marketing_consent'),
+            ], User::SIGNUP_SOURCE_APP);
 
             return response()->json([
                 'success' => true,
@@ -289,46 +254,10 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if ($user && is_null($user->email_verified_at)) {
-            $this->sendVerificationEmail($user);
+            app(Registration::class)->sendVerificationEmail($user);
         }
 
         return response()->json(['success' => true]);
-    }
-
-    /**
-     * Create a verification token and email the magic link, logging each step so
-     * delivery failures (SMTP auth/connection, misconfigured mailer) are
-     * traceable in production. Never throws — returns false on failure.
-     */
-    private function sendVerificationEmail(User $user): bool
-    {
-        try {
-            Log::channel('mail')->info('Sending verification email', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'mailer' => config('mail.default'),
-            ]);
-
-            $token = $user->createEmailVerificationToken();
-            Mail::to($user->email)->send(new VerifyEmailMail($token, $user->email));
-
-            Log::channel('mail')->info('Verification email sent', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ]);
-
-            return true;
-        } catch (\Throwable $e) {
-            Log::channel('mail')->error('Verification email failed to send', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'mailer' => config('mail.default'),
-                'exception' => get_class($e),
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
     }
 
     /**

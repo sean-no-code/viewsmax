@@ -23,14 +23,22 @@ describe("AgentPage", () => {
     expect(screen.queryByText(/set it up by hand/i)).toBeNull();
   });
 
-  it("leads with the directory button and tucks the manual steps away once listed", () => {
+  it("shows the plugin route first, with nothing to paste, then the custom connector steps once listed", () => {
     const url = "https://claude.ai/directory/connectors/viewsmax";
     vi.stubEnv("VITE_CLAUDE_CONNECTOR_URL", url);
     renderPage("claude");
 
     const buttons = screen.getAllByRole("link", { name: /add to claude/i });
     expect(buttons[0]).toHaveAttribute("href", url);
-    expect(screen.getByText(/set it up by hand/i)).toBeInTheDocument();
+
+    const plugin = screen.getByRole("heading", { name: /plugin \(easiest\)/i });
+    const connector = screen.getByRole("heading", { name: /custom connector/i });
+    expect(plugin.compareDocumentPosition(connector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText(/create an account or sign in/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing to paste/i)).toBeInTheDocument();
+    // The address lives only in the connector section, which stays visible (no collapsed details).
+    expect(screen.getAllByText(/api\.viewsmax\.com\/api\/mcp/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/set it up by hand\?/i)).toBeNull();
   });
 
   it("leads Codex with the plugin directory once the ChatGPT/Codex listing is set", () => {
@@ -40,7 +48,7 @@ describe("AgentPage", () => {
 
     expect(screen.getAllByRole("link", { name: /plugin directory/i })[0]).toHaveAttribute("href", url);
     expect(screen.getAllByText("/plugins").length).toBeGreaterThan(0);
-    expect(screen.getByText(/set it up by hand/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /plugin \(easiest\)/i })).toBeInTheDocument();
   });
 
   it("tells Claude Code users a claude.ai connector already carries over", () => {

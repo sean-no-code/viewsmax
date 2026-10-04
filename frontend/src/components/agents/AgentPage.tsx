@@ -1,8 +1,8 @@
 // Shared page for the per-agent setup guides (/claude, /chatgpt, /cursor, ...).
 // Content comes from src/lib/agent-pages.ts. While ViewsMax isn't listed in an
 // agent's app directory, step 2 shows the manual setup; once the listing's env
-// var is set, step 2 leads with the directory button and the manual setup moves
-// into a collapsed "Rather set it up by hand?" section.
+// var is set, step 2 shows two labelled routes: the directory "Plugin" route
+// first (nothing to paste), then the manual "Custom connector" steps.
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Check, ChevronRight, Copy, ExternalLink, FileText, Plus } from "lucide-react";
@@ -24,6 +24,8 @@ import {
   TRY_STEP_TITLE,
   addStepTitle,
   agentListingUrl,
+  listingHeading,
+  manualHeading,
   briefPath,
   buildAgentJsonLd,
   buildAgentMarkdown,
@@ -159,19 +161,17 @@ export default function AgentPage({ agent }: { agent: AgentKey }) {
             <Step n={2} title={addStepTitle(cfg)} time={cfg.addTime}>
               {listing ? (
                 <>
-                  <p className="text-[15px] leading-[1.5] text-ink-on-paper-2">{cfg.listing!.steps}</p>
+                  <h4 className="text-sm font-bold uppercase tracking-wide text-ink-on-paper-3">{listingHeading(cfg)}</h4>
+                  <p className="mt-2 text-[15px] leading-[1.5] text-ink-on-paper-2">{cfg.listing!.steps}</p>
                   {cfg.listing!.code && (
                     <CodeBlock id="listing" label={cfg.listing!.code.label} text={cfg.listing!.code.text} copied={copied} copy={copy} />
                   )}
                   <a href={listing} target="_blank" rel="noreferrer" className={`${PRIMARY_BTN} mt-4 h-11 text-sm`}>
                     {cfg.listing!.label} <ExternalLink className="h-4 w-4" aria-hidden />
                   </a>
-                  <details className="group mt-5">
-                    <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-bold [&::-webkit-details-marker]:hidden">
-                      <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" aria-hidden /> Rather set it up by hand?
-                    </summary>
-                    {manual}
-                  </details>
+                  <h4 className="mt-8 text-sm font-bold uppercase tracking-wide text-ink-on-paper-3">{manualHeading(cfg)}</h4>
+                  <p className="mt-2 text-[15px] leading-[1.5] text-ink-on-paper-2">If you'd rather add it yourself, or your plan can't see the directory:</p>
+                  {manual}
                 </>
               ) : (
                 <>

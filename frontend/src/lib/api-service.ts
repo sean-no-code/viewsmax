@@ -761,6 +761,10 @@ export interface AdminUser {
   // cancelled_at of the LATEST subscription row — null if not cancelled
   // (a re-subscribe clears it).
   subscription_cancelled_at: string | null;
+  // Where the account was created: app (SPA), agent (api host /register during
+  // an AI-agent OAuth connection, with the client name), admin (created by hand).
+  signup_source: "app" | "agent" | "admin";
+  signup_client: string | null;
 }
 
 export interface AdminUsersPage {
@@ -811,18 +815,19 @@ export interface AdminUserStatsPoint {
   signups: number;
   added_card: number;
   subscribed: number;
+  agent_signups: number;
 }
 
 export interface AdminUserStats {
   from: string;
   to: string;
-  totals: { signups: number; added_card: number; subscribed: number };
+  totals: { signups: number; added_card: number; subscribed: number; agent_signups: number };
   series: AdminUserStatsPoint[];
 }
 
 export type AdminUserSort =
   | "name" | "email" | "created_at" | "has_card" | "plan" | "last_login_at"
-  | "posts_count" | "accounts_count" | "offers_count" | "first_action_at" | "subscription_cancelled_at";
+  | "posts_count" | "accounts_count" | "offers_count" | "first_action_at" | "subscription_cancelled_at" | "signup_source";
 
 export interface AdminUsersFilters {
   from?: string;
@@ -832,6 +837,7 @@ export interface AdminUsersFilters {
   card?: string[]; // subset of ["yes","no"]
   plan?: string[];
   cancelled?: string[]; // subset of ["yes","no"]
+  source?: string[]; // subset of ["app","agent","admin"]
   sort?: AdminUserSort;
   dir?: "asc" | "desc";
   page?: number;
@@ -1360,6 +1366,7 @@ class ViewsMaxApiService {
       if (filters?.card?.length) params.append('card', filters.card.join(','));
       if (filters?.plan?.length) params.append('plan', filters.plan.join(','));
       if (filters?.cancelled?.length) params.append('cancelled', filters.cancelled.join(','));
+      if (filters?.source?.length) params.append('source', filters.source.join(','));
       if (filters?.sort) params.append('sort', filters.sort);
       if (filters?.dir) params.append('dir', filters.dir);
       if (filters?.page) params.append('page', String(filters.page));

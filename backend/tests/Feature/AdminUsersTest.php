@@ -684,6 +684,52 @@ class AdminUsersTest extends TestCase
         $this->assertFalse($row['subscribed']);
     }
 
+    public function test_admin_created_users_are_tagged_with_the_admin_signup_source(): void
+    {
+        $admin = $this->makeAdmin();
+        Role::firstOrCreate(['name' => 'customer'], ['display_name' => 'Customer']);
+
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson('/api/admin/users', ['name' => 'Made By Hand', 'email' => 'hand@example.com', 'password' => 'password123', 'role' => 'customer'])
+            ->assertStatus(201);
+
+        $this->assertDatabaseHas('users', ['email' => 'hand@example.com', 'signup_source' => 'admin', 'signup_client' => null]);
+    }
+
+    public function test_index_reports_and_filters_by_signup_source_treating_null_as_app(): void
+    {
+        $admin = $this->makeAdmin();
+        $day = '2026-06-05 12:00:00';
+        User::factory()->create(['email' => 'legacy@example.com', 'created_at' => $day, 'signup_source' => null]);
+        User::factory()->create(['email' => 'app@example.com', 'created_at' => $day, 'signup_source' => 'app']);
+        User::factory()->create(['email' => 'agent@example.com', 'created_at' => $day, 'signup_source' => 'agent', 'signup_client' => 'Claude']);
+        User::factory()->create(['email' => 'byhand@example.com', 'created_at' => $day, 'signup_source' => 'admin']);
+
+        $rows = fn (string $qs) => collect($this->withHeaders($this->tokenHeaders($admin))
+            ->getJson('/api/admin/users?'.self::WINDOW.$qs)->assertOk()->json('data.users'));
+
+        $all = $rows('');
+        $this->assertSame('app', $all->firstWhere('email', 'legacy@example.com')['signup_source']);
+        $this->assertSame('Claude', $all->firstWhere('email', 'agent@example.com')['signup_client']);
+
+        $this->assertEqualsCanonicalizing(['legacy@example.com', 'app@example.com'], $rows('&source=app')->pluck('email')->all());
+        $this->assertEqualsCanonicalizing(['agent@example.com', 'byhand@example.com'], $rows('&source=agent,admin')->pluck('email')->all());
+        $this->assertSame(['admin', 'agent', 'app', 'app'], $rows('&sort=signup_source&dir=asc')->pluck('signup_source')->all());
+    }
+
+    public function test_stats_count_agent_signups(): void
+    {
+        $headers = $this->adminHeaders();
+        $day = '2026-06-05 12:00:00';
+        User::factory()->create(['created_at' => $day, 'signup_source' => 'agent', 'signup_client' => 'Claude']);
+        User::factory()->create(['created_at' => $day]);
+
+        $res = $this->withHeaders($headers)->getJson('/api/admin/users/stats?'.self::WINDOW)->assertOk();
+
+        $res->assertJsonPath('data.totals.signups', 2)->assertJsonPath('data.totals.agent_signups', 1);
+        $this->assertSame(1, collect($res->json('data.series'))->sum('agent_signups'));
+    }
+
     // ---- Log in as user (impersonation) --------------------------------------
 
     public function test_admin_can_log_in_as_a_customer(): void

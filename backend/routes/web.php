@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\WebConnectController;
+use App\Http\Controllers\Auth\WebRegisterController;
 use App\Http\Controllers\Oauth\McpClientRegistrationController;
 use App\Http\Controllers\Oauth\McpOAuthMetadataController;
 use Illuminate\Http\Request;
@@ -58,6 +60,17 @@ Route::post('/login', function (Request $request) {
     $request->session()->regenerate();
 
     return redirect()->intended('/');
+});
+
+// Signup on the API host for the agent flow (see WebRegisterController).
+Route::get('/register', [WebRegisterController::class, 'create'])->name('register');
+Route::post('/register', [WebRegisterController::class, 'store'])->middleware('throttle:6,1');
+Route::middleware('auth:web')->group(function () {
+    Route::get('/register/setup', [WebRegisterController::class, 'setup'])->name('register.setup');
+    Route::get('/register/continue', [WebRegisterController::class, 'continue'])->name('register.continue');
+    Route::get('/connect/{platform}', [WebConnectController::class, 'start'])->name('connect.start');
+    Route::get('/connect/{platform}/callback', [WebConnectController::class, 'callback'])->name('connect.callback');
+    Route::post('/connect/{platform}/credentials', [WebConnectController::class, 'credentials'])->name('connect.credentials')->middleware('throttle:10,1');
 });
 
 Route::get('/oauth/callback', function (Request $request) {
