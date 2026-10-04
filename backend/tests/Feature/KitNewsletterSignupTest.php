@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\KitService;
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -80,6 +81,29 @@ class KitNewsletterSignupTest extends TestCase
         $this->register(consent: true)->assertStatus(201);
 
         $this->assertDatabaseHas('users', ['email' => 'jane@example.com']);
+    }
+
+    /** A cache store that can't be written (e.g. storage perms) must not lose the subscribe. */
+    public function test_unwritable_cache_falls_back_to_uncached_tag_lookup(): void
+    {
+        // Mirror production: reads miss, writes blow up like file_put_contents on a dir we don't own.
+        Cache::extend('unwritable', fn () => Cache::repository(new class extends ArrayStore {
+            public function put($key, $value, $seconds)
+            {
+                throw new \RuntimeException('file_put_contents(storage/framework/cache/data/..): Permission denied');
+            }
+        }));
+        config(['cache.stores.unwritable' => ['driver' => 'unwritable'], 'cache.default' => 'unwritable']);
+
+        Http::fake([
+            self::TAGS_URL => Http::response(['tags' => [['id' => 555, 'name' => 'viewsmax: new subscriber']]]),
+            self::SUBSCRIBE_URL => Http::response(['subscription' => ['id' => 1]]),
+        ]);
+
+        $this->register(consent: true)->assertStatus(201);
+
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/v3/tags/555/subscribe') && $r['email'] === 'jane@example.com');
+        Http::assertSentCount(2); // one tag lookup + one subscribe: the failed cache write must not re-run the lookup
     }
 
     public function test_missing_api_key_skips_kit(): void

@@ -72,37 +72,58 @@ class KitService
 
     /**
      * Find a tag's id by name (creating the tag if it doesn't exist yet).
-     * Cached per tag for a day; failures return null and are retried on the next call.
+     * Cached per tag for a day; failures return null and are retried on the next
+     * call. The cache is only an optimisation: if the store can't be used (e.g.
+     * storage/framework/cache owned by another user) the lookup runs uncached
+     * rather than losing the subscribe.
      */
     protected function resolveTagId(string $tagName): ?int
     {
-        return Cache::remember(
-            'kit.tag_id.'.Str::slug($tagName),
-            now()->addDay(),
-            function () use ($tagName): ?int {
-                $response = Http::acceptJson()->timeout(15)
-                    ->get(self::BASE.'/tags', ['api_key' => $this->apiKey]);
+        $lookup = function () use ($tagName): ?int {
+            $response = Http::acceptJson()->timeout(15)
+                ->get(self::BASE.'/tags', ['api_key' => $this->apiKey]);
 
-                if ($response->successful()) {
-                    foreach ($response->json('tags') ?? [] as $tag) {
-                        if (strcasecmp($tag['name'] ?? '', $tagName) === 0) {
-                            return (int) $tag['id'];
-                        }
+            if ($response->successful()) {
+                foreach ($response->json('tags') ?? [] as $tag) {
+                    if (strcasecmp($tag['name'] ?? '', $tagName) === 0) {
+                        return (int) $tag['id'];
                     }
                 }
-
-                $created = Http::acceptJson()->timeout(15)
-                    ->post(self::BASE.'/tags', [
-                        'api_key' => $this->apiKey,
-                        'tag' => ['name' => $tagName],
-                    ]);
-
-                if ($created->successful() && $created->json('id')) {
-                    return (int) $created->json('id');
-                }
-
-                return null;
             }
-        );
+
+            $created = Http::acceptJson()->timeout(15)
+                ->post(self::BASE.'/tags', [
+                    'api_key' => $this->apiKey,
+                    'tag' => ['name' => $tagName],
+                ]);
+
+            if ($created->successful() && $created->json('id')) {
+                return (int) $created->json('id');
+            }
+
+            return null;
+        };
+
+        $key = 'kit.tag_id.'.Str::slug($tagName);
+
+        try {
+            if (($cached = Cache::get($key)) !== null) {
+                return (int) $cached;
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Kit tag cache read failed, looking up \"{$tagName}\" uncached: ".$e->getMessage());
+        }
+
+        $tagId = $lookup();
+
+        if ($tagId !== null) {
+            try {
+                Cache::put($key, $tagId, now()->addDay());
+            } catch (\Throwable $e) {
+                Log::warning("Kit tag cache write failed for \"{$tagName}\" (check storage/ ownership): ".$e->getMessage());
+            }
+        }
+
+        return $tagId;
     }
 }

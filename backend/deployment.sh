@@ -20,6 +20,19 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Laravel's file cache / logs / compiled views live under storage/. Any artisan
+# command run here as a different user than PHP-FPM creates root- (or deploy-
+# user-) owned cache subdirectories that the web process can then no longer
+# write to:
+#   "Exception subscribing ... to Kit: file_put_contents(storage/framework/cache/data/..): Permission denied"
+# Run this script as the web user (e.g. `sudo -u www-data ./deployment.sh`), or
+# fix ownership afterwards with: chown -R <web-user>:<web-group> storage bootstrap/cache
+STORAGE_OWNER="$(stat -c '%U' storage 2>/dev/null || stat -f '%Su' storage)"
+if [ "$STORAGE_OWNER" != "$(id -un)" ]; then
+  printf '\033[1;33m  ! storage/ is owned by %s but you are %s — artisan caches written now may be unwritable by PHP-FPM.\033[0m\n' "$STORAGE_OWNER" "$(id -un)"
+  printf '\033[1;33m    Re-run as that user (sudo -u %s ./deployment.sh) or chown storage/ and bootstrap/cache afterwards.\033[0m\n' "$STORAGE_OWNER"
+fi
+
 # ---- config (override via env vars) ---------------------------------------
 PULL="${PULL:-0}"
 MAINTENANCE="${MAINTENANCE:-0}"
