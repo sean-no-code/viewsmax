@@ -63,6 +63,14 @@ class ApiAuth
             ], 401);
         }
 
+        // Time-boxed tokens (admin "log in as user") stop working when they expire.
+        if ($accessToken->expires_at && $accessToken->expires_at->isPast()) {
+            return ResponseFacade::json([
+                'success' => false,
+                'message' => 'Token expired'
+            ], 401);
+        }
+
         // MCP API keys (vmx_) may use the REST endpoints mirroring the MCP
         // tool surface; they never reach billing, account, plans, admin, or
         // key rotation — a leaked key must not grant account takeover. Login
@@ -86,10 +94,13 @@ class ApiAuth
             }
         }
 
-        // Set the authenticated user
-        $request->setUserResolver(function () use ($accessToken) {
-            return $accessToken->tokenable;
-        });
+        // Set the authenticated user, carrying the token so
+        // $user->currentAccessToken() works (logout revokes exactly this token).
+        $user = $accessToken->tokenable;
+        if (method_exists($user, 'withAccessToken')) {
+            $user->withAccessToken($accessToken);
+        }
+        $request->setUserResolver(fn () => $user);
 
         return $next($request);
     }

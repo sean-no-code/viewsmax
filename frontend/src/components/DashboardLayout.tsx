@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AIModelProcessingLoader } from "@/components/AIModelProcessingLoader";
+import ImpersonationBar from "@/components/ImpersonationBar";
 
 export default function DashboardLayout() {
   const { user, signOut } = useAuth();
@@ -74,6 +75,7 @@ export default function DashboardLayout() {
         <AppSidebar />
 
         <div className="flex-1 flex flex-col">
+          <ImpersonationBar />
           <header className="h-16 flex items-center justify-between border-b border-border px-6">
             <div className="flex items-center gap-4">
               <SidebarTrigger />

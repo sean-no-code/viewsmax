@@ -14,6 +14,7 @@ import { PostShell } from "@/components/post/PostList";
 import { useAuth } from "@/hooks/useAuth";
 import { viewsMaxApi, type AdminUser, type AdminUserAccount, type AdminUserSort, type AdminUserStats } from "@/lib/api-service";
 import { PROMO_ROLE, promoWindowLabel } from "@/lib/access";
+import { startImpersonation } from "@/lib/impersonation";
 import { durationBetween } from "@/lib/format-duration";
 import { toast } from "sonner";
 
@@ -176,7 +177,7 @@ function Widget({ label, value, data, color, sub }: { label: string; value: numb
 }
 
 export default function AdminUsers() {
-  const { user } = useAuth();
+  const { user, session, setAuthData } = useAuth();
   const [sp, setSp] = useSearchParams();
 
   // ---- URL is the single source of truth for filters + sort + page ----
@@ -263,6 +264,22 @@ export default function AdminUsers() {
   };
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
+  // Log in as this user: keep the admin session aside so the bar in
+  // DashboardLayout can bring it back, then swap in the user's session.
+  const handleLoginAs = async (u: AdminUser) => {
+    if (!session) return;
+    setImpersonatingId(u.id);
+    try {
+      const res = await viewsMaxApi.impersonateUser(u.id);
+      if (!res.success || !res.data) { toast.error(res.error || "Could not log in as that user"); return; }
+      startImpersonation(session, res.data as typeof session, setAuthData);
+      navigate("/dashboard");
+    } finally {
+      setImpersonatingId(null);
+    }
+  };
+
   const handleDelete = async (u: AdminUser) => {
     if (!window.confirm(`Delete ${u.email}? They'll be soft-deleted (recoverable from the database), signed out, and hidden from this list.`)) return;
     setDeletingId(u.id);
@@ -456,6 +473,16 @@ export default function AdminUsers() {
                         >
                           <Icon name="edit" size={14} stroke="var(--ink-on-paper-2)" />
                         </button>
+                        {u.id !== user?.id && u.role !== "admin" && (
+                          <button
+                            onClick={() => handleLoginAs(u)}
+                            disabled={impersonatingId === u.id}
+                            title="Log in as this user"
+                            style={{ display: "grid", placeItems: "center", width: 28, height: 28, borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: impersonatingId === u.id ? "default" : "pointer", opacity: impersonatingId === u.id ? 0.5 : 1 }}
+                          >
+                            <Icon name="login" size={14} stroke="var(--ink-on-paper-2)" />
+                          </button>
+                        )}
                         {u.id !== user?.id && (
                           <button
                             onClick={() => handleDelete(u)}

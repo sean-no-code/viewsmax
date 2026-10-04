@@ -88,6 +88,23 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Admin "log in as user": one line per impersonation in
+        // storage/logs/impersonation.log. IMPERSONATION_LOG_ENABLED=false silences it.
+        'impersonation' => [
+            'driver' => 'stack',
+            'channels' => env('IMPERSONATION_LOG_ENABLED', true) ? ['impersonation_file'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+
+        'impersonation_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/impersonation.log'),
+            'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'follow_us_file' => [
             'driver' => 'daily',
             'path' => storage_path('logs/follow-us.log'),

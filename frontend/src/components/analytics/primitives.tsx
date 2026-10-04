@@ -9,7 +9,7 @@ import {
   BatteryFull, AlertTriangle, AlertCircle, Send, CalendarClock, TrendingUp,
   Heart, MessageCircle, MessageSquare, Share2, Bookmark, ThumbsUp, Calendar,
   Trash2, Clock, Plug, Filter, ChevronUp, Zap, Image as ImageIcon, Type,
-  SquarePen, Eye, BarChart3, Download,
+  SquarePen, Eye, BarChart3, Download, LogIn,
   type LucideIcon,
 } from "lucide-react";
 import { fmtFull, platformMeta } from "@/lib/analytics-model";
@@ -37,7 +37,7 @@ const ICONS: Record<string, LucideIcon> = {
   "message-circle": MessageCircle, "message-square": MessageSquare, "share-2": Share2,
   bookmark: Bookmark, "thumbs-up": ThumbsUp, calendar: Calendar, "trash-2": Trash2,
   clock: Clock, plug: Plug, filter: Filter, "chevron-up": ChevronUp,
-  zap: Zap, image: ImageIcon, type: Type, edit: SquarePen, eye: Eye,
+  zap: Zap, image: ImageIcon, type: Type, edit: SquarePen, eye: Eye, login: LogIn,
   "bar-chart": BarChart3, download: Download,
 };
 

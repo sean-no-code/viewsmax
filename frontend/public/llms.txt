@@ -34,7 +34,7 @@
 
 - [Home](https://viewsmax.com/): make content that makes sales — cross-platform posting with revenue attribution
 - [About](https://viewsmax.com/about.md): how posts, offers, tracked links, and attribution fit together
-- [Pricing](https://viewsmax.com/pricing.md): free to start; Starter $19, Creator $39, Pro $69, Agency $109 per month
+- [Pricing](https://viewsmax.com/pricing.md): free to start; Starter $29, Creator $39, Pro $69, Agency $109 per month
 
 ## Free Tools
 

@@ -1453,6 +1453,38 @@ class ViewsMaxApiService {
     }
   }
 
+  /**
+   * Admin "log in as user": a one-hour session for that user, in the same
+   * shape as login so useAuth.setAuthData can swap it in.
+   */
+  async impersonateUser(id: number): Promise<ApiResponse<{ user: User; token: string; token_type: string }>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/admin/users/${id}/impersonate`, {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) return { success: false, error: body.message || `Failed to log in as user: ${response.status}` };
+      return { success: true, data: body.data };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /** Revoke the current API token server-side (used to end an impersonation). */
+  async logout(): Promise<ApiResponse<void>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/logout`, {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) return { success: false, error: `Logout failed: ${response.status}` };
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
   async deleteUser(id: number): Promise<ApiResponse<void>> {
     try {
       const response = await fetch(`${this.baseUrl}/api/admin/users/${id}`, {

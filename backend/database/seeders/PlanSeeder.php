@@ -43,7 +43,7 @@ class PlanSeeder extends Seeder
                 'name' => 'starter',
                 'display_name' => 'Starter',
                 'description' => 'For creators just getting started',
-                'price' => 19.00,
+                'price' => 29.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [

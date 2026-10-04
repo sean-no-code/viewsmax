@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class AdminUsersTest extends TestCase
@@ -681,5 +682,91 @@ class AdminUsersTest extends TestCase
         $this->assertSame('promotional_customer', $row['role']);
         $this->assertSame('2026-12-01T00:00:00.000000Z', $row['promo_expires_at']);
         $this->assertFalse($row['subscribed']);
+    }
+
+    // ---- Log in as user (impersonation) --------------------------------------
+
+    public function test_admin_can_log_in_as_a_customer(): void
+    {
+        $admin = $this->makeAdmin();
+        $target = User::factory()->create(['email' => 'customer@example.com']);
+        Log::shouldReceive('channel')->once()->with('impersonation')->andReturn($spy = \Mockery::mock(\Psr\Log\LoggerInterface::class));
+        $spy->shouldReceive('info')->once()->withArgs(fn ($msg, $ctx) => $ctx['admin_id'] === $admin->id && $ctx['user_id'] === $target->id);
+
+        $res = $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson("/api/admin/users/{$target->id}/impersonate")
+            ->assertOk()
+            ->assertJsonPath('data.user.email', 'customer@example.com')
+            ->assertJsonPath('data.token_type', 'Bearer');
+
+        // The token belongs to the target, is labelled, and expires in about an hour.
+        $token = $res->json('data.token');
+        $this->withHeaders(['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json'])
+            ->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.user.email', 'customer@example.com');
+
+        $row = $target->tokens()->first();
+        $this->assertStringStartsWith('impersonation:by:'.$admin->id, $row->name);
+        $this->assertEqualsWithDelta(now()->addHour()->getTimestamp(), $row->expires_at->getTimestamp(), 60);
+        $this->assertNull($target->fresh()->last_login_at, 'impersonation must not count as the user logging in');
+    }
+
+    public function test_admin_cannot_log_in_as_self_or_another_admin(): void
+    {
+        $admin = $this->makeAdmin();
+        $other = $this->makeAdmin();
+
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson("/api/admin/users/{$admin->id}/impersonate")
+            ->assertStatus(422);
+
+        $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson("/api/admin/users/{$other->id}/impersonate")
+            ->assertStatus(403);
+
+        $this->assertSame(0, $other->tokens()->count());
+    }
+
+    public function test_non_admin_cannot_log_in_as_anyone(): void
+    {
+        $user = User::factory()->create();
+        $target = User::factory()->create();
+
+        $this->withHeaders($this->tokenHeaders($user))
+            ->postJson("/api/admin/users/{$target->id}/impersonate")
+            ->assertStatus(403);
+    }
+
+    public function test_returning_to_admin_revokes_the_impersonation_token(): void
+    {
+        $admin = $this->makeAdmin();
+        $target = User::factory()->create();
+
+        $token = $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson("/api/admin/users/{$target->id}/impersonate")
+            ->json('data.token');
+        $headers = ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json'];
+
+        $this->withHeaders($headers)->postJson('/api/logout')->assertOk();
+
+        $this->withHeaders($headers)->getJson('/api/profile')->assertStatus(401);
+        $this->assertSame(0, $target->tokens()->count());
+    }
+
+    public function test_expired_impersonation_token_is_rejected(): void
+    {
+        $admin = $this->makeAdmin();
+        $target = User::factory()->create();
+
+        $token = $this->withHeaders($this->tokenHeaders($admin))
+            ->postJson("/api/admin/users/{$target->id}/impersonate")
+            ->json('data.token');
+
+        $this->travel(61)->minutes();
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json'])
+            ->getJson('/api/profile')
+            ->assertStatus(401);
     }
 }

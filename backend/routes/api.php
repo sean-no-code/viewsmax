@@ -467,6 +467,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::get('/admin/users/{user}/accounts', [\App\Http\Controllers\Admin\UserAdminController::class, 'accounts']);
         Route::get('/admin/users/{user}', [\App\Http\Controllers\Admin\UserAdminController::class, 'show'])->whereNumber('user');
         Route::put('/admin/users/{user}/role', [\App\Http\Controllers\Admin\UserAdminController::class, 'updateRole']);
+        Route::post('/admin/users/{user}/impersonate', [\App\Http\Controllers\Admin\UserAdminController::class, 'impersonate']);
 
         // Role management
         Route::prefix('roles')->group(function () {

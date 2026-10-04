@@ -23,7 +23,7 @@ const Checkout = () => {
 
   // Get plan details from URL params or use defaults
   const planName = searchParams.get("plan") || "Creator Pro";
-  const planPrice = searchParams.get("price") || "19";
+  const planPrice = searchParams.get("price") || "29";
   const planPeriod = searchParams.get("period") || "month";
   const planDescription = searchParams.get("description") || "Monthly Subscription";
   // Stripe price id of the selected tier — forwarded so the subscription is

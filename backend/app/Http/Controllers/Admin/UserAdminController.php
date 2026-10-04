@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
@@ -411,6 +412,47 @@ class UserAdminController extends Controller implements HasMiddleware
         }
 
         return response()->json(['data' => ['user' => $this->userWithRoles($user->fresh())]]);
+    }
+
+    /**
+     * Log in as a user (support impersonation). Issues a one-hour token for the
+     * target in the same shape as POST /login so the SPA can swap sessions. Never
+     * another admin (no lateral escalation) and never yourself. Doesn't touch the
+     * user's last_login_at — it isn't their login. Every use is written to the
+     * impersonation log channel (storage/logs/impersonation.log).
+     */
+    public function impersonate(Request $request, User $user): JsonResponse
+    {
+        $admin = $request->user();
+
+        if ($admin->id === $user->id) {
+            return response()->json(['message' => 'You are already logged in as yourself.'], 422);
+        }
+
+        if ($user->hasRole('admin')) {
+            return response()->json(['message' => 'You cannot log in as another admin.'], 403);
+        }
+
+        $token = $user->createToken('impersonation:by:'.$admin->id, ['*'], now()->addHour())->plainTextToken;
+
+        Log::channel('impersonation')->info('Admin logged in as user', [
+            'admin_id' => $admin->id,
+            'admin_email' => $admin->email,
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'ip' => $request->ip(),
+        ]);
+
+        $user->load(['roles', 'plans']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'user' => $user->apiPayload(),
+                'token' => $token,
+                'token_type' => 'Bearer',
+            ],
+        ]);
     }
 
     private function promoExpiry(string $role, ?int $days): ?Carbon
