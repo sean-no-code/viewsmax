@@ -25,6 +25,7 @@ import {
 	formatLimit,
 	sortPlansByPrice,
 	iconForPlan,
+	PLAN_INCLUDES,
 	type PlanCta,
 } from "@/lib/plan-helpers";
 
@@ -393,6 +394,12 @@ const Plans = () => {
 												<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
 												<span className="text-muted-foreground">{formatLimit(plan.max_posts_per_month, "post")}/mo</span>
 											</li>
+											{PLAN_INCLUDES.map((f) => (
+												<li key={f} className="flex items-start gap-3">
+													<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+													<span className="text-muted-foreground">{f}</span>
+												</li>
+											))}
 										</ul>
 
 										<div className="mt-auto space-y-3">

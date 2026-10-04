@@ -6,6 +6,7 @@ import StripeTrialStep from "@/components/StripeTrialStep";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { checkoutTerms } from "@/lib/access";
+import { PLAN_INCLUDES } from "@/lib/plan-helpers";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -22,24 +23,17 @@ const Checkout = () => {
 
   // Get plan details from URL params or use defaults
   const planName = searchParams.get("plan") || "Creator Pro";
-  const planPrice = searchParams.get("price") || "29";
+  const planPrice = searchParams.get("price") || "19";
   const planPeriod = searchParams.get("period") || "month";
   const planDescription = searchParams.get("description") || "Monthly Subscription";
   // Stripe price id of the selected tier — forwarded so the subscription is
   // created on the chosen plan rather than the trial default.
   const planPriceId = searchParams.get("price_id") || undefined;
 
-  // Parse features from URL or use defaults
+  // The tier's limit lines arrive in the URL (comma-separated, from Plans);
+  // everything else is the same on every paid plan.
   const featuresParam = searchParams.get("features");
-  const features = featuresParam
-    ? featuresParam.split(",")
-    : [
-        "Everything in Free",
-        "Unlimited AI-generated scripts",
-        "Viral title & thumbnail suggestions",
-        "Advanced trend predictions",
-        "Performance analytics",
-      ];
+  const features = [...(featuresParam ? featuresParam.split(",") : []), ...PLAN_INCLUDES];
 
   // StripeTrialStep already creates the subscription, writes active_subscription
   // to localStorage, and dispatches "subscriptionUpdated". We just confirm + redirect.

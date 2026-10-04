@@ -49,7 +49,7 @@ class PlanSeeder extends Seeder
                 'features' => [
                     '5 channels',
                     '1 offer',
-                    '400 posts / month',
+                    '400 posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_STARTER_CHANNELS', 5),
                 'max_offers' => $num('LIMIT_STARTER_OFFERS', 1),
@@ -67,7 +67,7 @@ class PlanSeeder extends Seeder
                 'features' => [
                     '30 channels',
                     '5 offers',
-                    'Unlimited posts',
+                    'Unlimited posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_CREATOR_CHANNELS', 30),
                 'max_offers' => $num('LIMIT_CREATOR_OFFERS', 5),
@@ -85,7 +85,7 @@ class PlanSeeder extends Seeder
                 'features' => [
                     'Unlimited channels',
                     '10 offers',
-                    'Unlimited posts',
+                    'Unlimited posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_PRO_CHANNELS'), // null = unlimited
                 'max_offers' => $num('LIMIT_PRO_OFFERS', 10),
@@ -103,7 +103,7 @@ class PlanSeeder extends Seeder
                 'features' => [
                     'Unlimited channels',
                     'Unlimited offers',
-                    'Unlimited posts',
+                    'Unlimited posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_AGENCY_CHANNELS'), // null = unlimited
                 'max_offers' => $num('LIMIT_AGENCY_OFFERS'),   // null = unlimited

@@ -5,6 +5,7 @@ import {
   decidePlanCta,
   formatLimit,
   sortPlansByPrice,
+  PLAN_INCLUDES,
 } from "@/lib/plan-helpers";
 
 const tier = (over: Partial<PlanTier>): PlanTier => ({
@@ -89,5 +90,12 @@ describe("sortPlansByPrice", () => {
     const input = [pro, starter];
     sortPlansByPrice(input);
     expect(input[0]).toBe(pro);
+  });
+});
+
+describe("PLAN_INCLUDES", () => {
+  it("has no commas, because Checkout splits the features URL param on them", () => {
+    expect(PLAN_INCLUDES.length).toBeGreaterThan(0);
+    for (const line of PLAN_INCLUDES) expect(line).not.toContain(",");
   });
 });

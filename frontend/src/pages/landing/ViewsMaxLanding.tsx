@@ -13,6 +13,7 @@ import {
   Code2, RefreshCw, TrendingUp, type LucideProps,
 } from "lucide-react";
 import { Btn, LandingNav, LandingFooter, type Variant } from "./LandingChrome";
+import { PLAN_INCLUDES } from "@/lib/plan-helpers";
 
 const AUTH = "/auth";
 const SIGNUP = "/auth?tab=signup";
@@ -371,10 +372,10 @@ function Monetize() {
 function Pricing() {
   const navigate = useNavigate();
   const tiers = [
-    { name: "Starter", price: 19, blurb: "Launch your first offer.", feats: ["5 channels", "1 offer", "400 posts per month"], cta: "Start for $0", variant: "outline" as Variant, hl: false },
-    { name: "Creator", price: 39, blurb: "For brands that sell.", feats: ["30 channels", "5 offers", "Unlimited posts per month"], cta: "Start for $0", variant: "primary" as Variant, hl: true },
-    { name: "Pro", price: 69, blurb: "Scale every channel.", feats: ["Unlimited channels", "10 offers", "Unlimited posts per month"], cta: "Start for $0", variant: "dark" as Variant, hl: false },
-    { name: "Agency", price: 109, blurb: "For teams & agencies.", feats: ["Unlimited channels", "Unlimited offers", "Unlimited posts per month"], cta: "Talk to us", variant: "dark" as Variant, hl: false },
+    { name: "Starter", price: 19, blurb: "Launch your first offer.", feats: ["5 channels", "1 offer", "400 posts/mo"], cta: "Start for $0", variant: "outline" as Variant, hl: false },
+    { name: "Creator", price: 39, blurb: "For brands that sell.", feats: ["30 channels", "5 offers", "Unlimited posts/mo"], cta: "Start for $0", variant: "primary" as Variant, hl: true },
+    { name: "Pro", price: 69, blurb: "Scale every channel.", feats: ["Unlimited channels", "10 offers", "Unlimited posts/mo"], cta: "Start for $0", variant: "dark" as Variant, hl: false },
+    { name: "Agency", price: 109, blurb: "For teams & agencies.", feats: ["Unlimited channels", "Unlimited offers", "Unlimited posts/mo"], cta: "Talk to us", variant: "dark" as Variant, hl: false },
   ];
   return (
     <section id="pricing" style={{ maxWidth: 1200, margin: "0 auto", padding: "104px 24px 0", scrollMarginTop: 80 }}>
@@ -392,9 +393,9 @@ function Pricing() {
             <Btn variant={t.variant} onClick={() => navigate(AUTH)} style={{ width: "100%" }}>{t.cta}</Btn>
             {t.cta === "Start for $0" && <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: t.hl ? "var(--fg-3)" : "var(--ink-on-paper-3)", textAlign: "center", marginTop: 8 }}>No card required</div>}
             <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 22 }}>
-              {t.feats.map((f) => (
-                <div key={f} style={{ display: "flex", gap: 10, alignItems: "center", fontFamily: "var(--font-body)", fontSize: 14, color: t.hl ? "var(--fg-2)" : "var(--ink-on-paper-2)" }}>
-                  <Ico name="check" size={16} stroke={t.hl ? "var(--vm-volt)" : "var(--vm-red)"} />{f}
+              {[...t.feats, ...PLAN_INCLUDES].map((f) => (
+                <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.35, color: t.hl ? "var(--fg-2)" : "var(--ink-on-paper-2)" }}>
+                  <Ico name="check" size={16} stroke={t.hl ? "var(--vm-volt)" : "var(--vm-red)"} /><span>{f}</span>
                 </div>
               ))}
             </div>

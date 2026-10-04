@@ -42,6 +42,24 @@ export function decidePlanCta(plan: PlanTier, current: PlanTier | null): PlanCta
   return Number(plan.price) > Number(current.price) ? "upgrade" : "downgrade";
 }
 
+/**
+ * What every paid tier includes, listed under each plan's limit lines on the
+ * landing page, billing page, checkout and onboarding picker. Tiers differ only
+ * by their numeric limits. Short lines: they sit in a four-column card. Keep
+ * entries comma-free: Checkout receives features via a URL param split on ",".
+ */
+export const PLAN_INCLUDES: readonly string[] = [
+  "Multiple accounts per platform",
+  "Brands (account groups)",
+  "Tracked links & revenue attribution",
+  "Outlier research with AI breakdowns",
+  "Boosts: auto-repost & auto-promo",
+  "MCP server & API for AI agents",
+  "Comment chains & X threads",
+  "Beehiiv reach tracking",
+  "Human support",
+];
+
 /** Human label for a numeric limit; null = unlimited. */
 export function formatLimit(value: number | null, noun: string): string {
   if (value === null) return `Unlimited ${noun}s`;

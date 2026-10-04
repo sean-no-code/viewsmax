@@ -3,7 +3,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import type { Appearance } from "@stripe/stripe-js";
 import { Check, Loader2, Lock } from "lucide-react";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
-import { sortPlansByPrice, formatLimit } from "@/lib/plan-helpers";
+import { sortPlansByPrice, formatLimit, PLAN_INCLUDES } from "@/lib/plan-helpers";
 import { isMockApi } from "@/lib/mock-api";
 import { useAuth } from "@/hooks/useAuth";
 import { activateSubscription, stripePromise } from "@/components/StripeTrialStep";
@@ -19,14 +19,19 @@ interface TrialCheckoutProps {
   onSubscribed: (result: SubscribedResult) => void;
 }
 
-/** Feature bullets for a plan: prefer the seeded list, else derive from limits. */
+/**
+ * Feature bullets for a plan: the tier's limit lines (seeded list, else derived
+ * from the numeric limits) followed by what every paid plan includes.
+ */
 function featuresFor(plan: PlanTier): string[] {
-  if (plan.features && plan.features.length) return plan.features;
-  return [
-    formatLimit(plan.max_channels, "channel"),
-    formatLimit(plan.max_offers, "offer"),
-    `${formatLimit(plan.max_posts_per_month, "post")}/mo`,
-  ];
+  const limits = plan.features && plan.features.length
+    ? plan.features
+    : [
+        formatLimit(plan.max_channels, "channel"),
+        formatLimit(plan.max_offers, "offer"),
+        `${formatLimit(plan.max_posts_per_month, "post")}/mo`,
+      ];
+  return [...limits, ...PLAN_INCLUDES];
 }
 
 const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
