@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateOutlierBreakdownJob;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
+use App\Models\User;
+use App\Models\UserEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,6 +22,9 @@ class OutlierBreakdownController extends Controller
     /** Minutes after which a pending/processing row is assumed crashed and re-queued. */
     private const STALE_MINUTES = 10;
 
+    /** The page polls show() every few seconds: one "viewed" event per user, video and this many minutes. */
+    private const VIEW_DEDUPE_MINUTES = 10;
+
     /**
      * Get an outlier's AI breakdown
      *
@@ -33,7 +38,29 @@ class OutlierBreakdownController extends Controller
     {
         $breakdown = OutlierBreakdown::where('platform', $platform)->where('video_id', $videoId)->first();
 
+        if ($breakdown?->status === OutlierBreakdown::STATUS_COMPLETED && $request->user() instanceof User) {
+            $this->recordView($request->user(), $platform, $videoId);
+        }
+
         return response()->json(['success' => true, 'data' => $this->payload($breakdown)]);
+    }
+
+    /**
+     * Breakdowns carry no user_id, so this is the only record of who viewed one.
+     */
+    private function recordView(User $user, string $platform, string $videoId): void
+    {
+        $viewedRecently = UserEvent::query()
+            ->where('user_id', $user->id)
+            ->where('event_name', UserEvent::OUTLIER_BREAKDOWN_VIEWED)
+            ->where('created_at', '>=', now()->subMinutes(self::VIEW_DEDUPE_MINUTES))
+            ->where('metadata->platform', $platform)
+            ->where('metadata->video_id', $videoId)
+            ->exists();
+
+        if (! $viewedRecently) {
+            UserEvent::record($user, UserEvent::OUTLIER_BREAKDOWN_VIEWED, ['platform' => $platform, 'video_id' => $videoId]);
+        }
     }
 
     /**
