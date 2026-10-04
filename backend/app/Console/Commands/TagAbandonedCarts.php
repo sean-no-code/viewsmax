@@ -30,8 +30,9 @@ class TagAbandonedCarts extends Command
         $minAge = (int) config('services.kit.abandoned_cart_min_age_hours', 1);
         $window = (int) config('services.kit.abandoned_cart_window_hours', 3);
 
-        // This command runs every 3h (bootstrap/app.php withSchedule). The created_at
-        // slice below spans exactly ONE schedule interval, so consecutive runs tile the
+        // This command runs every 3h (bootstrap/app.php withSchedule). The slice
+        // below (measured from the end of the free window, or from signup when
+        // there was none) spans exactly ONE schedule interval, so consecutive runs tile the
         // timeline and each user is tagged once — no overlap / re-tagging, and no DB flag.
         // INVARIANT: abandoned_cart_window_hours MUST equal the schedule cadence
         // (everyThreeHours). No-flag trade-off: if a run is skipped (downtime /
@@ -39,8 +40,8 @@ class TagAbandonedCarts extends Command
         // Consent is intentionally NOT checked — abandoned-cart emails go to non-consenters too.
         $users = User::query()
             ->neverSubscribed()                                              // never started a subscription
-            ->where('created_at', '<=', now()->subHours($minAge))            // ≥ min age (not still registering)
-            ->where('created_at', '>', now()->subHours($minAge + $window))   // within the one interval before that (→ 1–4h ago)
+            ->whereRaw(User::CART_ABANDONED_AT_SQL.' <= ?', [now()->subHours($minAge)])            // ≥ min age (not still registering)
+            ->whereRaw(User::CART_ABANDONED_AT_SQL.' > ?', [now()->subHours($minAge + $window)])   // within the one interval before that (→ 1–4h ago)
             ->get();
 
         $tagged = 0;

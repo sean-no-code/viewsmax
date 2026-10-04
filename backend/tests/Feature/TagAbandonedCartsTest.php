@@ -82,6 +82,29 @@ class TagAbandonedCartsTest extends TestCase
         $this->artisan('kit:tag-abandoned-carts')->assertSuccessful();
     }
 
+    // A card-free signup hasn't abandoned anything while its free window is
+    // open; the cart counts as abandoned from the moment the window closes.
+    public function test_skips_user_whose_free_window_is_still_open(): void
+    {
+        $user = $this->makeUser('trying@example.com', hoursAgo: 2);
+        $user->forceFill(['promo_expires_at' => now()->addDays(7)->subHours(2)])->save();
+
+        $this->kit->shouldReceive('subscribe')->never();
+
+        $this->artisan('kit:tag-abandoned-carts')->assertSuccessful();
+    }
+
+    public function test_tags_user_whose_free_window_closed_within_the_slice(): void
+    {
+        $user = $this->makeUser('lapsed@example.com', hoursAgo: 24 * 7 + 2);
+        $user->forceFill(['promo_expires_at' => now()->subHours(2)])->save();
+
+        $this->kit->shouldReceive('subscribe')->once()
+            ->with('lapsed@example.com', 'Lead', 'viewsmax: abandoned cart')->andReturn(true);
+
+        $this->artisan('kit:tag-abandoned-carts')->assertSuccessful();
+    }
+
     private function makeUser(string $email, int $hoursAgo, bool $consented = true): User
     {
         $user = User::factory()->create([

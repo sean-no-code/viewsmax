@@ -3,15 +3,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check, Crown } from "lucide-react";
 import StripeTrialStep from "@/components/StripeTrialStep";
-import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
+import { checkoutTerms } from "@/lib/access";
 
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
   const [isComplete, setIsComplete] = useState(false);
+  // What adding a card costs today: the card-backed trial, $0 until the free
+  // window closes, or the full price once it has (see checkoutTerms).
+  const terms = checkoutTerms(user);
+  const chargeNow = terms.kind === "charge-now";
+  const freeUntil = terms.kind === "window"
+    ? new Date(terms.chargeAt).toLocaleDateString([], { day: "numeric", month: "short" })
+    : null;
 
   // Get plan details from URL params or use defaults
   const planName = searchParams.get("plan") || "Creator Pro";
@@ -38,7 +45,6 @@ const Checkout = () => {
   // to localStorage, and dispatches "subscriptionUpdated". We just confirm + redirect.
   const handleSubscribed = () => {
     setIsComplete(true);
-    toast.success("Your free trial has started!");
     // Re-read the profile so a promotional customer whose window had closed
     // is unlocked (has_active_plan) before we land back in the dashboard.
     void refreshUser();
@@ -66,7 +72,7 @@ const Checkout = () => {
               Complete Your Subscription
             </h1>
             <p className="text-muted-foreground">
-              Add your card to start your free trial
+              {chargeNow ? "Your free trial has ended — add your card to keep going" : freeUntil ? `Add your card — nothing to pay until ${freeUntil}` : "Add your card to start your free trial"}
             </p>
           </div>
 
@@ -98,10 +104,10 @@ const Checkout = () => {
                     <div className="border-t pt-3 mt-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Due Today</span>
-                        <span className="text-lg font-semibold text-green-600">$0.00</span>
+                        <span className={`text-lg font-semibold ${chargeNow ? "text-foreground" : "text-green-600"}`}>{chargeNow ? `$${planPrice}.00` : "$0.00"}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        Free trial — no charge today
+                        {chargeNow ? "Your free trial has ended — charged today" : "Free trial — no charge today"}
                       </p>
                     </div>
                   </div>
@@ -110,11 +116,13 @@ const Checkout = () => {
                   <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                       <Check className="w-5 h-5 text-blue-600" />
-                      Free trial, then ${planPrice}/{planPeriod}
+                      {chargeNow ? `$${planPrice}/${planPeriod}, starting today` : `Free trial, then $${planPrice}/${planPeriod}`}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      You'll be charged <strong>${planPrice}</strong> after the trial unless you cancel.
-                      Cancel anytime from your billing page.
+                      {chargeNow
+                        ? <>You'll be charged <strong>${planPrice}</strong> today and every {planPeriod} after that.</>
+                        : <>You'll be charged <strong>${planPrice}</strong> {freeUntil ? `on ${freeUntil}` : "after the trial"} unless you cancel.</>}
+                      {" "}Cancel anytime from your billing page.
                     </p>
                   </div>
 

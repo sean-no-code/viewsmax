@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\SocialAccountResource;
 use App\Models\SocialAccount;
+use App\Services\Social\FollowUs;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,7 @@ use Throwable;
  */
 class SocialAccountController extends Controller
 {
-    public function __construct(protected SocialProviderManager $manager) {}
+    public function __construct(protected SocialProviderManager $manager, protected FollowUs $followUs) {}
 
     /**
      * List every platform the app supports plus whether it is configured.
@@ -101,6 +102,14 @@ class SocialAccountController extends Controller
             $stateData['code_verifier'] = $verifier;
         }
 
+        // "Follow us" left ticked: ask for the follow permission now and
+        // remember the choice for exchange(). Skipped when we have no account
+        // to follow on this platform.
+        if ($request->boolean('follow_us') && $this->followUs->handle($platform)) {
+            $options['follow_us'] = true;
+            $stateData['follow_us'] = true;
+        }
+
         // Stash state for CSRF protection + verifier retrieval at exchange time.
         Cache::put($this->stateKey($state), $stateData, now()->addMinutes(15));
 
@@ -133,6 +142,7 @@ class SocialAccountController extends Controller
         $user = Auth::user();
         $redirectUri = $validated['redirect_uri'] ?? config('social.default_redirect_uri');
         $options = [];
+        $followUs = false;
 
         // Validate the state token and recover PKCE verifier / redirect URI.
         if (! empty($validated['state'])) {
@@ -149,6 +159,7 @@ class SocialAccountController extends Controller
             if (! empty($stateData['code_verifier'])) {
                 $options['code_verifier'] = $stateData['code_verifier'];
             }
+            $followUs = ! empty($stateData['follow_us']);
         }
 
         try {
@@ -169,6 +180,10 @@ class SocialAccountController extends Controller
                 'success' => false,
                 'message' => $this->noAccountsMessage($platform),
             ], 422);
+        }
+
+        if ($followUs) {
+            $this->followUs->followFrom($accounts);
         }
 
         return response()->json([
@@ -202,6 +217,10 @@ class SocialAccountController extends Controller
                 'success' => false,
                 'message' => 'Failed to connect '.$platform.': '.$e->getMessage(),
             ], 422);
+        }
+
+        if ($request->boolean('follow_us')) {
+            $this->followUs->followFrom($accounts);
         }
 
         return response()->json([

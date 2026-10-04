@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
 import { toast } from "sonner";
+import { checkoutTerms } from "@/lib/access";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -52,6 +53,8 @@ const ctaLabel: Record<PlanCta, string> = {
 const Plans = () => {
 	const navigate = useNavigate();
 	const { user } = useAuth();
+	// Free window closed: subscribing now charges today, so don't promise a trial.
+	const trialUsed = checkoutTerms(user).kind === "charge-now";
 
 	const [active, setActive] = useState(() => getInitialSubscription());
 	const [plans, setPlans] = useState<PlanTier[]>([]);
@@ -309,7 +312,9 @@ const Plans = () => {
 					</h1>
 					{!isActive && (
 						<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-							7-day free trial at $0, then pick the tier that fits how you grow.
+							{trialUsed
+								? "Your free trial has ended. Pick the tier that fits how you grow."
+								: "7-day free trial at $0, then pick the tier that fits how you grow."}
 						</p>
 					)}
 				</div>
@@ -399,7 +404,7 @@ const Plans = () => {
 													disabled={busy || !plan.stripe_price_id}
 													onClick={() => handlePlanCta(plan, cta)}
 												>
-													{busy ? "Processing…" : ctaLabel[cta]}
+													{busy ? "Processing…" : cta === "subscribe" && trialUsed ? "Subscribe" : ctaLabel[cta]}
 													{!busy && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
 												</Button>
 											)}

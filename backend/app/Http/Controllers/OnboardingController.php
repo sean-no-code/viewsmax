@@ -8,7 +8,8 @@ class OnboardingController extends Controller
 {
     /**
      * Mark onboarding complete. Server-side gate: the user must have an
-     * active/trialing subscription. Connecting an account is optional — users may
+     * active/trialing subscription or an open free window (every new signup
+     * has one, so no card is needed here). Connecting an account is optional — users may
      * skip that step during onboarding — so it is not required here.
      */
     public function complete(Request $request)

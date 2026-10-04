@@ -99,12 +99,22 @@ class User extends Authenticatable implements Wallet
     /**
      * Users who have never started a subscription (no user_plans row carrying a
      * Stripe subscription id) — i.e. abandoned-cart / never-added-card users.
+     * Someone still inside their free window hasn't been asked for a card yet,
+     * so they don't count until it closes.
      * Shared by the kit:*-abandoned-carts commands and the scheduled tagger.
      */
     public function scopeNeverSubscribed($query)
     {
-        return $query->whereDoesntHave('plans', fn ($q) => $q->whereNotNull('user_plans.stripe_subscription_id'));
+        return $query
+            ->whereDoesntHave('plans', fn ($q) => $q->whereNotNull('user_plans.stripe_subscription_id'))
+            ->where(fn ($q) => $q->whereNull('promo_expires_at')->orWhere('promo_expires_at', '<=', now()));
     }
+
+    /**
+     * When a never-subscribed user's cart counts as abandoned from: the end of
+     * their free window, or signup for accounts that never had one.
+     */
+    public const CART_ABANDONED_AT_SQL = 'COALESCE(promo_expires_at, created_at)';
 
     /**
      * The roles that belong to the user.
@@ -204,7 +214,7 @@ class User extends Authenticatable implements Wallet
 
     /**
      * Whether the user has a subscription that is active or trialing
-     * (PayPal or Stripe) OR an open promotional window. Drives the onboarding
+     * (PayPal or Stripe) OR an open free window. Drives the onboarding
      * gate (card step) and the `has_active_subscription` payload flag.
      */
     public function hasActiveSubscription(): bool
@@ -220,26 +230,53 @@ class User extends Authenticatable implements Wallet
     }
 
     /**
-     * Promotional customer whose free window is still open. A null
-     * promo_expires_at on a promotional customer means it never closes.
+     * Days a new signup can use the product before a card is required. Set as
+     * `promo_expires_at` at registration — the same free window an admin
+     * grants a promotional customer, just without the role.
+     */
+    public const CARD_FREE_DAYS = 7;
+
+    /**
+     * Free window still open: no card needed yet. A promotional customer with
+     * a null promo_expires_at has a window that never closes; for everyone
+     * else null means no window at all.
      */
     public function hasActivePromo(): bool
     {
-        return $this->isPromotional()
-            && (is_null($this->promo_expires_at) || $this->promo_expires_at->isFuture());
+        return is_null($this->promo_expires_at)
+            ? $this->isPromotional()
+            : $this->promo_expires_at->isFuture();
     }
 
     /**
-     * Promotional customer whose window has closed and who hasn't subscribed
-     * since. EnsureAccessActive locks these users to the billing endpoints and
-     * the SPA pins them to the Billing page.
+     * Free window has closed and the user hasn't subscribed since.
+     * EnsureAccessActive locks these users to the billing endpoints and the
+     * SPA pins them to the Billing page.
      */
     public function accessExpired(): bool
     {
-        return $this->isPromotional()
-            && ! is_null($this->promo_expires_at)
+        return ! is_null($this->promo_expires_at)
             && $this->promo_expires_at->isPast()
             && ! $this->hasActivePlan();
+    }
+
+    /**
+     * Stripe trial terms for a new subscription. The free window is the trial:
+     * a card added while it is open isn't charged until it closes, and one
+     * added afterwards is charged straight away. Users with no window (accounts
+     * from before it existed, unlimited promos) keep the card-backed trial.
+     *
+     * @return array{trial_period_days?: int, trial_end?: int}
+     */
+    public function subscriptionTrialTerms(): array
+    {
+        if (is_null($this->promo_expires_at)) {
+            return ['trial_period_days' => (int) config('services.stripe.trial_period_days', 3)];
+        }
+
+        return $this->promo_expires_at->isFuture()
+            ? ['trial_end' => $this->promo_expires_at->getTimestamp()]
+            : [];
     }
 
     /**

@@ -117,8 +117,8 @@ Mcp::web('mcp', \App\Mcp\ViewsMaxServer::class)
 Route::match(['get', 'post'], '/social/{platform}/deauthorize', [SocialWebhookController::class, 'deauthorize']);
 Route::match(['get', 'post'], '/social/{platform}/data-deletion', [SocialWebhookController::class, 'dataDeletion']);
 
-// Protected routes (authentication required). `access.active` locks a
-// promotional customer whose free window has closed to the billing endpoints.
+// Protected routes (authentication required). `access.active` locks a user
+// whose free window has closed to the billing endpoints.
 Route::middleware(['api.auth', 'access.active'])->group(function () {
 
     // Outlier Multiplier Endpoint

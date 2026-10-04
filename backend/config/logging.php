@@ -79,6 +79,24 @@ return [
             'permission' => 0777,
         ],
 
+        // "Follow us" on the connect page (App\Services\Social\FollowUs): one
+        // line per follow attempt in storage/logs/follow-us.log.
+        // FOLLOW_US_LOG_ENABLED=false silences it.
+        'follow_us' => [
+            'driver' => 'stack',
+            'channels' => env('FOLLOW_US_LOG_ENABLED', true) ? ['follow_us_file'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+
+        'follow_us_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/follow-us.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'mail_file' => [
             'driver' => 'single',
             'path' => storage_path('logs/mail.log'),

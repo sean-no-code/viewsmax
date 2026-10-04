@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAccessExpired, promoWindowLabel } from "../access";
+import { checkoutTerms, isAccessExpired, promoWindowLabel } from "../access";
 
 const NOW = Date.parse("2026-09-28T10:00:00Z");
 const past = "2026-09-27T10:00:00Z";
@@ -25,6 +25,21 @@ describe("isAccessExpired", () => {
   it("never locks an unlimited promo or a user with a card-backed plan", () => {
     expect(isAccessExpired({ promo_expires_at: null }, NOW)).toBe(false);
     expect(isAccessExpired({ promo_expires_at: past, has_active_plan: true }, NOW)).toBe(false);
+  });
+});
+
+describe("checkoutTerms", () => {
+  it("keeps the card-backed trial for users with no free window", () => {
+    expect(checkoutTerms(null, NOW)).toEqual({ kind: "card-trial" });
+    expect(checkoutTerms({ promo_expires_at: null }, NOW)).toEqual({ kind: "card-trial" });
+  });
+
+  it("defers the charge to the end of an open window", () => {
+    expect(checkoutTerms({ promo_expires_at: future }, NOW)).toEqual({ kind: "window", chargeAt: Date.parse(future) });
+  });
+
+  it("charges today once the window has closed", () => {
+    expect(checkoutTerms({ promo_expires_at: past }, NOW)).toEqual({ kind: "charge-now" });
   });
 });
 

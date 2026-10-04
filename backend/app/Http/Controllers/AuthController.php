@@ -50,12 +50,14 @@ class AuthController extends Controller
         try {
             // Create the user UNVERIFIED and NOT onboarded. Registration does not
             // log the user in — they must verify their email via the magic link first.
+            // No card is needed for the first User::CARD_FREE_DAYS days.
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'email_verified_at' => null,
                 'onboarding_completed_at' => null,
+                'promo_expires_at' => now()->addDays(User::CARD_FREE_DAYS),
                 'marketing_consented_at' => $request->boolean('marketing_consent') ? now() : null,
             ]);
 

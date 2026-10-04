@@ -42,7 +42,14 @@
       "Bash(docker logs *)",
       "Bash(echo *)",
       "Bash(python3 *)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(docker inspect *)",
+      "Bash(docker port *)",
+      "Bash(docker network ls *)",
+      "Bash(docker network ls)",
+      "Bash(lsof -nP *)",
+      "Bash(curl -s * http://localhost:*)",
+      "Bash(curl -s * http://127.0.0.1:*)"
     ]
   }
 }

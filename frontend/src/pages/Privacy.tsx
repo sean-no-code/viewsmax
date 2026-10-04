@@ -52,7 +52,7 @@ const Privacy = () => {
 
             <h3 className="text-xl font-medium mb-3 mt-6">Connected Social Accounts</h3>
             <p className="text-muted-foreground leading-relaxed">
-              When you connect a social account (YouTube, TikTok, X, LinkedIn, Threads, Instagram, or Bluesky), we store the account's name and the access tokens that platform gives us. We use them only to publish, schedule, and check the status of posts you create. Disconnecting an account from the Connections page deletes its stored tokens.
+              When you connect a social account (YouTube, TikTok, X, LinkedIn, Threads, Instagram, or Bluesky), we store the account's name and the access tokens that platform gives us. We use them only to publish, schedule, and check the status of posts you create. If you leave "Follow us" ticked when connecting an X or Bluesky account, we also use them once to follow the ViewsMax account from yours; untick the box to skip this, and you can unfollow at any time. Disconnecting an account from the Connections page deletes its stored tokens.
             </p>
           </section>
 

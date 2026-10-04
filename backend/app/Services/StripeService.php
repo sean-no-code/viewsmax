@@ -266,9 +266,14 @@ class StripeService
     }
 
     /**
-     * Create a subscription on the given price with a trial (no charge today).
+     * Create a subscription on the given price. $trial is Stripe's
+     * `trial_period_days` or `trial_end` (no charge today); empty charges the
+     * saved card now, and a declined card fails the call instead of leaving
+     * an incomplete subscription behind.
+     *
+     * @param  array{trial_period_days?: int, trial_end?: int}  $trial
      */
-    public function createTrialSubscription(User $user, string $priceId, int $trialDays, ?string $referralId = null): array
+    public function createSubscription(User $user, string $priceId, array $trial, ?string $referralId = null): array
     {
         $customer = $this->findOrCreateCustomer($user);
 
@@ -285,7 +290,7 @@ class StripeService
         $subscription = Subscription::create([
             'customer' => $customer->id,
             'items' => [['price' => $priceId]],
-            'trial_period_days' => $trialDays,
+            ...($trial ?: ['payment_behavior' => 'error_if_incomplete']),
             'metadata' => array_filter([
                 'user_id' => (string) $user->id,
                 'referral' => $referralId,
@@ -293,7 +298,7 @@ class StripeService
             'expand' => ['latest_invoice.payment_intent', 'items.data.price'],
         ]);
 
-        Log::info('Stripe trial subscription created', [
+        Log::info('Stripe subscription created', [
             'user_id' => $user->id,
             'subscription_id' => $subscription->id,
             'status' => $subscription->status,

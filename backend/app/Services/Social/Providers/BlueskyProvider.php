@@ -5,6 +5,7 @@ namespace App\Services\Social\Providers;
 use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
+use App\Services\Social\Contracts\SupportsFollowing;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -16,7 +17,7 @@ use RuntimeException;
  * Bluesky publishing via the AT Protocol XRPC API. Bluesky does not use OAuth;
  * the user authenticates with their handle and an app password.
  */
-class BlueskyProvider extends AbstractSocialProvider
+class BlueskyProvider extends AbstractSocialProvider implements SupportsFollowing
 {
     protected string $platform = 'bluesky';
 
@@ -79,6 +80,32 @@ class BlueskyProvider extends AbstractSocialProvider
         ]);
 
         return collect([$account]);
+    }
+
+    public function follow(SocialAccount $account, string $handle): void
+    {
+        $token = $account->access_token;
+
+        $did = Http::withToken($token)
+            ->get($this->serviceUrl().'/xrpc/com.atproto.identity.resolveHandle', ['handle' => $handle])
+            ->json('did');
+        if (! $did) {
+            throw new RuntimeException("Bluesky account {$handle} not found.");
+        }
+
+        $response = Http::withToken($token)->post($this->serviceUrl().'/xrpc/com.atproto.repo.createRecord', [
+            'repo' => $account->platform_account_id,
+            'collection' => 'app.bsky.graph.follow',
+            'record' => [
+                '$type' => 'app.bsky.graph.follow',
+                'subject' => $did,
+                'createdAt' => now()->toIso8601ZuluString(),
+            ],
+        ]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException("Bluesky refused the follow (HTTP {$response->status()}): ".$response->body());
+        }
     }
 
     /**

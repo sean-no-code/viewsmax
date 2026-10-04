@@ -388,7 +388,7 @@ class PlanLimitsTest extends TestCase
 
         $this->mock(StripeService::class, function ($mock) {
             $mock->shouldReceive('attachPaymentMethod')->once();
-            $mock->shouldReceive('createTrialSubscription')
+            $mock->shouldReceive('createSubscription')
                 ->once()
                 ->with(\Mockery::any(), 'price_agency', \Mockery::any(), \Mockery::any())
                 ->andReturn([

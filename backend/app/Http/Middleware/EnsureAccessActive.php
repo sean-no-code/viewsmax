@@ -7,8 +7,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Locks a promotional customer whose free window has closed (and who has not
- * subscribed since) to the endpoints needed to pick a plan. Everything else
+ * Locks a user whose free window has closed (a card-free signup after
+ * User::CARD_FREE_DAYS, or a promotional customer) and who has not subscribed
+ * since to the endpoints needed to pick a plan. Everything else
  * answers 403 with `code: access_expired` so the SPA can send them to Billing.
  * Applied after `api.auth` on the whole protected group.
  */

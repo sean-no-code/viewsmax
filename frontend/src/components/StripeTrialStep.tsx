@@ -13,6 +13,7 @@ import { viewsMaxApi } from "@/lib/api-service";
 import { isMockApi } from "@/lib/mock-api";
 import { useAuth } from "@/hooks/useAuth";
 import TrialBanner from "@/components/TrialBanner";
+import { checkoutTerms, type CheckoutTerms } from "@/lib/access";
 import { toast } from "sonner";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -31,6 +32,42 @@ interface StripeTrialStepProps {
   priceId?: string;
 }
 
+const fmtDate = (at: number) => new Date(at).toLocaleDateString([], { day: "numeric", month: "short" });
+
+// Payment-step copy for each case of checkoutTerms: the card-backed trial, a
+// card added during the free window ($0 until it closes), or one added after
+// it (charged today).
+function checkoutCopy(terms: CheckoutTerms) {
+  if (terms.kind === "charge-now") {
+    return {
+      cta: "Subscribe now",
+      busy: "Subscribing…",
+      lead: "Charged today.",
+      note: "Your free trial has ended, so your card is charged now and then monthly. Cancel anytime.",
+      banner: null,
+    };
+  }
+  if (terms.kind === "window") {
+    const until = fmtDate(terms.chargeAt);
+    return {
+      cta: "Add card — $0 today",
+      busy: "Saving card…",
+      lead: "$0 today.",
+      note: `Your free trial runs until ${until} — you won't be charged before then. Cancel anytime.`,
+      banner: { title: `$0 today · free until ${until}`, text: `You won't be charged before ${until}. Cancel anytime.` },
+    };
+  }
+  return {
+    cta: "Start 7-day free trial",
+    busy: "Starting trial…",
+    lead: "$0 today.",
+    note: "Your 7-day free trial starts now — you won't be charged until it ends. Cancel anytime.",
+    banner: {},
+  };
+}
+
+type CheckoutCopy = ReturnType<typeof checkoutCopy>;
+
 // Shared: create the trial subscription, persist it in the shape useUserRole
 // expects, and notify the parent. Returns true on success.
 // Exported for reuse by the onboarding Trial Checkout screen.
@@ -41,7 +78,7 @@ export const activateSubscription = async (
 ): Promise<boolean> => {
   const result = await viewsMaxApi.createStripeSubscription(paymentMethodId, priceId);
   if (!result.success || !result.data) {
-    toast.error(result.error || "Couldn't start your trial. Please try again.");
+    toast.error(result.error || "Couldn't start your subscription. Please try again.");
     return false;
   }
 
@@ -57,14 +94,14 @@ export const activateSubscription = async (
     })
   );
   window.dispatchEvent(new CustomEvent("subscriptionUpdated"));
-  toast.success("You're all set — your free trial has started!");
+  toast.success(sub.status === "trialing" ? "You're all set — your free trial has started!" : "You're all set — your subscription is active!");
   onSubscribed(sub);
   return true;
 };
 
 // Demo-mode card form: skips Stripe Elements entirely (no publishable key
 // needed) and activates a mock subscription.
-const MockCardForm = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
+const MockCardForm = ({ onSubscribed, priceId, copy }: StripeTrialStepProps & { copy: CheckoutCopy }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,22 +120,21 @@ const MockCardForm = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
       <Button type="submit" className="w-full" disabled={submitting}>
         {submitting ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting trial…
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {copy.busy}
           </>
         ) : (
-          "Start 7-day free trial (mock)"
+          `${copy.cta} (mock)`
         )}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
-        <strong>$0 today.</strong> Your 7-day free trial starts now — you won't be
-        charged until it ends. Cancel anytime.
+        <strong>{copy.lead}</strong> {copy.note}
       </p>
     </form>
   );
 };
 
 // Inner form — must be rendered inside <Elements> so the Stripe hooks resolve.
-const CardForm = ({ onSubscribed, priceId, email }: StripeTrialStepProps & { email?: string }) => {
+const CardForm = ({ onSubscribed, priceId, email, copy }: StripeTrialStepProps & { email?: string; copy: CheckoutCopy }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -158,15 +194,14 @@ const CardForm = ({ onSubscribed, priceId, email }: StripeTrialStepProps & { ema
       <Button type="submit" className="w-full" disabled={!stripe || submitting}>
         {submitting ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting trial…
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {copy.busy}
           </>
         ) : (
-          "Start 7-day free trial"
+          copy.cta
         )}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
-        <strong>$0 today.</strong> Your 7-day free trial starts now — you won't be
-        charged until it ends. Cancel anytime.
+        <strong>{copy.lead}</strong> {copy.note}
       </p>
     </form>
   );
@@ -176,6 +211,7 @@ const StripeTrialStep = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
   const { user } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const copy = checkoutCopy(checkoutTerms(user));
 
   useEffect(() => {
     if (isMockApi()) return; // mock path doesn't need a SetupIntent
@@ -198,13 +234,13 @@ const StripeTrialStep = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
       <CardHeader>
         <CardTitle>Add your payment details</CardTitle>
         <CardDescription>
-          $0 due today — start your 7-day free trial. You won't be charged until it ends.
+          {copy.lead} {copy.note}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <TrialBanner />
+        {copy.banner && <TrialBanner {...copy.banner} />}
         {isMockApi() ? (
-          <MockCardForm onSubscribed={onSubscribed} priceId={priceId} />
+          <MockCardForm onSubscribed={onSubscribed} priceId={priceId} copy={copy} />
         ) : error ? (
           <p className="py-6 text-center text-sm text-destructive">{error}</p>
         ) : !clientSecret || !stripePromise ? (
@@ -213,7 +249,7 @@ const StripeTrialStep = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
           </div>
         ) : (
           <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <CardForm onSubscribed={onSubscribed} priceId={priceId} email={user?.email} />
+            <CardForm onSubscribed={onSubscribed} priceId={priceId} email={user?.email} copy={copy} />
           </Elements>
         )}
       </CardContent>

@@ -121,8 +121,9 @@ class BillingController extends Controller
     }
 
     /**
-     * Attach the vaulted PaymentMethod and start the $29/mo subscription with a
-     * 3-day trial (no charge today). Persists the subscription against the user.
+     * Attach the vaulted PaymentMethod and start the subscription on the trial
+     * terms the user is due (User::subscriptionTrialTerms — charged today once
+     * their free window has closed). Persists the subscription against the user.
      */
     public function subscribe(Request $request, StripeService $stripeService)
     {
@@ -160,10 +161,10 @@ class BillingController extends Controller
 
             $stripeService->attachPaymentMethod($user, $request->input('payment_method_id'));
 
-            $subscription = $stripeService->createTrialSubscription(
+            $subscription = $stripeService->createSubscription(
                 $user,
                 $priceId,
-                (int) config('services.stripe.trial_period_days', 3),
+                $user->subscriptionTrialTerms(),
                 $request->input('referral'),
             );
 

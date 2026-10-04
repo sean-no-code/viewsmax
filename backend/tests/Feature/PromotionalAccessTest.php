@@ -169,15 +169,17 @@ class PromotionalAccessTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
     }
 
-    public function test_promo_expiry_is_ignored_for_users_without_the_role(): void
+    public function test_a_closed_window_locks_a_plain_customer_too(): void
     {
-        // A stale promo_expires_at on a plain customer must not lock them out.
+        // Self-signups get the same window without the role (CardFreeSignupTest).
         $user = User::factory()->create(['promo_expires_at' => now()->subDay()]);
         $headers = $this->authHeaders($user);
 
         $this->withHeaders($headers)->getJson('/api/profile')
             ->assertOk()
-            ->assertJsonPath('data.user.access_expired', false);
-        $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
+            ->assertJsonPath('data.user.access_expired', true);
+        $this->withHeaders($headers)->getJson('/api/posts')
+            ->assertForbidden()
+            ->assertJsonPath('code', 'access_expired');
     }
 }

@@ -101,6 +101,8 @@ class SocialProviderManager
                 'enabled' => (bool) ($config['enabled'] ?? true),
                 'configured' => $this->isConfigured($platform),
                 'uses_oauth' => $this->for($platform)->usesOAuth(),
+                // Our handle when the connect page should offer "Follow us".
+                'follow_us' => app(FollowUs::class)->handle($platform),
             ];
         })->all();
     }

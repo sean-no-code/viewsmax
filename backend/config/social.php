@@ -24,6 +24,17 @@ return [
     // Default callback path on the frontend. The frontend may override per-call.
     'default_redirect_uri' => $frontend ? rtrim($frontend, '/').'/social/callback' : null,
 
+    /*
+     | "Follow us" on the connect page: our own handle (or profile link) per
+     | platform. When the user leaves the box ticked, their newly connected
+     | account follows it. Leave a value empty to hide the box for that
+     | platform. Only X and Bluesky have an API for this.
+     */
+    'follow_us' => [
+        'x' => env('FOLLOW_US_X'),
+        'bluesky' => env('FOLLOW_US_BLUESKY'),
+    ],
+
     'platforms' => [
 
         'facebook' => [

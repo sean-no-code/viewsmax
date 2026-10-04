@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Check, X as XIcon, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -74,6 +75,8 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
   const [blueskyOpen, setBlueskyOpen] = useState(false);
   const [blueskyId, setBlueskyId] = useState("");
   const [blueskyPassword, setBlueskyPassword] = useState("");
+  // "Follow us" is ticked by default; this holds the platforms the user unticked.
+  const [noFollow, setNoFollow] = useState<Record<string, boolean>>({});
 
   const loadAll = async () => {
     const [legacy, social, catalog] = await Promise.all([
@@ -121,6 +124,11 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     return platforms.find((p) => p.platform === e.key)?.configured ?? true;
   };
 
+  // Our handle on a platform that offers "Follow us" (X, Bluesky), else null.
+  const followHandle = (key: string): string | null =>
+    platforms.find((p) => p.platform === key)?.follow_us ?? null;
+  const wantsFollow = (key: string): boolean => !!followHandle(key) && !noFollow[key];
+
   const handleConnect = async (e: ProviderEntry) => {
     // Bluesky has no OAuth — it connects with a handle + app password.
     if (e.key === "bluesky") {
@@ -131,7 +139,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     try {
       // Connect method can differ from the listing system (see ProviderEntry).
       if ((e.connectVia ?? e.system) === "legacy") await connectProvider(e.key as OAuthProvider);
-      else await connectSocialPlatform(e.key);
+      else await connectSocialPlatform(e.key, wantsFollow(e.key));
       await loadAll();
       refreshAccountDirectory();
       toast.success(`${labelFor(e.key)} connected!`);
@@ -149,7 +157,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
       return;
     }
     setBusyKey("bluesky");
-    const res = await viewsMaxApi.connectBlueskyAccount(blueskyId.trim(), blueskyPassword.trim());
+    const res = await viewsMaxApi.connectBlueskyAccount(blueskyId.trim(), blueskyPassword.trim(), wantsFollow("bluesky"));
     setBusyKey(null);
     if (!res.success) {
       toast.error(res.error || "Failed to connect Bluesky.");
@@ -213,6 +221,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
           const configured = isConfigured(entry);
           const isBusy = busyKey === entry.key;
           const accent = PMAP[entry.key]?.accent ?? "#0A0A0C";
+          const follow = configured ? followHandle(entry.key) : null;
 
           return (
             <div key={entry.key} className="rounded-lg border p-3">
@@ -234,6 +243,15 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                   {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? "Add account" : "Connect"}
                 </Button>
               </div>
+              {follow && (
+                <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                  <Checkbox
+                    checked={!noFollow[entry.key]}
+                    onCheckedChange={(checked) => setNoFollow((prev) => ({ ...prev, [entry.key]: checked !== true }))}
+                  />
+                  Follow us (@{follow}) when you connect
+                </label>
+              )}
               {accts.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {accts.map((a) => {

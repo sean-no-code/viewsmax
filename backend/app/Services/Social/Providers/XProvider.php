@@ -9,6 +9,7 @@ use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\CaptionRules;
 use App\Services\Social\Contracts\SupportsComments;
+use App\Services\Social\Contracts\SupportsFollowing;
 use App\Services\Social\Data\CommentResult;
 use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
@@ -19,9 +20,12 @@ use Illuminate\Support\Sleep;
 /**
  * X (Twitter) publishing via API v2 with OAuth 2.0 Authorization Code + PKCE.
  */
-class XProvider extends AbstractSocialProvider implements SupportsComments
+class XProvider extends AbstractSocialProvider implements SupportsComments, SupportsFollowing
 {
     protected string $platform = 'x';
+
+    /** Only requested when the user leaves "Follow us" ticked at connect time. */
+    public const FOLLOW_SCOPE = 'follows.write';
 
     protected const TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 
@@ -38,7 +42,7 @@ class XProvider extends AbstractSocialProvider implements SupportsComments
             'client_id' => $this->clientId(),
             'redirect_uri' => $redirectUri,
             'state' => $state,
-            'scope' => $this->scopeString(' '),
+            'scope' => $this->scopeString(' ').(empty($options['follow_us']) ? '' : ' '.self::FOLLOW_SCOPE),
             'code_challenge' => $challenge,
             'code_challenge_method' => $challenge ? 'S256' : null,
         ]));
@@ -333,6 +337,23 @@ class XProvider extends AbstractSocialProvider implements SupportsComments
         }
 
         return $this->normalizeUser($response->json('data'));
+    }
+
+    public function follow(SocialAccount $account, string $handle): void
+    {
+        $target = $this->lookupUsername($account, $handle);
+        if (! $target) {
+            throw new \RuntimeException("X account @{$handle} not found.");
+        }
+
+        $response = Http::withToken($account->access_token)
+            ->post("https://api.twitter.com/2/users/{$account->platform_account_id}/following", [
+                'target_user_id' => $target['id'],
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException("X refused the follow (HTTP {$response->status()}): ".$response->body());
+        }
     }
 
     /**

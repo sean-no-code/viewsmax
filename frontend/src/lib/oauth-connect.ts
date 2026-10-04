@@ -231,7 +231,7 @@ const waitForCallbackByState = (popup: Window, expectedState: string): Promise<{
 
 // Connect a platform that lives in the `/api/social` system. Returns the
 // connected SocialAccount(s).
-export const connectSocialPlatform = async (platform: string) => {
+export const connectSocialPlatform = async (platform: string, followUs = false) => {
   // Open the popup synchronously (inside the click gesture) so the browser
   // doesn't block it while we fetch the authorize URL, then navigate it.
   const popup = window.open(
@@ -243,7 +243,7 @@ export const connectSocialPlatform = async (platform: string) => {
     throw new Error("Popup blocked. Please allow popups for this site and try again.");
   }
 
-  const urlRes = await viewsMaxApi.getSocialAuthUrl(platform, REDIRECT_URI);
+  const urlRes = await viewsMaxApi.getSocialAuthUrl(platform, REDIRECT_URI, followUs);
   if (!urlRes.success || !urlRes.data) {
     popup.close();
     throw new Error(urlRes.error || `${platform} isn't configured yet.`);

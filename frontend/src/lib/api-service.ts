@@ -193,6 +193,9 @@ export interface SocialPlatformInfo {
   enabled: boolean;
   configured: boolean;
   uses_oauth: boolean;
+  // Our own handle on this platform when the connect page offers "Follow us"
+  // (X and Bluesky, once configured on the backend); null otherwise.
+  follow_us?: string | null;
 }
 
 // Per-user preference toggles from `/api/user/settings`.
@@ -5552,13 +5555,13 @@ class ViewsMaxApiService {
 
   // Connect a Bluesky account with handle + app password (Bluesky has no
   // OAuth — see Settings → App Passwords on bsky.app).
-  async connectBlueskyAccount(identifier: string, password: string): Promise<ApiResponse<SocialAccount[]>> {
+  async connectBlueskyAccount(identifier: string, password: string, followUs = false): Promise<ApiResponse<SocialAccount[]>> {
     if (isMockApi()) return { success: false, error: 'Not available in demo mode.' };
     try {
       const response = await fetch(`${this.baseUrl}/api/social/bluesky/connect`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier, password, follow_us: followUs }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || result.success === false) {
@@ -5667,10 +5670,12 @@ class ViewsMaxApiService {
   // Ask the backend to build the OAuth authorization URL for a platform. The
   // backend keeps the PKCE verifier + CSRF state server-side and returns the
   // opaque `state` we echo back at exchange time.
-  async getSocialAuthUrl(platform: string, redirectUri: string): Promise<ApiResponse<{ authorization_url: string; state: string; redirect_uri: string }>> {
+  // `followUs` = the "Follow us" box was left ticked: the backend then asks
+  // for the follow permission and follows our account after the exchange.
+  async getSocialAuthUrl(platform: string, redirectUri: string, followUs = false): Promise<ApiResponse<{ authorization_url: string; state: string; redirect_uri: string }>> {
     if (isMockApi()) return { success: false, error: 'Not available in demo mode.' };
     try {
-      const params = new URLSearchParams({ redirect_uri: redirectUri });
+      const params = new URLSearchParams({ redirect_uri: redirectUri, ...(followUs ? { follow_us: "1" } : {}) });
       const response = await fetch(`${this.baseUrl}/api/social/${platform}/auth-url?${params.toString()}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
