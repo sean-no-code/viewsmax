@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\VerifyEmailMail;
 use App\Models\Role;
 use App\Models\SocialAccount;
+use App\Http\Controllers\Auth\WebRegisterController;
 use App\Models\User;
 use App\Services\Social\SocialConnect;
 use App\Services\Social\SocialConnectException;
@@ -101,6 +102,43 @@ class WebRegisterTest extends TestCase
         // Setup page names the agent and still knows where to go next.
         $this->get(route('register.setup'))->assertOk()->assertSee('Grant Claude access')->assertSee('Skip for now');
         $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
+    }
+
+    public function test_full_chain_authorize_register_connect_continue_returns_to_consent(): void
+    {
+        $authorizeUrl = $this->authorizeUrl('Claude');
+        $this->get($authorizeUrl)->assertRedirect('/login');
+        $this->get('/login')->assertOk();
+        $this->get('/register')->assertOk();
+        $this->post('/register', self::FORM)->assertRedirect(route('register.setup'));
+        $this->get(route('register.setup'))->assertOk();
+
+        $connect = \Mockery::mock(SocialConnect::class);
+        $connect->shouldReceive('authorizationUrl')->once()->andReturn(['authorization_url' => 'https://accounts.google.test/o?state=s1', 'state' => 's1']);
+        $connect->shouldReceive('complete')->once()->andReturn(collect([new SocialAccount(['platform' => 'youtube'])]));
+        $this->app->instance(SocialConnect::class, $connect);
+
+        $this->get(route('connect.start', 'youtube'))->assertRedirect('https://accounts.google.test/o?state=s1');
+        $this->get(route('connect.callback', 'youtube').'?code=c&state=s1')->assertRedirect(route('register.setup'));
+        $this->get(route('register.setup'))->assertOk()->assertSee('grant access');
+
+        $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
+    }
+
+    public function test_continue_returns_to_consent_even_if_url_intended_was_overwritten_mid_flow(): void
+    {
+        $authorizeUrl = $this->authorizeUrl('Claude');
+        $this->get($authorizeUrl)->assertRedirect('/login');
+        $this->get('/register')->assertOk()->assertSee('approve Claude');
+        $this->post('/register', self::FORM)->assertRedirect(route('register.setup'));
+
+        // e.g. a provider callback that arrived without the session cookie went
+        // through the guest redirect and replaced Laravel's intended URL.
+        $this->session(['url.intended' => url(route('connect.callback', 'youtube').'?code=x')]);
+
+        $this->get(route('register.setup'))->assertOk()->assertSee('Grant Claude access');
+        $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
+        $this->assertNull(session(WebRegisterController::SESSION_AUTHORIZE_URL));
     }
 
     public function test_signup_without_a_pending_agent_has_no_client_and_continues_to_the_app(): void

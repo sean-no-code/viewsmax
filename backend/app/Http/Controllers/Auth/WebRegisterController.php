@@ -21,6 +21,17 @@ use Illuminate\Support\Facades\Auth;
  */
 class WebRegisterController extends Controller
 {
+    /**
+     * Session keys holding the agent's /oauth/authorize URL (and client name)
+     * for the whole signup → connect → consent chain. Laravel's own
+     * `url.intended` is a shared key that any guest redirect (e.g. a provider
+     * callback arriving without the session cookie) can overwrite, so the
+     * flow keeps its own copy from the first time it sees the authorize URL.
+     */
+    public const SESSION_AUTHORIZE_URL = 'agent_signup.authorize_url';
+
+    public const SESSION_CLIENT = 'agent_signup.client';
+
     public function create(Request $request)
     {
         if ($request->expectsJson()) {
@@ -31,7 +42,7 @@ class WebRegisterController extends Controller
         }
 
         return view('auth.register', [
-            'client' => OAuthIntendedClient::nameFrom($request->session()->get('url.intended')),
+            'client' => $this->rememberAgent($request),
         ]);
     }
 
@@ -44,8 +55,7 @@ class WebRegisterController extends Controller
             'marketing_consent' => 'nullable|boolean',
         ]);
 
-        // Read before anything consumes the intended URL: it names the agent.
-        $client = OAuthIntendedClient::nameFrom($request->session()->get('url.intended'));
+        $client = $this->rememberAgent($request);
 
         $user = $registration->register([
             'name' => $data['name'],
@@ -76,16 +86,36 @@ class WebRegisterController extends Controller
             ->values();
 
         return view('auth.setup', [
-            'client' => OAuthIntendedClient::nameFrom($request->session()->get('url.intended')),
-            'hasIntended' => OAuthIntendedClient::isAuthorizeUrl($request->session()->get('url.intended')),
+            'client' => $this->rememberAgent($request),
             'platforms' => $platforms,
             'connectedCount' => $user->socialAccounts()->count(),
         ]);
     }
 
-    /** Continue to the consent screen (or the app when nothing was pending). */
+    /** Continue to the consent screen (or the app's sign-in when nothing was pending). */
     public function continue(Request $request)
     {
-        return redirect()->intended(rtrim((string) config('app.frontend_url'), '/').'/auth');
+        $this->rememberAgent($request);
+        $authorizeUrl = $request->session()->pull(self::SESSION_AUTHORIZE_URL);
+        $request->session()->forget([self::SESSION_CLIENT, 'url.intended']);
+
+        return redirect()->to($authorizeUrl ?: rtrim((string) config('app.frontend_url'), '/').'/auth');
+    }
+
+    /**
+     * Copy the pending authorize URL + client name from `url.intended` into the
+     * flow's own session keys (first sighting wins) and return the client name.
+     */
+    private function rememberAgent(Request $request): ?string
+    {
+        $session = $request->session();
+        $intended = $session->get('url.intended');
+
+        if (! $session->has(self::SESSION_AUTHORIZE_URL) && OAuthIntendedClient::isAuthorizeUrl($intended)) {
+            $session->put(self::SESSION_AUTHORIZE_URL, $intended);
+            $session->put(self::SESSION_CLIENT, OAuthIntendedClient::nameFrom($intended));
+        }
+
+        return $session->get(self::SESSION_CLIENT);
     }
 }
