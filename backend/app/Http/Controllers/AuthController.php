@@ -7,6 +7,7 @@ use App\Mail\VerifyEmailMail;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\CreditService;
+use App\Services\KitService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -72,6 +73,16 @@ class AuthController extends Controller
             $creditService->addCredits($user, $registrationBonus, 'Registration Bonus');
 
             event(new Registered($user));
+
+            // Add consenting signups to the Kit newsletter right here. A Kit outage
+            // must never block registration — the account already exists.
+            if ($user->marketing_consented_at) {
+                try {
+                    app(KitService::class)->subscribe($user->email, $user->name);
+                } catch (\Throwable $e) {
+                    Log::warning('Kit signup subscribe failed for '.$user->email.': '.$e->getMessage());
+                }
+            }
 
             // Send the magic-link verification email. A delivery failure is logged
             // (see sendVerificationEmail) but must NOT fail registration — the

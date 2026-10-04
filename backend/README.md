@@ -419,50 +419,21 @@ LIMIT 5;
 -   **API Rate Limiting**: Protect against abuse
 -   **Background Jobs**: Async embedding generation
 
-## 📧 Kit (ConvertKit) email flow
+## 📧 Kit (ConvertKit) newsletter
 
-**"No Kit on registration" is by design, not a bug.** The Aug 11 2026 refactor
-(`84a2207`, see the `SyncKitOnSubscription` docblock: "replaces the old
-registration-time subscribe") deliberately stopped adding users to Kit at
-registration. Instead, every signup reaches Kit through one of two doors:
+Users who tick **"Join the list"** on the signup form are subscribed to Kit
+inline during `POST /api/register` (`AuthController::register` →
+`KitService::subscribe`) with the `KIT_TAG` tag (default
+`viewsmax: new subscriber`). The call is wrapped in try/catch and
+`KitService` never throws, so a Kit outage is logged and registration still
+succeeds. Non-consenting signups never reach Kit.
 
-1. **Abandoned cart** — `kit:tag-abandoned-carts` (scheduled every 3 hours in
-   `bootstrap/app.php`) tags users who signed up 1–4h ago and never started a
-   subscription with `viewsmax: abandoned cart`. Marketing consent is
-   **intentionally ignored** for this tag.
-2. **Converted** — `SyncKitOnSubscription` (on `SubscriptionStarted`) applies
-   `viewsmax: new subscriber`, but **only with marketing consent**. It also
-   unconditionally removes the abandoned-cart tag, so a paying user can never
-   keep receiving abandoned-cart emails.
+There is no scheduled job, queue listener or abandoned-cart tagging any more:
+card-free signup made "signed up, no card" a normal state, not an abandoned cart.
 
-If consented registrants should ever be pushed to Kit immediately at signup
-again, that's a **design change**, not a fix — add it alongside this flow,
-don't assume the missing registration-time subscribe is an oversight.
-
-### Invariants & gotchas
-
--   `KIT_ABANDONED_CART_WINDOW_HOURS` (default 3) **must equal** the scheduler
-    cadence (`everyThreeHours`). The window slices tile the timeline with no DB
-    flag; change one, change the other.
--   The no-flag trade-off: any scheduler tick that doesn't run (downtime,
-    deploy, daemon restart at the wrong minute) **permanently drops** that
-    3-hour slice of signups. Sweep up after outages with the backfill below.
--   The scheduler (`schedule:work` daemon / `viewsmax_scheduler` container)
-    holds old code in memory just like queue workers — **restart it after every
-    deploy** (`queue:restart` does not touch it). A stale scheduler predating
-    `84a2207` won't run the tagger at all.
--   Kit is production-only by default (`APP_ENV=production`); set
-    `KIT_ENABLED=true/false` to force it in any environment. Requires
-    `KIT_API_KEY` + `KIT_API_SECRET`.
-
-### Ops commands
-
-```bash
-php artisan schedule:list | grep kit                 # is the tagger scheduled?
-php artisan kit:list-abandoned-carts --days=14       # read-only: who's eligible
-php artisan kit:submit-abandoned-carts --days=14     # backfill missed users (idempotent)
-grep 'Abandoned-cart tagging run complete' storage/logs/laravel.log | tail  # run history
-```
+-   Requires `KIT_API_KEY`. Leave it unset outside production so local and
+    staging signups don't land on the live list (unset key = logged no-op).
+-   The tag id is cached for a day per tag name; the tag is created on first use.
 
 ## 🤝 Contributing
 

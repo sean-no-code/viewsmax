@@ -21,5 +21,10 @@
 
             <button type="submit" class="btn btn-primary">Sign In</button>
         </form>
+
+        <p class="card-footer">
+            No account yet?
+            <a href="{{ rtrim(config('app.frontend_url'), '/') }}/auth">Create one</a>, then come back here to connect.
+        </p>
     </div>
 @endsection

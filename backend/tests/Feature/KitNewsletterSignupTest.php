@@ -2,9 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Events\SubscriptionStarted;
-use App\Listeners\SyncKitOnSubscription;
-use App\Models\User;
 use App\Services\KitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -13,14 +10,16 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Kit tagging is driven by Stripe subscription state, not registration:
- *  - registration no longer touches Kit;
- *  - a started subscription applies the converted tag (consented users) and always
- *    removes the abandoned-cart tag (SyncKitOnSubscription).
+ * Registration adds consenting users to the Kit newsletter inline. A Kit failure
+ * of any kind must never stop the account from being created.
  */
 class KitNewsletterSignupTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const TAGS_URL = 'api.convertkit.com/v3/tags?*';
+
+    private const SUBSCRIBE_URL = 'api.convertkit.com/v3/tags/555/subscribe';
 
     protected function setUp(): void
     {
@@ -28,110 +27,79 @@ class KitNewsletterSignupTest extends TestCase
 
         // resolveTagId() caches per tag for a day; flush so ids don't bleed across tests.
         Cache::flush();
+        Mail::fake();
 
         config([
             'services.kit.api_key' => 'test-kit-key',
-            'services.kit.api_secret' => 'test-kit-secret',
             'services.kit.tag' => 'viewsmax: new subscriber',
-            'services.kit.abandoned_cart_tag' => 'viewsmax: abandoned cart',
-            // Integration is production-only by default; force on so tests exercise it.
-            'services.kit.enabled' => true,
         ]);
     }
 
-    /** Registration must no longer touch Kit — the trigger moved to subscription-created. */
-    public function test_registration_does_not_subscribe_to_kit(): void
+    public function test_consenting_registration_subscribes_to_kit(): void
     {
-        Mail::fake();
+        Http::fake([
+            self::TAGS_URL => Http::response(['tags' => [['id' => 555, 'name' => 'viewsmax: new subscriber']]]),
+            self::SUBSCRIBE_URL => Http::response(['subscription' => ['id' => 1]]),
+        ]);
+
+        $this->register(consent: true)->assertStatus(201);
+
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/v3/tags/555/subscribe')
+            && $r['email'] === 'jane@example.com'
+            && $r['first_name'] === 'Jane Doe'
+            && $r['api_key'] === 'test-kit-key');
+    }
+
+    public function test_registration_without_consent_does_not_touch_kit(): void
+    {
         Http::fake();
 
-        $this->postJson('/api/register', [
-            'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-            'marketing_consent' => true,
-        ])->assertStatus(201);
+        $this->register(consent: false)->assertStatus(201);
 
         Http::assertNotSent(fn ($r) => str_contains($r->url(), 'convertkit.com'));
     }
 
-    /** Consented subscriber: converted tag applied + abandoned tag removed. */
-    public function test_subscription_started_tags_converted_and_removes_abandoned_when_consented(): void
-    {
-        $user = $this->makeUser(consented: true);
-
-        $kit = \Mockery::mock(KitService::class);
-        $kit->shouldReceive('removeTag')->once()->with('jane@example.com', 'viewsmax: abandoned cart')->andReturn(true);
-        $kit->shouldReceive('subscribe')->once()->with('jane@example.com', 'Jane Doe')->andReturn(true);
-
-        (new SyncKitOnSubscription($kit))->handle(new SubscriptionStarted($user));
-    }
-
-    /** Non-consenter who subscribes: abandoned tag still removed, but no converted tag. */
-    public function test_subscription_started_removes_abandoned_but_skips_converted_when_not_consented(): void
-    {
-        $user = $this->makeUser(consented: false);
-
-        $kit = \Mockery::mock(KitService::class);
-        $kit->shouldReceive('removeTag')->once()->with('jane@example.com', 'viewsmax: abandoned cart')->andReturn(true);
-        $kit->shouldReceive('subscribe')->never();
-
-        (new SyncKitOnSubscription($kit))->handle(new SubscriptionStarted($user));
-    }
-
-    /** Disabled (e.g. non-prod) → nothing hits Kit at all. */
-    public function test_subscription_started_skipped_when_disabled(): void
-    {
-        config(['services.kit.enabled' => false]);
-        $user = $this->makeUser(consented: true);
-
-        $kit = \Mockery::mock(KitService::class);
-        $kit->shouldReceive('removeTag')->never();
-        $kit->shouldReceive('subscribe')->never();
-
-        (new SyncKitOnSubscription($kit))->handle(new SubscriptionStarted($user));
-    }
-
-    /** KitService::subscribe applies the tag it is given, not just the default. */
-    public function test_kitservice_subscribe_applies_given_tag(): void
+    public function test_kit_http_failure_does_not_block_registration(): void
     {
         Http::fake([
-            'api.convertkit.com/v3/tags/555/subscribe' => Http::response(['subscription' => ['id' => 1]]),
-            'api.convertkit.com/v3/tags?*' => Http::response(['tags' => [['id' => 555, 'name' => 'viewsmax: abandoned cart']]]),
+            self::TAGS_URL => Http::response(['tags' => [['id' => 555, 'name' => 'viewsmax: new subscriber']]]),
+            self::SUBSCRIBE_URL => Http::response('boom', 500),
         ]);
 
-        $ok = app(KitService::class)->subscribe('lead@example.com', 'Lead', 'viewsmax: abandoned cart');
+        $this->register(consent: true)->assertStatus(201);
 
-        $this->assertTrue($ok);
-        Http::assertSent(fn ($r) => str_contains($r->url(), '/v3/tags/555/subscribe')
-            && $r['email'] === 'lead@example.com'
-            && $r['first_name'] === 'Lead'
-            && $r['api_key'] === 'test-kit-key');
+        $this->assertDatabaseHas('users', ['email' => 'jane@example.com']);
     }
 
-    /** KitService::removeTag posts to the tag's unsubscribe endpoint using the api_secret. */
-    public function test_kitservice_remove_tag(): void
+    public function test_kit_exception_does_not_block_registration(): void
     {
-        Http::fake([
-            'api.convertkit.com/v3/tags/555/unsubscribe' => Http::response(['subscriber' => ['id' => 1]]),
-            'api.convertkit.com/v3/tags?*' => Http::response(['tags' => [['id' => 555, 'name' => 'viewsmax: abandoned cart']]]),
+        $kit = \Mockery::mock(KitService::class);
+        $kit->shouldReceive('subscribe')->once()->andThrow(new \RuntimeException('kit down'));
+        $this->app->instance(KitService::class, $kit);
+
+        $this->register(consent: true)->assertStatus(201);
+
+        $this->assertDatabaseHas('users', ['email' => 'jane@example.com']);
+    }
+
+    public function test_missing_api_key_skips_kit(): void
+    {
+        config(['services.kit.api_key' => null]);
+        Http::fake();
+
+        $this->register(consent: true)->assertStatus(201);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'convertkit.com'));
+    }
+
+    private function register(bool $consent)
+    {
+        return $this->postJson('/api/register', [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'marketing_consent' => $consent,
         ]);
-
-        $ok = app(KitService::class)->removeTag('lead@example.com', 'viewsmax: abandoned cart');
-
-        $this->assertTrue($ok);
-        Http::assertSent(fn ($r) => str_contains($r->url(), '/v3/tags/555/unsubscribe')
-            && $r['api_secret'] === 'test-kit-secret'
-            && $r['email'] === 'lead@example.com');
-    }
-
-    private function makeUser(bool $consented): User
-    {
-        $user = new User(['name' => 'Jane Doe', 'email' => 'jane@example.com']);
-        $user->id = 1;
-        $user->marketing_consented_at = $consented ? now() : null;
-
-        return $user;
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\SubscriptionStarted;
 use App\Models\Plan;
 use App\Services\StripeService;
 use Carbon\Carbon;
@@ -196,12 +195,6 @@ class BillingController extends Controller
                     ]);
                 }
             });
-
-            // Card added → subscription live. Drive Kit off this (converted tag +
-            // abandoned-tag removal) via a queued listener. Dispatched AFTER the
-            // transaction commits (queue after_commit=false, so an in-transaction
-            // dispatch could fire before commit / on a row that rolled back).
-            SubscriptionStarted::dispatch($user);
 
             return response()->json([
                 'data' => [

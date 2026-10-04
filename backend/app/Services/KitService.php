@@ -10,7 +10,8 @@ use Illuminate\Support\Str;
 /**
  * Thin client for the Kit (ConvertKit) v3 API (https://developers.kit.com).
  * Subscribing through a tag endpoint both creates/updates the subscriber and
- * applies the tag in one call.
+ * applies the tag in one call. Called inline from registration for users who
+ * ticked the newsletter box; a missing KIT_API_KEY turns it into a logged no-op.
  */
 class KitService
 {
@@ -18,35 +19,30 @@ class KitService
 
     protected ?string $apiKey;
 
-    protected ?string $apiSecret;
-
     protected string $tagName;
 
     public function __construct()
     {
         $this->apiKey = config('services.kit.api_key');
-        $this->apiSecret = config('services.kit.api_secret');
         $this->tagName = config('services.kit.tag', 'viewsmax');
     }
 
     /**
-     * Subscribe an email (with optional first name) and apply a tag. Defaults to the
-     * configured converted tag; pass $tag to apply a different one (e.g. abandoned cart).
+     * Subscribe an email (with optional first name) and apply the configured tag.
+     * Never throws: every failure is logged and reported as false.
      */
-    public function subscribe(string $email, ?string $firstName = null, ?string $tag = null): bool
+    public function subscribe(string $email, ?string $firstName = null): bool
     {
         if (empty($this->apiKey)) {
-            Log::warning('Kit (ConvertKit) API key not configured.');
+            Log::info("Kit (ConvertKit) API key not configured; skipping subscribe for {$email}.");
 
             return false;
         }
 
-        $tagName = $tag ?? $this->tagName;
-
         try {
-            $tagId = $this->resolveTagId($tagName);
+            $tagId = $this->resolveTagId($this->tagName);
             if (! $tagId) {
-                Log::error("Could not resolve Kit tag \"{$tagName}\"; skipping subscribe for {$email}.");
+                Log::error("Could not resolve Kit tag \"{$this->tagName}\"; skipping subscribe for {$email}.");
 
                 return false;
             }
@@ -59,7 +55,7 @@ class KitService
                 ]));
 
             if ($response->successful()) {
-                Log::info("Subscribed {$email} to Kit with tag \"{$tagName}\".");
+                Log::info("Subscribed {$email} to Kit with tag \"{$this->tagName}\".");
 
                 return true;
             }
@@ -67,52 +63,8 @@ class KitService
             Log::error("Failed to subscribe {$email} to Kit: ".$response->body());
 
             return false;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Exception subscribing {$email} to Kit: ".$e->getMessage());
-
-            return false;
-        }
-    }
-
-    /**
-     * Remove a tag from the subscriber identified by email. Requires the API secret.
-     * A subscriber/tag that doesn't exist is treated as a successful no-op so this is
-     * safe to call unconditionally on conversion. Returns false only on a real error.
-     */
-    public function removeTag(string $email, string $tag): bool
-    {
-        if (empty($this->apiSecret)) {
-            Log::warning('Kit (ConvertKit) API secret not configured; cannot remove tag.');
-
-            return false;
-        }
-
-        try {
-            $tagId = $this->resolveTagId($tag);
-            if (! $tagId) {
-                // No such tag → nothing to remove.
-                return true;
-            }
-
-            // Kit v3: POST /tags/{id}/unsubscribe removes the tag from the subscriber
-            // matching the email (auth via api_secret).
-            $response = Http::acceptJson()->timeout(15)
-                ->post(self::BASE."/tags/{$tagId}/unsubscribe", [
-                    'api_secret' => $this->apiSecret,
-                    'email' => $email,
-                ]);
-
-            if ($response->successful() || $response->status() === 404) {
-                Log::info("Removed Kit tag \"{$tag}\" from {$email}.");
-
-                return true;
-            }
-
-            Log::error("Failed to remove Kit tag \"{$tag}\" from {$email}: ".$response->body());
-
-            return false;
-        } catch (\Exception $e) {
-            Log::error("Exception removing Kit tag \"{$tag}\" from {$email}: ".$e->getMessage());
 
             return false;
         }

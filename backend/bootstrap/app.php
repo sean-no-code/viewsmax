@@ -86,15 +86,6 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(30)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:refresh-metrics scheduled run failed'));
 
-        // Tag users who signed up but never started a subscription (abandoned cart) in Kit.
-        // IMPORTANT: this cadence MUST match config('services.kit.abandoned_cart_window_hours')
-        // (default 3) — the command's created_at slice is one interval wide so each user is
-        // tagged exactly once. Change one, change the other.
-        $schedule->command('kit:tag-abandoned-carts')
-            ->everyThreeHours()
-            ->withoutOverlapping(10)
-            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('kit:tag-abandoned-carts scheduled run failed'));
-
         // Remind trialing users ~48h before their card is charged. Hourly so the mail
         // lands close to the 48h mark; the trial_reminder_sent_at flag keeps it once-only.
         $schedule->command('subscriptions:send-trial-reminders')

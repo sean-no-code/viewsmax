@@ -96,6 +96,13 @@
             text-align: center;
             margin: 0 0 24px;
         }
+        .card-footer {
+            font-size: 14px;
+            color: var(--muted-foreground);
+            text-align: center;
+            margin: 20px 0 0;
+        }
+        .card-footer a { color: var(--foreground); }
         label {
             display: block;
             font-size: 14px;

@@ -43,7 +43,7 @@ class PlanSeeder extends Seeder
                 'name' => 'starter',
                 'display_name' => 'Starter',
                 'description' => 'For creators just getting started',
-                'price' => 29.00,
+                'price' => 19.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [
@@ -61,7 +61,7 @@ class PlanSeeder extends Seeder
                 'name' => 'creator',
                 'display_name' => 'Creator',
                 'description' => 'For growing creators running multiple offers',
-                'price' => 59.00,
+                'price' => 39.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [
@@ -79,7 +79,7 @@ class PlanSeeder extends Seeder
                 'name' => 'pro',
                 'display_name' => 'Pro',
                 'description' => 'For professionals scaling their reach',
-                'price' => 99.00,
+                'price' => 69.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [
@@ -97,7 +97,7 @@ class PlanSeeder extends Seeder
                 'name' => 'agency',
                 'display_name' => 'Agency',
                 'description' => 'Unlimited everything for agencies',
-                'price' => 149.00,
+                'price' => 109.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [

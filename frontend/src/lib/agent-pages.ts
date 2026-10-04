@@ -237,7 +237,7 @@ const sharedFaq = (name: string): FaqItem[] => [
   },
   {
     q: "How much does it cost?",
-    a: "Connecting an AI agent costs nothing extra. What it can do follows your ViewsMax plan, such as monthly posts and active offers. The free plan is $0, and paid plans start at $29 a month — compare them on viewsmax.com.",
+    a: "Connecting an AI agent costs nothing extra. What it can do follows your ViewsMax plan, such as monthly posts and active offers. The free plan is $0, and paid plans start at $19 a month — compare them on viewsmax.com.",
   },
   {
     q: "What is MCP, and why does ViewsMax use it?",

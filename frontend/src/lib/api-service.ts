@@ -5730,7 +5730,7 @@ class ViewsMaxApiService {
   }
 
   // ---------------------------------------------------------------------------
-  // Stripe billing (onboarding trial: $0 today, $29/mo after 3-day trial)
+  // Stripe billing (onboarding trial: $0 today, the chosen tier's price after the trial)
   // ---------------------------------------------------------------------------
 
   async createStripeSetupIntent(): Promise<ApiResponse<{ client_secret: string; customer_id: string }>> {

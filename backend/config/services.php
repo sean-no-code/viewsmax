@@ -206,7 +206,7 @@ return [
         // Where the Billing Portal returns the user after they update a card /
         // pay an invoice. Falls back to the billing page in the SPA.
         'portal_return_url' => env('STRIPE_PORTAL_RETURN_URL'),
-        // $29/mo recurring price used for the onboarding trial subscription.
+        // Fallback recurring price (the Starter tier) when checkout is started without a price_id.
         'trial_price_id' => env('STRIPE_TRIAL_PRICE_ID'),
         'trial_period_days' => env('STRIPE_TRIAL_PERIOD_DAYS', 7),
         // How many hours before a trial ends to send the "card about to be charged"
@@ -240,22 +240,11 @@ return [
     ],
 
     'kit' => [
+        // Newsletter: consenting signups are subscribed with this tag at registration
+        // (AuthController::register). Leave KIT_API_KEY unset outside production so
+        // local/staging signups never reach the live list.
         'api_key' => env('KIT_API_KEY'),
-        'api_secret' => env('KIT_API_SECRET'),
-        // Converted tag: applied when a user starts a subscription (see SyncKitOnSubscription).
         'tag' => env('KIT_TAG', 'viewsmax: new subscriber'),
-        // Whether to push subscribers to the live Kit list. Unset (null) means
-        // "production only", so local/dev/staging signups don't pollute the real
-        // newsletter. Set KIT_ENABLED=true/false to force it on/off in any env.
-        'enabled' => env('KIT_ENABLED'),
-        // Abandoned-cart tag: applied by kit:tag-abandoned-carts to users who signed
-        // up but never started a subscription. Removed again on conversion.
-        'abandoned_cart_tag' => env('KIT_ABANDONED_CART_TAG', 'viewsmax: abandoned cart'),
-        // Eligibility slice for kit:tag-abandoned-carts. window_hours MUST equal the
-        // scheduler cadence (everyThreeHours in bootstrap/app.php) so consecutive runs
-        // tile the created_at timeline and each user is tagged exactly once (no DB flag).
-        'abandoned_cart_window_hours' => (int) env('KIT_ABANDONED_CART_WINDOW_HOURS', 3),
-        'abandoned_cart_min_age_hours' => (int) env('KIT_ABANDONED_CART_MIN_AGE_HOURS', 1),
     ],
 
     'captapi' => [

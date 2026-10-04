@@ -370,10 +370,10 @@ function Monetize() {
 function Pricing() {
   const navigate = useNavigate();
   const tiers = [
-    { name: "Starter", price: 29, blurb: "Launch your first offer.", feats: ["5 channels", "1 offer", "400 posts per month"], cta: "Start for $0", variant: "outline" as Variant, hl: false },
-    { name: "Creator", price: 59, blurb: "For brands that sell.", feats: ["30 channels", "5 offers", "Unlimited posts per month"], cta: "Start for $0", variant: "primary" as Variant, hl: true },
-    { name: "Pro", price: 99, blurb: "Scale every channel.", feats: ["Unlimited channels", "10 offers", "Unlimited posts per month"], cta: "Start for $0", variant: "dark" as Variant, hl: false },
-    { name: "Agency", price: 149, blurb: "For teams & agencies.", feats: ["Unlimited channels", "Unlimited offers", "Unlimited posts per month"], cta: "Talk to us", variant: "dark" as Variant, hl: false },
+    { name: "Starter", price: 19, blurb: "Launch your first offer.", feats: ["5 channels", "1 offer", "400 posts per month"], cta: "Start for $0", variant: "outline" as Variant, hl: false },
+    { name: "Creator", price: 39, blurb: "For brands that sell.", feats: ["30 channels", "5 offers", "Unlimited posts per month"], cta: "Start for $0", variant: "primary" as Variant, hl: true },
+    { name: "Pro", price: 69, blurb: "Scale every channel.", feats: ["Unlimited channels", "10 offers", "Unlimited posts per month"], cta: "Start for $0", variant: "dark" as Variant, hl: false },
+    { name: "Agency", price: 109, blurb: "For teams & agencies.", feats: ["Unlimited channels", "Unlimited offers", "Unlimited posts per month"], cta: "Talk to us", variant: "dark" as Variant, hl: false },
   ];
   return (
     <section id="pricing" style={{ maxWidth: 1200, margin: "0 auto", padding: "104px 24px 0", scrollMarginTop: 80 }}>

@@ -97,26 +97,6 @@ class User extends Authenticatable implements Wallet
     }
 
     /**
-     * Users who have never started a subscription (no user_plans row carrying a
-     * Stripe subscription id) — i.e. abandoned-cart / never-added-card users.
-     * Someone still inside their free window hasn't been asked for a card yet,
-     * so they don't count until it closes.
-     * Shared by the kit:*-abandoned-carts commands and the scheduled tagger.
-     */
-    public function scopeNeverSubscribed($query)
-    {
-        return $query
-            ->whereDoesntHave('plans', fn ($q) => $q->whereNotNull('user_plans.stripe_subscription_id'))
-            ->where(fn ($q) => $q->whereNull('promo_expires_at')->orWhere('promo_expires_at', '<=', now()));
-    }
-
-    /**
-     * When a never-subscribed user's cart counts as abandoned from: the end of
-     * their free window, or signup for accounts that never had one.
-     */
-    public const CART_ABANDONED_AT_SQL = 'COALESCE(promo_expires_at, created_at)';
-
-    /**
      * The roles that belong to the user.
      */
     public function roles(): BelongsToMany
