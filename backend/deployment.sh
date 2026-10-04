@@ -25,12 +25,17 @@ cd "$(dirname "$0")"
 # user-) owned cache subdirectories that the web process can then no longer
 # write to:
 #   "Exception subscribing ... to Kit: file_put_contents(storage/framework/cache/data/..): Permission denied"
-# Run this script as the web user (e.g. `sudo -u www-data ./deployment.sh`), or
-# fix ownership afterwards with: chown -R <web-user>:<web-group> storage bootstrap/cache
+# Simplest durable setup: the web user owns the WHOLE app directory and every
+# deploy runs as that user. This script writes to vendor/composer (autoloader),
+# bootstrap/cache, storage/, .scribe/, resources/views/scribe and public/vendor/
+# scribe, so a one-off `chown -R <web-user>:<web-group> .` (from the backend
+# root) then `sudo -u <web-user> ./deployment.sh` keeps every file writable by
+# both the deploy and the running app. Mixed ownership shows up as
+# "Permission denied" / "Unable to delete file" from whichever side lost.
 STORAGE_OWNER="$(stat -c '%U' storage 2>/dev/null || stat -f '%Su' storage)"
 if [ "$STORAGE_OWNER" != "$(id -un)" ]; then
-  printf '\033[1;33m  ! storage/ is owned by %s but you are %s — artisan caches written now may be unwritable by PHP-FPM.\033[0m\n' "$STORAGE_OWNER" "$(id -un)"
-  printf '\033[1;33m    Re-run as that user (sudo -u %s ./deployment.sh) or chown storage/ and bootstrap/cache afterwards.\033[0m\n' "$STORAGE_OWNER"
+  printf '\033[1;33m  ! storage/ is owned by %s but you are %s — files written by this deploy may be unwritable by PHP-FPM (and vice versa).\033[0m\n' "$STORAGE_OWNER" "$(id -un)"
+  printf '\033[1;33m    Fix once: chown -R %s:%s . (backend root), then always deploy as that user: sudo -u %s ./deployment.sh\033[0m\n' "$STORAGE_OWNER" "$STORAGE_OWNER" "$STORAGE_OWNER"
 fi
 
 # ---- config (override via env vars) ---------------------------------------
