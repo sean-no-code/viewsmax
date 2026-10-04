@@ -62,6 +62,16 @@ Route::post('/login', function (Request $request) {
     return redirect()->intended('/');
 });
 
+// End the browser session (the consent screen and setup pages run on the
+// 'web' guard; the SPA's own sign-out doesn't touch it).
+Route::post('/logout', function (Request $request) {
+    \Illuminate\Support\Facades\Auth::guard('web')->logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('login');
+})->name('web.logout');
+
 // Signup on the API host for the agent flow (see WebRegisterController).
 Route::get('/register', [WebRegisterController::class, 'create'])->name('register');
 Route::post('/register', [WebRegisterController::class, 'store'])->middleware('throttle:6,1');

@@ -177,7 +177,7 @@ class WebRegisterTest extends TestCase
         SocialAccount::create(['user_id' => $user->id, 'platform' => 'x', 'platform_account_id' => 'x-1', 'username' => 'janeposts', 'status' => 'connected']);
 
         $page = $this->actingAs($user, 'web')->get(route('register.setup'))->assertOk();
-        $page->assertSee('janeposts')->assertSee(route('connect.start', 'x'), false)->assertSee('Continue to grant access');
+        $page->assertSee('janeposts')->assertSee(route('connect.start', 'x'), false)->assertSee('Continue to ViewsMax')->assertSee('Open ViewsMax')->assertDontSee('grant access');
         $page->assertDontSee(route('connect.start', 'instagram'), false); // not configured in tests
     }
 

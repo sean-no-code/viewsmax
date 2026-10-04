@@ -121,7 +121,10 @@
         .nav-dd-label { display: block; font-weight: 700; font-size: 14px; color: var(--ink-on-paper-1); }
         .nav-dd-desc { display: block; font-size: 12.5px; color: var(--ink-on-paper-2); margin-top: 2px; }
         .nav-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
-        .nav-login { color: var(--ink-on-paper-1); font-weight: 700; font-size: 14.5px; white-space: nowrap; }
+        .nav-login { color: var(--ink-on-paper-1); font-weight: 700; font-size: 14.5px; white-space: nowrap; background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-body); }
+        .nav-login:hover { color: var(--vm-red); }
+        .nav-user { font-size: 13px; color: var(--ink-on-paper-3); white-space: nowrap; }
+        .nav-logout { margin: 0; }
         .btn-pill { background: var(--vm-red); color: #fff !important; font-weight: 700; font-size: 13.5px; padding: 9px 16px; border-radius: 999px; white-space: nowrap; transition: background var(--dur); }
         .btn-pill:hover { background: var(--vm-red-hot); }
 

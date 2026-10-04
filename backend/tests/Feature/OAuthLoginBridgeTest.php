@@ -64,6 +64,21 @@ class OAuthLoginBridgeTest extends TestCase
         $this->assertAuthenticatedAs($user, 'web');
     }
 
+    public function test_signed_in_pages_offer_sign_out_which_ends_the_web_session(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'web')->get('/register/setup')
+            ->assertOk()
+            ->assertSee('Sign out')
+            ->assertSee($user->email)
+            ->assertDontSee('Start for $0');
+
+        $this->actingAs($user, 'web')->post('/logout')->assertRedirect('/login');
+        $this->assertGuest('web');
+        $this->get('/login')->assertOk()->assertSee('Start for $0')->assertDontSee('Sign out');
+    }
+
     public function test_login_form_rejects_invalid_credentials(): void
     {
         $user = User::factory()->create(['password' => bcrypt('secret123')]);

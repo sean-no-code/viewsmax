@@ -85,8 +85,13 @@ class WebRegisterController extends Controller
             ->map(fn (array $p) => $p + ['accounts' => $accounts->get($p['platform'], collect())])
             ->values();
 
+        $client = $this->rememberAgent($request);
+
         return view('auth.setup', [
-            'client' => $this->rememberAgent($request),
+            'client' => $client,
+            // No pending /oauth/authorize (e.g. signup started from the header
+            // button): there's nothing to approve, so Continue goes to the app.
+            'hasAgent' => $request->session()->has(self::SESSION_AUTHORIZE_URL),
             'platforms' => $platforms,
             'connectedCount' => $user->socialAccounts()->count(),
         ]);

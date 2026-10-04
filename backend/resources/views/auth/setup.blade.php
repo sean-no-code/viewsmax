@@ -8,7 +8,7 @@
         <h1 class="card-title">Set up your account</h1>
         <p class="card-description">
             <span class="setup-step"><b>1</b> Connect your channels</span>
-            <span class="setup-step"><b>2</b> Grant {{ $client ?? 'your AI agent' }} access</span>
+            <span class="setup-step"><b>2</b> {{ $hasAgent ? 'Grant '.($client ?? 'your AI agent').' access' : 'Open ViewsMax' }}</span>
         </p>
 
         @if (session('error'))
@@ -59,7 +59,11 @@
         </div>
 
         <a href="{{ route('register.continue') }}" class="btn btn-primary" style="margin-top: 20px;">
-            {{ $connectedCount > 0 ? 'Continue to grant access' : 'Skip for now, grant access' }}
+            @if ($hasAgent)
+                {{ $connectedCount > 0 ? 'Continue to grant access' : 'Skip for now, grant access' }}
+            @else
+                {{ $connectedCount > 0 ? 'Continue to ViewsMax' : 'Skip for now, open ViewsMax' }}
+            @endif
         </a>
         <p class="card-footer">You can add more channels later from ViewsMax{{ $client ? ' or by asking '.$client : '' }}.</p>
     </div>

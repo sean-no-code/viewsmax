@@ -21,8 +21,16 @@
             @endforeach
         </div>
         <div class="nav-right">
-            <a href="{{ route('login') }}" class="nav-login">Log in</a>
-            <a href="{{ route('register') }}" class="btn-pill">Start for $0</a>
+            @if (auth('web')->check())
+                <span class="nav-user">{{ auth('web')->user()->email }}</span>
+                <form method="post" action="{{ route('web.logout') }}" class="nav-logout">
+                    @csrf
+                    <button type="submit" class="nav-login">Sign out</button>
+                </form>
+            @else
+                <a href="{{ route('login') }}" class="nav-login">Log in</a>
+                <a href="{{ route('register') }}" class="btn-pill">Start for $0</a>
+            @endif
         </div>
     </div>
 </nav>
