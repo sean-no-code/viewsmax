@@ -92,6 +92,7 @@ function Hero() {
           </div>
         </div>
         <div style={{ marginTop: 34 }}><Btn size="lg" onClick={() => navigate(AUTH)}>Start for $0</Btn></div>
+        <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--ink-on-paper-3)", marginTop: 10 }}>No card required</div>
       </div>
     </section>
   );
@@ -389,6 +390,7 @@ function Pricing() {
               <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: t.hl ? "var(--fg-3)" : "var(--ink-on-paper-3)" }}>/mo</span>
             </div>
             <Btn variant={t.variant} onClick={() => navigate(AUTH)} style={{ width: "100%" }}>{t.cta}</Btn>
+            {t.cta === "Start for $0" && <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: t.hl ? "var(--fg-3)" : "var(--ink-on-paper-3)", textAlign: "center", marginTop: 8 }}>No card required</div>}
             <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 22 }}>
               {t.feats.map((f) => (
                 <div key={f} style={{ display: "flex", gap: 10, alignItems: "center", fontFamily: "var(--font-body)", fontSize: 14, color: t.hl ? "var(--fg-2)" : "var(--ink-on-paper-2)" }}>
@@ -414,6 +416,7 @@ function CTA() {
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: "clamp(34px,5vw,64px)", letterSpacing: "-.035em", lineHeight: .98, color: "#fff", margin: 0 }}>Make content<br />that makes sales.</h2>
           <p style={{ fontFamily: "var(--font-body)", fontSize: 18, color: "rgba(255,255,255,.92)", margin: "20px auto 0", maxWidth: 480 }}>Schedule everywhere, track what sells, and grow revenue without lifting a finger. Free to start — no card required.</p>
           <div style={{ marginTop: 30, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}><Btn variant="dark" size="lg" onClick={() => navigate(AUTH)}>Start for $0</Btn></div>
+          <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "rgba(255,255,255,.85)", marginTop: 10 }}>No card required</div>
         </div>
       </div>
     </section>
