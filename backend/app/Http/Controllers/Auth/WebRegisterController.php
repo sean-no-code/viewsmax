@@ -67,7 +67,48 @@ class WebRegisterController extends Controller
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('register.setup');
+        return redirect()->route('register.verify');
+    }
+
+    /** "Check your email": parked here until the magic link is clicked. */
+    public function verify(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->email_verified_at) {
+            return redirect()->route('register.setup');
+        }
+
+        return view('auth.verify', [
+            'email' => $user->email,
+            'client' => $this->rememberAgent($request),
+        ]);
+    }
+
+    /**
+     * The emailed link. Verifies, signs the user into the web guard (the link
+     * may be opened in a fresh browser) and continues to the connect step.
+     */
+    public function verifyEmail(Request $request, Registration $registration)
+    {
+        $user = $request->filled('token') ? $registration->verifyToken((string) $request->query('token')) : null;
+
+        if (! $user) {
+            $target = Auth::guard('web')->check() ? route('register.verify') : route('login');
+
+            return redirect()->to($target)->with('error', 'This verification link is invalid or has expired. Request a new one below.');
+        }
+
+        if (Auth::guard('web')->id() !== $user->id) {
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+        } else {
+            // Same session: swap in the freshly verified instance so the gate
+            // doesn't keep seeing the pre-verification copy.
+            Auth::guard('web')->setUser($user);
+        }
+
+        return redirect()->route('register.setup')->with('status', 'Email verified. Now connect your channels.');
     }
 
     /**
@@ -80,9 +121,12 @@ class WebRegisterController extends Controller
         $postable = CreatePost::availablePlatforms();
         $accounts = $user->socialAccounts()->get()->groupBy('platform');
 
+        // YouTube, X, Instagram and Facebook first; the rest keep catalog order.
+        $priority = array_flip(['youtube', 'x', 'instagram', 'facebook']);
         $platforms = collect($providers->catalog())
             ->filter(fn (array $p) => in_array($p['platform'], $postable, true))
             ->map(fn (array $p) => $p + ['accounts' => $accounts->get($p['platform'], collect())])
+            ->sortBy(fn (array $p, int $i) => ($priority[$p['platform']] ?? 100) * 100 + $i)
             ->values();
 
         $client = $this->rememberAgent($request);
@@ -95,6 +139,18 @@ class WebRegisterController extends Controller
             'platforms' => $platforms,
             'connectedCount' => $user->socialAccounts()->count(),
         ]);
+    }
+
+    /** Send the verification link again from the setup page. */
+    public function resendVerification(Request $request, Registration $registration)
+    {
+        $user = $request->user();
+
+        if (is_null($user->email_verified_at)) {
+            $registration->sendVerificationEmail($user);
+        }
+
+        return redirect()->route('register.verify')->with('status', 'Verification email sent to '.$user->email.'.');
     }
 
     /** Continue to the consent screen (or the app's sign-in when nothing was pending). */

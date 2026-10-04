@@ -6,6 +6,7 @@ use App\Mail\VerifyEmailMail;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -75,7 +76,7 @@ class Registration
             ]);
 
             $token = $user->createEmailVerificationToken();
-            Mail::to($user->email)->send(new VerifyEmailMail($token, $user->email));
+            Mail::to($user->email)->send(new VerifyEmailMail($token, $user->email, $this->verifyUrlFor($user, $token)));
 
             Log::channel('mail')->info('Verification email sent', [
                 'user_id' => $user->id,
@@ -94,5 +95,47 @@ class Registration
 
             return false;
         }
+    }
+
+    /**
+     * Agent signups verify on the API host so the link drops them back into
+     * the signup → connect → consent flow; app signups verify in the SPA.
+     */
+    public function verifyUrlFor(User $user, string $token): ?string
+    {
+        return $user->signup_source === User::SIGNUP_SOURCE_AGENT
+            ? route('verify-email.web', ['token' => $token])
+            : null;
+    }
+
+    /**
+     * Redeem a magic-link token: marks the email verified on first use and
+     * returns the user, or null when the token is unknown or expired. A token
+     * already consumed but still within validity returns the user again
+     * (idempotent, so a double-clicked link still works).
+     */
+    public function verifyToken(string $token): ?User
+    {
+        $record = DB::table('email_verification_tokens')
+            ->where('token', hash('sha256', $token))
+            ->first();
+
+        if (! $record || now()->greaterThan($record->expires_at)) {
+            return null;
+        }
+
+        $user = User::find($record->user_id);
+        if (! $user) {
+            return null;
+        }
+
+        if (is_null($record->consumed_at)) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+            DB::table('email_verification_tokens')
+                ->where('id', $record->id)
+                ->update(['consumed_at' => now(), 'updated_at' => now()]);
+        }
+
+        return $user;
     }
 }

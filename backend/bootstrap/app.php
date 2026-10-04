@@ -118,6 +118,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
             'restrict.free' => \App\Http\Middleware\RestrictFreePlan::class,
             'access.active' => \App\Http\Middleware\EnsureAccessActive::class,
+            'verified.web' => \App\Http\Middleware\EnsureWebEmailVerified::class,
         ]);
 
         // Dynamic Client Registration (RFC 7591) is a plain JSON API call made

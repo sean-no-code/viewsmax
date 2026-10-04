@@ -93,6 +93,17 @@
             cursor: pointer;
         }
         .checkbox-row input { width: auto; height: auto; margin: 0; }
+        .notice {
+            border: 1px solid #F5D98A;
+            background: #FFF7E0;
+            color: #6B4E00;
+            border-radius: calc(var(--radius) - 2px);
+            padding: 12px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            line-height: 1.45;
+        }
+        .link-btn { background: none; border: none; padding: 0; font: inherit; font-weight: 600; color: inherit; text-decoration: underline; cursor: pointer; }
         .status {
             border: 1px solid #B9EBD7;
             background: #E9FBF2;

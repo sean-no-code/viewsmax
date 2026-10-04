@@ -56,6 +56,16 @@ class WebRegisterTest extends TestCase
         ]);
     }
 
+    /** Click the magic link from the last verification email (agent links land on this host). */
+    private function clickVerifyLink(string $email)
+    {
+        $mail = Mail::sent(VerifyEmailMail::class, fn ($m) => $m->hasTo($email))->last();
+        $this->assertNotNull($mail, 'no verification email was sent');
+        $this->assertStringStartsWith(url('/verify-email'), (string) $mail->verifyUrl, 'agent signups verify on the API host');
+
+        return $this->get($mail->verifyUrl);
+    }
+
     private function assertSameUrl(string $expected, ?string $actual): void
     {
         $this->assertSame(parse_url($expected, PHP_URL_PATH), parse_url((string) $actual, PHP_URL_PATH));
@@ -86,7 +96,7 @@ class WebRegisterTest extends TestCase
         $authorizeUrl = $this->authorizeUrl('Claude');
         $this->get($authorizeUrl)->assertRedirect('/login');
 
-        $this->post('/register', self::FORM)->assertRedirect(route('register.setup'));
+        $this->post('/register', self::FORM)->assertRedirect(route('register.verify'));
 
         $user = User::where('email', 'jane@example.com')->sole();
         $this->assertAuthenticatedAs($user, 'web');
@@ -96,8 +106,12 @@ class WebRegisterTest extends TestCase
         $this->assertNotNull($user->promo_expires_at);
         $this->assertNotNull($user->marketing_consented_at);
         $this->assertTrue($user->hasRole('customer'));
-        Mail::assertSent(VerifyEmailMail::class, fn ($m) => $m->hasTo('jane@example.com'));
-        Http::assertSent(fn ($r) => str_contains($r->url(), 'convertkit.com') || true); // Kit only when configured
+
+        // Verify first: setup is gated until the emailed link is clicked.
+        $this->get(route('register.setup'))->assertRedirect(route('register.verify'));
+        $this->get(route('register.verify'))->assertOk()->assertSee('jane@example.com')->assertSee('connecting Claude');
+        $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
+        $this->assertNotNull($user->fresh()->email_verified_at);
 
         // Setup page names the agent and still knows where to go next.
         $this->get(route('register.setup'))->assertOk()->assertSee('Grant Claude access')->assertSee('Skip for now');
@@ -110,7 +124,8 @@ class WebRegisterTest extends TestCase
         $this->get($authorizeUrl)->assertRedirect('/login');
         $this->get('/login')->assertOk();
         $this->get('/register')->assertOk();
-        $this->post('/register', self::FORM)->assertRedirect(route('register.setup'));
+        $this->post('/register', self::FORM)->assertRedirect(route('register.verify'));
+        $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
         $this->get(route('register.setup'))->assertOk();
 
         $connect = \Mockery::mock(SocialConnect::class);
@@ -130,7 +145,8 @@ class WebRegisterTest extends TestCase
         $authorizeUrl = $this->authorizeUrl('Claude');
         $this->get($authorizeUrl)->assertRedirect('/login');
         $this->get('/register')->assertOk()->assertSee('approve Claude');
-        $this->post('/register', self::FORM)->assertRedirect(route('register.setup'));
+        $this->post('/register', self::FORM)->assertRedirect(route('register.verify'));
+        $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
 
         // e.g. a provider callback that arrived without the session cookie went
         // through the guest redirect and replaced Laravel's intended URL.
@@ -143,7 +159,8 @@ class WebRegisterTest extends TestCase
 
     public function test_signup_without_a_pending_agent_has_no_client_and_continues_to_the_app(): void
     {
-        $this->post('/register', self::FORM)->assertRedirect(route('register.setup'));
+        $this->post('/register', self::FORM)->assertRedirect(route('register.verify'));
+        $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
 
         $this->assertDatabaseHas('users', ['email' => 'jane@example.com', 'signup_source' => 'agent', 'signup_client' => null]);
         $this->get(route('register.continue'))->assertRedirect(rtrim(config('app.frontend_url'), '/').'/auth');
@@ -237,6 +254,46 @@ class WebRegisterTest extends TestCase
         $this->actingAs($user, 'web')->post(route('connect.credentials', 'bluesky'), ['identifier' => 'jane.bsky.social', 'password' => 'app-pass'])
             ->assertRedirect(route('register.setup'))
             ->assertSessionHas('status', 'Bluesky account connected.');
+    }
+
+    public function test_unverified_user_is_parked_on_the_verify_page_and_can_resend(): void
+    {
+        $user = User::factory()->create(['email' => 'new@example.com', 'email_verified_at' => null, 'signup_source' => 'agent']);
+
+        $this->actingAs($user, 'web')->get(route('register.setup'))->assertRedirect(route('register.verify'));
+        $this->actingAs($user, 'web')->get(route('connect.start', 'x'))->assertRedirect(route('register.verify'));
+        $this->actingAs($user, 'web')->get(route('register.verify'))
+            ->assertOk()
+            ->assertSee('new@example.com')
+            ->assertSee(route('register.resend'), false);
+
+        $this->actingAs($user, 'web')->post(route('register.resend'))
+            ->assertRedirect(route('register.verify'))
+            ->assertSessionHas('status', 'Verification email sent to new@example.com.');
+        $this->clickVerifyLink('new@example.com')->assertRedirect(route('register.setup'));
+
+        $verified = User::factory()->create(['email_verified_at' => now()]);
+        $this->actingAs($verified, 'web')->get(route('register.verify'))->assertRedirect(route('register.setup'));
+    }
+
+    public function test_verify_link_signs_in_a_fresh_browser_and_rejects_bad_tokens(): void
+    {
+        $user = User::factory()->create(['email' => 'fresh@example.com', 'email_verified_at' => null, 'signup_source' => 'agent']);
+        $token = $user->createEmailVerificationToken();
+
+        // No session at all (link opened elsewhere): verified, logged in, on to setup.
+        $this->get(route('verify-email.web', ['token' => $token]))->assertRedirect(route('register.setup'));
+        $this->assertAuthenticatedAs($user->fresh(), 'web');
+        $this->assertNotNull($user->fresh()->email_verified_at);
+
+        $this->get(route('verify-email.web', ['token' => 'nope']))->assertRedirect(route('register.verify'))->assertSessionHas('error');
+    }
+
+    public function test_app_signups_still_verify_in_the_spa(): void
+    {
+        $this->postJson('/api/register', ['name' => 'App User', 'email' => 'app@example.com', 'password' => 'password123', 'password_confirmation' => 'password123'])->assertStatus(201);
+
+        Mail::assertSent(VerifyEmailMail::class, fn ($m) => $m->hasTo('app@example.com') && $m->verifyUrl === null);
     }
 
     public function test_setup_and_connect_require_a_web_login(): void

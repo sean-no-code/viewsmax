@@ -202,37 +202,12 @@ class AuthController extends Controller
             'token' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'This verification link is invalid or has expired.',
-            ], 422);
-        }
+        $user = $validator->fails() ? null : app(Registration::class)->verifyToken($request->token);
 
-        $record = DB::table('email_verification_tokens')
-            ->where('token', hash('sha256', $request->token))
-            ->first();
-
-        if (! $record || now()->greaterThan($record->expires_at)) {
-            return response()->json([
-                'message' => 'This verification link is invalid or has expired.',
-            ], 422);
-        }
-
-        $user = User::find($record->user_id);
         if (! $user) {
             return response()->json([
                 'message' => 'This verification link is invalid or has expired.',
             ], 422);
-        }
-
-        // First consumption: mark verified + consume the token. If already consumed
-        // but still within validity and the user is verified, fall through and
-        // re-issue the login payload (idempotent).
-        if (is_null($record->consumed_at)) {
-            $user->forceFill(['email_verified_at' => now()])->save();
-            DB::table('email_verification_tokens')
-                ->where('id', $record->id)
-                ->update(['consumed_at' => now(), 'updated_at' => now()]);
         }
 
         return response()->json($this->loginPayload($user));

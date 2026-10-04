@@ -1,14 +1,15 @@
 @extends('oauth.layout')
 
-@section('title', 'Set up your account — ViewsMax')
+@section('title', 'Connect your channels — ViewsMax')
 @section('width', '36rem')
 
 @section('content')
     <div class="card">
-        <h1 class="card-title">Set up your account</h1>
+        <h1 class="card-title">Connect your channels</h1>
         <p class="card-description">
-            <span class="setup-step"><b>1</b> Connect your channels</span>
-            <span class="setup-step"><b>2</b> {{ $hasAgent ? 'Grant '.($client ?? 'your AI agent').' access' : 'Open ViewsMax' }}</span>
+            <span class="setup-step done"><b>✓</b> Verify email</span>
+            <span class="setup-step current"><b>2</b> Connect channels</span>
+            <span class="setup-step"><b>3</b> {{ $hasAgent ? 'Grant '.($client ?? 'your AI agent').' access' : 'Open ViewsMax' }}</span>
         </p>
 
         @if (session('error'))
@@ -22,7 +23,15 @@
             @forelse ($platforms as $p)
                 <div class="platform">
                     <div class="platform-head">
-                        <span class="platform-name">{{ $p['label'] }}</span>
+                        <div class="platform-id">
+                            @include('partials.brand-icon', ['platform' => $p['platform'], 'size' => 18])
+                            <div>
+                                <div class="platform-name">{{ $p['label'] }}</div>
+                                @if ($p['accounts']->isEmpty())
+                                    <div class="platform-sub">Not connected</div>
+                                @endif
+                            </div>
+                        </div>
                         @if ($p['uses_oauth'])
                             <form method="get" action="{{ route('connect.start', $p['platform']) }}" class="platform-connect">
                                 @if ($p['follow_us'])
@@ -31,25 +40,39 @@
                                         <span class="muted">Follow us (&#64;{{ $p['follow_us'] }})</span>
                                     </label>
                                 @endif
-                                <button type="submit" class="btn btn-outline btn-sm">{{ $p['accounts']->isEmpty() ? 'Connect' : 'Add another' }}</button>
+                                <button type="submit" class="btn btn-primary btn-sm">{{ $p['accounts']->isEmpty() ? 'Connect' : 'Add account' }}</button>
                             </form>
                         @endif
                     </div>
-                    @foreach ($p['accounts'] as $account)
-                        <div class="platform-account">✓ {{ $account->username ?? $account->name ?? $account->platform_account_id }}</div>
-                    @endforeach
+                    @if ($p['accounts']->isNotEmpty())
+                        <div class="platform-accounts">
+                            @foreach ($p['accounts'] as $account)
+                                <div class="platform-account">
+                                    @if ($account->avatar_url)
+                                        <img src="{{ $account->avatar_url }}" alt="" class="platform-avatar">
+                                    @else
+                                        <span class="platform-avatar platform-avatar-blank"></span>
+                                    @endif
+                                    <span class="platform-account-name">{{ $account->name ?: ($account->username ? '@'.$account->username : 'Account '.$account->id) }}</span>
+                                    <span class="platform-connected">✓ Connected</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
                     @if (! $p['uses_oauth'])
                         <form method="post" action="{{ route('connect.credentials', $p['platform']) }}" class="platform-credentials">
                             @csrf
                             <input type="text" name="identifier" value="{{ old('identifier') }}" placeholder="Handle, e.g. you.bsky.social" required>
                             <input type="password" name="password" placeholder="App password" required autocomplete="off">
-                            @if ($p['follow_us'])
-                                <label class="checkbox-row" style="margin: 0;">
-                                    <input type="checkbox" name="follow_us" value="1" checked>
-                                    <span class="muted">Follow us (&#64;{{ $p['follow_us'] }})</span>
-                                </label>
-                            @endif
-                            <button type="submit" class="btn btn-outline btn-sm">Connect</button>
+                            <div class="platform-connect">
+                                @if ($p['follow_us'])
+                                    <label class="checkbox-row" style="margin: 0;">
+                                        <input type="checkbox" name="follow_us" value="1" checked>
+                                        <span class="muted">Follow us (&#64;{{ $p['follow_us'] }})</span>
+                                    </label>
+                                @endif
+                                <button type="submit" class="btn btn-primary btn-sm">Connect</button>
+                            </div>
                         </form>
                     @endif
                 </div>
@@ -69,16 +92,28 @@
     </div>
 
     <style>
-        .setup-step { display: inline-flex; align-items: center; gap: 6px; margin: 0 10px; }
-        .setup-step b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--vm-red); color: #fff; font-size: 12px; }
+        .setup-step { display: inline-flex; align-items: center; gap: 6px; margin: 0 8px; color: var(--muted-foreground); }
+        .setup-step b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--border); color: var(--foreground); font-size: 12px; }
+        .setup-step.current { color: var(--foreground); font-weight: 600; }
+        .setup-step.current b { background: var(--vm-red); color: #fff; }
+        .setup-step.done b { background: #16A34A; color: #fff; }
         .platforms { display: flex; flex-direction: column; gap: 10px; }
-        .platform { border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); padding: 12px 14px; }
+        .platform { border: 1px solid var(--border); border-radius: calc(var(--radius)); padding: 12px; }
         .platform-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .platform-id { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+        .brand-tile { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0; }
         .platform-name { font-weight: 600; font-size: 15px; }
-        .platform-connect { display: flex; align-items: center; gap: 12px; margin: 0; }
-        .platform-account { font-size: 13.5px; color: var(--muted-foreground); margin-top: 8px; }
+        .platform-sub { font-size: 13px; color: var(--muted-foreground); white-space: nowrap; }
+        .platform-connect { display: flex; align-items: center; gap: 12px; margin: 0; flex-shrink: 0; }
+        .platform-connect .checkbox-row span { white-space: nowrap; font-size: 13px; }
+        .platform-accounts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+        .platform-account { display: flex; align-items: center; gap: 8px; background: hsl(220 14% 96%); border-radius: 6px; padding: 6px 10px; font-size: 14px; }
+        .platform-avatar { width: 28px; height: 28px; border-radius: 999px; object-fit: cover; }
+        .platform-avatar-blank { display: inline-block; background: var(--border); }
+        .platform-account-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .platform-connected { font-size: 12.5px; font-weight: 600; color: #16A34A; white-space: nowrap; }
         .platform-credentials { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
         .platform-credentials input { margin: 0; }
-        .btn-sm { width: auto; height: 34px; padding: 6px 14px; }
+        .btn-sm { width: auto; height: 34px; padding: 6px 14px; font-weight: 600; }
     </style>
 @endsection
