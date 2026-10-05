@@ -124,9 +124,8 @@ class AnalyticsGrowthController extends Controller
     private function supportsFollowers(string $platform): bool
     {
         return match ($platform) {
-            'youtube', 'x' => true,
+            'youtube', 'x', 'tiktok' => true,
             'instagram' => (bool) config('social.platforms.instagram.reach_enabled'),
-            'tiktok' => (bool) config('social.platforms.tiktok.stats_enabled'),
             default => false,
         };
     }

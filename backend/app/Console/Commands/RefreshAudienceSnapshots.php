@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Platforms where the API/plan can't supply a count return null and are skipped
  * (never zeroed). Coverage expands as scopes/approvals land — see config/social
- * (tiktok stats_enabled, instagram reach_enabled) and the provider methods.
+ * (instagram reach_enabled) and the provider methods.
  */
 class RefreshAudienceSnapshots extends Command
 {

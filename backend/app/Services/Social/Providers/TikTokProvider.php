@@ -74,15 +74,11 @@ class TikTokProvider extends AbstractSocialProvider
 
     /**
      * Follower count via the user info endpoint. Requires the user.info.stats
-     * scope (gated behind stats_enabled — users must reconnect). Null when off
-     * or on any failure.
+     * scope (accounts connected before it was requested must reconnect). Null
+     * on any failure.
      */
     public function fetchFollowerCount(SocialAccount $account): ?int
     {
-        if (! $this->config('stats_enabled')) {
-            return null;
-        }
-
         try {
             $account = $this->ensureFreshToken($account);
             $response = Http::withToken($account->access_token)
@@ -110,11 +106,11 @@ class TikTokProvider extends AbstractSocialProvider
 
     /**
      * Per-video engagement via the video/query endpoint. Requires the
-     * video.list scope (gated behind stats_enabled). Empty when off/on failure.
+     * video.list scope. Empty on failure.
      */
     public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
     {
-        if (! $this->config('stats_enabled') || empty($remotePostIds)) {
+        if (empty($remotePostIds)) {
             return [];
         }
 

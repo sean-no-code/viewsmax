@@ -134,19 +134,16 @@ return [
             'enabled' => env('TIKTOK_ENABLED', true),
             'client_id' => env('TIKTOK_CLIENT_KEY'),
             'client_secret' => env('TIKTOK_CLIENT_SECRET'),
-            // Audience-growth stats (follower count + per-video engagement). Off
-            // until the TikTok app is approved for the user.info.stats + video.list
-            // scopes; flipping it on adds those scopes to the connect flow
-            // (existing accounts must reconnect) and enables the follower + post
-            // metric fetch. Mirrors the Instagram reach flag.
-            'stats_enabled' => env('TIKTOK_STATS_ENABLED', false),
-            'scopes' => array_values(array_filter([
+            // user.info.stats + video.list power audience growth (follower count
+            // + per-video engagement); the app is approved for them. Accounts
+            // connected before they were added must reconnect to grant them.
+            'scopes' => [
                 'user.info.basic',
                 'video.publish',
                 'video.upload',
-                env('TIKTOK_STATS_ENABLED', false) ? 'user.info.stats' : null,
-                env('TIKTOK_STATS_ENABLED', false) ? 'video.list' : null,
-            ])),
+                'user.info.stats',
+                'video.list',
+            ],
         ],
 
         'youtube' => [

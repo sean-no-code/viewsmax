@@ -212,10 +212,11 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
     }
 
     /**
-     * Public like/reply/retweet counts for up to 100 tweets in one call.
+     * Public like/reply/retweet/impression counts for up to 100 tweets in one
+     * call. impression_count is only populated on paid API tiers.
      *
      * @param  array<int, string>  $tweetIds
-     * @return array<string, array{like_count:int, retweet_count:int, reply_count:int}> keyed by tweet id
+     * @return array<string, array{like_count:int, retweet_count:int, reply_count:int, impression_count:int}> keyed by tweet id
      */
     public function getTweetMetrics(SocialAccount $account, array $tweetIds): array
     {
@@ -235,6 +236,7 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
                 'like_count' => (int) data_get($tweet, 'public_metrics.like_count', 0),
                 'retweet_count' => (int) data_get($tweet, 'public_metrics.retweet_count', 0),
                 'reply_count' => (int) data_get($tweet, 'public_metrics.reply_count', 0),
+                'impression_count' => (int) data_get($tweet, 'public_metrics.impression_count', 0),
             ];
         }
 
@@ -266,8 +268,8 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
     }
 
     /**
-     * Per-tweet engagement, normalized to the shared shape. X exposes no public
-     * impression/view count on this plan, so views is 0.
+     * Per-tweet engagement, normalized to the shared shape. Views are X's
+     * impression_count (paid API tiers; 0 when the field isn't returned).
      */
     public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
     {
@@ -283,7 +285,7 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
                 'likes' => (int) ($m['like_count'] ?? 0),
                 'comments' => (int) ($m['reply_count'] ?? 0),
                 'shares' => (int) ($m['retweet_count'] ?? 0),
-                'views' => 0,
+                'views' => (int) ($m['impression_count'] ?? 0),
             ];
         }
 

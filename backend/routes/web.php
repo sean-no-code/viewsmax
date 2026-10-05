@@ -8,8 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
+// The API host has no home page: a browser landing here is a person, and the
+// most useful place to send them is signup (signed-in sessions go to setup).
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route(auth('web')->check() ? 'register.setup' : 'register');
 });
 
 // OAuth 2.1 discovery for the MCP server: protected-resource metadata,

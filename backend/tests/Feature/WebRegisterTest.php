@@ -86,6 +86,14 @@ class WebRegisterTest extends TestCase
             ->assertSee('class="site-foot"', false);
     }
 
+    public function test_root_of_the_api_host_goes_to_register_or_setup(): void
+    {
+        $this->get('/')->assertRedirect(route('register'));
+
+        $user = User::factory()->create();
+        $this->actingAs($user, 'web')->get('/')->assertRedirect(route('register.setup'));
+    }
+
     public function test_login_page_links_to_the_register_page_on_this_host(): void
     {
         $this->get('/login')->assertOk()->assertSee(route('register'), false)->assertDontSee('/auth"', false);

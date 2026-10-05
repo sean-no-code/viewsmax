@@ -2,18 +2,16 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * The API host has no home page: a browser at / is sent to signup
+     * (see routes/web.php and WebRegisterTest for the signed-in case).
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_the_root_sends_browsers_to_signup(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect(route('register'));
     }
 }
