@@ -4,7 +4,7 @@ import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-service";
-import { AGENT_LIST, AGENTS, MCP_TOOLS } from "@/lib/agent-pages";
+import { AGENT_LIST, AGENTS, CLAUDE_DIRECTORY_URL, MCP_TOOLS } from "@/lib/agent-pages";
 
 const MCP_ENDPOINT = `${API_BASE_URL}/api/mcp`;
 const DISCOVERY_URL = `${API_BASE_URL}/api/ai`;
@@ -118,6 +118,10 @@ const ConnectAI = () => {
         </Section>
 
         <Section id="claude" title="Claude (claude.ai / Desktop)">
+          <p className="text-muted-foreground leading-relaxed mb-3">
+            Fastest route: <a className="underline underline-offset-2" href={CLAUDE_DIRECTORY_URL} target="_blank" rel="noreferrer">add ViewsMax from the Claude directory</a> — nothing to paste.
+            Or add it as a custom connector:
+          </p>
           <p className="text-muted-foreground leading-relaxed mb-3">
             Customize → Connectors → + → Add custom connector → paste the MCP endpoint →
             Add → Connect and complete the sign-in approval. The connector also works in

@@ -676,7 +676,21 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
 
   return (
       <div style={{ width: "100%", maxWidth: 1560, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 440px", gap: 24, alignItems: "start" }}>
+        <style>{`
+          .cp-grid { display:grid; grid-template-columns:minmax(0,1fr) 440px; gap:24px; align-items:start; }
+          @media (max-width:1280px){ .cp-grid { grid-template-columns:minmax(0,1fr) 360px; } }
+          @media (max-width:960px){
+            .cp-grid { grid-template-columns:minmax(0,1fr); padding-bottom:88px; }
+            .cp-side { position:static !important; }
+            .cp-actions {
+              position:fixed; left:0; right:0; bottom:0; z-index:30;
+              padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+              background:var(--paper-0); border-top:1px solid var(--line-1);
+              border-radius:0 !important; box-shadow:0 -6px 20px -10px rgba(10,10,12,.18);
+            }
+          }
+        `}</style>
+        <div className="cp-grid">
           {/* ============ EDITOR ============ */}
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
             <Card>
@@ -976,7 +990,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         <select
                           value={c.tiktok.privacy_level}
                           onChange={(e) => c.setPrivacyLevel(e.target.value)}
-                          style={{ ...fieldBase, width: 260, color: c.tiktok.privacy_level ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}
+                          style={{ ...fieldBase, width: 260, maxWidth: "100%", color: c.tiktok.privacy_level ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}
                         >
                           <option value="" disabled>Select who can view…</option>
                           {(c.creatorInfo?.privacy_level_options ?? []).map((opt) => (
@@ -1076,7 +1090,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       <select
                         value={c.youtube.privacy_status}
                         onChange={(e) => c.patchYoutube({ privacy_status: e.target.value as "public" | "unlisted" | "private" })}
-                        style={{ ...fieldBase, width: 260 }}
+                        style={{ ...fieldBase, width: 260, maxWidth: "100%" }}
                       >
                         <option value="public">Public</option>
                         <option value="unlisted">Unlisted (anyone with the link)</option>
@@ -1122,11 +1136,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Date</span>
-                    <input type="date" value={c.date} onChange={(e) => c.setDate(e.target.value)} style={{ ...fieldBase, width: 170, fontFamily: "var(--font-mono)", fontSize: 13 }} />
+                    <input type="date" value={c.date} onChange={(e) => c.setDate(e.target.value)} style={{ ...fieldBase, width: 170, maxWidth: "100%", fontFamily: "var(--font-mono)", fontSize: 13 }} />
                   </label>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Time</span>
-                    <input type="time" value={c.time} onChange={(e) => c.setTime(e.target.value)} style={{ ...fieldBase, width: 130, fontFamily: "var(--font-mono)", fontSize: 13 }} />
+                    <input type="time" value={c.time} onChange={(e) => c.setTime(e.target.value)} style={{ ...fieldBase, width: 130, maxWidth: "100%", fontFamily: "var(--font-mono)", fontSize: 13 }} />
                   </label>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "var(--vm-volt-tint-l)", borderRadius: 10, fontSize: 12, fontWeight: 600, color: "var(--vm-volt-deep)" }}>
                     <Icon name="trending-up" size={14} stroke="var(--vm-volt-deep)" /> Peak audience 6–8pm
@@ -1137,7 +1151,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
           </div>
 
           {/* ============ PREVIEW ============ */}
-          <div style={{ minWidth: 0, position: "sticky", top: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="cp-side" style={{ minWidth: 0, position: "sticky", top: 18, display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingBottom: 2 }}>
               {c.selected.map((id) => (
                 <button key={id} onClick={() => setPreviewId(id)} style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0, background: previewId === id ? "var(--ink-on-paper-1)" : "var(--paper-0)", color: previewId === id ? "#fff" : "var(--ink-on-paper-2)", border: "1px solid " + (previewId === id ? "var(--ink-on-paper-1)" : "var(--line-1)"), borderRadius: 999, padding: "6px 12px 6px 6px", cursor: "pointer", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12.5 }}>
@@ -1218,7 +1232,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {tiktokBlockReason}
                     </div>
                   )}
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div className="cp-actions" style={{ display: "flex", gap: 10 }}>
                     <Btn kind="ghost" onClick={saving ? undefined : () => persist("draft")}>Save draft</Btn>
                     <div title={tiktokBlockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || tiktokBlockReason ? 0.55 : 1 }}>
                       <Btn kind={c.issues.length || uploadingMedia || failedMedia.length || tiktokBlockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || tiktokBlockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>

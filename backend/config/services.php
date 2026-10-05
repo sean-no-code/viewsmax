@@ -245,6 +245,9 @@ return [
         // local/staging signups never reach the live list.
         'api_key' => env('KIT_API_KEY'),
         'tag' => env('KIT_TAG', 'viewsmax: new subscriber'),
+        // Agent signups (the API host's /register during an AI-agent OAuth
+        // connection) get this tag as well, so the list can tell them apart.
+        'agent_tag' => 'viewsmax: new subscriber ai agent',
     ],
 
     'captapi' => [

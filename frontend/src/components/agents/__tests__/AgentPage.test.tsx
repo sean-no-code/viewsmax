@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AgentPage from "@/components/agents/AgentPage";
+import { CLAUDE_DIRECTORY_URL } from "@/lib/agent-pages";
 
 const renderPage = (agent: Parameters<typeof AgentPage>[0]["agent"]) =>
   render(
@@ -13,19 +14,18 @@ const renderPage = (agent: Parameters<typeof AgentPage>[0]["agent"]) =>
 afterEach(() => vi.unstubAllEnvs());
 
 describe("AgentPage", () => {
-  it("shows the manual connector steps and no directory button before ViewsMax is listed", () => {
-    vi.stubEnv("VITE_CLAUDE_CONNECTOR_URL", "");
-    renderPage("claude");
+  it("shows the manual steps and no directory button while ViewsMax isn't in the ChatGPT plugin directory", () => {
+    vi.stubEnv("VITE_CHATGPT_PLUGIN_URL", "");
+    renderPage("chatgpt");
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Claude");
-    expect(screen.queryByRole("link", { name: /add to claude/i })).toBeNull();
-    expect(screen.getAllByText(/add custom connector/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("ChatGPT");
+    expect(screen.queryByRole("link", { name: /open in chatgpt/i })).toBeNull();
+    expect(screen.getAllByText(/developer mode/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/set it up by hand/i)).toBeNull();
   });
 
   it("shows the plugin route first, with nothing to paste, then the custom connector steps once listed", () => {
-    const url = "https://claude.ai/directory/connectors/viewsmax";
-    vi.stubEnv("VITE_CLAUDE_CONNECTOR_URL", url);
+    const url = CLAUDE_DIRECTORY_URL;
     renderPage("claude");
 
     const buttons = screen.getAllByRole("link", { name: /add to claude/i });
@@ -51,10 +51,10 @@ describe("AgentPage", () => {
     expect(screen.getByRole("heading", { name: /plugin \(easiest\)/i })).toBeInTheDocument();
   });
 
-  it("tells Claude Code users a claude.ai connector already carries over", () => {
-    vi.stubEnv("VITE_CLAUDE_CONNECTOR_URL", "");
+  it("leads Claude Code with the Claude directory and says the connector carries over", () => {
     renderPage("claude-code");
-    expect(screen.getByText(/already connected ViewsMax in Claude/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /add to claude/i })[0]).toHaveAttribute("href", CLAUDE_DIRECTORY_URL);
+    expect(screen.getByText(/shares connectors with the claude\.ai account/i)).toBeInTheDocument();
   });
 
   it("explains what happens after the first task and links back to the AI agents hub", () => {

@@ -2,15 +2,17 @@
 // entry per AI agent drives the shared <AgentPage>, the build-time prerender
 // (head tags + JSON-LD), and the /<agent>.md brief an AI can read.
 //
-// Directory listings: while ViewsMax isn't listed in an agent's app directory,
-// the page leads with the manual setup. Once it is, set the listing's env var
-// (e.g. VITE_CLAUDE_CONNECTOR_URL) and rebuild — the page then leads with the
-// listing and moves the manual setup into a collapsed section.
+// Directory listings: a listing with a fixed `url` (Claude) leads the page with
+// the listing and moves the manual setup into a collapsed section. One that only
+// names an `env` var (ChatGPT/Codex, not listed yet) leads with the manual setup
+// until that var is set and the site rebuilt.
 //
 // No import.meta.env access at module scope: scripts/prerender-seo.ts and
 // vite.config.ts import this file under plain Node.
 
 export const MCP_ENDPOINT = "https://api.viewsmax.com/api/mcp";
+/** ViewsMax in the Claude connector directory (claude.ai, Desktop, Cowork and Claude Code). */
+export const CLAUDE_DIRECTORY_URL = "https://claude.ai/directory/viewsmax";
 export const SKILL_URL = "https://viewsmax.com/skills/viewsmax/SKILL.md";
 export const API_KEY_PATH = "Settings → AI Assistant Access";
 export const UPDATED = "September 2026";
@@ -52,7 +54,10 @@ export interface InstallStep {
 
 /** An app-directory listing. The URL comes from env so it can be set at deploy time. */
 export interface Listing {
-  env: "VITE_CLAUDE_CONNECTOR_URL" | "VITE_CHATGPT_PLUGIN_URL";
+  /** The directory page, once ViewsMax is listed there. */
+  url?: string;
+  /** Build var to read while unlisted; ignored when `url` is set. */
+  env?: "VITE_CHATGPT_PLUGIN_URL";
   label: string; // button text, e.g. "Add to Claude"
   steps: string; // what the user does once they reach the listing
   code?: { label: string; text: string };
@@ -92,7 +97,7 @@ export interface AgentConfig {
 }
 
 const CLAUDE_LISTING: Listing = {
-  env: "VITE_CLAUDE_CONNECTOR_URL",
+  url: CLAUDE_DIRECTORY_URL,
   label: "Add to Claude",
   steps:
     "Press Add to Claude. Claude sends you to ViewsMax, where you create an account or sign in, connect your channels, then pick Full access or Read-only and press Approve. Nothing to paste.",
@@ -109,7 +114,7 @@ const CHATGPT_LISTING: Listing = {
 // with, so the Claude directory listing covers it too.
 // https://code.claude.com/docs/en/mcp#use-mcp-servers-from-claudeai
 const CLAUDE_CODE_LISTING: Listing = {
-  env: "VITE_CLAUDE_CONNECTOR_URL",
+  url: CLAUDE_DIRECTORY_URL,
   label: "Add to Claude",
   steps:
     "Connect ViewsMax from its Claude directory listing (create an account or sign in on the ViewsMax screen, then Approve). Claude Code shares connectors with the claude.ai account you log in with, so ViewsMax appears there with no extra setup — /mcp lists it.",
@@ -372,7 +377,6 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
       "Announce a launch without leaving your editor. Claude Code can read what you just built, write the posts, schedule them through ViewsMax, report back on clicks and sales, and dig up outlier videos for your next idea.",
     setupTime: "Around 2 minutes.",
     listing: CLAUDE_CODE_LISTING,
-    tip: "Already connected ViewsMax in Claude? Claude Code inherits connectors from the claude.ai account you log in with — run /mcp and look for it before adding anything. (On Team and Enterprise, only admins can add connectors in claude.ai.)",
     install: [
       {
         title: "Register the server",
@@ -719,7 +723,8 @@ export function manualHeading(agent: AgentConfig): string {
 /** The agent's directory listing URL, or undefined while ViewsMax isn't listed there. */
 export function agentListingUrl(agent: AgentConfig, env: Env): string | undefined {
   if (!agent.listing) return undefined;
-  const raw = env[agent.listing.env];
+  if (agent.listing.url) return agent.listing.url;
+  const raw = agent.listing.env ? env[agent.listing.env] : undefined;
   const url = typeof raw === "string" ? raw.trim() : "";
   return url.startsWith("https://") ? url : undefined;
 }

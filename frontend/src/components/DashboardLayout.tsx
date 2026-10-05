@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AIModelProcessingLoader } from "@/components/AIModelProcessingLoader";
 import ImpersonationBar from "@/components/ImpersonationBar";
+import ConnectAiAppsButton from "@/components/ConnectAiAppsButton";
 
 export default function DashboardLayout() {
   const { user, signOut } = useAuth();
@@ -76,7 +77,7 @@ export default function DashboardLayout() {
 
         <div className="flex-1 flex flex-col">
           <ImpersonationBar />
-          <header className="h-16 flex items-center justify-between border-b border-border px-6">
+          <header className="h-16 flex items-center justify-between gap-3 border-b border-border px-4 sm:px-6">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <div className="flex items-center gap-3">
@@ -85,7 +86,8 @@ export default function DashboardLayout() {
               <AIModelProcessingLoader />
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 sm:gap-4">
+              {!locked && <ConnectAiAppsButton />}
               {/* Balance/credits indicator temporarily hidden
               <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary/50 border border-border transition-all duration-300 ${isAnimating ? 'animate-pulse scale-105 border-primary/50' : ''}`}>
                 <Coins className={`w-4 h-4 text-primary transition-transform ${isAnimating ? 'animate-bounce' : ''}`} />
@@ -120,7 +122,7 @@ export default function DashboardLayout() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">
                     <HelpCircle className="w-4 h-4" />
-                    <span>Support</span>
+                    <span className="hidden sm:inline">Support</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">

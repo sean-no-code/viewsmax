@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   AGENT_LIST,
   AGENTS,
+  CLAUDE_DIRECTORY_URL,
   MCP_ENDPOINT,
   MCP_TOOLS,
   CHECK_PROMPT,
@@ -125,31 +126,29 @@ describe("sitemap-pages.xml", () => {
 });
 
 describe("agentListingUrl", () => {
-  const claude = AGENTS.claude;
-
-  it("is empty until the directory listing URL is configured", () => {
-    expect(agentListingUrl(claude, {})).toBeUndefined();
-    expect(agentListingUrl(claude, { VITE_CLAUDE_CONNECTOR_URL: "  " })).toBeUndefined();
+  it("is fixed for Claude and Claude Code now that ViewsMax is in the Claude directory", () => {
+    expect(CLAUDE_DIRECTORY_URL).toBe("https://claude.ai/directory/viewsmax");
+    expect(agentListingUrl(AGENTS.claude, {})).toBe(CLAUDE_DIRECTORY_URL);
+    expect(agentListingUrl(AGENTS["claude-code"], {})).toBe(CLAUDE_DIRECTORY_URL);
   });
 
-  it("returns the configured https listing URL", () => {
-    const url = "https://claude.ai/directory/connectors/viewsmax";
-    expect(agentListingUrl(claude, { VITE_CLAUDE_CONNECTOR_URL: url })).toBe(url);
+  it("is empty for ChatGPT and Codex until the plugin directory URL is configured", () => {
+    expect(agentListingUrl(AGENTS.chatgpt, {})).toBeUndefined();
+    expect(agentListingUrl(AGENTS.codex, { VITE_CHATGPT_PLUGIN_URL: "  " })).toBeUndefined();
+  });
+
+  it("returns the configured https plugin directory URL for ChatGPT and Codex", () => {
+    const url = "https://chatgpt.com/plugins/viewsmax";
+    expect(agentListingUrl(AGENTS.chatgpt, { VITE_CHATGPT_PLUGIN_URL: url })).toBe(url);
+    expect(agentListingUrl(AGENTS.codex, { VITE_CHATGPT_PLUGIN_URL: url })).toBe(url);
   });
 
   it("ignores anything that is not an https URL", () => {
-    expect(agentListingUrl(claude, { VITE_CLAUDE_CONNECTOR_URL: "javascript:alert(1)" })).toBeUndefined();
-  });
-
-  it("covers Claude Code through the Claude directory and Codex through the shared ChatGPT/Codex plugin directory", () => {
-    const claudeUrl = "https://claude.ai/directory/connectors/viewsmax";
-    const chatgptUrl = "https://chatgpt.com/plugins/viewsmax";
-    expect(agentListingUrl(AGENTS["claude-code"], { VITE_CLAUDE_CONNECTOR_URL: claudeUrl })).toBe(claudeUrl);
-    expect(agentListingUrl(AGENTS.codex, { VITE_CHATGPT_PLUGIN_URL: chatgptUrl })).toBe(chatgptUrl);
+    expect(agentListingUrl(AGENTS.chatgpt, { VITE_CHATGPT_PLUGIN_URL: "javascript:alert(1)" })).toBeUndefined();
   });
 
   it("is always empty for agents with no directory listing", () => {
-    expect(agentListingUrl(AGENTS.cursor, { VITE_CLAUDE_CONNECTOR_URL: "https://x.test" })).toBeUndefined();
+    expect(agentListingUrl(AGENTS.cursor, { VITE_CHATGPT_PLUGIN_URL: "https://x.test" })).toBeUndefined();
   });
 });
 
@@ -161,10 +160,11 @@ describe("buildAgentMarkdown", () => {
     expect(md).toContain(CHECK_PROMPT);
   });
 
-  it("mentions the directory listing only once it is configured", () => {
-    const url = "https://claude.ai/directory/connectors/viewsmax";
-    expect(buildAgentMarkdown(AGENTS.claude, {})).not.toContain(url);
-    expect(buildAgentMarkdown(AGENTS.claude, { VITE_CLAUDE_CONNECTOR_URL: url })).toContain(url);
+  it("always links the Claude directory, and the plugin directory only once configured", () => {
+    expect(buildAgentMarkdown(AGENTS.claude, {})).toContain(CLAUDE_DIRECTORY_URL);
+    const url = "https://chatgpt.com/plugins/viewsmax";
+    expect(buildAgentMarkdown(AGENTS.chatgpt, {})).not.toContain(url);
+    expect(buildAgentMarkdown(AGENTS.chatgpt, { VITE_CHATGPT_PLUGIN_URL: url })).toContain(url);
   });
 });
 
@@ -175,8 +175,10 @@ describe("listing steps", () => {
     expect(md).toContain(`codex mcp add viewsmax --url ${MCP_ENDPOINT}`);
   });
 
-  it("tells Claude Code users a claude.ai connector carries over, even before listing", () => {
-    expect(buildAgentMarkdown(AGENTS["claude-code"], {})).toMatch(/already connected ViewsMax in Claude/i);
+  it("tells Claude Code users the claude.ai connector carries over", () => {
+    const md = buildAgentMarkdown(AGENTS["claude-code"], {});
+    expect(md).toContain(CLAUDE_DIRECTORY_URL);
+    expect(md).toMatch(/shares connectors with the claude\.ai account/i);
   });
 });
 

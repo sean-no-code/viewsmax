@@ -28,10 +28,14 @@ class KitService
     }
 
     /**
-     * Subscribe an email (with optional first name) and apply the configured tag.
-     * Never throws: every failure is logged and reported as false.
+     * Subscribe an email (with optional first name) and apply the configured
+     * tag, plus any $extraTags (each applied with its own subscribe call —
+     * the v3 tag endpoint applies one tag per call). Never throws: every
+     * failure is logged, and the result is false if any tag failed.
+     *
+     * @param  array<int, string>  $extraTags
      */
-    public function subscribe(string $email, ?string $firstName = null): bool
+    public function subscribe(string $email, ?string $firstName = null, array $extraTags = []): bool
     {
         if (empty($this->apiKey)) {
             Log::info("Kit (ConvertKit) API key not configured; skipping subscribe for {$email}.");
@@ -39,10 +43,20 @@ class KitService
             return false;
         }
 
+        $ok = true;
+        foreach (array_unique([$this->tagName, ...$extraTags]) as $tagName) {
+            $ok = $this->subscribeWithTag($tagName, $email, $firstName) && $ok;
+        }
+
+        return $ok;
+    }
+
+    private function subscribeWithTag(string $tagName, string $email, ?string $firstName): bool
+    {
         try {
-            $tagId = $this->resolveTagId($this->tagName);
+            $tagId = $this->resolveTagId($tagName);
             if (! $tagId) {
-                Log::error("Could not resolve Kit tag \"{$this->tagName}\"; skipping subscribe for {$email}.");
+                Log::error("Could not resolve Kit tag \"{$tagName}\"; skipping subscribe for {$email}.");
 
                 return false;
             }
@@ -55,7 +69,7 @@ class KitService
                 ]));
 
             if ($response->successful()) {
-                Log::info("Subscribed {$email} to Kit with tag \"{$this->tagName}\".");
+                Log::info("Subscribed {$email} to Kit with tag \"{$tagName}\".");
 
                 return true;
             }

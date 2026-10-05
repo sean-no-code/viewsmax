@@ -225,21 +225,21 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
 
           return (
             <div key={entry.key} className="rounded-lg border p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-9 w-9 place-items-center rounded-full" style={{ background: accent }}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: accent }}>
                     <BrandIcon platform={entry.key} size={18} color="#fff" />
                   </span>
-                  <div>
-                    <p className="font-medium">{labelFor(entry.key)}</p>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{labelFor(entry.key)}</p>
                     {accts.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="truncate text-sm text-muted-foreground">
                         {configured ? "Not connected" : "Coming soon"}
                       </p>
                     )}
                   </div>
                 </div>
-                <Button size="sm" disabled={!configured || isBusy} onClick={() => handleConnect(entry)}>
+                <Button size="sm" className="shrink-0" disabled={!configured || isBusy} onClick={() => handleConnect(entry)}>
                   {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? "Add account" : "Connect"}
                 </Button>
               </div>
@@ -302,21 +302,21 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
         return (
           <div
             key={entry.key}
-            className="flex items-center justify-between rounded-lg border p-3"
+            className="flex items-center justify-between gap-3 rounded-lg border p-3"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               {connected && accountAvatar(entry) ? (
                 <PAvatar id={entry.key} size={36} avatarUrl={accountAvatar(entry)} />
               ) : (
                 <span
-                  className="grid h-9 w-9 place-items-center rounded-full"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
                   style={{ background: accent }}
                 >
                   <BrandIcon platform={entry.key} size={18} color="#fff" />
                 </span>
               )}
-              <div>
-                <p className="font-medium">{labelFor(entry.key)}</p>
+              <div className="min-w-0">
+                <p className="truncate font-medium">{labelFor(entry.key)}</p>
                 {broken ? (
                   <p className="flex items-center gap-1 text-sm text-amber-600">
                     <AlertTriangle className="h-3 w-3" />
@@ -328,7 +328,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     {accountName(entry)}
                   </p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="truncate text-sm text-muted-foreground">
                     {configured ? "Not connected" : "Coming soon"}
                   </p>
                 )}
@@ -337,7 +337,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
 
             {broken ? (
               <div className="flex items-center gap-2">
-                <Button size="sm" disabled={isBusy} onClick={() => handleConnect(entry)}>
+                <Button size="sm" className="shrink-0" disabled={isBusy} onClick={() => handleConnect(entry)}>
                   {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   <span className="ml-1">Reconnect</span>
                 </Button>

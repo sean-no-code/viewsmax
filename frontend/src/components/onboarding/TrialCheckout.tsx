@@ -87,20 +87,23 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
         .trial-checkout .tc-cta:active:not(:disabled) { background: var(--vm-red-deep); transform: translateY(1px); }
         .trial-checkout .tc-cta:disabled { opacity:.7; cursor:default; }
         .trial-checkout .tc-plan { transition: all 200ms var(--ease-out, cubic-bezier(.2,.7,.2,1)); }
+        .trial-checkout .tc-banner { display:flex; align-items:center; justify-content:center; gap:28px; flex-wrap:wrap; padding:14px 22px; }
+        @media (max-width:1024px){ .trial-checkout .tc-banner { display:grid; grid-template-columns:1fr 1fr; justify-items:start; gap:10px 24px; } }
+        @media (max-width:640px){
+          .trial-checkout .tc-banner { grid-template-columns:1fr; padding:16px 18px; gap:8px; }
+          .trial-checkout .tc-grid { padding:18px !important; gap:20px; }
+          .trial-checkout .tc-included { padding:18px !important; }
+          .trial-checkout .tc-cta { font-size:15px !important; }
+        }
       `}</style>
 
       {/* No-risk trial banner */}
       <div
+        className="tc-banner"
         style={{
-          background: "var(--volt-tint-l)",
+          background: "var(--vm-volt-tint-l)",
           border: "1px solid var(--vm-volt)",
           borderRadius: "var(--r-lg)",
-          padding: "14px 22px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 28,
-          flexWrap: "wrap",
           marginBottom: 20,
         }}
       >
@@ -216,6 +219,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
 
         {/* MIDDLE — what's included */}
         <div
+          className="tc-included"
           style={{
             background: "var(--paper-1)",
             border: "1px solid var(--line-1)",
@@ -246,11 +250,11 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
               <span style={{ color: "var(--ink-on-paper-2)" }}>Due today</span>
               <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>$0.00</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
               <span>Reminder email · {reminderDate}</span>
               <span>1–2 days before</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
               <span>First charge · {chargeDate}</span>
               <span style={{ fontFamily: "var(--font-mono)" }}>${selPrice}/mo</span>
             </div>

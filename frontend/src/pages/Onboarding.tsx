@@ -110,19 +110,20 @@ const Onboarding = () => {
   const title = step === "trial" ? "Start your free trial" : "Set up your account";
 
   return (
-    <div className="onboarding-wizard" style={{ minHeight: "100vh", background: "var(--paper-1)", color: "var(--ink-on-paper-1)", fontFamily: "var(--font-body)", padding: "28px 40px 64px" }}>
+    <div className="onboarding-wizard" style={{ minHeight: "100vh", background: "var(--paper-1)", color: "var(--ink-on-paper-1)", fontFamily: "var(--font-body)", padding: "28px clamp(16px, 5vw, 40px) 64px" }}>
       <style>{`
         .onboarding-wizard .ow-pill { transition: all 200ms var(--ease-out, cubic-bezier(.2,.7,.2,1)); }
         .onboarding-wizard .ow-pill:hover:not(:disabled) { background: var(--vm-red-hot); }
         .onboarding-wizard .ow-pill:active:not(:disabled) { background: var(--vm-red-deep); transform: translateY(1px); }
         .onboarding-wizard .ow-pill:disabled { opacity:.5; cursor:default; }
+        @media (max-width:560px){ .onboarding-wizard .ow-step-label:not([data-current]) { display:none; } }
       `}</style>
       <div style={{ maxWidth: step === "trial" ? 1180 : 640, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 38, letterSpacing: "-.03em", lineHeight: 1.02, margin: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(28px, 7vw, 38px)", letterSpacing: "-.03em", lineHeight: 1.02, margin: 0 }}>
             {title}
           </h1>
-          <a onClick={signOut} style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-on-paper-3)", cursor: "pointer" }}>
+          <a onClick={signOut} style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0, color: "var(--ink-on-paper-3)", cursor: "pointer" }}>
             Log out
           </a>
         </div>
@@ -153,7 +154,7 @@ const Onboarding = () => {
                   >
                     {isComplete ? <Check size={14} strokeWidth={3} /> : i + 1}
                   </div>
-                  <span style={{ fontSize: 14, fontWeight: isCurrent ? 700 : 600, color: isCurrent || isComplete ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>
+                  <span className="ow-step-label" data-current={isCurrent || undefined} style={{ fontSize: 14, whiteSpace: "nowrap", fontWeight: isCurrent ? 700 : 600, color: isCurrent || isComplete ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>
                     {s.label}
                   </span>
                 </div>
@@ -164,7 +165,7 @@ const Onboarding = () => {
         </div>
 
         {step === "connect" && (
-          <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: "var(--r-lg)", padding: 32 }}>
+          <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: "var(--r-lg)", padding: "clamp(18px, 5vw, 32px)" }}>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, letterSpacing: "-.01em" }}>Connect your accounts</div>
             <div style={{ fontSize: 13, color: "var(--ink-on-paper-3)", marginTop: 2 }}>
               Connect at least one platform so we can analyze your content. You can always add more later.

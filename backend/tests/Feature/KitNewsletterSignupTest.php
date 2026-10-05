@@ -51,6 +51,41 @@ class KitNewsletterSignupTest extends TestCase
             && $r['api_key'] === 'test-kit-key');
     }
 
+    public function test_agent_signup_on_the_api_host_also_gets_the_ai_agent_tag(): void
+    {
+        Http::fake([
+            self::TAGS_URL => Http::response(['tags' => [
+                ['id' => 555, 'name' => 'viewsmax: new subscriber'],
+                ['id' => 556, 'name' => 'viewsmax: new subscriber ai agent'],
+            ]]),
+            self::SUBSCRIBE_URL => Http::response(['subscription' => ['id' => 1]]),
+            'api.convertkit.com/v3/tags/556/subscribe' => Http::response(['subscription' => ['id' => 2]]),
+        ]);
+
+        $this->post('/register', [
+            'name' => 'Jane Doe', 'email' => 'jane@example.com',
+            'password' => 'password123', 'password_confirmation' => 'password123',
+            'marketing_consent' => '1',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('users', ['email' => 'jane@example.com', 'signup_source' => 'agent']);
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/v3/tags/555/subscribe') && $r['email'] === 'jane@example.com');
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/v3/tags/556/subscribe') && $r['email'] === 'jane@example.com');
+    }
+
+    public function test_app_signup_does_not_get_the_ai_agent_tag(): void
+    {
+        Http::fake([
+            self::TAGS_URL => Http::response(['tags' => [['id' => 555, 'name' => 'viewsmax: new subscriber']]]),
+            self::SUBSCRIBE_URL => Http::response(['subscription' => ['id' => 1]]),
+        ]);
+
+        $this->register(consent: true)->assertStatus(201);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), '/v3/tags') && str_contains((string) json_encode($r->data()), 'ai agent'));
+        Http::assertSentCount(2); // one tag lookup + one subscribe
+    }
+
     public function test_api_registration_records_the_app_signup_source(): void
     {
         Http::fake();

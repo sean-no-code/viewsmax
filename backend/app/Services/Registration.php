@@ -50,7 +50,9 @@ class Registration
         // A Kit outage must never block registration — the account already exists.
         if ($user->marketing_consented_at) {
             try {
-                $this->kit->subscribe($user->email, $user->name);
+                $this->kit->subscribe($user->email, $user->name, $source === User::SIGNUP_SOURCE_AGENT
+                    ? [config('services.kit.agent_tag')]
+                    : []);
             } catch (\Throwable $e) {
                 Log::warning('Kit signup subscribe failed for '.$user->email.': '.$e->getMessage());
             }
