@@ -11,7 +11,7 @@ authenticated.
 - **MCP endpoint:** `https://api.viewsmax.com/api/mcp` (Streamable HTTP)
 - **Capability discovery (JSON):** `https://api.viewsmax.com/api/ai`
 - **REST API:** `https://api.viewsmax.com/api` — [OpenAPI spec](https://api.viewsmax.com/docs.openapi) · [API reference](https://api.viewsmax.com/docs)
-- **MCP server overview:** <https://viewsmax.com/mcp> (plain text: <https://viewsmax.com/mcp.md>) — what it exposes, auth modes, rate limits, and all 30 tools grouped by job
+- **MCP server overview:** <https://viewsmax.com/mcp> (plain text: <https://viewsmax.com/mcp.md>) — what it exposes, auth modes, rate limits, and all 31 tools grouped by job
 
 Step-by-step guides per agent: [Claude](https://viewsmax.com/claude) ·
 [Claude Code](https://viewsmax.com/claude-code) ·
@@ -124,7 +124,7 @@ curl -H "Authorization: Bearer vmx_YOUR_KEY" https://api.viewsmax.com/api/posts
 Responses use a `{ success, message, data }` envelope. Full reference:
 <https://api.viewsmax.com/docs>.
 
-## What agents can do (30 MCP tools)
+## What agents can do (31 MCP tools)
 
 `list_connected_accounts`, `list_brands`, `upload_media`, `create_post`,
 `list_posts`, `get_post`, `update_post`, `delete_post`, `list_offers`,
@@ -134,7 +134,7 @@ Responses use a `{ success, message, data }` envelope. Full reference:
 `list_outliers`, `search_outliers`, `get_outlier`, `fetch_outlier`,
 `get_outlier_breakdown`, `generate_outlier_breakdown`, `list_saved_outliers`,
 `save_outlier`, `remove_saved_outlier`, `add_outlier_channel`,
-`get_outlier_channel_ingest`.
+`get_outlier_channel_ingest`, `get_transcript`.
 
 Typical posting flow: `list_connected_accounts` → `upload_media` (TikTok /
 Instagram / YouTube need a video or image) → `create_post` (status `draft`,
@@ -170,6 +170,7 @@ Instagram). Video links belong to `fetch_outlier`, not this tool.
   Assistant Access → activity).
 - Rate limits: 120 MCP requests/min per token; 180 `create_post`/hour;
   40 `upload_media`/hour; 30 `search_outliers`/hour; 60 `fetch_outlier`/hour;
-  30 `generate_outlier_breakdown`/hour; 10 `add_outlier_channel`/hour.
+  30 `generate_outlier_breakdown`/hour; 10 `add_outlier_channel`/hour;
+  15 `get_transcript`/min.
   HTTP 429 = back off.
 - Rotate the API key any time to revoke access instantly.

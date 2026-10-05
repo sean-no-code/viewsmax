@@ -21,6 +21,7 @@ use App\Mcp\Tools\GetOutlierBreakdown;
 use App\Mcp\Tools\GetOutlierChannelIngest;
 use App\Mcp\Tools\GetPost;
 use App\Mcp\Tools\GetStatsTimeseries;
+use App\Mcp\Tools\GetTranscript;
 use App\Mcp\Tools\ListBrands;
 use App\Mcp\Tools\ListConnectedAccounts;
 use App\Mcp\Tools\ListOffers;
@@ -63,6 +64,8 @@ class ViewsMaxServer extends Server
         the user's library. To research a specific creator, add_outlier_channel
         with their profile URL or @handle pulls in their recent videos (poll
         get_outlier_channel_ingest, then list_outliers with channels: [id]).
+        get_transcript returns the spoken words of a YouTube, TikTok, or
+        Instagram video from its URL, with timed segments.
         TXT;
 
     // Show every tool on the first tools/list page.
@@ -105,6 +108,8 @@ class ViewsMaxServer extends Server
         RemoveSavedOutlier::class,
         AddOutlierChannel::class,
         GetOutlierChannelIngest::class,
+        // Transcripts
+        GetTranscript::class,
     ];
 
     /**

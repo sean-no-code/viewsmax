@@ -37,7 +37,7 @@ class AiDiscoveryTest extends TestCase
     {
         $tools = collect($this->getJson('/api/ai')->assertOk()->json('mcp.tools'));
 
-        $this->assertCount(30, $tools);
+        $this->assertCount(31, $tools);
 
         $tools->each(function (array $tool) {
             $this->assertNotSame('', $tool['name']);
@@ -51,6 +51,7 @@ class AiDiscoveryTest extends TestCase
         $this->assertSame('read', $byName['get_stats_timeseries']['access']);
         $this->assertSame('read', $byName['list_outliers']['access']);
         $this->assertSame('write', $byName['save_outlier']['access']);
+        $this->assertSame('read', $byName['get_transcript']['access']);
     }
 
     public function test_discovery_includes_docs_rest_and_rate_limits(): void
@@ -61,6 +62,7 @@ class AiDiscoveryTest extends TestCase
         $this->assertNotEmpty($response->json('docs.llms_txt'));
         $this->assertNotEmpty($response->json('rest.base_url'));
         $this->assertIsInt($response->json('rate_limits.mcp_requests_per_minute'));
+        $this->assertSame(15, $response->json('rate_limits.get_transcript_per_minute'));
     }
 
     public function test_discovery_is_cacheable(): void

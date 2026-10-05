@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mcp\ViewsMaxServer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Public capability discovery for AI agents (the machine-readable "front
@@ -99,6 +100,8 @@ class AiDiscoveryController extends Controller
                 'fetch_outlier_per_hour' => (int) config('mcp.rate_limits.fetch_outlier_per_hour'),
                 'generate_outlier_breakdown_per_hour' => (int) config('mcp.rate_limits.generate_breakdown_per_hour'),
                 'add_outlier_channel_per_hour' => (int) config('mcp.rate_limits.add_outlier_channel_per_hour'),
+                // Shared with the web app's free transcript tool (AppServiceProvider).
+                'get_transcript_per_minute' => RateLimiter::limiter('transcript')(request())->maxAttempts,
             ],
         ];
     }

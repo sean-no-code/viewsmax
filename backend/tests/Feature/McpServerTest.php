@@ -214,6 +214,8 @@ class McpServerTest extends TestCase
         // but only adds to ViewsMax's outlier database; checking it is a read.
         'add_outlier_channel' => [false, false, true],
         'get_outlier_channel_ingest' => [true, false, false],
+        // Reads a public video's transcript from a third-party provider.
+        'get_transcript' => [true, false, true],
     ];
 
     public function test_every_tool_declares_a_title_and_all_three_safety_hints(): void
@@ -599,6 +601,7 @@ class McpServerTest extends TestCase
             'get_outlier_channel_ingest' => ['ingest_id'],
             'get_outlier_breakdown' => ['platform', 'video_id'],
             'get_post' => ['id'],
+            'get_transcript' => ['platform', 'url'],
             'remove_saved_outlier' => ['id'],
             'save_outlier' => ['platform', 'video_id'],
             'search_outliers' => ['term'],

@@ -25,7 +25,7 @@ export const MCP_TOOLS = [
   "list_outliers", "search_outliers", "get_outlier", "fetch_outlier",
   "get_outlier_breakdown", "generate_outlier_breakdown", "list_saved_outliers",
   "save_outlier", "remove_saved_outlier", "add_outlier_channel",
-  "get_outlier_channel_ingest",
+  "get_outlier_channel_ingest", "get_transcript",
 ];
 
 export type AgentKey =

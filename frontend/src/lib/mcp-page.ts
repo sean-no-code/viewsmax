@@ -92,6 +92,12 @@ export const TOOL_GROUPS: ToolGroup[] = [
     ],
   },
   {
+    key: "transcripts",
+    name: "Transcripts",
+    blurb: "Get the spoken words of a YouTube, TikTok or Instagram video from its link, with timestamps.",
+    tools: ["get_transcript"],
+  },
+  {
     key: "feedback",
     name: "Feedback",
     blurb: "File a feature request on the user's behalf.",
@@ -122,6 +128,7 @@ export const CAPABILITIES: Capability[] = [
   { task: "Generate and read an AI breakdown of why a video over-performed", tools: ["generate_outlier_breakdown", "get_outlier_breakdown"], access: "write" },
   { task: "Save outliers to a tagged library", tools: ["save_outlier", "list_saved_outliers", "remove_saved_outlier"], access: "write" },
   { task: "Follow a creator's channel and pull in their recent videos", tools: ["add_outlier_channel", "get_outlier_channel_ingest"], access: "write" },
+  { task: "Get the transcript of a YouTube, TikTok or Instagram video", tools: ["get_transcript"], access: "read" },
   { task: "File a feature request", tools: ["create_feature_request"], access: "write" },
 ];
 
@@ -161,6 +168,7 @@ export const RATE_LIMITS: { scope: string; limit: string }[] = [
   { scope: "search_outliers", limit: "30 per hour" },
   { scope: "generate_outlier_breakdown", limit: "30 per hour" },
   { scope: "add_outlier_channel", limit: "10 per hour" },
+  { scope: "get_transcript", limit: "15 per minute" },
 ];
 
 export interface ClientRow {
@@ -260,7 +268,7 @@ export const MCP_FAQ: FaqItem[] = [
   },
   {
     q: "What are the rate limits?",
-    a: "120 MCP requests a minute per credential. Per hour: 180 create_post, 40 upload_media, 60 fetch_outlier, 30 search_outliers, 30 generate_outlier_breakdown and 10 add_outlier_channel. A limited call returns a retry-after hint rather than failing silently.",
+    a: "120 MCP requests a minute per credential. Per hour: 180 create_post, 40 upload_media, 60 fetch_outlier, 30 search_outliers, 30 generate_outlier_breakdown and 10 add_outlier_channel; 15 get_transcript a minute. A limited call returns a retry-after hint rather than failing silently.",
   },
   {
     q: "Does the MCP server cost extra?",
