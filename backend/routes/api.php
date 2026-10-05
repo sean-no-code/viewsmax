@@ -111,6 +111,13 @@ Route::post('/webhooks/comfyui/completion', [ComfyUIWebhookController::class, 'h
 Mcp::web('mcp', \App\Mcp\ViewsMaxServer::class)
     ->middleware(['throttle:mcp', 'mcp.auth', 'mcp.audit', 'mcp.notifications']);
 
+// Streamable HTTP lets a client GET the endpoint to open a server-push stream
+// and DELETE it to end a session; a server offering neither answers 405 (the
+// spec's own wording). Cursor probes with GET on connect — left to the router,
+// each probe raised MethodNotAllowed and was logged as an API error with a
+// stack trace.
+Route::match(['get', 'delete'], '/mcp', fn () => response()->noContent(405, ['Allow' => 'POST']));
+
 // Meta platform lifecycle webhooks (Threads/Facebook/Instagram). Public — the
 // signed_request signature is the authentication. Required callback URLs when
 // configuring a Meta app's use case.

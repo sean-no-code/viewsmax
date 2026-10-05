@@ -1043,4 +1043,15 @@ class McpServerTest extends TestCase
         $this->assertNotEmpty($data['path']);
         Storage::disk('public')->assertExists($data['path']);
     }
+
+    /**
+     * Streamable HTTP clients may GET the endpoint (server-push stream) or
+     * DELETE it (end session); we offer neither, so both get a plain 405 —
+     * not a routed exception that lands in the error log per probe.
+     */
+    public function test_get_and_delete_on_the_endpoint_answer_405(): void
+    {
+        $this->get('/api/mcp')->assertStatus(405)->assertHeader('Allow', 'POST');
+        $this->delete('/api/mcp')->assertStatus(405);
+    }
 }

@@ -203,6 +203,41 @@ class McpOutlierToolsTest extends TestCase
         $this->assertToolError($this->callTool($key, 'get_outlier', ['platform' => 'youtube', 'video_id' => 'missing']), 'not found');
     }
 
+    public function test_get_outlier_reports_a_queued_ingest_as_a_state_not_an_error(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+
+        $queued = $this->toolJson($this->callTool($key, 'fetch_outlier', [
+            'platform' => 'youtube', 'url' => 'https://www.youtube.com/watch?v=slowvid1234',
+        ]));
+        $this->assertTrue($queued['queued']);
+
+        // The download hasn't landed (the queue is faked): polling is a state, not a failure.
+        $polled = $this->toolJson($this->callTool($key, 'get_outlier', ['platform' => 'youtube', 'video_id' => 'slowvid1234']));
+        $this->assertSame('ingesting', $polled['status']);
+        $this->assertSame('slowvid1234', $polled['video_id']);
+
+        // Once the row exists the same call returns the video.
+        $this->seedOutlier('youtube', 'slowvid1234');
+        $ready = $this->toolJson($this->callTool($key, 'get_outlier', ['platform' => 'youtube', 'video_id' => 'slowvid1234']));
+        $this->assertSame('ready', $ready['status']);
+        $this->assertSame('Outlier slowvid1234', $ready['title']);
+    }
+
+    public function test_get_outlier_relays_a_failed_download(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+        OutlierBreakdown::create([
+            'platform' => 'tiktok', 'video_id' => 'gone1',
+            'status' => OutlierBreakdown::STATUS_FAILED, 'error' => 'Download failed: This video is private.',
+        ]);
+
+        $this->assertToolError(
+            $this->callTool($key, 'get_outlier', ['platform' => 'tiktok', 'video_id' => 'gone1']),
+            'This video is private'
+        );
+    }
+
     public function test_fetch_outlier_returns_known_video_or_queues_ingest(): void
     {
         $this->seedOutlier('youtube', 'known123');

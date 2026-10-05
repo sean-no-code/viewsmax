@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Audit log of MCP tool calls: who ran what tool with which arguments, and
- * whether it errored. Append-only — rows are never updated.
+ * whether it errored (plus the error text). Append-only — rows are never updated.
  */
 class McpToolInvocation extends Model
 {
@@ -18,6 +18,7 @@ class McpToolInvocation extends Model
         'tool',
         'arguments',
         'is_error',
+        'error',
         'auth_mode',
     ];
 

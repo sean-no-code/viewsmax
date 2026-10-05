@@ -136,7 +136,7 @@ class OutlierController extends Controller
 
             // Slow providers (Instagram scrapes run minutes) make sync ingest hostile;
             // queue it and let the breakdown page's spinner poll the video in.
-            IngestOutlierByUrlJob::dispatch($platform, $url, $videoId);
+            IngestOutlierByUrlJob::dispatchTracked($platform, $url, $videoId);
 
             return response()->json(['queued' => true, 'video_id' => $videoId, 'platform' => $platform], 202);
         }

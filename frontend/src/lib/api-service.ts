@@ -181,6 +181,8 @@ export interface McpActivityItem {
   tool: string;
   arguments: Record<string, unknown> | null;
   is_error: boolean;
+  // The tool's error message when is_error; null otherwise.
+  error: string | null;
   auth_mode: 'key' | 'oauth' | null;
   created_at: string;
 }

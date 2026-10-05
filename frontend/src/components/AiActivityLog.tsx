@@ -92,6 +92,9 @@ const AiActivityLog = () => {
                       {new Date(item.created_at).toLocaleString()}
                     </span>
                   </button>
+                  {item.is_error && item.error && (
+                    <p className="mt-1 pl-5 text-xs text-destructive">{item.error}</p>
+                  )}
                   {expanded === item.id && (
                     <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs">
                       {JSON.stringify(item.arguments ?? {}, null, 2)}

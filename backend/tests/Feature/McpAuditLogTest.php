@@ -54,6 +54,7 @@ class McpAuditLogTest extends TestCase
         $this->assertSame('create_offer', $row->tool);
         $this->assertSame('Audit me', $row->arguments['name']);
         $this->assertFalse($row->is_error);
+        $this->assertNull($row->error);
         $this->assertSame('key', $row->auth_mode);
     }
 
@@ -73,6 +74,7 @@ class McpAuditLogTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame('get_offer', $row->tool);
         $this->assertTrue($row->is_error);
+        $this->assertNotEmpty($row->error, 'Expected the tool error text to be recorded.');
     }
 
     public function test_non_tool_calls_are_not_logged(): void

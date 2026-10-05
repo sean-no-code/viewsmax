@@ -28,7 +28,8 @@ class FetchOutlier extends ViewsMaxTool
         return 'Pull a specific video into the outlier database from its URL so it can be '
             . 'analysed (get_outlier, generate_outlier_breakdown, save_outlier). If the video '
             . 'is already known it is returned immediately; otherwise ingestion is queued '
-            . '(`queued: true`) — poll get_outlier with the returned platform + video_id.';
+            . '(`queued: true`) — poll get_outlier with the returned platform + video_id until '
+            . 'its `status` is "ready".';
     }
 
     public function schema(ToolInputSchema $schema): ToolInputSchema
