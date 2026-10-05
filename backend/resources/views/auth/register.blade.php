@@ -28,6 +28,7 @@
 
             <label for="email">Email</label>
             <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="Enter your email" required>
+            <p class="muted" style="font-size: 13px; margin: -8px 0 16px;">We'll email you a link to confirm your address, so use one you can open.</p>
 
             <label for="password">Password</label>
             <input type="password" id="password" name="password" placeholder="Create a password (8+ characters)" required minlength="8" autocomplete="new-password">

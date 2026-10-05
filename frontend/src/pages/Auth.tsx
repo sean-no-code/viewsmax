@@ -392,6 +392,9 @@ const Auth = () => {
                     placeholder="Enter your email"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    We'll email you a link to confirm your address, so use one you can open.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
