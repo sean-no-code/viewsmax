@@ -667,6 +667,30 @@ class McpServerTest extends TestCase
         );
     }
 
+    public function test_youtube_title_is_required_to_publish_through_mcp(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+        $video = [['type' => 'video', 'url' => 'https://cdn.example/clip.mp4', 'path' => 'posts/1/clip.mp4']];
+
+        $this->assertStringContainsString(
+            'YouTube also requires a title',
+            collect($this->rpc($key, 'tools/list')->json('result.tools'))->firstWhere('name', 'create_post')['description']
+        );
+
+        $this->assertToolError(
+            $this->callTool($key, 'create_post', ['platforms' => ['youtube'], 'media' => $video, 'status' => 'posted']),
+            'YouTube requires a title'
+        );
+        $this->assertSame(0, Post::count());
+
+        $draft = $this->toolJson($this->callTool($key, 'create_post', ['platforms' => ['youtube'], 'media' => $video]));
+        $this->assertToolError(
+            $this->callTool($key, 'update_post', ['id' => $draft['id'], 'status' => 'posted']),
+            'YouTube requires a title'
+        );
+        $this->assertSame(Post::STATUS_DRAFT, Post::find($draft['id'])->status);
+    }
+
     public function test_create_post_validates_identically_to_the_rest_endpoint(): void
     {
         $user = User::factory()->create();

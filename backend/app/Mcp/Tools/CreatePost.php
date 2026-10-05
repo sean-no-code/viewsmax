@@ -80,6 +80,8 @@ class CreatePost extends ViewsMaxTool
             . 'immediately, "scheduled" publishes at scheduled_at. TikTok takes a '
             . 'video (with a url) or a photo slideshow (one or more image urls); '
             . 'YouTube requires a video with a path — both come from upload_media. '
+            . 'YouTube also requires a title: the caption (or overrides.youtube) is the '
+            . 'video title, so it must not be empty when publishing or scheduling. '
             . 'Instagram needs an image or video url. '
             . 'TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, '
             . 'default false) to let TikTok auto-add its recommended background music; '
@@ -112,7 +114,7 @@ class CreatePost extends ViewsMaxTool
                     . '. Omit when brand_id is given.',
             ])
             ->integer('brand_id')->description('Post to every connected account in this brand (see list_brands) instead of platforms.')->optional()
-            ->string('caption')->description('Post text / caption.')->optional()
+            ->string('caption')->description('Post text / caption. For YouTube it is the video title (required to publish).')->optional()
             ->string('status')->description('draft (default), scheduled, or posted.')->optional()
             ->string('scheduled_at')->description('ISO-8601 datetime; required when status is scheduled.')->optional()
             ->raw('media', [

@@ -80,6 +80,8 @@ const todayStr = () => {
 // Extra messages posted after the post goes live: X reply threads, LinkedIn /
 // Instagram comments, Threads replies. Each comment can wait a delay after the
 // previous message in the chain (Postiz-style presets + custom minutes).
+const YOUTUBE_TITLE_MSG = "YouTube needs a title — add a caption, it's used as the video title.";
+
 const COMMENT_PLATFORMS = ["x", "linkedin", "threads", "instagram"];
 const DELAY_PRESETS: Array<{ label: string; seconds: number }> = [
   { label: "Immediately", seconds: 0 },
@@ -562,6 +564,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
       toast.error("Fix the over-limit captions before posting — drafts can still be saved.");
       return;
     }
+    if (status !== "draft" && c.youtubeTitleMissing) { toast.error(YOUTUBE_TITLE_MSG); return; }
     if (c.mediaUploading) { toast.error("Wait for media to finish uploading."); return; }
     if (c.mediaFailed) { toast.error("Remove or re-upload the failed media."); return; }
     // TikTok accepts a video or a photo slideshow (one or more images).
@@ -1169,6 +1172,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   <span style={{ display: "flex", gap: 4 }}><Icon name="signal" size={13} stroke="var(--ink-on-paper-1)" /><Icon name="battery-full" size={15} stroke="var(--ink-on-paper-1)" /></span>
                 </div>
                 <div style={{ padding: 12 }}>
+                  {previewId === "youtube" && c.youtubeTitleMissing && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", color: "var(--vm-red-deep)", borderRadius: 12, padding: "9px 11px", marginBottom: 10, fontSize: 12, fontWeight: 600 }}>
+                      <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
+                      {YOUTUBE_TITLE_MSG}
+                    </div>
+                  )}
                   {c.selected.includes(previewId) && c.status[previewId].over && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", color: "var(--vm-red-deep)", borderRadius: 12, padding: "9px 11px", marginBottom: 10, fontSize: 12, fontWeight: 600 }}>
                       <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
@@ -1227,6 +1236,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" style={policyLink}>Music Usage Confirmation</a>.
                     </div>
                   )}
+                  {c.youtubeTitleMissing && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--vm-red)" }}>
+                      <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {YOUTUBE_TITLE_MSG}
+                    </div>
+                  )}
                   {tiktokBlockReason && (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--vm-red)" }}>
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {tiktokBlockReason}
@@ -1234,8 +1248,8 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   )}
                   <div className="cp-actions" style={{ display: "flex", gap: 10 }}>
                     <Btn kind="ghost" onClick={saving ? undefined : () => persist("draft")}>Save draft</Btn>
-                    <div title={tiktokBlockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || tiktokBlockReason ? 0.55 : 1 }}>
-                      <Btn kind={c.issues.length || uploadingMedia || failedMedia.length || tiktokBlockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || tiktokBlockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>
+                    <div title={tiktokBlockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || c.youtubeTitleMissing || tiktokBlockReason ? 0.55 : 1 }}>
+                      <Btn kind={c.issues.length || c.youtubeTitleMissing || uploadingMedia || failedMedia.length || tiktokBlockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || tiktokBlockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>
                         {saving ? "Saving…" : uploadingMedia ? `Uploading… ${uploadingMedia.progress ?? 0}%` : c.mode === "now" ? "Post now" : isEditing ? "Save changes" : "Schedule post"}
                       </Btn>
                     </div>

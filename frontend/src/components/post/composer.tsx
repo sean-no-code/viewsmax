@@ -263,6 +263,10 @@ export function usePostComposer() {
 
   const issues = selected.filter((id) => status[id].over);
 
+  // YouTube rejects an empty title and the caption is the title, so a YouTube
+  // post can't publish without text (the backend returns a 422 too).
+  const youtubeTitleMissing = selected.includes("youtube") && textFor("youtube").trim() === "";
+
   // Drive a single upload for an existing media item, streaming progress into
   // its state and recording the final url/path or an error.
   const runUpload = async (id: number, file: File, type: "image" | "video") => {
@@ -419,7 +423,7 @@ export function usePostComposer() {
     youtube, patchYoutube,
     linkedin, patchLinkedin,
     cover, uploadCover, removeCover, coverUploading, coverError, tiktokCoverSec, setTiktokCoverSec,
-    status, issues, hydrate,
+    status, issues, youtubeTitleMissing, hydrate,
   };
 }
 export type Composer = ReturnType<typeof usePostComposer>;

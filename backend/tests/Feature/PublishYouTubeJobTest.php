@@ -90,4 +90,26 @@ class PublishYouTubeJobTest extends TestCase
         $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
         $this->assertStringContainsString('reconnect', strtolower((string) $target->error));
     }
+
+    public function test_untitled_post_fails_instead_of_uploading_with_a_placeholder_title(): void
+    {
+        Http::fake();
+
+        $user = User::factory()->create();
+        $account = $this->ytAccount($user);
+        $post = $this->videoPost($user);
+        $post->forceFill(['caption' => ''])->save();
+        $target = $post->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $account->id,
+            'status' => PostTarget::STATUS_PENDING,
+        ]);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame(\App\Services\Social\CaptionRules::YOUTUBE_TITLE_REQUIRED, $target->error);
+        Http::assertNothingSent();
+    }
 }

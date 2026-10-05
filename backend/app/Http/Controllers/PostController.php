@@ -248,7 +248,10 @@ class PostController extends Controller
 
                 $errors = $platform === 'x'
                     ? \App\Services\Social\CaptionRules::xThreadErrors($text)
-                    : array_filter([\App\Services\Social\CaptionRules::captionError($platform, $text)]);
+                    : array_filter([
+                        \App\Services\Social\CaptionRules::titleError($platform, $text),
+                        \App\Services\Social\CaptionRules::captionError($platform, $text),
+                    ]);
 
                 if ($errors !== []) {
                     abort(response()->json(['message' => implode(' ', $errors)], 422));

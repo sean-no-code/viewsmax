@@ -149,6 +149,21 @@ final class CaptionRules
         return "Caption is {$over} {$chars} over {$label}'s {$limit} limit.";
     }
 
+    /**
+     * YouTube rejects an empty video title, and the caption is the title, so
+     * a YouTube post can't go out without one. Null means the text is fine.
+     */
+    public static function titleError(string $platform, string $text): ?string
+    {
+        if ($platform !== 'youtube' || trim($text) !== '') {
+            return null;
+        }
+
+        return self::YOUTUBE_TITLE_REQUIRED;
+    }
+
+    public const YOUTUBE_TITLE_REQUIRED = 'YouTube requires a title. Add a caption — it is used as the video title.';
+
     /** Display names for validation messages. */
     public const PLATFORM_LABELS = [
         'youtube' => 'YouTube',
