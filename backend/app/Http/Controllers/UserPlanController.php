@@ -448,47 +448,4 @@ class UserPlanController extends Controller
             ], 500);
         }
     }
-
-    /**
-     * Admin: update plan status (for Stripe-driven sync).
-     */
-    public function updateStatus(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,id',
-            'plan_id' => 'required|exists:plans,id',
-            'status' => 'required|in:active,inactive,cancelled,expired',
-            'stripe_subscription_id' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        try {
-            $user = User::findOrFail($request->user_id);
-            $plan = Plan::findOrFail($request->plan_id);
-
-            $user->plans()->updateExistingPivot($plan->id, [
-                'status' => $request->status,
-                'stripe_subscription_id' => $request->stripe_subscription_id,
-                'updated_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Plan status updated successfully',
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update plan status',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
 }

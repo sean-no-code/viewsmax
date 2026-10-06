@@ -17,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AIModelProcessingLoader } from "@/components/AIModelProcessingLoader";
-import ImpersonationBar from "@/components/ImpersonationBar";
 import ConnectAiAppsButton from "@/components/ConnectAiAppsButton";
 
 export default function DashboardLayout() {
@@ -61,7 +60,6 @@ export default function DashboardLayout() {
     if (path.startsWith('/dashboard/analytics/overview')) return 'Revenue Growth';
     if (path.startsWith('/dashboard/analytics/audience-growth')) return 'Audience Growth';
     if (path.startsWith('/dashboard/analytics')) return 'Analytics';
-    if (path === '/dashboard/admin/users') return 'Users';
     if (path === '/dashboard/feature-requests') return 'Request a Feature';
     if (path === '/dashboard/settings') return 'Settings';
     if (path === '/dashboard/billing') return 'Billing';
@@ -76,7 +74,6 @@ export default function DashboardLayout() {
         <AppSidebar />
 
         <div className="flex-1 flex flex-col">
-          <ImpersonationBar />
           <header className="h-16 flex items-center justify-between gap-3 border-b border-border px-4 sm:px-6">
             <div className="flex items-center gap-4">
               <SidebarTrigger />

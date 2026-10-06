@@ -12,7 +12,7 @@ use Tests\TestCase;
  * the MCP tool surface (posts, social, offers, tracking, contents,
  * connections, feature requests, identity) so headless agents can drive REST
  * directly. Read-only keys are limited to GET/HEAD. A leaked key must never
- * reach billing, plans, admin, or key rotation (read→full escalation).
+ * reach billing, plans, or key rotation (read→full escalation).
  */
 class ApiKeyRestAccessTest extends TestCase
 {
@@ -78,7 +78,7 @@ class ApiKeyRestAccessTest extends TestCase
         $this->withHeaders($headers)->postJson('/api/outliers/search', ['term' => 'blocked'])->assertForbidden();
     }
 
-    public function test_keys_never_reach_account_billing_or_admin_endpoints(): void
+    public function test_keys_never_reach_account_or_billing_endpoints(): void
     {
         $headers = $this->keyHeaders('full');
 
@@ -87,10 +87,9 @@ class ApiKeyRestAccessTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/user/api-key')->assertForbidden();
         $this->withHeaders($headers)->postJson('/api/user/api-key/rotate')->assertForbidden();
 
-        // Billing / plans / admin.
+        // Billing / plans.
         $this->withHeaders($headers)->getJson('/api/billing/status')->assertForbidden();
         $this->withHeaders($headers)->getJson('/api/user-plans/current')->assertForbidden();
-        $this->withHeaders($headers)->getJson('/api/admin/users')->assertForbidden();
 
         // Other non-tool surfaces stay login-only.
         $this->withHeaders($headers)->getJson('/api/beehiiv/connection')->assertForbidden();

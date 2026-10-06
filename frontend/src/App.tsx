@@ -43,14 +43,6 @@ import PostDrafts from "./pages/post/Drafts";
 import PostScheduled from "./pages/post/Scheduled";
 import PostHistory from "./pages/post/History";
 import ContentCalendarPage from "./pages/CalendarPage";
-import AdminPosts from "./pages/admin/AdminPosts";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminUserEdit from "./pages/admin/AdminUserEdit";
-import AdminUserCreate from "./pages/admin/AdminUserCreate";
-import AdminOffers from "./pages/admin/AdminOffers";
-import AdminLeadMagnet from "./pages/admin/AdminLeadMagnet";
-import LeadMagnetPrint from "./pages/admin/LeadMagnetPrint";
-import AdminLinks from "./pages/admin/AdminLinks";
 import Connections from "./pages/Connections";
 import Boosts from "./pages/Boosts";
 import Review from "./pages/Review";
@@ -134,12 +126,6 @@ const App = () => (
                 <Route path="/onboarding" element={
                   <ProtectedRoute>
                     <Onboarding />
-                  </ProtectedRoute>
-                } />
-                {/* Lead-magnet PDF render — outside DashboardLayout so the print output has no app chrome */}
-                <Route path="/admin/lead-magnet/print" element={
-                  <ProtectedRoute>
-                    <LeadMagnetPrint />
                   </ProtectedRoute>
                 } />
                 <Route path="/blog" element={<ExternalRedirect to="http://13.41.160.78" />} />
@@ -262,13 +248,6 @@ const App = () => (
                   <Route path="tracking" element={<Tracking />} />
                   <Route path="tracking/new" element={<TrackingNew />} />
                   <Route path="tracking/edit/:id" element={<TrackingEdit />} />
-                  <Route path="admin/posts" element={<AdminPosts />} />
-                  <Route path="admin/users" element={<AdminUsers />} />
-                  <Route path="admin/users/new" element={<AdminUserCreate />} />
-                  <Route path="admin/users/:id/edit" element={<AdminUserEdit />} />
-                  <Route path="admin/offers" element={<AdminOffers />} />
-                  <Route path="admin/lead-magnet" element={<AdminLeadMagnet />} />
-                  <Route path="admin/links" element={<AdminLinks />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="feature-requests" element={<FeatureRequests />} />
                 </Route>

@@ -1,4 +1,4 @@
-import { BarChart3, DollarSign, Send, Plug, Shield, Zap, CalendarDays, ScrollText, TrendingUp, Crown, type LucideIcon } from "lucide-react";
+import { BarChart3, DollarSign, Send, Plug, Zap, CalendarDays, ScrollText, TrendingUp, Crown, type LucideIcon } from "lucide-react";
 
 type NavSubItem = { title: string; i18nKey?: string; url: string };
 type NavItem = {
@@ -97,21 +97,6 @@ const allNavigationItems: NavItem[] = [
   // Settings lives in the top-nav user menu; feature requests under top-nav Support.
 ];
 
-// Admin-only — appended to the nav when the signed-in user is an admin.
-const adminNavigationItem: NavItem = {
-  title: "Admin",
-  url: "/dashboard/admin/posts",
-  icon: Shield,
-  isProFeature: false,
-  subItems: [
-    { title: "Publishing monitor", url: "/dashboard/admin/posts" },
-    { title: "Users", url: "/dashboard/admin/users" },
-    { title: "Offers", url: "/dashboard/admin/offers" },
-    { title: "Links", url: "/dashboard/admin/links" },
-    { title: "Lead magnet", url: "/dashboard/admin/lead-magnet" },
-  ],
-};
-
 export function AppSidebar() {
   const { t } = useTranslation();
   const { state } = useSidebar();
@@ -132,7 +117,7 @@ export function AppSidebar() {
   // An expired promotional customer can only reach Billing until they subscribe.
   const navigationItems: NavItem[] = isAccessExpired(user)
     ? [{ title: "Billing", url: "/dashboard/billing", icon: Crown, isProFeature: false }]
-    : isAdmin ? [...baseItems, adminNavigationItem] : baseItems;
+    : baseItems;
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>

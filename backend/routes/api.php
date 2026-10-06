@@ -22,7 +22,6 @@ use App\Http\Controllers\PostMediaController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\PrivacyConsentController;
 use App\Http\Controllers\PromptController;
-use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ScriptController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\ThumbnailController;
@@ -451,47 +450,4 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     // Retry publishing for a single failed platform target (leaves siblings alone).
     Route::post('/posts/{post}/targets/{target}/retry', [PostController::class, 'retryTarget']);
     Route::apiResource('posts', PostController::class);
-
-    // Admin-only routes
-    Route::middleware('role:admin')->group(function () {
-        // Publishing monitor — all clients' posts + per-platform outcomes.
-        Route::get('/admin/posts', [\App\Http\Controllers\Admin\PostMonitorController::class, 'index']);
-        Route::get('/admin/posts/stats', [\App\Http\Controllers\Admin\PostMonitorController::class, 'stats']);
-        Route::post('/admin/posts/reconcile', [\App\Http\Controllers\Admin\PostMonitorController::class, 'reconcile']);
-        Route::post('/admin/posts/{post}/requeue', [\App\Http\Controllers\Admin\PostMonitorController::class, 'requeue']);
-        Route::get('/admin/posts/{post}', [\App\Http\Controllers\Admin\PostMonitorController::class, 'show']);
-
-        // Users monitor — index + signup / added-card widgets over a date range.
-        // Offers + links monitor across all clients.
-        Route::get('/admin/offers', [\App\Http\Controllers\Admin\AnalyticsMonitorController::class, 'offers']);
-        Route::get('/admin/links', [\App\Http\Controllers\Admin\AnalyticsMonitorController::class, 'links']);
-
-        Route::get('/admin/users', [\App\Http\Controllers\Admin\UserAdminController::class, 'index']);
-        Route::post('/admin/users', [\App\Http\Controllers\Admin\UserAdminController::class, 'store']);
-        Route::get('/admin/users/stats', [\App\Http\Controllers\Admin\UserAdminController::class, 'stats']);
-        Route::get('/admin/users/suggest', [\App\Http\Controllers\Admin\UserAdminController::class, 'suggest']);
-        Route::delete('/admin/users/{user}', [\App\Http\Controllers\Admin\UserAdminController::class, 'destroy']);
-        Route::get('/admin/users/{user}/accounts', [\App\Http\Controllers\Admin\UserAdminController::class, 'accounts']);
-        Route::get('/admin/users/{user}', [\App\Http\Controllers\Admin\UserAdminController::class, 'show'])->whereNumber('user');
-        Route::put('/admin/users/{user}/role', [\App\Http\Controllers\Admin\UserAdminController::class, 'updateRole']);
-        Route::post('/admin/users/{user}/impersonate', [\App\Http\Controllers\Admin\UserAdminController::class, 'impersonate']);
-
-        // Role management
-        Route::prefix('roles')->group(function () {
-            Route::get('/', [RoleController::class, 'index']);
-            Route::post('/assign', [RoleController::class, 'assignRole']);
-            Route::post('/remove', [RoleController::class, 'removeRole']);
-            Route::get('/user/{userId}', [RoleController::class, 'getUserRoles']);
-        });
-
-        // Plan management (admin only)
-        Route::prefix('admin/plans')->group(function () {
-            Route::post('/', [PlanController::class, 'store']);
-            Route::put('/{id}', [PlanController::class, 'update']);
-            Route::delete('/{id}', [PlanController::class, 'destroy']);
-        });
-
-        // User plan status updates (admin sync helper)
-        Route::post('/user-plans/update-status', [UserPlanController::class, 'updateStatus']);
-    });
 });
