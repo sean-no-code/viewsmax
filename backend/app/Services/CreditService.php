@@ -188,16 +188,32 @@ class CreditService
     /**
      * Monthly credit allowance for a plan.
      *
-     * Credits aren't differentiated per tier yet (per client) — every paid plan
-     * gets the same uniform amount (config: subscription_credits.default), and
-     * the trial gets its own flat amount. When per-tier credits are needed, this
-     * is the single place to change.
+     * Resolved per tier from config/credits.php subscription_credits.plans,
+     * keyed by the plan's name (env-overridable). A tier without an entry
+     * falls back to `default`; the trial gets its own flat amount regardless
+     * of tier. Also exposed on the plan payload as `monthly_credits`.
      */
     public function getSubscriptionCredits(Plan $plan, bool $isTrial = false): int
     {
-        return $isTrial
-            ? (int) config('credits.subscription_credits.trial')
-            : (int) config('credits.subscription_credits.default');
+        if ($isTrial) {
+            return (int) config('credits.subscription_credits.trial');
+        }
+
+        $tier = strtolower((string) $plan->name);
+
+        return (int) (config("credits.subscription_credits.plans.{$tier}")
+            ?? config('credits.subscription_credits.default'));
+    }
+
+    /**
+     * Credits a single MCP tool call costs (config/credits.php `mcp`). Tools
+     * listed by name use that amount; everything else uses the read or write
+     * default depending on whether the tool mutates account state.
+     */
+    public function mcpToolCost(string $tool, bool $isWrite): int
+    {
+        return (int) (config("credits.mcp.tools.{$tool}")
+            ?? config($isWrite ? 'credits.mcp.write_default' : 'credits.mcp.read_default', 0));
     }
 
     /**
@@ -277,10 +293,10 @@ class CreditService
             return;
         }
 
-        $plan = Plan::where('name', Plan::getDefaultPlan())->first();
+        $plan = self::planForStripePrice($stripePriceId);
 
         if (!$plan) {
-            Log::error("Plan not found for subscription attachment (DEFAULT_PLAN missing)", [
+            Log::error("Plan not found for subscription attachment (no price match, DEFAULT_PLAN missing)", [
                 'stripe_price_id' => $stripePriceId,
                 'subscription_id' => $subscriptionId,
                 'user_id' => $user->id
@@ -333,6 +349,19 @@ class CreditService
         return $user->plans()
             ->wherePivot('stripe_subscription_id', $subscriptionId)
             ->exists();
+    }
+
+    /**
+     * The local plan a Stripe subscription belongs to: the tier whose
+     * stripe_price_id matches, else the configured default plan. Matching by
+     * price is what makes per-tier credits land on the right tier when a
+     * subscription is first seen via a webhook.
+     */
+    public static function planForStripePrice(?string $stripePriceId): ?Plan
+    {
+        $byPrice = $stripePriceId ? Plan::where('stripe_price_id', $stripePriceId)->first() : null;
+
+        return $byPrice ?? Plan::where('name', Plan::getDefaultPlan())->first();
     }
 
     public const THUMBNAIL_GENERATION_OPERATION = 'create_thumbnail';

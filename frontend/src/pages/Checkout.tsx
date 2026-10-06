@@ -6,7 +6,7 @@ import StripeTrialStep from "@/components/StripeTrialStep";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { checkoutTerms } from "@/lib/access";
-import { PLAN_INCLUDES } from "@/lib/plan-helpers";
+import { PLAN_INCLUDES, formatMonthlyCredits } from "@/lib/plan-helpers";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -30,10 +30,16 @@ const Checkout = () => {
   // created on the chosen plan rather than the trial default.
   const planPriceId = searchParams.get("price_id") || undefined;
 
-  // The tier's limit lines arrive in the URL (comma-separated, from Plans);
-  // everything else is the same on every paid plan.
+  // The tier's limit lines arrive in the URL (comma-separated, from Plans),
+  // its monthly credits as a plain number; everything else is the same on
+  // every paid plan.
   const featuresParam = searchParams.get("features");
-  const features = [...(featuresParam ? featuresParam.split(",") : []), ...PLAN_INCLUDES];
+  const creditsParam = searchParams.get("credits");
+  const features = [
+    ...(featuresParam ? featuresParam.split(",") : []),
+    ...(creditsParam !== null ? [formatMonthlyCredits(Number(creditsParam))] : []),
+    ...PLAN_INCLUDES,
+  ];
 
   // StripeTrialStep already creates the subscription, writes active_subscription
   // to localStorage, and dispatches "subscriptionUpdated". We just confirm + redirect.

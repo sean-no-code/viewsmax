@@ -86,17 +86,20 @@ export default function DashboardLayout() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Balance/credits indicator temporarily hidden
-              <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary/50 border border-border transition-all duration-300 ${isAnimating ? 'animate-pulse scale-105 border-primary/50' : ''}`}>
+              {/* Credit balance: every AI-agent (MCP) tool call spends credits. Click through to billing. */}
+              <Link
+                to="/dashboard/billing"
+                title="Credits — spent by AI agent tool calls. Click to manage your plan."
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary/50 border border-border transition-all duration-300 hover:border-primary/50 ${isAnimating ? 'animate-pulse scale-105 border-primary/50' : ''}`}
+              >
                 <Coins className={`w-4 h-4 text-primary transition-transform ${isAnimating ? 'animate-bounce' : ''}`} />
                 <span className="text-sm font-semibold text-foreground">
-                  <span className="text-muted-foreground">Balance:</span>{' '}
+                  <span className="text-muted-foreground">Credits:</span>{' '}
                   <span className={`transition-all duration-500 ${isAnimating ? 'text-primary scale-110' : ''}`}>
-                    {credits}
+                    {credits.toLocaleString()}
                   </span>
                 </span>
-              </div>
-              */}
+              </Link>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-1.5" title="Language">

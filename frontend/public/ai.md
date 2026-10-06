@@ -167,7 +167,13 @@ Instagram). Video links belong to `fetch_outlier`, not this tool.
 
 - Read-only credentials cannot write, anywhere.
 - Every AI tool call is recorded in the user's audit log (Settings → AI
-  Assistant Access → activity).
+  Assistant Access → activity), including the credits it cost.
+- Credits: every successful tool call spends credits from the user's monthly
+  allowance (read-only tools 1, actions 5, heavy research tools up to 25 —
+  each tool's description states its cost, and `/api/ai` lists them). A call
+  is refused with a tool error before running when the balance is too low;
+  failed calls are free. Balances and plans are managed in the web app, not
+  through the connector. See <https://viewsmax.com/pricing.md>.
 - Rate limits: 120 MCP requests/min per token; 180 `create_post`/hour;
   40 `upload_media`/hour; 30 `search_outliers`/hour; 60 `fetch_outlier`/hour;
   30 `generate_outlier_breakdown`/hour; 10 `add_outlier_channel`/hour.

@@ -38,6 +38,8 @@ class McpServerTest extends TestCase
 
     private function mcpKey(User $user): string
     {
+        $this->fundCredits($user, 10_000); // MCP tool calls cost credits; keep test users funded
+
         $login = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->withHeaders(['Authorization' => 'Bearer ' . $login])
@@ -48,6 +50,8 @@ class McpServerTest extends TestCase
     /** Mint an MCP key with explicit abilities (scopes), bypassing rotate(). */
     private function mcpKeyWith(User $user, array $abilities): string
     {
+        $this->fundCredits($user, 10_000); // MCP tool calls cost credits; keep test users funded
+
         $plain = 'vmx_' . $user->generateTokenString();
         $user->tokens()->create([
             'name' => 'mcp',
@@ -1053,5 +1057,126 @@ class McpServerTest extends TestCase
     {
         $this->get('/api/mcp')->assertStatus(405)->assertHeader('Allow', 'POST');
         $this->delete('/api/mcp')->assertStatus(405);
+    }
+
+    // ── Credits ─────────────────────────────────────────────────────────────
+    //
+    // Every successful tool call deducts the tool's credit cost from the
+    // user's wallet (config/credits.php `mcp`). A call is refused before it
+    // runs when the balance is below the cost, and the balance never goes
+    // negative. Test users get a fresh wallet, so these tests set the balance
+    // explicitly instead of going through mcpKey()'s deposit.
+
+    /** An MCP key for a user holding exactly $balance credits. */
+    private function mcpKeyWithBalance(int $balance): array
+    {
+        $user = User::factory()->create();
+        $key = $this->mcpKey($user);
+        $user->withdraw($user->balanceInt - $balance);
+
+        return [$user, $key];
+    }
+
+    public function test_tool_costs_come_from_config_with_read_and_write_defaults(): void
+    {
+        $credits = app(\App\Services\CreditService::class);
+
+        $this->assertSame(1, $credits->mcpToolCost('list_offers', false));
+        $this->assertSame(5, $credits->mcpToolCost('create_offer', true));
+        $this->assertSame(25, $credits->mcpToolCost('generate_outlier_breakdown', true));
+
+        config(['credits.mcp.tools.list_offers' => 3]);
+        $this->assertSame(3, $credits->mcpToolCost('list_offers', false));
+    }
+
+    public function test_successful_tool_call_charges_its_credit_cost(): void
+    {
+        [$user, $key] = $this->mcpKeyWithBalance(100);
+
+        $this->toolJson($this->callTool($key, 'list_offers'));
+        $this->assertSame(99, $user->fresh()->balanceInt);
+
+        $this->toolJson($this->callTool($key, 'create_offer', ['offer_url' => 'https://example.com/a', 'name' => 'A']));
+        $this->assertSame(94, $user->fresh()->balanceInt);
+    }
+
+    public function test_failed_tool_call_is_not_charged(): void
+    {
+        [$user, $key] = $this->mcpKeyWithBalance(100);
+
+        $this->assertToolError($this->callTool($key, 'get_offer', ['id' => 999999]), 'not found');
+        $this->assertSame(100, $user->fresh()->balanceInt);
+    }
+
+    public function test_tool_call_is_refused_when_balance_is_below_cost(): void
+    {
+        config(['mcp.frontend_url' => 'https://app.viewsmax.test']);
+        [$user, $key] = $this->mcpKeyWithBalance(3);
+
+        $response = $this->callTool($key, 'create_offer', ['offer_url' => 'https://example.com/a', 'name' => 'A']);
+
+        $this->assertToolError($response, 'Not enough credits');
+        $text = $response->json('result.content.0.text');
+        $this->assertStringContainsString('5 needed, 3 available', $text);
+        $this->assertStringContainsString('https://app.viewsmax.test', $text);
+        $this->assertStringNotContainsStringIgnoringCase('upgrade', $text); // no upsell in AI-facing text
+        $this->assertSame(0, \App\Models\Offer::count()); // refused before running
+        $this->assertSame(3, $user->fresh()->balanceInt); // never negative
+    }
+
+    public function test_zero_balance_refuses_even_read_tools(): void
+    {
+        [$user, $key] = $this->mcpKeyWithBalance(0);
+
+        $this->assertToolError($this->callTool($key, 'list_offers'), 'Not enough credits');
+        $this->assertSame(0, $user->fresh()->balanceInt);
+    }
+
+    public function test_unknown_tool_is_free(): void
+    {
+        [$user, $key] = $this->mcpKeyWithBalance(0);
+
+        $this->assertToolError($this->callTool($key, 'no_such_tool'), 'Tool not found');
+        $this->assertSame(0, $user->fresh()->balanceInt);
+    }
+
+    public function test_tool_descriptions_state_their_credit_cost(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+        $tools = collect($this->rpc($key, 'tools/list', ['per_page' => 50])->json('result.tools'))->keyBy('name');
+
+        $this->assertStringEndsWith('Costs 10 credits per call.', $tools['create_post']['description']);
+        $this->assertStringEndsWith('Costs 1 credit per call.', $tools['list_offers']['description']);
+    }
+
+    public function test_server_instructions_explain_that_tool_calls_consume_credits(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+        $instructions = $this->rpc($key, 'initialize', [
+            'protocolVersion' => '2025-03-26',
+            'capabilities' => [],
+            'clientInfo' => ['name' => 'test', 'version' => '1.0'],
+        ])->assertOk()->json('result.instructions');
+
+        $this->assertStringContainsString('consumes credits', $instructions);
+        $this->assertStringNotContainsStringIgnoringCase('upgrade', $instructions); // no upsell in AI-facing text
+    }
+
+    public function test_charges_and_refusals_are_logged_to_the_credits_channel(): void
+    {
+        Log::shouldReceive('channel')->twice()->with('credits')
+            ->andReturn($spy = \Mockery::mock(\Psr\Log\LoggerInterface::class));
+        $spy->shouldReceive('info')->once()
+            ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'charged') && $ctx['tool'] === 'list_offers' && $ctx['cost'] === 1);
+        $spy->shouldReceive('info')->once()
+            ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'insufficient') && $ctx['tool'] === 'create_offer');
+
+        [, $key] = $this->mcpKeyWithBalance(1);
+
+        $this->toolJson($this->callTool($key, 'list_offers'));
+        $this->assertToolError(
+            $this->callTool($key, 'create_offer', ['offer_url' => 'https://example.com/a']),
+            'Not enough credits'
+        );
     }
 }

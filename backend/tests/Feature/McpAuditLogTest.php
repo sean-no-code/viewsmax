@@ -19,6 +19,8 @@ class McpAuditLogTest extends TestCase
 
     private function mcpKey(User $user): string
     {
+        $this->fundCredits($user, 10_000); // MCP tool calls cost credits; keep test users funded
+
         $login = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->withHeaders(['Authorization' => 'Bearer ' . $login])
@@ -56,6 +58,25 @@ class McpAuditLogTest extends TestCase
         $this->assertFalse($row->is_error);
         $this->assertNull($row->error);
         $this->assertSame('key', $row->auth_mode);
+        $this->assertSame(5, $row->credits_charged); // create_offer = write default
+    }
+
+    public function test_calls_refused_for_insufficient_credits_are_logged_as_errors_with_no_charge(): void
+    {
+        $user = User::factory()->create();
+        $key = $this->mcpKey($user);
+        $user->withdraw($user->balanceInt); // drain the test funding
+
+        $this->rpc($key, 'tools/call', [
+            'name' => 'create_offer',
+            'arguments' => ['name' => 'Refused', 'offer_url' => 'https://example.com/x'],
+        ])->assertOk();
+
+        $row = McpToolInvocation::where('user_id', $user->id)->first();
+        $this->assertNotNull($row);
+        $this->assertTrue($row->is_error);
+        $this->assertStringContainsString('Not enough credits', $row->error);
+        $this->assertNull($row->credits_charged);
     }
 
     public function test_failed_tool_calls_are_logged_as_errors(): void
@@ -75,6 +96,7 @@ class McpAuditLogTest extends TestCase
         $this->assertSame('get_offer', $row->tool);
         $this->assertTrue($row->is_error);
         $this->assertNotEmpty($row->error, 'Expected the tool error text to be recorded.');
+        $this->assertNull($row->credits_charged, 'A failed call is free.');
     }
 
     public function test_non_tool_calls_are_not_logged(): void

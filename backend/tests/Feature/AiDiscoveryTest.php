@@ -43,6 +43,8 @@ class AiDiscoveryTest extends TestCase
             $this->assertNotSame('', $tool['name']);
             $this->assertNotSame('', $tool['description']);
             $this->assertContains($tool['access'], ['read', 'write']);
+            $this->assertIsInt($tool['credits']);
+            $this->assertGreaterThan(0, $tool['credits']);
         });
 
         $byName = $tools->keyBy('name');
@@ -51,6 +53,21 @@ class AiDiscoveryTest extends TestCase
         $this->assertSame('read', $byName['get_stats_timeseries']['access']);
         $this->assertSame('read', $byName['list_outliers']['access']);
         $this->assertSame('write', $byName['save_outlier']['access']);
+
+        // Per-call credit costs, so an agent can budget before acting.
+        $this->assertSame(1, $byName['list_posts']['credits']);
+        $this->assertSame(5, $byName['save_outlier']['credits']);
+        $this->assertSame(25, $byName['generate_outlier_breakdown']['credits']);
+        $this->assertStringEndsWith('Costs 25 credits per call.', $byName['generate_outlier_breakdown']['description']);
+    }
+
+    public function test_discovery_explains_credit_metering(): void
+    {
+        $response = $this->getJson('/api/ai')->assertOk();
+
+        $this->assertStringContainsString('credits', $response->json('credits.note'));
+        $this->assertSame(1, $response->json('credits.defaults.read'));
+        $this->assertSame(5, $response->json('credits.defaults.write'));
     }
 
     public function test_discovery_includes_docs_rest_and_rate_limits(): void

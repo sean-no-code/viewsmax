@@ -4,6 +4,7 @@ import {
   findCurrentPlan,
   decidePlanCta,
   formatLimit,
+  formatMonthlyCredits,
   sortPlansByPrice,
   PLAN_INCLUDES,
 } from "@/lib/plan-helpers";
@@ -22,7 +23,16 @@ const tier = (over: Partial<PlanTier>): PlanTier => ({
   max_posts_per_month: 400,
   stripe_price_id: "price_starter",
   is_active: true,
+  monthly_credits: 1000,
   ...over,
+});
+
+describe("formatMonthlyCredits", () => {
+  it("formats the tier's monthly credit allowance for a plan card", () => {
+    expect(formatMonthlyCredits(1000)).toBe("1,000 credits/mo");
+    expect(formatMonthlyCredits(2500)).toBe("2,500 credits/mo");
+    expect(formatMonthlyCredits(0)).toBe("0 credits/mo");
+  });
 });
 
 const starter = tier({ name: "starter", price: "29.00", stripe_price_id: "price_starter", max_offers: 1 });

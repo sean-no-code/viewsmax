@@ -92,6 +92,26 @@ class PlanLimitsTest extends TestCase
         $this->assertNull($plans['agency']['max_offers']); // unlimited
     }
 
+    public function test_plans_expose_their_monthly_credit_allowance(): void
+    {
+        // Per-tier credits come from config (env-overridable), not the plan row,
+        // but the API still presents them on each plan so pricing cards can
+        // show "N credits/mo".
+        config([
+            'credits.subscription_credits.plans.starter' => 1000,
+            'credits.subscription_credits.plans.pro' => 5000,
+            'credits.subscription_credits.plans.free' => 0,
+        ]);
+        $this->seed(\Database\Seeders\PlanSeeder::class);
+        $headers = $this->authHeaders(User::factory()->create());
+
+        $plans = collect($this->withHeaders($headers)->getJson('/api/plans')->assertOk()->json('data'))->keyBy('name');
+
+        $this->assertSame(1000, $plans['starter']['monthly_credits']);
+        $this->assertSame(5000, $plans['pro']['monthly_credits']);
+        $this->assertSame(0, $plans['free']['monthly_credits']);
+    }
+
     public function test_seeding_retires_legacy_plans_without_deleting_them(): void
     {
         // Simulate pre-existing legacy plans (as on staging/prod).
@@ -361,15 +381,22 @@ class PlanLimitsTest extends TestCase
         ]);
     }
 
-    public function test_paid_subscriptions_allocate_the_uniform_credit_amount(): void
+    public function test_monthly_credits_are_resolved_per_plan_tier(): void
     {
-        // Credits aren't per-tier yet — every paid plan gets the same amount,
-        // and the trial gets its own flat amount.
+        // Each tier's monthly allowance comes from config (env-overridable),
+        // keyed by the plan's name. Unknown tiers fall back to the default,
+        // and the trial always gets its own flat amount regardless of tier.
+        config([
+            'credits.subscription_credits.plans.pro' => 5000,
+            'credits.subscription_credits.default' => 1000,
+            'credits.subscription_credits.trial' => 250,
+        ]);
         $credits = app(\App\Services\CreditService::class);
-        $plan = $this->plan('pro', [], 'price_pro');
+        $pro = $this->plan('pro', [], 'price_pro');
 
-        $this->assertSame(1000, $credits->getSubscriptionCredits($plan));      // uniform paid
-        $this->assertSame(250, $credits->getSubscriptionCredits($plan, true)); // trial
+        $this->assertSame(5000, $credits->getSubscriptionCredits($pro));
+        $this->assertSame(1000, $credits->getSubscriptionCredits($this->plan('custom_legacy')));
+        $this->assertSame(250, $credits->getSubscriptionCredits($pro, true));
     }
 
     // --- New subscription honors the chosen tier --------------------------

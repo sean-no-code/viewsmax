@@ -72,6 +72,8 @@ export interface PlanTier {
   max_posts_per_month: number | null;
   stripe_price_id: string | null;
   is_active: boolean;
+  // Monthly credit allowance for the tier (every MCP tool call costs credits).
+  monthly_credits: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -184,6 +186,8 @@ export interface McpActivityItem {
   // The tool's error message when is_error; null otherwise.
   error: string | null;
   auth_mode: 'key' | 'oauth' | null;
+  // Credits the call cost; null when nothing was charged (failed or refused).
+  credits_charged: number | null;
   created_at: string;
 }
 

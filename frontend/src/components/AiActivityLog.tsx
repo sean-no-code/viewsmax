@@ -14,7 +14,8 @@ import { viewsMaxApi, McpActivityItem } from "@/lib/api-service";
 
 /**
  * Read-only view of the MCP audit log: every tool call a connected AI
- * assistant made on the account — tool, arguments, outcome, auth mode.
+ * assistant made on the account — tool, arguments, outcome, auth mode, and
+ * the credits it cost (so the user can see where their balance went).
  * Paginated (20/page) so the list stays usable as history grows.
  */
 const AiActivityLog = () => {
@@ -87,6 +88,11 @@ const AiActivityLog = () => {
                     )}
                     <code className="text-sm">{item.tool}</code>
                     {item.is_error && <Badge variant="destructive">failed</Badge>}
+                    {item.credits_charged != null && (
+                      <Badge variant="outline" title="Credits this call cost">
+                        −{item.credits_charged} {item.credits_charged === 1 ? "credit" : "credits"}
+                      </Badge>
+                    )}
                     <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
                       {item.auth_mode && <span className="uppercase">{item.auth_mode}</span>}
                       {new Date(item.created_at).toLocaleString()}

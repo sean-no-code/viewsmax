@@ -34,6 +34,7 @@ class McpActivityTest extends TestCase
             'arguments' => ['caption' => 'Newest'], 'is_error' => true, 'auth_mode' => 'oauth',
             'created_at' => now(),
         ]);
+        McpToolInvocation::where('tool', 'create_offer')->update(['credits_charged' => 5]);
 
         $response = $this->getJson('/api/user/mcp-activity', $this->authHeaders($user));
 
@@ -44,7 +45,9 @@ class McpActivityTest extends TestCase
         $this->assertTrue($items[0]['is_error']);
         $this->assertSame('oauth', $items[0]['auth_mode']);
         $this->assertSame(['caption' => 'Newest'], $items[0]['arguments']);
+        $this->assertNull($items[0]['credits_charged']); // failed call, nothing charged
         $this->assertSame('create_offer', $items[1]['tool']);
+        $this->assertSame(5, $items[1]['credits_charged']);
     }
 
     public function test_activity_is_scoped_to_the_authenticated_user(): void

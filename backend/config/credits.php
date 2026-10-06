@@ -39,15 +39,49 @@ return [
     | Subscription Credits
     |--------------------------------------------------------------------------
     |
-    | Credits aren't differentiated per tier yet (per client). Every paid plan
-    | gets the same `default` amount; the trial gets its own flat amount. When
-    | per-tier credits are needed, expand this map (or move onto the plan row).
+    | Monthly credit allowance per plan tier, keyed by plans.name. A tier that
+    | is missing from `plans` falls back to `default`; the trial always gets
+    | its own flat amount regardless of tier. Tune a tier by setting its env
+    | var — nothing lives on the plan row or in the seeder.
     |
     */
     'subscription_credits' => [
-        // Flat monthly credits for any paid plan (uniform across tiers).
+        // Fallback for a paid plan whose name has no entry below.
         'default' => env('CREDITS_SUBSCRIPTION', 1000),
         // Flat credits during the free trial.
         'trial' => env('CREDITS_TRIAL', 250),
+        'plans' => [
+            'free' => env('CREDITS_SUBSCRIPTION_FREE', 0),
+            'starter' => env('CREDITS_SUBSCRIPTION_STARTER', 1000),
+            'creator' => env('CREDITS_SUBSCRIPTION_CREATOR', 2500),
+            'pro' => env('CREDITS_SUBSCRIPTION_PRO', 5000),
+            'agency' => env('CREDITS_SUBSCRIPTION_AGENCY', 10000),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | MCP Tool Costs
+    |--------------------------------------------------------------------------
+    |
+    | Every successful MCP tool call deducts credits (App\Mcp\Methods\SafeCallTool).
+    | A tool named in `tools` costs that amount; any other tool costs the
+    | read or write default depending on whether it mutates account state
+    | (ViewsMaxTool::isWrite). Heavy tools (provider scrapes, LLM calls) are
+    | listed explicitly. A call is refused before running when the balance is
+    | below the cost; the balance never goes negative from MCP charges.
+    |
+    */
+    'mcp' => [
+        'read_default' => env('CREDITS_MCP_READ_DEFAULT', 1),
+        'write_default' => env('CREDITS_MCP_WRITE_DEFAULT', 5),
+        'tools' => [
+            'create_post' => env('CREDITS_MCP_CREATE_POST', 10),
+            'upload_media' => env('CREDITS_MCP_UPLOAD_MEDIA', 5),
+            'search_outliers' => env('CREDITS_MCP_SEARCH_OUTLIERS', 10),
+            'fetch_outlier' => env('CREDITS_MCP_FETCH_OUTLIER', 10),
+            'generate_outlier_breakdown' => env('CREDITS_MCP_GENERATE_OUTLIER_BREAKDOWN', 25),
+            'add_outlier_channel' => env('CREDITS_MCP_ADD_OUTLIER_CHANNEL', 25),
+        ],
     ],
 ];

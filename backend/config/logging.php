@@ -96,9 +96,27 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // MCP credit metering (App\Mcp\Methods\SafeCallTool): one line per
+        // tool call charged or refused for insufficient credits in
+        // storage/logs/credits.log. CREDITS_LOG_ENABLED=false silences it.
+        'credits' => [
+            'driver' => 'stack',
+            'channels' => env('CREDITS_LOG_ENABLED', true) ? ['credits_file'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+
         'impersonation_file' => [
             'driver' => 'daily',
             'path' => storage_path('logs/impersonation.log'),
+            'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
+        'credits_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/credits.log'),
             'level' => 'info',
             'days' => 90,
             'replace_placeholders' => true,

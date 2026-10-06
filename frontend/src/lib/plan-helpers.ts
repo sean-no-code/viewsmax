@@ -60,6 +60,14 @@ export const PLAN_INCLUDES: readonly string[] = [
   "Human support",
 ];
 
+/**
+ * Human label for a tier's monthly credit allowance. Every AI-agent (MCP)
+ * tool call spends credits, so this sits beside the limit lines on plan cards.
+ */
+export function formatMonthlyCredits(credits: number): string {
+  return `${credits.toLocaleString("en-US")} credits/mo`;
+}
+
 /** Human label for a numeric limit; null = unlimited. */
 export function formatLimit(value: number | null, noun: string): string {
   if (value === null) return `Unlimited ${noun}s`;

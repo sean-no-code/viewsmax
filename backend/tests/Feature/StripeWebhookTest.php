@@ -27,6 +27,9 @@ class StripeWebhookTest extends TestCase
     {
         parent::setUp();
         config(['services.stripe.signature_check' => false]); // skip sig verify in tests
+        // Pin the tier amount these tests assert against; the real per-tier
+        // defaults live in config/credits.php and are covered by PlanLimitsTest.
+        config(['credits.subscription_credits.plans.pro' => 1000]);
     }
 
     private function proPlan(): Plan
@@ -210,5 +213,52 @@ class StripeWebhookTest extends TestCase
         ])->assertOk();
 
         $this->assertSame(1000, $user->fresh()->balanceInt); // still 1000, not 1750
+    }
+
+    public function test_first_paid_invoice_attaches_the_plan_matching_the_stripe_price_and_allocates_its_tier_credits(): void
+    {
+        // A missed checkout.session.completed means invoice.paid is the first
+        // time we hear about this subscription. The attached plan must be the
+        // one whose stripe_price_id matches the subscription — not the default
+        // tier — so the user gets THEIR tier's monthly credits.
+        config(['credits.subscription_credits.plans.pro' => 5000]);
+
+        Plan::create([
+            'name' => 'starter', 'display_name' => 'Starter', 'price' => 29.00, 'currency' => 'USD',
+            'billing_cycle' => 'monthly', 'is_active' => true, 'stripe_price_id' => 'price_starter',
+        ]);
+        $pro = $this->proPlan();
+        $user = User::factory()->create();
+
+        $periodEnd = now()->addMonth()->timestamp;
+        $this->mock(StripeService::class, function ($mock) use ($user, $periodEnd) {
+            $mock->shouldReceive('getSubscription')->with('sub_first')->andReturn([
+                'status' => 'active',
+                'current_period_end' => $periodEnd,
+                'items' => ['data' => [[
+                    'price' => ['id' => 'price_pro'],
+                    'current_period_end' => $periodEnd,
+                ]]],
+                'metadata' => ['user_id' => (string) $user->id],
+            ]);
+        });
+
+        $this->postJson('/api/webhooks/stripe', [
+            'type' => 'invoice.paid',
+            'data' => ['object' => [
+                'id' => 'in_first',
+                'subscription' => 'sub_first',
+                'amount_paid' => 9900,
+                'billing_reason' => 'subscription_create',
+            ]],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('user_plans', [
+            'user_id' => $user->id,
+            'plan_id' => $pro->id,
+            'stripe_subscription_id' => 'sub_first',
+            'status' => 'active',
+        ]);
+        $this->assertSame(5000, $user->fresh()->balanceInt);
     }
 }

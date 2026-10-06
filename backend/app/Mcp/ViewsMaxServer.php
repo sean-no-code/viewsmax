@@ -50,8 +50,11 @@ class ViewsMaxServer extends Server
         TikTok/Instagram/YouTube posts need a video or image: host it with
         upload_media first and pass the returned media entry to create_post.
         {privacy_rules}
+        Every tool call consumes credits from the user's monthly allowance (each
+        tool's description states its cost); a call is refused before running
+        when the balance is too low, and failed calls are free.
         Plans and billing are managed in the ViewsMax web app ({app_url}); this
-        connector can't view or change them.
+        connector can't view or change them, and that includes the credit balance.
         Brands are named groups of connected accounts: list_brands shows them,
         and create_post accepts brand_id to post to a whole brand at once.
         Publishing is asynchronous; poll get_post to see per-platform results.

@@ -20,6 +20,7 @@ class McpToolInvocation extends Model
         'is_error',
         'error',
         'auth_mode',
+        'credits_charged',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class McpToolInvocation extends Model
         return [
             'arguments' => 'array',
             'is_error' => 'boolean',
+            'credits_charged' => 'integer',
         ];
     }
 

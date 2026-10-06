@@ -23,6 +23,7 @@ import {
 	findCurrentPlan,
 	decidePlanCta,
 	formatLimit,
+	formatMonthlyCredits,
 	sortPlansByPrice,
 	iconForPlan,
 	PLAN_INCLUDES,
@@ -241,6 +242,7 @@ const Plans = () => {
 				description: plan.description ?? "Monthly Subscription",
 			});
 			if (plan.features?.length) params.set("features", plan.features.join(","));
+			params.set("credits", String(plan.monthly_credits)); // separate param: the formatted label contains commas
 			if (plan.stripe_price_id) params.set("price_id", plan.stripe_price_id);
 			navigate(`/checkout?${params.toString()}`);
 			return;
@@ -393,6 +395,10 @@ const Plans = () => {
 											<li className="flex items-center gap-3">
 												<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
 												<span className="text-muted-foreground">{formatLimit(plan.max_posts_per_month, "post")}/mo</span>
+											</li>
+											<li className="flex items-center gap-3">
+												<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+												<span className="text-muted-foreground">{formatMonthlyCredits(plan.monthly_credits)}</span>
 											</li>
 											{PLAN_INCLUDES.map((f) => (
 												<li key={f} className="flex items-start gap-3">

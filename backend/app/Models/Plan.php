@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\CreditService;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -30,6 +32,19 @@ class Plan extends Model
         'max_offers' => 'integer',
         'max_posts_per_month' => 'integer',
     ];
+
+    /**
+     * monthly_credits is not a column: per-tier credits live in
+     * config/credits.php (env-overridable) and are resolved by CreditService.
+     * Appending it keeps every plan payload (/api/plans, current plan,
+     * subscribe) carrying the number the pricing cards show.
+     */
+    protected $appends = ['monthly_credits'];
+
+    protected function monthlyCredits(): Attribute
+    {
+        return Attribute::get(fn () => app(CreditService::class)->getSubscriptionCredits($this));
+    }
 
     /**
      * Whether this plan permits unlimited offers (null limit = unlimited).

@@ -29,6 +29,8 @@ class McpOAuthTest extends TestCase
 
     private function issueAccessToken(User $user, array $scopes = ['mcp'], array $approveExtra = []): string
     {
+        $this->fundCredits($user, 10_000); // MCP tool calls cost credits; keep test users funded
+
         return $this->issueTokens($user, $scopes, $approveExtra)['access_token'];
     }
 

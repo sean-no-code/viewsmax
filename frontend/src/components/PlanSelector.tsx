@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
-import { sortPlansByPrice, formatLimit } from "@/lib/plan-helpers";
+import { sortPlansByPrice, formatLimit, formatMonthlyCredits } from "@/lib/plan-helpers";
 import { toast } from "sonner";
 
 interface PlanSelectorProps {
@@ -11,14 +11,19 @@ interface PlanSelectorProps {
   onChange: (plan: PlanTier) => void;
 }
 
-/** The feature bullets to show on a card: prefer the seeded list, else derive from limits. */
+/**
+ * The feature bullets to show on a card: prefer the seeded list, else derive
+ * from limits; the tier's monthly credits always follow.
+ */
 function featuresFor(plan: PlanTier): string[] {
-  if (plan.features && plan.features.length) return plan.features;
-  return [
-    formatLimit(plan.max_channels, "channel"),
-    formatLimit(plan.max_offers, "offer"),
-    `${formatLimit(plan.max_posts_per_month, "post")}/mo`,
-  ];
+  const limits = plan.features && plan.features.length
+    ? plan.features
+    : [
+        formatLimit(plan.max_channels, "channel"),
+        formatLimit(plan.max_offers, "offer"),
+        `${formatLimit(plan.max_posts_per_month, "post")}/mo`,
+      ];
+  return [...limits, formatMonthlyCredits(plan.monthly_credits)];
 }
 
 /**
