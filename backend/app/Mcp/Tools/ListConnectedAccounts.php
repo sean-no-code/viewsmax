@@ -80,11 +80,25 @@ class ListConnectedAccounts extends ViewsMaxTool
 
         // Name what's supported, so a missing platform isn't read as "connect
         // it first" when it can't be connected at all.
-        return ToolResult::json([
-            'accounts' => $accounts->concat($legacy)->concat($beehiiv)->values()->all(),
+        $all = $accounts->concat($legacy)->concat($beehiiv)->values()->all();
+
+        $result = [
+            'accounts' => $all,
             'supported_platforms' => CreatePost::availablePlatforms(),
             'note' => "Only the supported platforms can be connected and posted to. Other platforms can't "
                 . 'be connected on ViewsMax yet.',
-        ]);
+        ];
+
+        // Nothing connected yet is the normal first state, not a failure: hand
+        // the agent the Connections page so it can send the user there.
+        if ($all === []) {
+            $result['connect_page_url'] = GetConnectUrl::connectionsPageUrl();
+            $result['next_step'] = 'No accounts are connected yet, so posting is not possible. Give the '
+                . 'user the connect_page_url: they open it in a browser, sign in, and click Connect next '
+                . 'to each platform they want. Approval happens on that page, not in this conversation; '
+                . 'afterwards list_connected_accounts will show the new accounts.';
+        }
+
+        return ToolResult::json($result);
     }
 }

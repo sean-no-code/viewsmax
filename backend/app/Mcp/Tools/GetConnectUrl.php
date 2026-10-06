@@ -34,6 +34,12 @@ class GetConnectUrl extends ViewsMaxTool
         return $schema->string('platform')->description('Platform to connect (e.g. youtube, instagram, linkedin, x).')->required();
     }
 
+    /** The SPA page where OAuth connections are completed; shared with list_connected_accounts. */
+    public static function connectionsPageUrl(): string
+    {
+        return rtrim((string) config('mcp.frontend_url'), '/') . '/dashboard/connections';
+    }
+
     public function handle(array $arguments): ToolResult
     {
         $validated = Validator::validate($arguments, ['platform' => 'required|string|max:40']);
@@ -58,11 +64,9 @@ class GetConnectUrl extends ViewsMaxTool
             return ToolResult::error(CreatePost::notSetUpError($platform, $available));
         }
 
-        $frontend = rtrim((string) config('mcp.frontend_url'), '/');
-
         return ToolResult::json([
             'platform' => $platform,
-            'connect_page_url' => $frontend . '/dashboard/connections',
+            'connect_page_url' => self::connectionsPageUrl(),
             'instructions' => 'Open this page in a browser, sign in if needed, and click '
                 . 'Connect next to ' . $platform . '. Approval happens in a popup there; '
                 . 'afterwards list_connected_accounts will show the new account.',

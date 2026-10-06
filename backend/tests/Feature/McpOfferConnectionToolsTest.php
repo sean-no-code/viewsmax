@@ -421,6 +421,33 @@ class McpOfferConnectionToolsTest extends TestCase
         $this->assertStringContainsString("Other platforms can't be connected", $data['note']);
     }
 
+    public function test_connected_accounts_point_to_the_connections_page_when_nothing_is_connected(): void
+    {
+        config(['mcp.frontend_url' => 'https://app.viewsmax.test/']);
+
+        $user = User::factory()->create();
+        $key = $this->mcpKey($user);
+
+        $data = $this->toolJson($this->callTool($key, 'list_connected_accounts'));
+        $this->assertSame([], $data['accounts']);
+        $this->assertSame('https://app.viewsmax.test/dashboard/connections', $data['connect_page_url']);
+        $this->assertStringContainsString('connect_page_url', $data['next_step']);
+        $this->assertStringContainsString('click Connect', $data['next_step']);
+
+        SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'x',
+            'platform_account_id' => 'x-1',
+            'name' => 'My X',
+            'status' => 'connected',
+        ]);
+
+        $data = $this->toolJson($this->callTool($key, 'list_connected_accounts'));
+        $this->assertCount(1, $data['accounts']);
+        $this->assertArrayNotHasKey('connect_page_url', $data);
+        $this->assertArrayNotHasKey('next_step', $data);
+    }
+
     public function test_feature_requests_are_not_for_plans_or_billing(): void
     {
         // Review test N2: "Upgrade my plan" must not trigger a tool call.

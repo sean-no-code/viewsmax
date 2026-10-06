@@ -411,6 +411,27 @@ class McpServerTest extends TestCase
         $this->assertStringNotContainsStringIgnoringCase('scrape', $instructions);
     }
 
+    public function test_server_instructions_start_with_outliers(): void
+    {
+        // A fresh user has nothing connected, so posting is a dead end on day
+        // one; outliers work immediately. The instructions must lead with them.
+        $key = $this->mcpKey(User::factory()->create());
+        $instructions = $this->rpc($key, 'initialize', [
+            'protocolVersion' => '2025-06-18',
+            'capabilities' => [],
+            'clientInfo' => ['name' => 'test', 'version' => '1.0'],
+        ])->assertOk()->json('result.instructions');
+
+        $this->assertStringContainsString('Start here', $instructions);
+        $this->assertStringContainsString('list_outliers with no arguments', $instructions);
+        $this->assertLessThan(
+            strpos($instructions, 'create_post'),
+            strpos($instructions, 'list_outliers'),
+            'outlier research should be introduced before posting'
+        );
+        $this->assertStringContainsString('generate_outlier_breakdown', $instructions);
+    }
+
     public function test_notifications_are_accepted_with_202_and_no_body(): void
     {
         // Streamable HTTP: for a notification "the server MUST return HTTP

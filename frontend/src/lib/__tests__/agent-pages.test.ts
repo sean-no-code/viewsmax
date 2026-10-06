@@ -152,6 +152,16 @@ describe("agentListingUrl", () => {
   });
 });
 
+describe("first prompts", () => {
+  it("lead every agent to outliers, which work before any channel is connected", () => {
+    expect(CHECK_PROMPT.toLowerCase()).toContain("outlier");
+    for (const agent of Object.values(AGENTS)) {
+      expect(agent.firstTask.toLowerCase()).toContain("outlier");
+      expect(agent.prompts[0].title).toBe("Borrow what's working");
+    }
+  });
+});
+
 describe("buildAgentMarkdown", () => {
   it("contains the setup commands and the check prompt", () => {
     const md = buildAgentMarkdown(AGENTS["claude-code"], {});

@@ -1,0 +1,57 @@
+{
+  "projectId": "cc91e48d-ac65-424e-8e00-20e5e5f299ca",
+  "shape": "package",
+  "pkg": "@viewsmax/ui",
+  "globalName": "ViewsMaxUI",
+  "entry": ".design-sync/ds-pkg/index.ts",
+  "buildCmd": "node .design-sync/ds-pkg/build.mjs",
+  "srcDir": "../../src/components/ui",
+  "tsconfig": "../../tsconfig.app.json",
+  "cssEntry": "dist/styles.css",
+  "docsDir": "docs",
+  "guidelinesGlob": [],
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "900x700"
+    },
+    "AlertDialog": {
+      "cardMode": "single",
+      "viewport": "900x700"
+    },
+    "Sheet": {
+      "cardMode": "single",
+      "viewport": "900x700"
+    },
+    "Drawer": {
+      "cardMode": "single",
+      "viewport": "900x700"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "viewport": "900x700"
+    },
+    "Popover": {
+      "cardMode": "single",
+      "viewport": "900x600"
+    },
+    "Tooltip": {
+      "cardMode": "single",
+      "viewport": "900x500"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "SidebarMenuSkeleton": {
+      "cardMode": "single",
+      "viewport": "900x600"
+    },
+    "Skeleton": {
+      "cardMode": "column"
+    },
+    "Pagination": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

@@ -33,6 +33,7 @@ use App\Mcp\Tools\SearchOutliers;
 use App\Mcp\Tools\UpdateOffer;
 use App\Mcp\Tools\UpdatePost;
 use App\Mcp\Tools\UploadMedia;
+use App\Mcp\Prompts\FindOutliers;
 use Laravel\Mcp\Server;
 
 class ViewsMaxServer extends Server
@@ -42,28 +43,41 @@ class ViewsMaxServer extends Server
     public string $serverVersion = '1.0.0';
 
     public string $instructions = <<<'TXT'
-        ViewsMax lets you compose social posts and publish them to the user's
-        connected accounts ({platforms}).
-        Typical flow: list_connected_accounts to see what is connected, then
-        create_post with the target platforms — as a draft, immediately
-        (status "posted"), or scheduled (status "scheduled" + scheduled_at).
+        ViewsMax gives the user two things: outlier research — videos that
+        massively over-performed their channel's average, with AI breakdowns of
+        why they worked — and publishing to their connected social accounts
+        ({platforms}).
+        Start here. Unless the user asked for something specific, begin with
+        outliers: it works the moment they connect, with nothing to set up.
+        Call list_outliers with no arguments for the featured feed and show the
+        top videos with their outlier scores. To go deeper, ask for the user's
+        niche and run search_outliers with it, then poll list_outliers with the
+        same query until its status is "done". Pick the strongest result, call
+        generate_outlier_breakdown, poll get_outlier_breakdown until it is
+        completed, and present the hook, the structure and why it
+        over-performed. Offer save_outlier to keep it in their library. For a
+        specific video URL use fetch_outlier; to study a creator,
+        add_outlier_channel with their profile URL or @handle pulls in their
+        recent videos (poll get_outlier_channel_ingest, then list_outliers with
+        channels: [id]).
+        Posting: list_connected_accounts shows what is connected — when nothing
+        is, it returns the Connections page link to give the user. create_post
+        targets connected platforms as a draft, immediately (status "posted"),
+        or scheduled (status "scheduled" + scheduled_at).
         TikTok/Instagram/YouTube posts need a video or image: host it with
         upload_media first and pass the returned media entry to create_post.
         {privacy_rules}
-        Plans and billing are managed in the ViewsMax web app ({app_url}); this
-        connector can't view or change them.
         Brands are named groups of connected accounts: list_brands shows them,
         and create_post accepts brand_id to post to a whole brand at once.
         Publishing is asynchronous; poll get_post to see per-platform results.
-        Outliers are videos that massively over-performed their channel's
-        average — use them for research and ideation: list_outliers to browse
-        (search_outliers to search YouTube for a new topic), fetch_outlier to pull in a
-        specific URL, generate_outlier_breakdown + get_outlier_breakdown for an
-        AI analysis of why a video worked, and save_outlier to bookmark it in
-        the user's library. To research a specific creator, add_outlier_channel
-        with their profile URL or @handle pulls in their recent videos (poll
-        get_outlier_channel_ingest, then list_outliers with channels: [id]).
+        Plans and billing are managed in the ViewsMax web app ({app_url}); this
+        connector can't view or change them.
         TXT;
+
+    // Slash-command style entry points for clients that list prompts.
+    public array $prompts = [
+        FindOutliers::class,
+    ];
 
     // Show every tool on the first tools/list page.
     public int $defaultPaginationLength = 50;

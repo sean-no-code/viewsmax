@@ -196,7 +196,7 @@ export default function AgentPage({ agent }: { agent: AgentKey }) {
 
             <Step n={3} title={TEST_STEP_TITLE} time={STEP_TIMES.test}>
               <p className="text-[15px] leading-[1.5] text-ink-on-paper-2">
-                Open a new conversation and paste this. The reply proves the connection works and gives you your channel names to reuse in later requests.
+                Open a new conversation and paste this. The reply proves the connection works and shows you real outliers before you've connected a single channel.
               </p>
               <PromptBox id="check" text={CHECK_PROMPT} copied={copied} copy={copy} />
               <p className="mt-3 text-[13px] leading-[1.45] text-ink-on-paper-3">{MULTI_ACCOUNT_TIP}</p>

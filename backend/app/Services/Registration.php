@@ -20,7 +20,11 @@ use Illuminate\Support\Facades\Mail;
  */
 class Registration
 {
-    public function __construct(protected CreditService $credits, protected KitService $kit) {}
+    public function __construct(
+        protected CreditService $credits,
+        protected KitService $kit,
+        protected GeoLocationService $geo,
+    ) {}
 
     /**
      * @param  array{name: string, email: string, password: string, marketing_consent?: bool}  $data  plain password
@@ -38,6 +42,8 @@ class Registration
             'signup_source' => $source,
             'signup_client' => $client,
         ]);
+
+        $this->recordSignupCountry($user);
 
         if ($customerRole = Role::where('name', 'customer')->first()) {
             $user->roles()->attach($customerRole->id);
@@ -61,6 +67,25 @@ class Registration
         $this->sendVerificationEmail($user);
 
         return $user;
+    }
+
+    /**
+     * Stamp the signup country into the last-login columns so a user who has
+     * never signed in to the SPA (e.g. an agent signup) still shows a country in
+     * admin. Best-effort: an unresolved lookup leaves the columns null.
+     */
+    private function recordSignupCountry(User $user): void
+    {
+        $request = request();
+        $cdnCountry = $request->header('CloudFront-Viewer-Country') ?? $request->header('CF-IPCountry');
+        [$country, $code] = $this->geo->lookup($request->ip(), $cdnCountry);
+
+        if ($code) {
+            $user->forceFill([
+                'last_login_country' => $country,
+                'last_login_country_code' => $code,
+            ])->save();
+        }
     }
 
     /**

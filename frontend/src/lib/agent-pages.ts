@@ -162,13 +162,19 @@ export const MULTI_ACCOUNT_TIP =
 /** What happens after the first task. Kept agent-neutral; `{name}` is filled in. */
 export const WHAT_HAPPENS = [
   "Before it uses a ViewsMax tool that changes something, {name} asks for your OK.",
-  "ViewsMax stores the post as a draft, or queues it for the time you gave.",
-  "At publish time ViewsMax sends it to each channel separately and keeps a result per platform, so one failure never blocks the rest.",
+  "Outlier research reads a shared database, so it works before you've connected a single channel; anything it saves lands in your ViewsMax library.",
+  "Posts are stored as drafts or queued for the time you gave. At publish time ViewsMax sends to each channel separately and keeps a result per platform, so one failure never blocks the rest.",
 ];
 
-export const CHECK_PROMPT = "Which of my social accounts can you reach through ViewsMax?";
+export const CHECK_PROMPT =
+  "Show me five outlier videos from the ViewsMax featured feed and say in one line why each one over-performed.";
 
 const SHARED_PROMPTS: { title: string; prompt: string }[] = [
+  {
+    title: "Borrow what's working",
+    prompt:
+      "Pull YouTube outliers in personal finance from this month and explain the hook behind the top three. Save the best one to my library.",
+  },
   {
     title: "Queue a post",
     prompt:
@@ -189,23 +195,19 @@ const SHARED_PROMPTS: { title: string; prompt: string }[] = [
     prompt: "Rank my offers by revenue for the past 30 days and tell me which traffic source is actually converting.",
   },
   {
-    title: "Borrow what's working",
-    prompt:
-      "Pull YouTube outliers in personal finance from this month and explain the hook behind the top three. Save the best one to my library.",
-  },
-  {
     title: "Tidy the queue",
     prompt: "What's going out this weekend? Push anything on X back by two hours.",
   },
 ];
 
 const REPO_PROMPTS: { title: string; prompt: string }[] = [
+  SHARED_PROMPTS[0],
   {
     title: "Explain a feature",
     prompt:
       "Look at the changes on this branch and write a short X thread explaining the new feature to non-developers. Save it as a ViewsMax draft.",
   },
-  ...SHARED_PROMPTS.slice(1),
+  ...SHARED_PROMPTS.slice(2),
 ];
 
 const SHARED_TROUBLESHOOTING: FaqItem[] = [
@@ -301,9 +303,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
     listing: CLAUDE_LISTING,
     install: claudeConnectorSteps("Claude"),
     firstTask:
-      "Write a LinkedIn post announcing our spring sale (20% off until Friday) and keep it as a ViewsMax draft so I can look it over.",
+      "Ask me my niche, then find this month's top YouTube outliers in it through ViewsMax, break down why the best one worked, and save it to my library.",
     firstReply:
-      "Saved a LinkedIn draft in ViewsMax: \"Spring sale is on — 20% off everything until Friday.\" It's not scheduled yet. Want me to set a time, or tweak the copy first?",
+      "Found 12 outliers in personal finance this month. The top one did 41× its channel's average: it opens with a contradiction (\"You don't need a budget\") and then a three-step list. Saved it to your ViewsMax library tagged \"hooks\". Want that hook rewritten for your channel?",
     prompts: SHARED_PROMPTS,
     troubleshooting: SHARED_TROUBLESHOOTING,
     faq: [
@@ -344,9 +346,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
         : s,
     ),
     firstTask:
-      "Draft five LinkedIn posts for next week, one per weekday at 8am, about our product launch. Keep them as drafts and send me the list.",
+      "Ask me my niche, then pull the ten strongest outliers in it from ViewsMax with a one-line note per video on the hook. Save the best three to my library tagged \"swipe\".",
     firstReply:
-      "Five LinkedIn drafts are in ViewsMax, Monday to Friday at 8:00: teaser, problem, demo, customer quote, launch-day post. Nothing is scheduled until you approve them.",
+      "Ten outliers in home fitness, ranked by score. Most hooks pair a bold claim with a time limit (\"20 minutes, no equipment\"). Saved the top three to your ViewsMax library tagged swipe. Want post drafts built on the best hook?",
     prompts: SHARED_PROMPTS,
     troubleshooting: SHARED_TROUBLESHOOTING,
     faq: [
@@ -396,9 +398,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
       code: { label: "Terminal", text: claudeCodeApiKey },
     },
     firstTask:
-      "Summarise what changed in the last three commits as a LinkedIn update and a shorter X version. Keep both as ViewsMax drafts.",
+      "Work out what this project does from the repo, then use ViewsMax to find outlier videos in that space and explain the hook behind the top three. Save the best one to my library.",
     firstReply:
-      "Read the last three commits and saved two ViewsMax drafts: a LinkedIn update (4 short paragraphs) and a 240-character X post. Neither is scheduled — say when and I'll queue them.",
+      "The repo is a budgeting CLI, so I searched ViewsMax for personal-finance outliers. The top three all open with a number (\"I tracked every dollar for 90 days\"). Saved the strongest, 38× its channel average, to your library. Want an X thread built on that hook?",
     prompts: REPO_PROMPTS,
     troubleshooting: [
       {
@@ -452,9 +454,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
       },
     ],
     firstTask:
-      "Write a LinkedIn post announcing our spring sale (20% off until Friday) and keep it as a ViewsMax draft so I can look it over.",
+      "Ask me my niche, then find this month's top YouTube outliers in it through ViewsMax, break down why the best one worked, and save it to my library.",
     firstReply:
-      "Saved a LinkedIn draft in ViewsMax: \"Spring sale is on — 20% off everything until Friday.\" It's not scheduled yet. Want me to set a time, or tweak the copy first?",
+      "Found 12 outliers in personal finance this month. The top one did 41× its channel's average: it opens with a contradiction (\"You don't need a budget\") and then a three-step list. Saved it to your ViewsMax library tagged \"hooks\". Want that hook rewritten for your channel?",
     prompts: SHARED_PROMPTS,
     troubleshooting: [
       {
@@ -513,9 +515,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
       },
     },
     firstTask:
-      "Summarise what changed in the last three commits as a LinkedIn update and a shorter X version. Keep both as ViewsMax drafts.",
+      "Work out what this project does from the repo, then use ViewsMax to find outlier videos in that space and explain the hook behind the top three. Save the best one to my library.",
     firstReply:
-      "Read the last three commits and saved two ViewsMax drafts: a LinkedIn update (4 short paragraphs) and a 240-character X post. Neither is scheduled — say when and I'll queue them.",
+      "The repo is a budgeting CLI, so I searched ViewsMax for personal-finance outliers. The top three all open with a number (\"I tracked every dollar for 90 days\"). Saved the strongest, 38× its channel average, to your library. Want an X thread built on that hook?",
     prompts: REPO_PROMPTS,
     troubleshooting: [
       {
@@ -560,9 +562,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
       },
     ],
     firstTask:
-      "Turn the README's feature list into a LinkedIn post and a shorter X version, and keep both as ViewsMax drafts.",
+      "Read the README, then use ViewsMax to find outlier videos in this product's niche and break down the top one's hook. Save it to my library.",
     firstReply:
-      "Pulled six features from README.md and saved two ViewsMax drafts: a LinkedIn post with a bullet list, and a one-line X version. Want them scheduled?",
+      "README says it's a screenshot tool for developers, so I pulled dev-tooling outliers from ViewsMax. The top one, 27× its channel average, shows the finished result before explaining anything. Saved to your library. Want a demo-video script in that shape?",
     prompts: SHARED_PROMPTS,
     troubleshooting: [
       {
@@ -621,9 +623,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
       },
     ],
     firstTask:
-      "Write a LinkedIn post announcing our spring sale (20% off until Friday) and keep it as a ViewsMax draft so I can look it over.",
+      "Ask me my niche, then find this month's top YouTube outliers in it through ViewsMax, break down why the best one worked, and save it to my library.",
     firstReply:
-      "Saved a LinkedIn draft in ViewsMax: \"Spring sale is on — 20% off everything until Friday.\" It's not scheduled yet. Want me to set a time, or tweak the copy first?",
+      "Found 12 outliers in personal finance this month. The top one did 41× its channel's average: it opens with a contradiction (\"You don't need a budget\") and then a three-step list. Saved it to your ViewsMax library tagged \"hooks\". Want that hook rewritten for your channel?",
     prompts: SHARED_PROMPTS,
     troubleshooting: [
       {
@@ -682,9 +684,9 @@ export const AGENTS: Record<AgentKey, AgentConfig> = {
       },
     },
     firstTask:
-      "Write a LinkedIn post announcing our spring sale (20% off until Friday) and keep it as a ViewsMax draft so I can look it over.",
+      "Ask me my niche, then find this month's top YouTube outliers in it through ViewsMax, break down why the best one worked, and save it to my library.",
     firstReply:
-      "Saved a LinkedIn draft in ViewsMax: \"Spring sale is on — 20% off everything until Friday.\" It's not scheduled yet. Want me to set a time, or tweak the copy first?",
+      "Found 12 outliers in personal finance this month. The top one did 41× its channel's average: it opens with a contradiction (\"You don't need a budget\") and then a three-step list. Saved it to your ViewsMax library tagged \"hooks\". Want that hook rewritten for your channel?",
     prompts: SHARED_PROMPTS,
     troubleshooting: [
       {

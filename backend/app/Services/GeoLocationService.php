@@ -37,7 +37,7 @@ class GeoLocationService
     {
         $cdnCountry = strtoupper(trim((string) $cdnCountry));
         if (preg_match('/^[A-Z]{2}$/', $cdnCountry)) {
-            return [null, $cdnCountry];
+            return [self::countryName($cdnCountry), $cdnCountry];
         }
 
         // Only public IPs are worth resolving — skip localhost / LAN / reserved
@@ -58,6 +58,21 @@ class GeoLocationService
 
             return [null, null];
         });
+    }
+
+    /**
+     * English display name for an ISO code via the intl extension, or null when
+     * intl is missing or the code is unknown — callers only need the code.
+     */
+    public static function countryName(string $code): ?string
+    {
+        if (! extension_loaded('intl')) {
+            return null;
+        }
+
+        $name = \Locale::getDisplayRegion('-'.$code, 'en');
+
+        return $name === '' || $name === $code ? null : $name;
     }
 
     /**

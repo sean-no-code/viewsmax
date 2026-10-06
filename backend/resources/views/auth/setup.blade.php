@@ -88,6 +88,13 @@
                 {{ $connectedCount > 0 ? 'Continue to ViewsMax' : 'Skip for now, open ViewsMax' }}
             @endif
         </a>
+        @if ($hasAgent)
+            <div class="first-ask">
+                <div class="first-ask-label">First thing to ask {{ $client ?? 'your AI agent' }}</div>
+                <p class="first-ask-prompt">“Show me this month's top outlier videos in my niche and break down why the best one worked.”</p>
+                <p class="muted">Outlier research works straight away, even before you connect a channel.</p>
+            </div>
+        @endif
         <p class="card-footer">You can add more channels later from ViewsMax{{ $client ? ' or by asking '.$client : '' }}.</p>
     </div>
 
@@ -98,6 +105,9 @@
         .setup-step.current b { background: var(--vm-red); color: #fff; }
         .setup-step.done b { background: #16A34A; color: #fff; }
         .platforms { display: flex; flex-direction: column; gap: 10px; }
+        .first-ask { margin-top: 20px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; }
+        .first-ask-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+        .first-ask-prompt { margin: 6px 0 4px; font-weight: 600; }
         .platform { border: 1px solid var(--border); border-radius: calc(var(--radius)); padding: 12px; }
         .platform-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .platform-id { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }

@@ -114,7 +114,8 @@ class WebRegisterTest extends TestCase
         $this->assertNotNull($user->fresh()->email_verified_at);
 
         // Setup page names the agent and still knows where to go next.
-        $this->get(route('register.setup'))->assertOk()->assertSee('Grant Claude access')->assertSee('Skip for now');
+        $this->get(route('register.setup'))->assertOk()->assertSee('Grant Claude access')->assertSee('Skip for now')
+            ->assertSee('First thing to ask Claude')->assertSee('top outlier videos');
         $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
     }
 
@@ -163,6 +164,8 @@ class WebRegisterTest extends TestCase
         $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
 
         $this->assertDatabaseHas('users', ['email' => 'jane@example.com', 'signup_source' => 'agent', 'signup_client' => null]);
+        // No agent to go back to, so no "first thing to ask" suggestion.
+        $this->get(route('register.setup'))->assertOk()->assertDontSee('First thing to ask');
         $this->get(route('register.continue'))->assertRedirect(rtrim(config('app.frontend_url'), '/').'/auth');
     }
 

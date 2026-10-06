@@ -224,6 +224,13 @@ const ConnectAI = () => {
               <code key={t} className="bg-muted px-2 py-1 rounded text-xs">{t}</code>
             ))}
           </div>
+          <p className="text-muted-foreground leading-relaxed mb-3">
+            Typical research flow (works with nothing connected): <code className="bg-muted px-1 rounded text-xs">list_outliers</code> for the featured feed, or{" "}
+            <code className="bg-muted px-1 rounded text-xs">search_outliers</code> for a niche → pick the strongest →{" "}
+            <code className="bg-muted px-1 rounded text-xs">generate_outlier_breakdown</code> → poll{" "}
+            <code className="bg-muted px-1 rounded text-xs">get_outlier_breakdown</code> →{" "}
+            <code className="bg-muted px-1 rounded text-xs">save_outlier</code>.
+          </p>
           <p className="text-muted-foreground leading-relaxed">
             Typical posting flow: <code className="bg-muted px-1 rounded text-xs">list_connected_accounts</code> →{" "}
             <code className="bg-muted px-1 rounded text-xs">upload_media</code> →{" "}
