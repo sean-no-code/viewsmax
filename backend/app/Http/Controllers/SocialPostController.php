@@ -88,6 +88,12 @@ class SocialPostController extends Controller
             ], 422);
         }
 
+        foreach ($accounts->pluck('platform')->unique() as $platform) {
+            if ($titleError = \App\Services\Social\CaptionRules::titleError($platform, (string) ($validated['content'] ?? ''))) {
+                return response()->json(['success' => false, 'message' => $titleError], 422);
+            }
+        }
+
         $isScheduled = ! empty($validated['scheduled_at']);
 
         $post = DB::transaction(function () use ($user, $validated, $accounts, $isScheduled) {

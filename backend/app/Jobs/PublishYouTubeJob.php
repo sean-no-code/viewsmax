@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
+use App\Services\Social\CaptionRules;
 use App\Services\YouTubePublishService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -75,7 +76,14 @@ class PublishYouTubeJob implements ShouldQueue
             ? $options['privacy_status']
             : 'public';
 
-        $title = trim($caption) !== '' ? mb_substr(trim($caption), 0, 95) : 'New video';
+        // Posts saved before the publish-time title check could still be empty.
+        if ($titleError = CaptionRules::titleError('youtube', $caption)) {
+            $this->markFailed($target, $titleError);
+
+            return;
+        }
+
+        $title = mb_substr(trim($caption), 0, 95);
         $snippet = [
             'title' => $title,
             'description' => $caption,

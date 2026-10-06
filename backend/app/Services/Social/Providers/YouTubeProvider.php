@@ -120,7 +120,10 @@ class YouTubeProvider extends GoogleOAuthProvider
         }
 
         $content = trim((string) $post->content);
-        $title = mb_substr($content !== '' ? $content : 'New video', 0, 95);
+        if ($titleError = \App\Services\Social\CaptionRules::titleError('youtube', $content)) {
+            return PublishResult::failure($titleError);
+        }
+        $title = mb_substr($content, 0, 95);
 
         $metadata = [
             'snippet' => [

@@ -196,4 +196,65 @@ class PostCaptionLimitsTest extends TestCase
         $this->assertNull($post->targets()->where('platform', 'linkedin')->first());
         $this->assertNotNull($post->targets()->where('platform', 'threads')->first());
     }
+
+    private const YT_VIDEO = [['type' => 'video', 'url' => 'https://cdn.example/clip.mp4', 'path' => 'posts/1/clip.mp4']];
+
+    public function test_posting_to_youtube_without_a_caption_is_rejected(): void
+    {
+        $response = $this->createPost([
+            'caption' => '   ',
+            'platforms' => ['youtube'],
+            'media' => self::YT_VIDEO,
+            'status' => 'posted',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('YouTube requires a title', $response->json('message'));
+    }
+
+    public function test_scheduling_youtube_when_only_another_platform_has_text_is_rejected(): void
+    {
+        $this->createPost([
+            'caption' => '',
+            'platforms' => ['youtube', 'x'],
+            'overrides' => ['x' => 'Only X has text'],
+            'media' => self::YT_VIDEO,
+            'status' => 'scheduled',
+            'scheduled_at' => now()->addHour()->toDateTimeString(),
+        ])->assertStatus(422)->assertJsonFragment(['message' => \App\Services\Social\CaptionRules::YOUTUBE_TITLE_REQUIRED]);
+    }
+
+    public function test_youtube_override_counts_as_the_title(): void
+    {
+        $this->createPost([
+            'caption' => '',
+            'platforms' => ['youtube'],
+            'overrides' => ['youtube' => 'My video title'],
+            'media' => self::YT_VIDEO,
+            'status' => 'posted',
+        ])->assertStatus(201);
+    }
+
+    public function test_youtube_draft_without_a_caption_is_allowed(): void
+    {
+        $this->createPost([
+            'platforms' => ['youtube'],
+            'media' => self::YT_VIDEO,
+            'status' => 'draft',
+        ])->assertStatus(201);
+    }
+
+    public function test_publishing_an_untitled_youtube_draft_is_rejected(): void
+    {
+        $id = $this->createPost([
+            'platforms' => ['youtube'],
+            'media' => self::YT_VIDEO,
+            'status' => 'draft',
+        ])->json('id');
+
+        $this->withHeaders($this->auth())
+            ->putJson("/api/posts/{$id}", ['status' => 'posted', 'media' => self::YT_VIDEO])
+            ->assertStatus(422)
+            ->assertJsonFragment(['message' => \App\Services\Social\CaptionRules::YOUTUBE_TITLE_REQUIRED]);
+    }
 }
