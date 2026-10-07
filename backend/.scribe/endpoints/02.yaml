@@ -104,7 +104,7 @@ endpoints:
       -
         custom: []
         status: 200
-        content: '{"status":"healthy","timestamp":"2026-09-08T09:14:28.245965Z","service":"Title Embedding API","version":"1.0.0"}'
+        content: '{"status":"healthy","timestamp":"2026-10-07T09:30:24.650400Z","service":"ViewsMax API","version":"1.0.0","scheduler":{"last_run_at":"2026-10-07T09:30:03+00:00","running":true}}'
         headers:
           cache-control: 'no-cache, private'
           content-type: application/json

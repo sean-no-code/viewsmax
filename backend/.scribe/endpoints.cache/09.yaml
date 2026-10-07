@@ -180,7 +180,7 @@ endpoints:
         name: scheduled_at
         description: 'Must be a valid date. Must be a date after <code>now</code>.'
         required: false
-        example: '2052-10-01'
+        example: '2052-10-30'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -237,7 +237,7 @@ endpoints:
       link: 'n'
       account_ids:
         - 16
-      scheduled_at: '2052-10-01'
+      scheduled_at: '2052-10-30'
       media:
         -
           url: 'http://bailey.com/'

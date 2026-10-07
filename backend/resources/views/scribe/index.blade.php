@@ -465,6 +465,12 @@ lose their brand link.</a>
                                                                                 <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers-channels">
                                 <a href="#outliers-GETapi-outliers-channels">List outlier channels</a>
                             </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-POSTapi-outliers-channels-add">
+                                <a href="#outliers-POSTapi-outliers-channels-add">Add a channel</a>
+                            </li>
+                                                                                <li class="tocify-item level-2" data-unique="outliers-GETapi-outliers-channels-ingests--id-">
+                                <a href="#outliers-GETapi-outliers-channels-ingests--id-">Channel ingest status</a>
+                            </li>
                                                                                 <li class="tocify-item level-2" data-unique="outliers-POSTapi-outliers-search">
                                 <a href="#outliers-POSTapi-outliers-search">Start an outlier search</a>
                             </li>
@@ -522,7 +528,7 @@ lose their brand link.</a>
     </ul>
 
     <ul class="toc-footer" id="last-updated">
-        <li>Last updated: September 8, 2026</li>
+        <li>Last updated: October 7, 2026</li>
     </ul>
 </div>
 
@@ -594,13 +600,13 @@ fetch(url, {
             <pre><code class="language-http">cache-control: max-age=3600, public
 content-type: application/json
 x-ratelimit-limit: 30
-x-ratelimit-remaining: 28
+x-ratelimit-remaining: 29
 vary: Origin
  </code></pre></details>         <pre>
 
 <code class="language-json" style="max-height: 300px;">{
     &quot;name&quot;: &quot;ViewsMax&quot;,
-    &quot;summary&quot;: &quot;Social posting + link tracking/analytics SaaS. AI agents act on a user&#039;s behalf: compose and schedule posts to YouTube, TikTok, X, LinkedIn, Threads, Instagram, and Bluesky; create offers and tracked links; read click, conversion, and revenue stats; research outlier videos (content that massively over-performed its channel) and get AI breakdowns of why they worked. User data is private &mdash; all access is authenticated.&quot;,
+    &quot;summary&quot;: &quot;Outlier research + social posting + link tracking/analytics SaaS. AI agents act on a user&#039;s behalf: research outlier videos (content that massively over-performed its channel) and get AI breakdowns of why they worked &mdash; this works with nothing connected; compose and schedule posts to YouTube, TikTok, X, LinkedIn, Threads, Instagram, and Bluesky; create offers and tracked links; read click, conversion, and revenue stats. User data is private &mdash; all access is authenticated.&quot;,
     &quot;site&quot;: &quot;https://viewsmax.com&quot;,
     &quot;docs&quot;: {
         &quot;agents&quot;: &quot;https://viewsmax.com/ai.md&quot;,
@@ -639,7 +645,7 @@ vary: Origin
         &quot;tools&quot;: [
             {
                 &quot;name&quot;: &quot;list_connected_accounts&quot;,
-                &quot;description&quot;: &quot;List every social account the user has connected (YouTube, TikTok, X, LinkedIn, Threads, Instagram, Beehiiv) &mdash; a platform can appear more than once when several accounts are connected on it. Each entry carries social_account_id or connection_id (matching list_brands) plus its store. Posts can only publish to connected platforms; use get_connect_url for anything missing. Beehiiv is connected via an API key on the Connections page, not get_connect_url, and is used for newsletter reach, not posting.&quot;,
+                &quot;description&quot;: &quot;List every social account the user has connected, plus a Beehiiv newsletter connection if there is one &mdash; a platform can appear more than once when several accounts are connected on it. Each entry carries social_account_id or connection_id (matching list_brands) plus its store; a connection_id-only (legacy) entry is shown only for platforms with no social_account_id entry. username is the platform&#039;s public handle where it has one, never an email. Posts can only publish to connected platforms; use get_connect_url for anything missing. Beehiiv is connected via an API key on the Connections page, not get_connect_url, and is used for newsletter reach, not posting.&quot;,
                 &quot;access&quot;: &quot;read&quot;
             },
             {
@@ -649,17 +655,17 @@ vary: Origin
             },
             {
                 &quot;name&quot;: &quot;upload_media&quot;,
-                &quot;description&quot;: &quot;Download a file from a URL and host it on ViewsMax storage for use in posts. Returns a media entry ({type, url, path}) to pass to create_post. Supports jpeg/png/webp/gif images and mp4/mov video.&quot;,
+                &quot;description&quot;: &quot;Download a file from a URL and host it on ViewsMax storage for use in posts. Returns a media entry ({type, url, path}) to pass to create_post. Supports jpeg/png/webp/gif images and mp4/mov video. Each call stores a new copy of the file, so don&#039;t repeat a call that already succeeded.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
                 &quot;name&quot;: &quot;create_post&quot;,
-                &quot;description&quot;: &quot;Compose a social post for one or more platforms (tiktok, youtube, x, linkedin, threads, instagram, facebook, bluesky). Target either platforms[] or brand_id (from list_brands, posts to every connected account in the brand) &mdash; not both. status \&quot;draft\&quot; (default) saves without publishing, \&quot;posted\&quot; publishes immediately, \&quot;scheduled\&quot; publishes at scheduled_at. TikTok takes a video (with a url) or a photo slideshow (one or more image urls); YouTube requires a video with a path &mdash; both come from upload_media. Instagram needs an image or video url. TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, default false) to let TikTok auto-add its recommended background music; there is no music option for video posts or for Instagram. Publishing/scheduling to TikTok requires options.tiktok.privacy_level (one of PUBLIC_TO_EVERYONE, MUTUAL_FOLLOW_FRIENDS, FOLLOWER_OF_CREATOR, SELF_ONLY) &mdash; there is no default; branded_content cannot be SELF_ONLY. Caption character limits: tiktok: 2200, youtube: 5000, x: 280, linkedin: 3000, threads: 500, instagram: 2200, facebook: 5000, bluesky: 300. Publishing is asynchronous: check per-platform results with get_post.&quot;,
+                &quot;description&quot;: &quot;Compose a social post for one or more platforms (tiktok, youtube, x, linkedin, threads, instagram, bluesky). Target either platforms[] or brand_id (from list_brands, posts to every connected account in the brand) &mdash; not both. status \&quot;draft\&quot; (default) saves without publishing, \&quot;posted\&quot; publishes immediately, \&quot;scheduled\&quot; publishes at scheduled_at. TikTok takes a video (with a url) or a photo slideshow (one or more image urls); YouTube requires a video with a path &mdash; both come from upload_media. YouTube also requires a title: the caption (or overrides.youtube) is the video title, so it must not be empty when publishing or scheduling. Instagram needs an image or video url. TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, default false) to let TikTok auto-add its recommended background music; there is no music option for video posts or for Instagram. Publishing/scheduling to TikTok requires options.tiktok.privacy_level (one of PUBLIC_TO_EVERYONE, MUTUAL_FOLLOW_FRIENDS, FOLLOWER_OF_CREATOR, SELF_ONLY) &mdash; there is no default; branded_content cannot be SELF_ONLY. Ask the user which TikTok privacy_level to use and wait for their answer; never choose it for them. Ask the user which YouTube privacy_status to use (public, unlisted, or private) and wait for their answer; without it the video is public. Caption character limits: tiktok: 2200, youtube: 5000, x: 280, linkedin: 3000, threads: 500, instagram: 2200, bluesky: 300. Publishing is asynchronous: check per-platform results with get_post. Each call creates a new post, so don&#039;t repeat a call that already succeeded.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
                 &quot;name&quot;: &quot;list_posts&quot;,
-                &quot;description&quot;: &quot;List the user&#039;s posts, newest first, with per-platform publish status. Filter by status (draft, scheduled, posted) and/or a scheduled_at date window (from/to, ISO-8601). Returns at most `limit` posts (default 25).&quot;,
+                &quot;description&quot;: &quot;List the user&#039;s posts, newest first, with per-platform publish status. Filter by status (draft, scheduled, posted) and/or a scheduled_at date window (from/to, ISO-8601). Returns one page at a time (25 by default); when has_more is true, ask for the next page.&quot;,
                 &quot;access&quot;: &quot;read&quot;
             },
             {
@@ -669,7 +675,7 @@ vary: Origin
             },
             {
                 &quot;name&quot;: &quot;update_post&quot;,
-                &quot;description&quot;: &quot;Edit a draft or scheduled post: caption, media, platforms, schedule, or status. Setting status to \&quot;posted\&quot; publishes immediately. Posts that have already been published cannot be edited. Caption character limits: tiktok: 2200, youtube: 5000, x: 280, linkedin: 3000, threads: 500, instagram: 2200, facebook: 5000, bluesky: 300.&quot;,
+                &quot;description&quot;: &quot;Edit a draft or scheduled post: caption, media, platforms, schedule, or status. Setting status to \&quot;posted\&quot; publishes immediately. Posts that have already been published cannot be edited. Ask the user which TikTok privacy_level to use and wait for their answer; never choose it for them. Ask the user which YouTube privacy_status to use (public, unlisted, or private) and wait for their answer; without it the video is public. Caption character limits: tiktok: 2200, youtube: 5000, x: 280, linkedin: 3000, threads: 500, instagram: 2200, bluesky: 300.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
@@ -679,12 +685,12 @@ vary: Origin
             },
             {
                 &quot;name&quot;: &quot;list_offers&quot;,
-                &quot;description&quot;: &quot;List the user&#039;s offers (tracked promotions) with their tracking links, goals, and per-offer click/conversion stats. Optional from/to date filter.&quot;,
+                &quot;description&quot;: &quot;List the user&#039;s offers (tracked promotions) with their tracking links, goals, and per-offer click/conversion stats. Optional from/to date filter. Returns one page at a time (25 by default); when has_more is true, ask for the next page.&quot;,
                 &quot;access&quot;: &quot;read&quot;
             },
             {
                 &quot;name&quot;: &quot;create_offer&quot;,
-                &quot;description&quot;: &quot;Create an offer (a promotion to track). Requires offer_url; optional name and goals (conversion events with a conversion_url and value). Subject to the user&#039;s plan offer limit.&quot;,
+                &quot;description&quot;: &quot;Create an offer (a promotion to track). Requires offer_url; optional name and goals (conversion events with a conversion_url and value). Subject to the user&#039;s plan offer limit. Each call creates a new offer, so don&#039;t repeat a call that already succeeded.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
@@ -704,7 +710,7 @@ vary: Origin
             },
             {
                 &quot;name&quot;: &quot;create_tracking_link&quot;,
-                &quot;description&quot;: &quot;Create a tracking link for an offer, to place in a video description, email, social bio, etc. Placement is one of: video, email, x, linkedin, podcast, blog, website, tiktok, ad, instagram, beehiiv, other &mdash; attaching a youtube_video_id or beehiiv_post_id auto-sets the matching placement.&quot;,
+                &quot;description&quot;: &quot;Create a tracking link for an offer, to place in a video description, email, social bio, etc. Placement is one of: video, email, x, linkedin, podcast, blog, website, tiktok, ad, instagram, beehiiv, other &mdash; attaching a youtube_video_id or beehiiv_post_id auto-sets the matching placement. Each call creates a new tracking link, so don&#039;t repeat a call that already succeeded.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
@@ -734,17 +740,17 @@ vary: Origin
             },
             {
                 &quot;name&quot;: &quot;search_outliers&quot;,
-                &quot;description&quot;: &quot;Start a background scrape for outlier videos matching a keyword/topic. Returns immediately with status \&quot;queued\&quot;; results land in the shared outlier database over the next minute or two &mdash; poll list_outliers with the same `query` until its status is \&quot;done\&quot;. Use exact_match to require the whole phrase.&quot;,
+                &quot;description&quot;: &quot;Start a background YouTube search (YouTube Data API) for outlier videos matching a keyword/topic. Returns immediately with status \&quot;queued\&quot;; results land in the shared outlier database over the next minute or two &mdash; poll list_outliers with the same `query` until its status is \&quot;done\&quot;. Use exact_match to require the whole phrase. This search covers YouTube only: for TikTok and Instagram, add a single video by its link with fetch_outlier, or add a creator&#039;s channel with add_outlier_channel to pull in their recent videos.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
                 &quot;name&quot;: &quot;get_outlier&quot;,
-                &quot;description&quot;: &quot;Fetch one outlier video by platform + video id (as returned by list_outliers or fetch_outlier), including its channel, views, outlier score and engagement.&quot;,
+                &quot;description&quot;: &quot;Fetch one outlier video by platform + video id (as returned by list_outliers or fetch_outlier), including its channel, views, outlier score and engagement. `status` is \&quot;ready\&quot; (the video fields follow) or \&quot;ingesting\&quot; (fetch_outlier queued the download and it has not landed yet &mdash; poll again in about 15 seconds; Instagram can take minutes). A video that was never fetched, or whose download failed, is an error.&quot;,
                 &quot;access&quot;: &quot;read&quot;
             },
             {
                 &quot;name&quot;: &quot;fetch_outlier&quot;,
-                &quot;description&quot;: &quot;Pull a specific video into the outlier database from its URL so it can be analysed (get_outlier, generate_outlier_breakdown, save_outlier). If the video is already known it is returned immediately; otherwise ingestion is queued (`queued: true`) &mdash; poll get_outlier with the returned platform + video_id.&quot;,
+                &quot;description&quot;: &quot;Pull a specific video into the outlier database from its URL so it can be analysed (get_outlier, generate_outlier_breakdown, save_outlier). If the video is already known it is returned immediately; otherwise ingestion is queued (`queued: true`) &mdash; poll get_outlier with the returned platform + video_id until its `status` is \&quot;ready\&quot;.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
@@ -759,7 +765,7 @@ vary: Origin
             },
             {
                 &quot;name&quot;: &quot;list_saved_outliers&quot;,
-                &quot;description&quot;: &quot;The user&#039;s saved-outliers library (videos they bookmarked with save_outlier), newest first, with tags and the video snapshot taken when saved. Filter by a title/channel query, tag names, platforms, or creator name.&quot;,
+                &quot;description&quot;: &quot;The user&#039;s saved-outliers library (videos they bookmarked with save_outlier), newest first, with tags and the video snapshot taken when saved. Filter by a title/channel query, tag names, platforms, or creator name. Returns one page at a time (25 by default); when has_more is true, ask for the next page.&quot;,
                 &quot;access&quot;: &quot;read&quot;
             },
             {
@@ -771,6 +777,16 @@ vary: Origin
                 &quot;name&quot;: &quot;remove_saved_outlier&quot;,
                 &quot;description&quot;: &quot;Remove a saved video from the user&#039;s outlier library by its saved id (from list_saved_outliers / save_outlier). The video itself stays in the outlier database.&quot;,
                 &quot;access&quot;: &quot;write&quot;
+            },
+            {
+                &quot;name&quot;: &quot;add_outlier_channel&quot;,
+                &quot;description&quot;: &quot;Add a creator&#039;s channel to the outlier database from a profile URL or @handle (YouTube, TikTok, Instagram) and pull in their 10 most recent videos, scored against that channel&#039;s own median. Also adds the channel to the user&#039;s competitor list. Not for video links &mdash; use fetch_outlier for those. Returns `status: done` with the channel when it was pulled in the last 24 hours; otherwise `queued: true` with an ingest_id &mdash; poll get_outlier_channel_ingest until `done`, then list_outliers with `channels: [channel.id]` (and `duration_type: shorts` for TikTok/Instagram) to see the videos. No AI breakdowns are generated.&quot;,
+                &quot;access&quot;: &quot;write&quot;
+            },
+            {
+                &quot;name&quot;: &quot;get_outlier_channel_ingest&quot;,
+                &quot;description&quot;: &quot;Poll a channel add started by add_outlier_channel. `status` is queued, processing, done (then `channel` is set and `videos_added` says how many videos landed &mdash; use channel.id in list_outliers `channels`), or failed (then `error` explains why). Pulls take ~10-60 seconds; poll every 5-10 seconds.&quot;,
+                &quot;access&quot;: &quot;read&quot;
             }
         ]
     },
@@ -785,7 +801,8 @@ vary: Origin
         &quot;upload_media_per_hour&quot;: 40,
         &quot;search_outliers_per_hour&quot;: 30,
         &quot;fetch_outlier_per_hour&quot;: 60,
-        &quot;generate_outlier_breakdown_per_hour&quot;: 30
+        &quot;generate_outlier_breakdown_per_hour&quot;: 30,
+        &quot;add_outlier_channel_per_hour&quot;: 10
     }
 }</code>
  </pre>
@@ -6012,7 +6029,7 @@ The <code>body</code> accepts long-form text. <code>media</code> accepts a singl
     --form "body=Once upon a time..."\
     --form "offer_id=12"\
     --form "status=published"\
-    --form "media=@/tmp/phpx3aYfL" </code></pre></div>
+    --form "media=@/tmp/phpdO7pvl" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -6218,7 +6235,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
                value=""
                data-component="body">
     <br>
-<p>A media file to attach (image/video/document, max 50 MB). Example: <code>/tmp/phpx3aYfL</code></p>
+<p>A media file to attach (image/video/document, max 50 MB). Example: <code>/tmp/phpdO7pvl</code></p>
         </div>
         </form>
 
@@ -6405,7 +6422,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "body=New body text..."\
     --form "offer_id=12"\
     --form "status=published"\
-    --form "media=@/tmp/phpinnV1s" </code></pre></div>
+    --form "media=@/tmp/phpLJcVDW" </code></pre></div>
 
 
 <div class="javascript-example">
@@ -6608,7 +6625,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
                value=""
                data-component="body">
     <br>
-<p>Replacement media file (max 50 MB). Example: <code>/tmp/phpinnV1s</code></p>
+<p>Replacement media file (max 50 MB). Example: <code>/tmp/phpLJcVDW</code></p>
         </div>
         </form>
 
@@ -8686,7 +8703,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     \"account_ids\": [
         16
     ],
-    \"scheduled_at\": \"2052-10-01\",
+    \"scheduled_at\": \"2052-10-30\",
     \"media\": [
         {
             \"url\": \"http:\\/\\/bailey.com\\/\",
@@ -8716,7 +8733,7 @@ let body = {
     "account_ids": [
         16
     ],
-    "scheduled_at": "2052-10-01",
+    "scheduled_at": "2052-10-30",
     "media": [
         {
             "url": "http:\/\/bailey.com\/",
@@ -8945,10 +8962,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="scheduled_at"                data-endpoint="POSTapi-social-posts"
-               value="2052-10-01"
+               value="2052-10-30"
                data-component="body">
     <br>
-<p>Must be a valid date. Must be a date after <code>now</code>. Example: <code>2052-10-01</code></p>
+<p>Must be a valid date. Must be a date after <code>now</code>. Example: <code>2052-10-30</code></p>
         </div>
         </form>
 
@@ -9432,7 +9449,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"access\": \"full\"
+    \"access\": \"read\"
 }"
 </code></pre></div>
 
@@ -9449,7 +9466,7 @@ const headers = {
 };
 
 let body = {
-    "access": "full"
+    "access": "read"
 };
 
 fetch(url, {
@@ -9572,10 +9589,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="access"                data-endpoint="POSTapi-user-api-key-rotate"
-               value="full"
+               value="read"
                data-component="body">
     <br>
-<p>Example: <code>full</code></p>
+<p>Example: <code>read</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>read</code></li> <li><code>full</code></li></ul>
         </div>
@@ -13584,9 +13601,13 @@ vary: Origin
 
 <code class="language-json" style="max-height: 300px;">{
     &quot;status&quot;: &quot;healthy&quot;,
-    &quot;timestamp&quot;: &quot;2026-09-08T09:14:28.245965Z&quot;,
-    &quot;service&quot;: &quot;Title Embedding API&quot;,
-    &quot;version&quot;: &quot;1.0.0&quot;
+    &quot;timestamp&quot;: &quot;2026-10-07T09:30:24.650400Z&quot;,
+    &quot;service&quot;: &quot;ViewsMax API&quot;,
+    &quot;version&quot;: &quot;1.0.0&quot;,
+    &quot;scheduler&quot;: {
+        &quot;last_run_at&quot;: &quot;2026-10-07T09:30:03+00:00&quot;,
+        &quot;running&quot;: true
+    }
 }</code>
  </pre>
     </span>
@@ -15642,12 +15663,12 @@ start one with the search endpoint.</p>
     \"max_views\": 12,
     \"min_subs\": 77,
     \"max_subs\": 8,
-    \"published_before\": \"2026-09-08T09:14:28\",
-    \"published_after\": \"2026-09-08T09:14:28\",
-    \"sort_by\": \"views\",
+    \"published_before\": \"2026-10-07T09:30:24\",
+    \"published_after\": \"2026-10-07T09:30:24\",
+    \"sort_by\": \"date\",
     \"keyword_match\": \"architecto\",
     \"featured\": false,
-    \"platform\": \"tiktok\",
+    \"platform\": \"youtube\",
     \"channels\": [
         \"architecto\"
     ],
@@ -15678,12 +15699,12 @@ let body = {
     "max_views": 12,
     "min_subs": 77,
     "max_subs": 8,
-    "published_before": "2026-09-08T09:14:28",
-    "published_after": "2026-09-08T09:14:28",
-    "sort_by": "views",
+    "published_before": "2026-10-07T09:30:24",
+    "published_after": "2026-10-07T09:30:24",
+    "sort_by": "date",
     "keyword_match": "architecto",
     "featured": false,
-    "platform": "tiktok",
+    "platform": "youtube",
     "channels": [
         "architecto"
     ],
@@ -15884,10 +15905,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="published_before"                data-endpoint="GETapi-outliers"
-               value="2026-09-08T09:14:28"
+               value="2026-10-07T09:30:24"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-09-08T09:14:28</code></p>
+<p>Must be a valid date. Example: <code>2026-10-07T09:30:24</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>published_after</code></b>&nbsp;&nbsp;
@@ -15896,10 +15917,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="published_after"                data-endpoint="GETapi-outliers"
-               value="2026-09-08T09:14:28"
+               value="2026-10-07T09:30:24"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-09-08T09:14:28</code></p>
+<p>Must be a valid date. Example: <code>2026-10-07T09:30:24</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>sort_by</code></b>&nbsp;&nbsp;
@@ -15908,10 +15929,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="sort_by"                data-endpoint="GETapi-outliers"
-               value="views"
+               value="date"
                data-component="body">
     <br>
-<p>Example: <code>views</code></p>
+<p>Example: <code>date</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>score</code></li> <li><code>date</code></li> <li><code>views</code></li> <li><code>recent</code></li></ul>
         </div>
@@ -15968,10 +15989,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="platform"                data-endpoint="GETapi-outliers"
-               value="tiktok"
+               value="youtube"
                data-component="body">
     <br>
-<p>Example: <code>tiktok</code></p>
+<p>Example: <code>youtube</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>
@@ -16048,7 +16069,7 @@ Must be one of:
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"platform\": \"tiktok\",
+    \"platform\": \"instagram\",
     \"q\": \"architecto\",
     \"limit\": 22
 }"
@@ -16067,7 +16088,7 @@ const headers = {
 };
 
 let body = {
-    "platform": "tiktok",
+    "platform": "instagram",
     "q": "architecto",
     "limit": 22
 };
@@ -16190,10 +16211,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="platform"                data-endpoint="GETapi-outliers-channels"
-               value="tiktok"
+               value="instagram"
                data-component="body">
     <br>
-<p>Example: <code>tiktok</code></p>
+<p>Example: <code>instagram</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>
@@ -16222,6 +16243,358 @@ Must be one of:
 <p>Must be at least 1. Must not be greater than 100. Example: <code>22</code></p>
         </div>
         </form>
+
+                    <h2 id="outliers-POSTapi-outliers-channels-add">Add a channel</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Queue a pull of the creator's most recent videos. Returns HTTP 200 with
+<code>status: done</code> when the channel was already pulled in the last 24 hours,
+otherwise HTTP 202 with an <code>ingest_id</code> to poll.</p>
+
+<span id="example-requests-POSTapi-outliers-channels-add">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request POST \
+    "https://api.viewsmax.com/api/outliers/channels/add" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json" \
+    --data "{
+    \"platform\": \"tiktok\",
+    \"input\": \"https:\\/\\/www.tiktok.com\\/@khaby.lame\",
+    \"max_videos\": 10
+}"
+</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/channels/add"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+let body = {
+    "platform": "tiktok",
+    "input": "https:\/\/www.tiktok.com\/@khaby.lame",
+    "max_videos": 10
+};
+
+fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-POSTapi-outliers-channels-add">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+x-ratelimit-limit: 10
+x-ratelimit-remaining: 9
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-POSTapi-outliers-channels-add" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-POSTapi-outliers-channels-add"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-POSTapi-outliers-channels-add"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-POSTapi-outliers-channels-add" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-POSTapi-outliers-channels-add">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-POSTapi-outliers-channels-add" data-method="POST"
+      data-path="api/outliers/channels/add"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('POSTapi-outliers-channels-add', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-POSTapi-outliers-channels-add"
+                    onclick="tryItOut('POSTapi-outliers-channels-add');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-POSTapi-outliers-channels-add"
+                    onclick="cancelTryOut('POSTapi-outliers-channels-add');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-POSTapi-outliers-channels-add"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-black">POST</small>
+            <b><code>api/outliers/channels/add</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="POSTapi-outliers-channels-add"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="POSTapi-outliers-channels-add"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="POSTapi-outliers-channels-add"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <h4 class="fancy-heading-panel"><b>Body Parameters</b></h4>
+        <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>platform</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="platform"                data-endpoint="POSTapi-outliers-channels-add"
+               value="tiktok"
+               data-component="body">
+    <br>
+<p>Required for a bare @handle: youtube, tiktok or instagram. Example: <code>tiktok</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>input</code></b>&nbsp;&nbsp;
+<small>string</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="input"                data-endpoint="POSTapi-outliers-channels-add"
+               value="https://www.tiktok.com/@khaby.lame"
+               data-component="body">
+    <br>
+<p>Profile URL or @handle. Example: <code>https://www.tiktok.com/@khaby.lame</code></p>
+        </div>
+                <div style=" padding-left: 28px;  clear: unset;">
+            <b style="line-height: 2;"><code>max_videos</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+<i>optional</i> &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="max_videos"                data-endpoint="POSTapi-outliers-channels-add"
+               value="10"
+               data-component="body">
+    <br>
+<p>How many recent videos to pull (5-50, default 10). Example: <code>10</code></p>
+        </div>
+        </form>
+
+                    <h2 id="outliers-GETapi-outliers-channels-ingests--id-">Channel ingest status</h2>
+
+<p>
+<small class="badge badge-darkred">requires authentication</small>
+</p>
+
+<p>Poll an ingest started by the add endpoint until <code>status</code> is <code>done</code>
+(then <code>channel</code> is set) or <code>failed</code> (then <code>error</code> explains why).</p>
+
+<span id="example-requests-GETapi-outliers-channels-ingests--id-">
+<blockquote>Example request:</blockquote>
+
+
+<div class="bash-example">
+    <pre><code class="language-bash">curl --request GET \
+    --get "https://api.viewsmax.com/api/outliers/channels/ingests/12" \
+    --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
+    --header "Content-Type: application/json" \
+    --header "Accept: application/json"</code></pre></div>
+
+
+<div class="javascript-example">
+    <pre><code class="language-javascript">const url = new URL(
+    "https://api.viewsmax.com/api/outliers/channels/ingests/12"
+);
+
+const headers = {
+    "Authorization": "Bearer vmx_{YOUR_API_KEY}",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+};
+
+fetch(url, {
+    method: "GET",
+    headers,
+}).then(response =&gt; response.json());</code></pre></div>
+
+</span>
+
+<span id="example-responses-GETapi-outliers-channels-ingests--id-">
+            <blockquote>
+            <p>Example response (401):</p>
+        </blockquote>
+                <details class="annotation">
+            <summary style="cursor: pointer;">
+                <small onclick="textContent = parentElement.parentElement.open ? 'Show headers' : 'Hide headers'">Show headers</small>
+            </summary>
+            <pre><code class="language-http">cache-control: no-cache, private
+content-type: application/json
+vary: Origin
+ </code></pre></details>         <pre>
+
+<code class="language-json" style="max-height: 300px;">{
+    &quot;success&quot;: false,
+    &quot;message&quot;: &quot;Invalid token&quot;
+}</code>
+ </pre>
+    </span>
+<span id="execution-results-GETapi-outliers-channels-ingests--id-" hidden>
+    <blockquote>Received response<span
+                id="execution-response-status-GETapi-outliers-channels-ingests--id-"></span>:
+    </blockquote>
+    <pre class="json"><code id="execution-response-content-GETapi-outliers-channels-ingests--id-"
+      data-empty-response-text="<Empty response>" style="max-height: 400px;"></code></pre>
+</span>
+<span id="execution-error-GETapi-outliers-channels-ingests--id-" hidden>
+    <blockquote>Request failed with error:</blockquote>
+    <pre><code id="execution-error-message-GETapi-outliers-channels-ingests--id-">
+
+Tip: Check that you&#039;re properly connected to the network.
+If you&#039;re a maintainer of ths API, verify that your API is running and you&#039;ve enabled CORS.
+You can check the Dev Tools console for debugging information.</code></pre>
+</span>
+<form id="form-GETapi-outliers-channels-ingests--id-" data-method="GET"
+      data-path="api/outliers/channels/ingests/{id}"
+      data-authed="1"
+      data-hasfiles="0"
+      data-isarraybody="0"
+      autocomplete="off"
+      onsubmit="event.preventDefault(); executeTryOut('GETapi-outliers-channels-ingests--id-', this);">
+    <h3>
+        Request&nbsp;&nbsp;&nbsp;
+                    <button type="button"
+                    style="background-color: #8fbcd4; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-tryout-GETapi-outliers-channels-ingests--id-"
+                    onclick="tryItOut('GETapi-outliers-channels-ingests--id-');">Try it out ⚡
+            </button>
+            <button type="button"
+                    style="background-color: #c97a7e; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-canceltryout-GETapi-outliers-channels-ingests--id-"
+                    onclick="cancelTryOut('GETapi-outliers-channels-ingests--id-');" hidden>Cancel 🛑
+            </button>&nbsp;&nbsp;
+            <button type="submit"
+                    style="background-color: #6ac174; padding: 5px 10px; border-radius: 5px; border-width: thin;"
+                    id="btn-executetryout-GETapi-outliers-channels-ingests--id-"
+                    data-initial-text="Send Request 💥"
+                    data-loading-text="⏱ Sending..."
+                    hidden>Send Request 💥
+            </button>
+            </h3>
+            <p>
+            <small class="badge badge-green">GET</small>
+            <b><code>api/outliers/channels/ingests/{id}</code></b>
+        </p>
+                <h4 class="fancy-heading-panel"><b>Headers</b></h4>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Authorization</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Authorization" class="auth-value"               data-endpoint="GETapi-outliers-channels-ingests--id-"
+               value="Bearer vmx_{YOUR_API_KEY}"
+               data-component="header">
+    <br>
+<p>Example: <code>Bearer vmx_{YOUR_API_KEY}</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Content-Type</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Content-Type"                data-endpoint="GETapi-outliers-channels-ingests--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                                <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>Accept</code></b>&nbsp;&nbsp;
+&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="text" style="display: none"
+                              name="Accept"                data-endpoint="GETapi-outliers-channels-ingests--id-"
+               value="application/json"
+               data-component="header">
+    <br>
+<p>Example: <code>application/json</code></p>
+            </div>
+                        <h4 class="fancy-heading-panel"><b>URL Parameters</b></h4>
+                    <div style="padding-left: 28px; clear: unset;">
+                <b style="line-height: 2;"><code>id</code></b>&nbsp;&nbsp;
+<small>integer</small>&nbsp;
+ &nbsp;
+ &nbsp;
+                <input type="number" style="display: none"
+               step="any"               name="id"                data-endpoint="GETapi-outliers-channels-ingests--id-"
+               value="12"
+               data-component="url">
+    <br>
+<p>The ingest id. Example: <code>12</code></p>
+            </div>
+                    </form>
 
                     <h2 id="outliers-POSTapi-outliers-search">Start an outlier search</h2>
 
@@ -16435,7 +16808,7 @@ channel-listing endpoint there, so those are pulled one URL at a time).</p>
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"platform\": \"instagram\",
+    \"platform\": \"tiktok\",
     \"url\": \"http:\\/\\/www.bailey.biz\\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html\"
 }"
 </code></pre></div>
@@ -16453,7 +16826,7 @@ const headers = {
 };
 
 let body = {
-    "platform": "instagram",
+    "platform": "tiktok",
     "url": "http:\/\/www.bailey.biz\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html"
 };
 
@@ -16575,10 +16948,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="platform"                data-endpoint="POSTapi-outliers-fetch"
-               value="instagram"
+               value="tiktok"
                data-component="body">
     <br>
-<p>Example: <code>instagram</code></p>
+<p>Example: <code>tiktok</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>

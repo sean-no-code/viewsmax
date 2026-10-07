@@ -112,7 +112,7 @@ endpoints:
         name: published_before
         description: 'Must be a valid date.'
         required: false
-        example: '2026-09-08T09:14:28'
+        example: '2026-10-07T09:30:24'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -123,7 +123,7 @@ endpoints:
         name: published_after
         description: 'Must be a valid date.'
         required: false
-        example: '2026-09-08T09:14:28'
+        example: '2026-10-07T09:30:24'
         type: string
         enumValues: []
         exampleWasSpecified: false
@@ -134,7 +134,7 @@ endpoints:
         name: sort_by
         description: ''
         required: false
-        example: views
+        example: date
         type: string
         enumValues:
           - score
@@ -182,7 +182,7 @@ endpoints:
         name: platform
         description: ''
         required: false
-        example: tiktok
+        example: youtube
         type: string
         enumValues:
           - youtube
@@ -244,12 +244,12 @@ endpoints:
       max_views: 12
       min_subs: 77
       max_subs: 8
-      published_before: '2026-09-08T09:14:28'
-      published_after: '2026-09-08T09:14:28'
-      sort_by: views
+      published_before: '2026-10-07T09:30:24'
+      published_after: '2026-10-07T09:30:24'
+      sort_by: date
       keyword_match: architecto
       featured: false
-      platform: tiktok
+      platform: youtube
       channels:
         - architecto
       countries:
@@ -309,7 +309,7 @@ endpoints:
         name: platform
         description: ''
         required: false
-        example: tiktok
+        example: instagram
         type: string
         enumValues:
           - youtube
@@ -341,9 +341,162 @@ endpoints:
         nullable: true
         deprecated: false
     cleanBodyParameters:
-      platform: tiktok
+      platform: instagram
       q: architecto
       limit: 22
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - POST
+    uri: api/outliers/channels/add
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        Add a creator's channel to the outlier database by profile URL or @handle
+        (YouTube, TikTok, Instagram). The creator's recent videos are pulled in the
+        background and scored against each other; the channel is added to the
+        user's competitor list. No AI breakdowns are generated.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Add a channel'
+      description: |-
+        Queue a pull of the creator's most recent videos. Returns HTTP 200 with
+        `status: done` when the channel was already pulled in the last 24 hours,
+        otherwise HTTP 202 with an `ingest_id` to poll.
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters: []
+    cleanUrlParameters: []
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters:
+      platform:
+        custom: []
+        name: platform
+        description: 'Required for a bare @handle: youtube, tiktok or instagram.'
+        required: false
+        example: tiktok
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+      input:
+        custom: []
+        name: input
+        description: 'Profile URL or @handle.'
+        required: true
+        example: 'https://www.tiktok.com/@khaby.lame'
+        type: string
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+      max_videos:
+        custom: []
+        name: max_videos
+        description: 'How many recent videos to pull (5-50, default 10).'
+        required: false
+        example: 10
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: true
+        deprecated: false
+    cleanBodyParameters:
+      platform: tiktok
+      input: 'https://www.tiktok.com/@khaby.lame'
+      max_videos: 10
+    fileParameters: []
+    responses:
+      -
+        custom: []
+        status: 401
+        content: '{"success":false,"message":"Invalid token"}'
+        headers:
+          cache-control: 'no-cache, private'
+          content-type: application/json
+          x-ratelimit-limit: '10'
+          x-ratelimit-remaining: '9'
+          vary: Origin
+        description: null
+    responseFields: []
+    auth:
+      - headers
+      - Authorization
+      - 'Bearer 6g43cv8PD1aE5beadkZfhV6'
+    controller: null
+    method: null
+    route: null
+  -
+    custom: []
+    httpMethods:
+      - GET
+    uri: 'api/outliers/channels/ingests/{id}'
+    metadata:
+      custom: []
+      groupName: Outliers
+      groupDescription: |-
+
+        Add a creator's channel to the outlier database by profile URL or @handle
+        (YouTube, TikTok, Instagram). The creator's recent videos are pulled in the
+        background and scored against each other; the channel is added to the
+        user's competitor list. No AI breakdowns are generated.
+      subgroup: ''
+      subgroupDescription: ''
+      title: 'Channel ingest status'
+      description: |-
+        Poll an ingest started by the add endpoint until `status` is `done`
+        (then `channel` is set) or `failed` (then `error` explains why).
+      authenticated: true
+      deprecated: false
+    headers:
+      Authorization: 'Bearer vmx_{YOUR_API_KEY}'
+      Content-Type: application/json
+      Accept: application/json
+    urlParameters:
+      id:
+        custom: []
+        name: id
+        description: 'The ingest id.'
+        required: true
+        example: 12
+        type: integer
+        enumValues: []
+        exampleWasSpecified: true
+        nullable: false
+        deprecated: false
+    cleanUrlParameters:
+      id: 12
+    queryParameters: []
+    cleanQueryParameters: []
+    bodyParameters: []
+    cleanBodyParameters: []
     fileParameters: []
     responses:
       -
@@ -477,7 +630,7 @@ endpoints:
         name: platform
         description: ''
         required: true
-        example: instagram
+        example: tiktok
         type: string
         enumValues:
           - youtube
@@ -498,7 +651,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      platform: instagram
+      platform: tiktok
       url: 'http://www.bailey.biz/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html'
     fileParameters: []
     responses:

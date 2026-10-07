@@ -95,7 +95,7 @@ endpoints:
         name: access
         description: ''
         required: false
-        example: full
+        example: read
         type: string
         enumValues:
           - read
@@ -104,7 +104,7 @@ endpoints:
         nullable: false
         deprecated: false
     cleanBodyParameters:
-      access: full
+      access: read
     fileParameters: []
     responses:
       -
