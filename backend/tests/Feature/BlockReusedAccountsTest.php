@@ -150,6 +150,55 @@ class BlockReusedAccountsTest extends TestCase
         $this->assertFalse($channel->trashed());
     }
 
+    public function test_the_newer_connect_path_returns_the_message_as_is(): void
+    {
+        // TikTok/X/Instagram/... connect through POST /api/social/{platform}/exchange.
+        $provider = \Mockery::mock(\App\Services\Social\Contracts\SocialProviderInterface::class);
+        $provider->shouldReceive('connectFromCode')->andThrow(AccountAlreadyConnectedException::forOwner($this->owner, 'x'));
+        $this->mock(SocialProviderManager::class, function ($manager) use ($provider) {
+            $manager->shouldReceive('supports')->andReturn(true);
+            $manager->shouldReceive('isConfigured')->andReturn(true);
+            $manager->shouldReceive('for')->andReturn($provider);
+        });
+
+        $this->postJson('/api/social/x/exchange', ['code' => 'c'], $this->headers($this->newcomer))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'You already created an account with this X account on email se****@gmail.com. Log in with that email to use it.');
+    }
+
+    public function test_the_older_youtube_path_refuses_and_leaves_the_account_unchanged(): void
+    {
+        Channel::create(['user_id' => $this->owner->id, 'youtube_channel_id' => 'UC123', 'channel_name' => 'Mine'])->delete();
+        $this->newcomer->forceFill(['youtube_access_token' => 'their-own-token', 'youtube_refresh_token' => 'their-own-refresh'])->save();
+        config(['services.google.client_id' => 'cid', 'services.google.client_secret' => 'secret']);
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response(['access_token' => 'blocked-access', 'refresh_token' => 'blocked-refresh', 'expires_in' => 3600]),
+            'www.googleapis.com/youtube/v3/channels*' => Http::response(['items' => [['id' => 'UC123', 'snippet' => ['title' => 'Mine'], 'statistics' => []]]]),
+            '*googleapis.com*' => Http::response(['items' => [], 'rows' => []]),
+        ]);
+
+        $this->postJson('/api/auth/youtube/exchange', ['code' => 'c', 'redirect_uri' => 'https://app.test/cb'], $this->headers($this->newcomer))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'You already created an account with this channel on email se****@gmail.com. Log in with that email to use it.');
+
+        $this->newcomer->refresh();
+        $this->assertSame('their-own-token', $this->newcomer->youtube_access_token);
+        $this->assertSame('their-own-refresh', $this->newcomer->youtube_refresh_token);
+        $this->assertSame(0, Connection::withTrashed()->where('user_id', $this->newcomer->id)->count());
+        $this->assertSame(0, SocialAccount::withTrashed()->where('user_id', $this->newcomer->id)->count());
+    }
+
+    public function test_a_deleted_first_owner_still_blocks_the_channel(): void
+    {
+        $this->fakeTikTok();
+        $this->connectTikTok($this->owner)->assertOk();
+        $this->owner->delete(); // users are soft-deleted too
+
+        $this->connectTikTok($this->newcomer)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'You already created an account with this TikTok account on email se****@gmail.com. Log in with that email to use it.');
+    }
+
     public function test_the_masked_email_keeps_only_the_first_two_letters(): void
     {
         $this->assertSame('se****@gmail.com', AccountAlreadyConnectedException::maskEmail('sean@gmail.com'));

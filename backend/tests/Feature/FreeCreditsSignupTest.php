@@ -195,6 +195,27 @@ class FreeCreditsSignupTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
     }
 
+    public function test_leftover_free_credits_are_replaced_by_the_plan_credits_on_subscribe(): void
+    {
+        $user = $this->register();
+        $user->fresh()->forceWithdraw(60, ['description' => 'test: spent some']); // 40 left
+
+        app(\App\Services\CreditService::class)->allocateOrResetCredits($user->fresh(), 1000, 'sub_new_start', 'sub_new');
+
+        $this->assertSame(1000, $user->fresh()->balanceInt); // not 1040
+    }
+
+    public function test_free_credit_users_can_use_paid_only_routes_while_credits_remain(): void
+    {
+        $user = $this->register();
+
+        // POST /api/titles sits behind restrict.free (Free plan users get "Upgrade to pro").
+        $response = $this->withHeaders($this->authHeaders($user))->postJson('/api/titles', []);
+
+        $this->assertNotSame('Upgrade to pro to use this feature', $response->json('message'));
+        $this->assertNotSame(403, $response->status());
+    }
+
     public function test_an_older_account_without_free_credits_is_not_locked_at_zero(): void
     {
         // Accounts created before free credits existed: no window, no plan, no balance.

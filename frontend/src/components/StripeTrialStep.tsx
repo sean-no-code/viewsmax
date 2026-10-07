@@ -37,7 +37,7 @@ const fmtDate = (at: number) => new Date(at).toLocaleDateString([], { day: "nume
 // Payment-step copy for each case of checkoutTerms: the card-backed trial, a
 // card added during the free window ($0 until it closes), one added after it
 // (charged today), or one added by a user on free credits (charged today).
-function checkoutCopy(terms: CheckoutTerms) {
+export function checkoutCopy(terms: CheckoutTerms) {
   if (terms.kind === "free-credits") {
     return {
       cta: "Subscribe now",

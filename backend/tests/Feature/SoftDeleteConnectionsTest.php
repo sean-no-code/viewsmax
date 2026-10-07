@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\OAuthConnectionService;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use ReflectionMethod;
@@ -127,7 +128,7 @@ class SoftDeleteConnectionsTest extends TestCase
         ]);
         $brand = $user->brands()->create(['name' => 'Acme']);
         $brand->socialAccounts()->attach($account->id);
-        \DB::table('brand_accounts')->insert(['brand_id' => $brand->id, 'connection_id' => $connection->id, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('brand_accounts')->insert(['brand_id' => $brand->id, 'connection_id' => $connection->id, 'created_at' => now(), 'updated_at' => now()]);
         \App\Models\BoostSetting::create([
             'user_id' => $user->id, 'social_account_id' => $account->id, 'feature' => 'auto_repost', 'enabled' => true,
         ]);
@@ -140,6 +141,83 @@ class SoftDeleteConnectionsTest extends TestCase
         $this->assertDatabaseMissing('brand_accounts', ['connection_id' => $connection->id]);
         $this->assertDatabaseMissing('boost_settings', ['social_account_id' => $account->id]);
         $this->getJson('/api/boosts/settings', $headers)->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_disconnecting_wipes_the_metadata_that_can_hold_page_tokens(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->socialAccount($user, 'facebook', 'page-1');
+        $account->forceFill(['metadata' => ['page_access_token' => 'secret-page-token']])->save();
+
+        $this->deleteJson("/api/social/accounts/{$account->id}", [], $this->authHeaders($user))->assertOk();
+
+        $this->assertNull(SocialAccount::withTrashed()->find($account->id)->metadata);
+    }
+
+    public function test_a_disconnected_channels_videos_are_kept_but_not_listed(): void
+    {
+        $user = User::factory()->create();
+        $channel = Channel::create(['user_id' => $user->id, 'youtube_channel_id' => 'UC123', 'channel_name' => 'My Channel']);
+        $video = \App\Models\Video::forceCreate([
+            'channel_id' => $channel->id, 'youtube_video_id' => 'vid1',
+            'title' => 'My video', 'description' => 'd',
+        ]);
+        $headers = $this->authHeaders($user);
+        $this->getJson('/api/videos', $headers)->assertOk()->assertJsonCount(1, 'data');
+
+        $this->deleteJson("/api/channels/{$channel->id}", [], $headers)->assertOk();
+
+        $this->getJson('/api/videos', $headers)->assertOk()->assertJsonCount(0, 'data');
+        $this->assertNotNull(\App\Models\Video::find($video->id));
+    }
+
+    public function test_a_disconnected_account_is_left_out_of_the_ai_tools_and_audience_page(): void
+    {
+        $user = User::factory()->create();
+        $kept = $this->socialAccount($user, 'x', 'x-1');
+        $gone = $this->socialAccount($user, 'tiktok', 'tt-1');
+        $gone->delete();
+
+        $listed = json_decode($this->callTool($user, 'list_connected_accounts')->assertOk()->json('result.content.0.text'), true);
+        $this->assertSame(['x'], array_column($listed['accounts'], 'platform'));
+
+        $platforms = $this->getJson('/api/analytics/audience', $this->authHeaders($user))->assertOk()->json('data.platforms');
+        $this->assertCount(1, $platforms);
+        $this->assertStringContainsString((string) $kept->id, json_encode($platforms));
+    }
+
+    public function test_reconnecting_youtube_through_the_older_path_brings_all_three_rows_back(): void
+    {
+        config(['services.google.client_id' => 'cid', 'services.google.client_secret' => 'secret']);
+        Http::fake([
+            'oauth2.googleapis.com/token' => Http::response(['access_token' => 'new-access', 'refresh_token' => 'new-refresh', 'expires_in' => 3600]),
+            'www.googleapis.com/youtube/v3/channels*' => Http::response(['items' => [['id' => 'UC123', 'snippet' => ['title' => 'My Channel'], 'statistics' => []]]]),
+            '*googleapis.com*' => Http::response(['items' => [], 'rows' => []]),
+        ]);
+        $user = User::factory()->create();
+        $headers = $this->authHeaders($user);
+        $connect = fn () => $this->postJson('/api/auth/youtube/exchange', ['code' => 'c', 'redirect_uri' => 'https://app.test/cb'], $headers)->assertOk();
+
+        $connect();
+        $ids = [
+            Channel::where('user_id', $user->id)->value('id'),
+            Connection::where('user_id', $user->id)->value('id'),
+            SocialAccount::where('user_id', $user->id)->value('id'),
+        ];
+        Channel::where('user_id', $user->id)->get()->each->delete();
+        Connection::where('user_id', $user->id)->get()->each->delete();
+        SocialAccount::where('user_id', $user->id)->get()->each->delete();
+
+        $connect();
+
+        $this->assertSame($ids, [
+            Channel::where('user_id', $user->id)->value('id'),
+            Connection::where('user_id', $user->id)->value('id'),
+            SocialAccount::where('user_id', $user->id)->value('id'),
+        ]);
+        $this->assertSame(1, Channel::withTrashed()->where('user_id', $user->id)->count());
+        $this->assertSame(1, Connection::withTrashed()->where('user_id', $user->id)->count());
+        $this->assertSame(1, SocialAccount::withTrashed()->where('user_id', $user->id)->count());
     }
 
     public function test_the_ai_disconnect_tool_keeps_a_hidden_copy_without_tokens(): void
