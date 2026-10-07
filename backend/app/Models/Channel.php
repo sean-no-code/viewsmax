@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SoftDeletesConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Channel extends Model
 {
+    use SoftDeletesConnection;
+
+    /** Credentials wiped on disconnect. */
+    protected array $clearedOnDisconnect = ['youtube_access_token' => null, 'youtube_refresh_token' => null];
+
     protected $fillable = [
         'user_id',
         'youtube_channel_id',

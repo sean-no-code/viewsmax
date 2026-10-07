@@ -187,13 +187,14 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
     }
 
     /**
-     * Create or update a SocialAccount for this user/platform/account id.
+     * Create or update a SocialAccount for this user/platform/account id. A
+     * previously disconnected (soft-deleted) row for the same account is restored.
      */
     protected function storeAccount(User $user, array $attributes): SocialAccount
     {
         $platformAccountId = $attributes['platform_account_id'] ?? null;
 
-        $account = SocialAccount::updateOrCreate(
+        $account = SocialAccount::reconnect(
             [
                 'user_id' => $user->id,
                 'platform' => $this->platform,

@@ -2,13 +2,27 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SoftDeletesConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class Connection extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletesConnection;
+
+    /** Credentials wiped on disconnect (access_token is NOT NULL, so it becomes empty). */
+    protected array $clearedOnDisconnect = ['access_token' => '', 'refresh_token' => null];
+
+    protected static function booted(): void
+    {
+        // A hard delete removed the connection from its brands via the
+        // brand_accounts FK cascade; a soft delete doesn't, so do it here.
+        static::softDeleted(function (Connection $connection) {
+            DB::table('brand_accounts')->where('connection_id', $connection->id)->delete();
+        });
+    }
 
     protected $fillable = [
         'user_id',

@@ -25,7 +25,7 @@ class OAuthConnectionService
             default => throw new Exception("Unsupported provider: {$provider}"),
         };
 
-        $connection = Connection::updateOrCreate(
+        $connection = Connection::reconnect(
             ['user_id' => $user->id, 'provider' => $provider],
             [
                 'account_name' => $profile['account_name'],
@@ -41,7 +41,7 @@ class OAuthConnectionService
         // store. Mirror the connection there (keyed on the TikTok account id, so a
         // different account ADDS a row) until the connect flow moves fully onto it.
         if ($provider === 'tiktok' && ! empty($profile['account_id'])) {
-            SocialAccount::updateOrCreate(
+            SocialAccount::reconnect(
                 ['user_id' => $user->id, 'platform' => 'tiktok', 'platform_account_id' => $profile['account_id']],
                 [
                     'name' => $profile['account_name'] ?? null,

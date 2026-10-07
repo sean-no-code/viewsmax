@@ -2,12 +2,30 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\SoftDeletesConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class SocialAccount extends Model
 {
+    use SoftDeletesConnection;
+
+    /** Credentials wiped on disconnect; metadata can hold page access tokens. */
+    protected array $clearedOnDisconnect = ['access_token' => null, 'refresh_token' => null, 'metadata' => null];
+
+    protected static function booted(): void
+    {
+        // A hard delete removed the account from its brands and dropped its boost
+        // settings (and their pending checks) via FK cascades; a soft delete doesn't,
+        // so do it here. Reconnecting later doesn't silently bring them back.
+        static::softDeleted(function (SocialAccount $account) {
+            DB::table('brand_accounts')->where('social_account_id', $account->id)->delete();
+            DB::table('boost_settings')->where('social_account_id', $account->id)->delete();
+        });
+    }
+
     public const STATUS_CONNECTED = 'connected';
     public const STATUS_NEEDS_REAUTH = 'needs_reauth';
     public const STATUS_REVOKED = 'revoked';

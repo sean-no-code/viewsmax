@@ -125,7 +125,7 @@ class YouTubeOAuthController extends Controller
 
                 // Mirror the channel into the generic connections table so it counts
                 // toward connections_count and appears in GET /connections.
-                $connection = \App\Models\Connection::updateOrCreate(
+                $connection = \App\Models\Connection::reconnect(
                     ['user_id' => $user->id, 'provider' => 'youtube'],
                     [
                         'account_name' => $channel->channel_name ?? 'YouTube Channel',
@@ -220,7 +220,7 @@ class YouTubeOAuthController extends Controller
             'last_synced_at' => now(),
         ];
 
-        $existing = SocialAccount::where($key)->first();
+        $existing = SocialAccount::where($key)->first(); // a disconnected row is reconnected below
         if ($existing && ! $canUpload
             && $existing->status === SocialAccount::STATUS_CONNECTED
             && $existing->refresh_token
@@ -246,7 +246,7 @@ class YouTubeOAuthController extends Controller
             $attrs['refresh_token'] = $tokenData['refresh_token'];
         }
 
-        SocialAccount::updateOrCreate($key, $attrs);
+        SocialAccount::reconnect($key, $attrs);
     }
 
     /**

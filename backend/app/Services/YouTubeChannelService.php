@@ -1148,8 +1148,8 @@ class YouTubeChannelService
             $publicChannel->update(['user_id' => $user->id]);
         }
 
-        // Create or update channel
-        $channel = Channel::updateOrCreate(
+        // Create or update channel (restoring it if it was disconnected before)
+        $channel = Channel::reconnect(
             [
                 'user_id' => $user->id,
                 'youtube_channel_id' => $channelData['id']

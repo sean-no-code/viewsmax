@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Schema;
  * republishing through whichever account remains (nullOnDelete would do
  * exactly that via the legacy fallback).
  */
+// withoutGlobalScopes(): SocialAccount is soft-deletable now, but this migration
+// runs before its deleted_at column exists.
 return new class extends Migration
 {
     /** Platforms whose tokens live in the social_accounts store. */
@@ -48,7 +50,7 @@ return new class extends Migration
                     if (! $target->post) {
                         continue;
                     }
-                    $accountId = SocialAccount::where('user_id', $target->post->user_id)
+                    $accountId = SocialAccount::withoutGlobalScopes()->where('user_id', $target->post->user_id)
                         ->where('platform', $target->platform)
                         ->where('status', SocialAccount::STATUS_CONNECTED)
                         ->latest()

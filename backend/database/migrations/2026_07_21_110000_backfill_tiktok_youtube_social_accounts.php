@@ -15,17 +15,19 @@ use Illuminate\Database\Migrations\Migration;
  *
  * Uses the Eloquent models so the encrypted-token casts round-trip correctly.
  */
+// withoutGlobalScopes(): these models are soft-deletable now, but this migration
+// runs before their deleted_at column exists.
 return new class extends Migration
 {
     public function up(): void
     {
-        Connection::query()
+        Connection::withoutGlobalScopes()
             ->whereIn('provider', ['tiktok', 'youtube'])
             ->whereNotNull('account_id')
             ->where('account_id', '!=', '')
             ->cursor()
             ->each(function (Connection $c) {
-                SocialAccount::updateOrCreate(
+                SocialAccount::withoutGlobalScopes()->updateOrCreate(
                     [
                         'user_id' => $c->user_id,
                         'platform' => $c->provider,
@@ -49,12 +51,12 @@ return new class extends Migration
     {
         // Only remove rows that clearly originated from a legacy connection — a
         // matching (user, platform, account id) pair still in `connections`.
-        Connection::query()
+        Connection::withoutGlobalScopes()
             ->whereIn('provider', ['tiktok', 'youtube'])
             ->whereNotNull('account_id')
             ->cursor()
             ->each(function (Connection $c) {
-                SocialAccount::query()
+                SocialAccount::withoutGlobalScopes()
                     ->where('user_id', $c->user_id)
                     ->where('platform', $c->provider)
                     ->where('platform_account_id', $c->account_id)

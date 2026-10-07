@@ -43,8 +43,12 @@ class DisconnectAccount extends ViewsMaxTool
         // Accounts live in two stores (newer SocialAccount + legacy Connection);
         // remove from both, mirroring what the Connections page offers. Beehiiv
         // is a separate connection type (API key, not OAuth) in its own model.
-        $removed = $user->socialAccounts()->where('platform', $platform)->delete()
-            + $user->connections()->where('provider', $platform)->delete();
+        // Deleted one by one so each model's disconnect handling runs (soft
+        // delete + clearing its tokens); a query-level delete would skip it.
+        $accounts = $user->socialAccounts()->where('platform', $platform)->get()
+            ->concat($user->connections()->where('provider', $platform)->get());
+        $accounts->each->delete();
+        $removed = $accounts->count();
 
         if ($platform === 'beehiiv') {
             $removed += $user->beehiivConnection()->delete();
