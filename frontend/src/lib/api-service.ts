@@ -5561,6 +5561,28 @@ class ViewsMaxApiService {
     }
   }
 
+  // Free transcript tools (public pages, no login). Used by
+  // components/free-tools/TranscriptTool.tsx — see the contract test in
+  // lib/__tests__/api-service.contract.test.ts before removing anything here.
+  async getTranscript(
+    platform: "youtube" | "tiktok" | "instagram",
+    url: string,
+  ): Promise<ApiResponse<{ platform: string; url: string; text: string; segments: { text: string; startMs: number; endMs: number }[]; language: string | null; cached: boolean }>> {
+    try {
+      // Public endpoint — no auth headers; the CaptAPI key stays server-side.
+      const response = await fetch(`${this.baseUrl}/api/free-tools/transcript`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ platform, url }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) return { success: false, error: body.message || `Failed to fetch transcript (${response.status})` };
+      return { success: true, data: body.data };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
 }
 
 // Export singleton instance
