@@ -8,6 +8,7 @@ use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
 use App\Models\User;
 use App\Models\Video;
+use App\Support\AccountOwnership;
 use App\Traits\LogsYouTubeRequests;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -1138,8 +1139,15 @@ class YouTubeChannelService
             $channelAttributes['oauth_scopes'] = json_encode($scopes);
         }
 
-        // Check for an existing public channel (orphan) and claim it
-        $publicChannel = Channel::where('youtube_channel_id', $channelData['id'])
+        // Refuse a channel another user connected first, before anything below
+        // (claiming the public copy) hands a row to this user.
+        AccountOwnership::ensureAvailable($user->id, 'youtube', $channelData['id']);
+
+        // Check for an existing public channel (orphan) and claim it, unless the
+        // user already has their own (possibly disconnected) row for the channel:
+        // that row is restored below, and a second one would break the unique key.
+        $ownsRow = Channel::withTrashed()->where('user_id', $user->id)->where('youtube_channel_id', $channelData['id'])->exists();
+        $publicChannel = $ownsRow ? null : Channel::where('youtube_channel_id', $channelData['id'])
             ->whereNull('user_id')
             ->first();
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\AccountAlreadyConnectedException;
 use App\Services\OAuthConnectionService;
 use App\Services\TikTokPublishService;
 use Illuminate\Http\Request;
@@ -86,6 +87,8 @@ class ConnectionController extends Controller
                     'connection' => $connection->toApiArray(),
                 ],
             ]);
+        } catch (AccountAlreadyConnectedException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             Log::error('Connection exchange failed', [
                 'provider' => $provider,

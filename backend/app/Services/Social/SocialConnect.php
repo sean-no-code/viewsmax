@@ -2,6 +2,7 @@
 
 namespace App\Services\Social;
 
+use App\Exceptions\AccountAlreadyConnectedException;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -86,6 +87,8 @@ class SocialConnect
 
         try {
             $accounts = $this->manager->for($platform)->connectFromCode($user, $code, $redirectUri, $options);
+        } catch (AccountAlreadyConnectedException $e) {
+            throw new SocialConnectException($e->getMessage(), 0, $e);
         } catch (Throwable $e) {
             throw new SocialConnectException('Failed to connect '.$platform.': '.$e->getMessage(), 0, $e);
         }
@@ -114,6 +117,8 @@ class SocialConnect
     {
         try {
             $accounts = $this->manager->for($platform)->connectWithCredentials($user, $data);
+        } catch (AccountAlreadyConnectedException $e) {
+            throw new SocialConnectException($e->getMessage(), 0, $e);
         } catch (Throwable $e) {
             throw new SocialConnectException('Failed to connect '.$platform.': '.$e->getMessage(), 0, $e);
         }

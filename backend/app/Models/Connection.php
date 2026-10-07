@@ -15,6 +15,11 @@ class Connection extends Model
     /** Credentials wiped on disconnect (access_token is NOT NULL, so it becomes empty). */
     protected array $clearedOnDisconnect = ['access_token' => '', 'refresh_token' => null];
 
+    protected static function accountIdentity(array $row): array
+    {
+        return [$row['user_id'] ?? null, $row['provider'], $row['account_id'] ?? null];
+    }
+
     protected static function booted(): void
     {
         // A hard delete removed the connection from its brands via the

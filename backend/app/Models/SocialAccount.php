@@ -15,6 +15,11 @@ class SocialAccount extends Model
     /** Credentials wiped on disconnect; metadata can hold page access tokens. */
     protected array $clearedOnDisconnect = ['access_token' => null, 'refresh_token' => null, 'metadata' => null];
 
+    protected static function accountIdentity(array $row): array
+    {
+        return [$row['user_id'] ?? null, $row['platform'], $row['platform_account_id'] ?? null];
+    }
+
     protected static function booted(): void
     {
         // A hard delete removed the account from its brands and dropped its boost

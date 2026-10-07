@@ -1726,9 +1726,13 @@ class ViewsMaxApiService {
 
       if (!response.ok) {
         const errorData = await response.text();
+        // A refusal the user can act on (e.g. "You already created an account with
+        // this channel on email se****@gmail.com…") comes as a 422 with a message.
+        let message: string | undefined;
+        try { message = response.status === 422 ? JSON.parse(errorData).message : undefined; } catch { /* not JSON */ }
         return {
           success: false,
-          error: `Token exchange failed: ${response.status} - ${errorData}`
+          error: message || `Token exchange failed: ${response.status} - ${errorData}`
         };
       }
 
@@ -4966,9 +4970,13 @@ class ViewsMaxApiService {
 
       if (!response.ok) {
         const errorData = await response.text();
+        // A refusal the user can act on (e.g. the account is already connected to
+        // another ViewsMax account) comes as a 422 with a readable message.
+        let message: string | undefined;
+        try { message = response.status === 422 ? JSON.parse(errorData).message : undefined; } catch { /* not JSON */ }
         return {
           success: false,
-          error: `Connection failed: ${response.status} - ${errorData}`
+          error: message || `Connection failed: ${response.status} - ${errorData}`
         };
       }
 

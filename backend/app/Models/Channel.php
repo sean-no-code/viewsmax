@@ -14,6 +14,11 @@ class Channel extends Model
     /** Credentials wiped on disconnect. */
     protected array $clearedOnDisconnect = ['youtube_access_token' => null, 'youtube_refresh_token' => null];
 
+    protected static function accountIdentity(array $row): array
+    {
+        return [$row['user_id'] ?? null, 'youtube', $row['youtube_channel_id'] ?? null];
+    }
+
     protected $fillable = [
         'user_id',
         'youtube_channel_id',

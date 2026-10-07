@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\AccountAlreadyConnectedException;
 use App\Models\Channel;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -94,6 +95,9 @@ class YouTubeOAuthController extends Controller
 
             $tokenData = $response->json();
 
+            // Put back on refusal: a blocked channel must leave the account unchanged.
+            $previousTokens = $user->only(['youtube_access_token', 'youtube_refresh_token', 'youtube_token_expires_at']);
+
             $user->update([
                 'youtube_access_token' => $tokenData['access_token'],
                 'youtube_refresh_token' => $tokenData['refresh_token'] ?? null,
@@ -159,6 +163,8 @@ class YouTubeOAuthController extends Controller
                     ]);
                 }
 
+            } catch (AccountAlreadyConnectedException $e) {
+                throw $e; // handled below: refuse the whole connect
             } catch (\Exception $e) {
                 Log::error('Failed to fetch/store channel data', [
                     'user_id' => $user->id,
@@ -184,6 +190,10 @@ class YouTubeOAuthController extends Controller
                 ],
             ]);
 
+        } catch (AccountAlreadyConnectedException $e) {
+            $user->forceFill($previousTokens)->save();
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             Log::error('YouTube OAuth exchange failed', [
                 'error' => $e->getMessage(),

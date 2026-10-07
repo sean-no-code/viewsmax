@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Support\AccountOwnership;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -14,7 +15,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * the same account goes through reconnect(), which updates and restores the
  * hidden row instead of inserting a duplicate (the unique keys still cover it).
  *
- * The model declares: protected array $clearedOnDisconnect = ['column' => value, ...];
+ * Connecting is refused when another user connected the same platform account
+ * first, even if they disconnected it since (AccountOwnership).
+ *
+ * The model declares:
+ *   protected array $clearedOnDisconnect = ['column' => value, ...];
+ *   protected static function accountIdentity(array $row): array  // [user_id, platform, account id]
  */
 trait SoftDeletesConnection
 {
@@ -33,6 +39,9 @@ trait SoftDeletesConnection
      */
     public static function reconnect(array $attributes, array $values = []): static
     {
+        [$userId, $platform, $accountId] = static::accountIdentity($attributes + $values);
+        AccountOwnership::ensureAvailable($userId, $platform, $accountId);
+
         $model = static::withTrashed()->updateOrCreate($attributes, $values);
 
         if ($model->trashed()) {
@@ -41,4 +50,11 @@ trait SoftDeletesConnection
 
         return $model;
     }
+
+    /**
+     * The owner, platform and platform account id of a row being connected.
+     *
+     * @return array{0: ?int, 1: string, 2: ?string}
+     */
+    abstract protected static function accountIdentity(array $row): array;
 }
