@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -16,6 +17,42 @@ use RuntimeException;
 class YouTubePublishService
 {
     private const PRIVACY = ['public', 'unlisted', 'private'];
+
+    /** The Google scope a token must carry to upload; the Analytics connect doesn't ask for it. */
+    public const UPLOAD_SCOPE = 'https://www.googleapis.com/auth/youtube.upload';
+
+    public const RECONNECT_FOR_UPLOAD = 'Reconnect YouTube from the Connections page to grant video upload permission, then try again.';
+
+    /**
+     * Turn a 401/403 from the upload endpoint into advice the user can act on.
+     * A dead token, a grant without the upload scope and an exhausted API
+     * quota all arrive here; "reconnect" is wrong advice for two of them.
+     *
+     * @param  array<string, mixed>  $error  Google's `error` object, possibly empty
+     */
+    public static function refusalMessage(int $status, array $error): string
+    {
+        $reason = (string) data_get($error, 'errors.0.reason', '');
+        $message = (string) ($error['message'] ?? '');
+
+        Log::warning('YouTube refused the upload', ['status' => $status, 'reason' => $reason, 'message' => $message]);
+
+        if ($status === 401) {
+            return 'Your YouTube session expired or was revoked. Reconnect YouTube from the Connections page, then try again.';
+        }
+
+        return match (true) {
+            in_array($reason, ['quotaExceeded', 'dailyLimitExceeded', 'rateLimitExceeded', 'userRateLimitExceeded'], true)
+                => "YouTube's daily API quota is used up, so the upload was refused. It resets at midnight Pacific time; try again after that.",
+            $reason === 'uploadLimitExceeded'
+                => "This channel has reached YouTube's upload limit for today. Try again tomorrow.",
+            $reason === 'youtubeSignupRequired'
+                => 'This Google account has no YouTube channel. Create one on YouTube, then reconnect.',
+            $reason === 'insufficientPermissions' || str_contains(strtolower($message), 'insufficient')
+                => self::RECONNECT_FOR_UPLOAD,
+            default => self::RECONNECT_FOR_UPLOAD.($reason !== '' ? " (YouTube said: {$reason}.)" : ''),
+        };
+    }
 
     /**
      * Return a usable access token for the account, refreshing via Google if the
@@ -61,9 +98,10 @@ class YouTubePublishService
             ])
             ->post('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', $metadata);
 
-        // A missing upload scope surfaces here as 401/403 — make it actionable.
+        // A dead token, a missing upload scope or an exhausted quota all surface
+        // here as 401/403 — name the one it was so the advice is right.
         if (in_array($init->status(), [401, 403], true)) {
-            throw new RuntimeException('Reconnect YouTube to grant video upload permission, then try again.');
+            throw new RuntimeException(self::refusalMessage($init->status(), (array) ($init->json('error') ?? [])));
         }
         if (! $init->successful()) {
             throw new RuntimeException('YouTube upload init failed: '.$init->body());

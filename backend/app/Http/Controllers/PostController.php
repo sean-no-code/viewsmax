@@ -8,6 +8,7 @@ use App\Services\Social\PostPublishDispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 /**
@@ -219,6 +220,26 @@ class PostController extends Controller
         }
 
         $this->validateTargetAccounts($data['targets'] ?? null);
+
+        // Honour the offset: "18:00+07:00" is 11:00 UTC. The datetime cast
+        // alone keeps the wall-clock and drops the zone, so a REST caller in
+        // UTC+7 had its post go out seven hours late. The SPA and MCP already
+        // send UTC; this makes every caller behave the same.
+        if (! empty($data['scheduled_at'])) {
+            $data['scheduled_at'] = Carbon::parse($data['scheduled_at'])->utc();
+        }
+
+        // posts:publish-due only picks up scheduled posts that have a time, so
+        // "scheduled" with no scheduled_at would sit there forever. Check the
+        // state the request produces, so an update that nulls the time is
+        // caught too, not just a create that never sent one.
+        $resultingStatus = $data['status'] ?? $post?->status ?? Post::STATUS_DRAFT;
+        $resultingTime = array_key_exists('scheduled_at', $data) ? $data['scheduled_at'] : $post?->scheduled_at;
+        if ($resultingStatus === Post::STATUS_SCHEDULED && ! $resultingTime) {
+            throw ValidationException::withMessages([
+                'scheduled_at' => 'A scheduled post needs a scheduled_at time (ISO-8601).',
+            ]);
+        }
 
         // Platform list for the publish-time checks below, whichever payload
         // shape was used (legacy platforms[] or account-explicit targets[]).

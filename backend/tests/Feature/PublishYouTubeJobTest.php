@@ -21,7 +21,7 @@ class PublishYouTubeJobTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function ytAccount(User $user, string $channelId = 'yt-chan-1'): SocialAccount
+    private function ytAccount(User $user, string $channelId = 'yt-chan-1', ?array $scopes = null): SocialAccount
     {
         return SocialAccount::create([
             'user_id' => $user->id,
@@ -32,7 +32,66 @@ class PublishYouTubeJobTest extends TestCase
             'refresh_token' => 'yt-refresh',
             'token_expires_at' => now()->addDay(), // valid -> ensureFreshToken is a no-op
             'status' => SocialAccount::STATUS_CONNECTED,
+        ] + ($scopes !== null ? ['scopes' => $scopes] : []));
+    }
+
+    /** A pending target on a video post, pinned to the given account. */
+    private function pendingTarget(User $user, SocialAccount $account): PostTarget
+    {
+        return $this->videoPost($user)->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $account->id,
+            'status' => PostTarget::STATUS_PENDING,
+            'options' => ['privacy_status' => 'public'],
         ]);
+    }
+
+    public function test_account_whose_grant_lacks_the_upload_scope_fails_before_uploading(): void
+    {
+        // The Settings/Analytics connect asks for read + analytics only.
+        Http::fake();
+        $user = User::factory()->create();
+        $account = $this->ytAccount($user, 'yt-chan-1', [
+            'https://www.googleapis.com/auth/youtube.readonly',
+            'https://www.googleapis.com/auth/yt-analytics.readonly',
+        ]);
+        $target = $this->pendingTarget($user, $account);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+        $this->assertSame(YouTubePublishService::RECONNECT_FOR_UPLOAD, $target->error);
+        Http::assertNothingSent();
+    }
+
+    public function test_refusals_name_the_real_reason_instead_of_always_saying_reconnect(): void
+    {
+        $cases = [
+            [403, ['errors' => [['reason' => 'quotaExceeded']], 'message' => 'quota'], 'daily API quota'],
+            [403, ['errors' => [['reason' => 'insufficientPermissions']], 'message' => 'Insufficient Permission'], 'grant video upload permission'],
+            [403, ['errors' => [['reason' => 'youtubeSignupRequired']], 'message' => 'x'], 'no YouTube channel'],
+            [401, ['errors' => [['reason' => 'authError']], 'message' => 'Invalid Credentials'], 'session expired'],
+        ];
+
+        // One stub that reads the current case: Http::fake() calls stack, and
+        // the first registered stub would otherwise answer every case.
+        $current = null;
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => function () use (&$current) {
+                return Http::response(['error' => $current[1]], $current[0]);
+            },
+        ]);
+
+        foreach ($cases as [$status, $error, $expected]) {
+            $current = [$status, $error];
+            $user = User::factory()->create();
+            $target = $this->pendingTarget($user, $this->ytAccount($user, 'yt-chan-'.$status.count($error)));
+
+            (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+            $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+            $this->assertStringContainsString($expected, (string) $target->error, "status {$status}");
+        }
     }
 
     private function videoPost(User $user): Post

@@ -7,6 +7,8 @@ use App\Models\Post;
 use App\Models\PostTarget;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Console\Commands\PublishDuePosts;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -25,6 +27,25 @@ class PublishDuePostsTest extends TestCase
         $post->targets()->create(['platform' => $platform, 'status' => PostTarget::STATUS_PENDING]);
 
         return $post;
+    }
+
+    public function test_health_reports_the_scheduler_heartbeat(): void
+    {
+        Queue::fake();
+        Cache::forget(PublishDuePosts::HEARTBEAT_KEY);
+
+        // No run yet: the scheduler is reported as not running.
+        $this->getJson('/api/health')->assertOk()
+            ->assertJsonPath('scheduler.running', false)
+            ->assertJsonPath('scheduler.last_run_at', null);
+
+        // An empty tick still stamps the heartbeat.
+        $this->artisan('posts:publish-due')->assertExitCode(0);
+        $this->getJson('/api/health')->assertOk()->assertJsonPath('scheduler.running', true);
+
+        // A stale heartbeat (scheduler stopped) flips it back.
+        Cache::put(PublishDuePosts::HEARTBEAT_KEY, now()->subMinutes(PublishDuePosts::HEARTBEAT_STALE_MINUTES + 1)->toIso8601String());
+        $this->getJson('/api/health')->assertOk()->assertJsonPath('scheduler.running', false);
     }
 
     public function test_due_post_is_flipped_and_dispatched(): void

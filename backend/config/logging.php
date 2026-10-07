@@ -88,6 +88,24 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Publish-failure notifications (App\Models\PostFailureNotification):
+        // one line per recipient per failure episode — sent, skipped (with
+        // reason) or failed — in storage/logs/post-failures.log. Mirrors the
+        // post_failure_notifications table. POST_FAILURE_LOG_ENABLED=false
+        // silences it.
+        'post_failures' => [
+            'driver' => 'stack',
+            'channels' => env('POST_FAILURE_LOG_ENABLED', true) ? ['post_failures_file'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+        'post_failures_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/post-failures.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
         'follow_us_file' => [
             'driver' => 'daily',
             'path' => storage_path('logs/follow-us.log'),

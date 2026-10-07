@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Post;
 use App\Services\Social\PostPublishDispatcher;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class PublishDuePosts extends Command
@@ -13,8 +14,19 @@ class PublishDuePosts extends Command
 
     protected $description = 'Dispatch publish jobs for scheduled posts whose time has arrived.';
 
+    /** Cache key holding the last time this command ran; read by GET /api/health. */
+    public const HEARTBEAT_KEY = 'scheduler:publish-due:last_run_at';
+
+    /** A heartbeat older than this means the scheduler is not running. */
+    public const HEARTBEAT_STALE_MINUTES = 5;
+
     public function handle(): int
     {
+        // Written on every tick, including empty ones, so the health endpoint
+        // can tell "scheduler not running" from "nothing was due" — an empty
+        // run logs nothing, so the log alone can't.
+        Cache::put(self::HEARTBEAT_KEY, now()->toIso8601String(), now()->addDays(7));
+
         $due = Post::where('status', Post::STATUS_SCHEDULED)
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<=', now())

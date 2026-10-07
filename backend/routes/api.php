@@ -4,6 +4,7 @@ use App\Http\Controllers\AiModelController;
 use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\AuthController;
 use Laravel\Mcp\Server\Facades\Mcp;
+use Illuminate\Support\Facades\Cache;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\ChannelController;
@@ -73,11 +74,20 @@ Route::post('/free-tools/transcript', [\App\Http\Controllers\FreeToolTranscriptC
 
 // Health check endpoint (public)
 Route::get('/health', function () {
+    // Scheduled posts depend on `schedule:run` ticking every minute. Surface its
+    // heartbeat so a silent scheduler shows up here instead of as missed posts.
+    $lastRun = Cache::get(\App\Console\Commands\PublishDuePosts::HEARTBEAT_KEY);
+    $staleAfter = now()->subMinutes(\App\Console\Commands\PublishDuePosts::HEARTBEAT_STALE_MINUTES);
+
     return response()->json([
         'status' => 'healthy',
         'timestamp' => now()->toISOString(),
-        'service' => 'Title Embedding API',
+        'service' => 'ViewsMax API',
         'version' => '1.0.0',
+        'scheduler' => [
+            'last_run_at' => $lastRun,
+            'running' => $lastRun !== null && \Carbon\Carbon::parse($lastRun)->gt($staleAfter),
+        ],
     ]);
 });
 

@@ -150,7 +150,11 @@ class YouTubeAuthService {
   private readonly API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
   private readonly CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   private readonly REDIRECT_URI = `${window.location.origin}/oauth/callback`;
+  // Same scope set as the Connections page (oauth-connect.ts). The backend
+  // mirrors every Google grant into the publishing account, so a grant from
+  // here without youtube.upload used to leave the user unable to post.
   private readonly SCOPES = [
+    'https://www.googleapis.com/auth/youtube.upload',
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/yt-analytics.readonly',
     'https://www.googleapis.com/auth/userinfo.profile'

@@ -50,6 +50,15 @@ class PublishYouTubeJob implements ShouldQueue
             return;
         }
 
+        // A grant made without the upload scope (the Settings/Analytics connect
+        // asks for read + analytics only) can never upload: say so now instead
+        // of streaming the whole video to Google for a 403.
+        if ($account->scopes && ! in_array(YouTubePublishService::UPLOAD_SCOPE, (array) $account->scopes, true)) {
+            $this->markFailed($target, YouTubePublishService::RECONNECT_FOR_UPLOAD);
+
+            return;
+        }
+
         $videoMedia = collect($post->media ?? [])
             ->first(fn ($m) => ($m['type'] ?? null) === 'video' && ! empty($m['path']));
         if (! $videoMedia) {

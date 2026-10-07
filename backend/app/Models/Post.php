@@ -51,4 +51,10 @@ class Post extends Model
     {
         return $this->hasMany(PostComment::class)->orderBy('position');
     }
+
+    /** Every failure email sent or skipped for this post, newest first. */
+    public function failureNotifications(): HasMany
+    {
+        return $this->hasMany(PostFailureNotification::class)->latest('id');
+    }
 }

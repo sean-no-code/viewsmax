@@ -48,6 +48,14 @@
             font-size: 14px;
             margin-top: 4px;
         }
+        .details {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 10px 15px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .details div { margin: 2px 0; }
         .button {
             display: inline-block;
             background-color: #007bff;
@@ -72,8 +80,16 @@
         <h1>Post failed to publish</h1>
     </div>
     <div class="content">
-        <p>Hi,</p>
-        <p>We couldn't publish your post to {{ $failedTargets->count() === 1 ? 'a platform' : 'some platforms' }}:</p>
+        @if ($forAdmin)
+            <p>A customer's post failed to publish to {{ $failedTargets->count() === 1 ? 'a platform' : 'some platforms' }}.</p>
+            <div class="details">
+                <div><strong>Customer:</strong> {{ $ownerName ?: '(no name)' }} &lt;{{ $ownerEmail }}&gt; (user #{{ $ownerId }})</div>
+                <div><strong>Post:</strong> #{{ $postId }}@if ($scheduledAt), scheduled for {{ $scheduledAt }}@elseif ($createdAt), created {{ $createdAt }}@endif</div>
+            </div>
+        @else
+            <p>Hi,</p>
+            <p>We couldn't publish your post to {{ $failedTargets->count() === 1 ? 'a platform' : 'some platforms' }}:</p>
+        @endif
 
         <div class="caption">{{ $captionExcerpt }}</div>
 
@@ -84,15 +100,23 @@
             </div>
         @endforeach
 
-        <p>You can retry the failed platforms from your post history:</p>
-        <p style="text-align: center;">
-            <a href="{{ $historyUrl }}" class="button">Open post history</a>
-        </p>
-        <p>If a platform keeps failing, its account connection may have expired — reconnecting it from the Connections page usually fixes this.</p>
+        @if ($forAdmin)
+            <p>{{ $customerNotified === false ? 'The customer was not emailed (their failure alerts are turned off).' : 'The customer has been sent the matching failure email.' }} They can retry the failed platforms from their post history.</p>
+        @else
+            <p>You can retry the failed platforms from your post history:</p>
+            <p style="text-align: center;">
+                <a href="{{ $historyUrl }}" class="button">Open post history</a>
+            </p>
+            <p>If a platform keeps failing, its account connection may have expired — reconnecting it from the Connections page usually fixes this.</p>
+        @endif
     </div>
     <div class="footer">
-        You're receiving this because publish-failure alerts are turned on.
-        You can turn them off under Settings &rarr; Notifications.
+        @if ($forAdmin)
+            You're receiving this because POST_FAILURE_ADMIN_EMAIL is set to this address.
+        @else
+            You're receiving this because publish-failure alerts are turned on.
+            You can turn them off under Settings &rarr; Notifications.
+        @endif
     </div>
 </body>
 </html>

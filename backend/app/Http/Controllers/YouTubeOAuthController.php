@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Channel;
+use App\Models\SocialAccount;
+use App\Models\User;
 use App\Services\YouTubeAnalyticsService;
+use App\Services\YouTubePublishService;
 use App\Services\YouTubeChannelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -137,26 +140,9 @@ class YouTubeOAuthController extends Controller
 
                 // Multi-account bridge: mirror this channel into the `social_accounts`
                 // store (keyed on the channel id, so a different channel/login ADDS a
-                // row) — that's what YouTube publishing now reads. Google only returns
-                // a refresh_token on a consent grant, so keep the stored one otherwise.
+                // row) — that's what YouTube publishing now reads.
                 if ($channel->youtube_channel_id) {
-                    $socialAttrs = [
-                        'name' => $channel->channel_name ?? 'YouTube Channel',
-                        'avatar_url' => $channel->profile_image_url,
-                        'access_token' => $tokenData['access_token'],
-                        'token_expires_at' => now()->addSeconds($tokenData['expires_in']),
-                        'status' => \App\Models\SocialAccount::STATUS_CONNECTED,
-                        'scopes' => config('social.platforms.youtube.scopes', []),
-                        'metadata' => ['channel_id' => $channel->youtube_channel_id],
-                        'last_synced_at' => now(),
-                    ];
-                    if (! empty($tokenData['refresh_token'])) {
-                        $socialAttrs['refresh_token'] = $tokenData['refresh_token'];
-                    }
-                    \App\Models\SocialAccount::updateOrCreate(
-                        ['user_id' => $user->id, 'platform' => 'youtube', 'platform_account_id' => $channel->youtube_channel_id],
-                        $socialAttrs
-                    );
+                    $this->mirrorIntoSocialAccounts($user, $channel, $tokenData);
                 }
 
                 // Fetch and import videos after channel creation
@@ -210,6 +196,57 @@ class YouTubeOAuthController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Mirror a Google grant into the multi-account store that YouTube publishing
+     * reads. Records the scopes Google actually granted (the Settings/Analytics
+     * connect asks for read + analytics only), and never replaces a token that
+     * can upload with one that can't: a user who reconnected from Analytics
+     * used to lose publishing silently while the row still claimed the upload
+     * scope, so it only surfaced as a 403 at post time. Google only returns a
+     * refresh_token on a consent grant, so the stored one is kept otherwise.
+     *
+     * @param  array<string, mixed>  $tokenData  Google's token response
+     */
+    private function mirrorIntoSocialAccounts(User $user, Channel $channel, array $tokenData): void
+    {
+        $granted = array_values(array_filter(explode(' ', (string) ($tokenData['scope'] ?? ''))));
+        $canUpload = in_array(YouTubePublishService::UPLOAD_SCOPE, $granted, true);
+        $key = ['user_id' => $user->id, 'platform' => 'youtube', 'platform_account_id' => $channel->youtube_channel_id];
+        $profile = [
+            'name' => $channel->channel_name ?? 'YouTube Channel',
+            'avatar_url' => $channel->profile_image_url,
+            'last_synced_at' => now(),
+        ];
+
+        $existing = SocialAccount::where($key)->first();
+        if ($existing && ! $canUpload
+            && $existing->status === SocialAccount::STATUS_CONNECTED
+            && $existing->refresh_token
+            && in_array(YouTubePublishService::UPLOAD_SCOPE, (array) $existing->scopes, true)) {
+            $existing->update($profile);
+            Log::warning('YouTube grant without the upload scope; kept the existing publishing token', [
+                'user_id' => $user->id,
+                'social_account_id' => $existing->id,
+                'granted' => $granted,
+            ]);
+
+            return;
+        }
+
+        $attrs = $profile + [
+            'access_token' => $tokenData['access_token'],
+            'token_expires_at' => now()->addSeconds($tokenData['expires_in'] ?? 3600),
+            'status' => SocialAccount::STATUS_CONNECTED,
+            'scopes' => $granted ?: config('social.platforms.youtube.scopes', []),
+            'metadata' => ['channel_id' => $channel->youtube_channel_id],
+        ];
+        if (! empty($tokenData['refresh_token'])) {
+            $attrs['refresh_token'] = $tokenData['refresh_token'];
+        }
+
+        SocialAccount::updateOrCreate($key, $attrs);
     }
 
     /**

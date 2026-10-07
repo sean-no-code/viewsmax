@@ -127,4 +127,20 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Post-failure admin copy
+    |--------------------------------------------------------------------------
+    |
+    | Every publish-failure episode emails the post's owner. Set an address
+    | here to also send a separate ops copy (own subject, customer details,
+    | same failure reasons). It goes out even when the customer has turned
+    | their own alerts off. Leave blank to disable. See
+    | App\Jobs\SendPostFailureEmailJob and the post_failure_notifications
+    | table, which records every send and skip.
+    |
+    */
+
+    'post_failure_admin' => env('POST_FAILURE_ADMIN_EMAIL'),
+
 ];
