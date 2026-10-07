@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Mail;
  * Creates a customer account the same way everywhere a signup can happen: the
  * SPA (POST /api/register) and the API host's /register used mid OAuth flow by
  * AI agents. Validation and the response belong to the caller; this owns the
- * side effects: card-free window, customer role, registration credits, the
+ * side effects: free credits (no time limit), customer role, the
  * Registered event, the Kit newsletter opt-in and the verification email.
  */
 class Registration
@@ -31,13 +31,14 @@ class Registration
      */
     public function register(array $data, string $source, ?string $client = null): User
     {
-        // Unverified and not onboarded. No card is needed for the first CARD_FREE_DAYS.
+        // Unverified and not onboarded. No card and no time limit: the free
+        // credits granted below last until they are used up.
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'onboarding_completed_at' => null,
-            'promo_expires_at' => now()->addDays(User::CARD_FREE_DAYS),
+            'free_credits_at' => now(),
             'marketing_consented_at' => ! empty($data['marketing_consent']) ? now() : null,
             'signup_source' => $source,
             'signup_client' => $client,

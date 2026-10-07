@@ -103,7 +103,7 @@ class WebRegisterTest extends TestCase
         $this->assertSame('agent', $user->signup_source);
         $this->assertSame('Claude', $user->signup_client);
         $this->assertNull($user->email_verified_at);
-        $this->assertNotNull($user->promo_expires_at);
+        $this->assertNotNull($user->free_credits_at);
         $this->assertNotNull($user->marketing_consented_at);
         $this->assertTrue($user->hasRole('customer'));
 

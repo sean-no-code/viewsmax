@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet, useLocation } from "react-router-dom";
@@ -20,9 +21,17 @@ import { AIModelProcessingLoader } from "@/components/AIModelProcessingLoader";
 import ConnectAiAppsButton from "@/components/ConnectAiAppsButton";
 
 export default function DashboardLayout() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
   const { i18n } = useTranslation();
   const location = useLocation();
+  // Free credits can run out mid-session (an AI assistant spends them through
+  // the connector), so re-check access on each page change for these users;
+  // the lock then shows on the next click instead of the next reload.
+  const onFreeCredits = !!user?.on_free_credits;
+  useEffect(() => {
+    if (onFreeCredits) void refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, onFreeCredits]);
 
   const changeLocale = async (code: string) => {
     await i18n.changeLanguage(code); // persists to localStorage via the detector
@@ -174,7 +183,11 @@ export default function DashboardLayout() {
 
           {locked && (
             <div className="border-b border-destructive/40 bg-destructive/10 px-6 py-3 text-sm text-foreground">
-              <span className="font-semibold">Your free access ended{promoEndedOn ? ` on ${promoEndedOn}` : ""}.</span>{" "}
+              <span className="font-semibold">
+                {user?.on_free_credits
+                  ? "You've used all your free credits."
+                  : `Your free access ended${promoEndedOn ? ` on ${promoEndedOn}` : ""}.`}
+              </span>{" "}
               Choose a plan below to keep using ViewsMax.
             </div>
           )}

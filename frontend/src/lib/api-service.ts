@@ -106,6 +106,7 @@ interface User {
   // Promotional access (see src/lib/access.ts).
   has_active_plan?: boolean;
   promo_expires_at?: string | null;
+  on_free_credits?: boolean;
   access_expired?: boolean;
 }
 

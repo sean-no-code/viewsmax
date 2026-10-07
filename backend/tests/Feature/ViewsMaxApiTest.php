@@ -197,16 +197,16 @@ class ViewsMaxApiTest extends TestCase
 
     // --- 2. Onboarding ----------------------------------------------------
 
-    public function test_onboarding_requires_connection_and_subscription(): void
+    public function test_onboarding_requires_a_subscription(): void
     {
         $user = User::factory()->create();
 
-        // Missing both prereqs.
+        // No subscription and no free access.
         $this->postJson('/api/onboarding/complete', [], $this->authHeaders($user))
             ->assertStatus(422)
-            ->assertJson(['message' => 'Connect an account and add payment first.']);
+            ->assertJson(['message' => 'Add payment to finish setting up your account.']);
 
-        // Add a connection only — still blocked.
+        // A connection is optional and doesn't replace payment — still blocked.
         $user->connections()->create([
             'provider' => 'youtube', 'account_name' => 'Chan', 'account_id' => 'UC1',
             'access_token' => 'tok',

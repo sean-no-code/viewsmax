@@ -41,6 +41,17 @@ describe("checkoutTerms", () => {
   it("charges today once the window has closed", () => {
     expect(checkoutTerms({ promo_expires_at: past }, NOW)).toEqual({ kind: "charge-now" });
   });
+
+  it("charges today for a user on free credits: the credits were the trial", () => {
+    expect(checkoutTerms({ on_free_credits: true, promo_expires_at: null }, NOW)).toEqual({ kind: "free-credits" });
+  });
+});
+
+describe("isAccessExpired for free credits", () => {
+  it("follows the server: open while credits remain, locked once used up", () => {
+    expect(isAccessExpired({ on_free_credits: true, access_expired: false }, NOW)).toBe(false);
+    expect(isAccessExpired({ on_free_credits: true, access_expired: true }, NOW)).toBe(true);
+  });
 });
 
 describe("promoWindowLabel", () => {

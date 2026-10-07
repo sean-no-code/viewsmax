@@ -61,6 +61,7 @@ class User extends Authenticatable implements Wallet
         'notify_post_failures',
         'locale',
         'promo_expires_at',
+        'free_credits_at',
         'signup_source',
         'signup_client',
     ];
@@ -98,6 +99,7 @@ class User extends Authenticatable implements Wallet
             'onboarding_completed_at' => 'datetime',
             'card_added_at' => 'datetime',
             'promo_expires_at' => 'datetime',
+            'free_credits_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'youtube_token_expires_at' => 'datetime',
@@ -205,12 +207,13 @@ class User extends Authenticatable implements Wallet
 
     /**
      * Whether the user has a subscription that is active or trialing
-     * (PayPal or Stripe) OR an open free window. Drives the onboarding
-     * gate (card step) and the `has_active_subscription` payload flag.
+     * (PayPal or Stripe) OR free access (an open promo window or free credits
+     * left). Drives the onboarding gate (card step) and the
+     * `has_active_subscription` payload flag.
      */
     public function hasActiveSubscription(): bool
     {
-        return $this->hasActivePlan() || $this->hasActivePromo();
+        return $this->hasActivePlan() || $this->hasFreeAccess();
     }
 
     public const PROMO_ROLE = 'promotional_customer';
@@ -219,13 +222,6 @@ class User extends Authenticatable implements Wallet
     {
         return $this->hasRole(self::PROMO_ROLE);
     }
-
-    /**
-     * Days a new signup can use the product before a card is required. Set as
-     * `promo_expires_at` at registration — the same free window an admin
-     * grants a promotional customer, just without the role.
-     */
-    public const CARD_FREE_DAYS = 7;
 
     /**
      * Free window still open: no card needed yet. A promotional customer with
@@ -240,27 +236,58 @@ class User extends Authenticatable implements Wallet
     }
 
     /**
-     * Free window has closed and the user hasn't subscribed since.
+     * A self-signup living on the free credits granted at registration
+     * (free_credits_at) who hasn't subscribed. There is no time limit: they
+     * keep access until the credits are used up.
+     */
+    public function onFreeCredits(): bool
+    {
+        return ! is_null($this->free_credits_at) && ! $this->hasActivePlan();
+    }
+
+    /**
+     * Using the product without a plan: an open promo window, or free credits
+     * still left. Treated like a subscription for onboarding, the paid-only
+     * routes and the offer limit.
+     */
+    public function hasFreeAccess(): bool
+    {
+        return $this->hasActivePromo() || ($this->onFreeCredits() && $this->balanceInt > 0);
+    }
+
+    /**
+     * Free access has ended and the user hasn't subscribed since: a promo
+     * window closed, or a self-signup used up their free credits.
      * EnsureAccessActive locks these users to the billing endpoints and the
      * SPA pins them to the Billing page.
      */
     public function accessExpired(): bool
     {
-        return ! is_null($this->promo_expires_at)
-            && $this->promo_expires_at->isPast()
-            && ! $this->hasActivePlan();
+        if ($this->hasActivePlan() || $this->hasActivePromo()) {
+            return false;
+        }
+
+        $windowClosed = ! is_null($this->promo_expires_at) && $this->promo_expires_at->isPast();
+
+        return $windowClosed || ($this->onFreeCredits() && $this->balanceInt <= 0);
     }
 
     /**
-     * Stripe trial terms for a new subscription. The free window is the trial:
-     * a card added while it is open isn't charged until it closes, and one
-     * added afterwards is charged straight away. Users with no window (accounts
-     * from before it existed, unlimited promos) keep the card-backed trial.
+     * Stripe trial terms for a new subscription. Free credits are the trial for
+     * a self-signup, so they are charged straight away. A promo window is the
+     * trial too: a card added while it is open isn't charged until it closes,
+     * and one added afterwards is charged straight away. Users with neither
+     * (accounts from before they existed, unlimited promos) keep the
+     * card-backed trial.
      *
      * @return array{trial_period_days?: int, trial_end?: int}
      */
     public function subscriptionTrialTerms(): array
     {
+        if (! is_null($this->free_credits_at)) {
+            return [];
+        }
+
         if (is_null($this->promo_expires_at)) {
             return ['trial_period_days' => (int) config('services.stripe.trial_period_days', 3)];
         }
@@ -321,6 +348,7 @@ class User extends Authenticatable implements Wallet
             // whether that window has closed without a plan replacing it.
             'has_active_plan' => $this->hasActivePlan(),
             'promo_expires_at' => optional($this->promo_expires_at)->toIso8601String(),
+            'on_free_credits' => $this->onFreeCredits(),
             'access_expired' => $this->accessExpired(),
             'is_admin' => $this->isAdmin(),
             // Legacy extras retained for backward compatibility.

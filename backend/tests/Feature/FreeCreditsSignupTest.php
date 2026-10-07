@@ -12,13 +12,15 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Self-signup no longer needs a card: registering opens a 7-day free window
- * (the same `promo_expires_at` window promotional customers use, without the
- * role). While it is open the user counts as subscribed and onboarding skips
- * the card step. Once it closes they are locked to the billing endpoints, and
- * subscribing then charges straight away — the 7 days were the trial.
+ * Self-signup needs no card and has no time limit: registering grants the
+ * free credits (config credits.registration_bonus) and records
+ * `free_credits_at`. While the user has credits left they count as
+ * subscribed, onboarding skips the card step and the app is unlocked. Once
+ * the credits are used up (and they have no plan) they are locked to the
+ * billing endpoints. Subscribing charges straight away: the free credits
+ * were the trial.
  */
-class CardFreeSignupTest extends TestCase
+class FreeCreditsSignupTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -28,6 +30,11 @@ class CardFreeSignupTest extends TestCase
         Carbon::setTestNow('2026-10-02 10:00:00');
         Mail::fake();
         Role::firstOrCreate(['name' => 'customer'], ['display_name' => 'Customer']);
+        config(['credits.registration_bonus' => 100]);
+        // Each test runs in a transaction that never commits, so the wallet
+        // keeps balances in its cache instead of the wallets table. Keep that
+        // cache alive across the time jumps below (default TTL is 24h).
+        config(['wallet.cache.ttl' => 10 * 365 * 24 * 3600]);
     }
 
     private function register(): User
@@ -62,6 +69,12 @@ class CardFreeSignupTest extends TestCase
         ]);
     }
 
+    private function useUpCredits(User $user): void
+    {
+        $user = $user->fresh();
+        $user->forceWithdraw($user->balanceInt, ['description' => 'test: spend all']);
+    }
+
     /** Mock Stripe and capture the trial terms the subscription is created with. */
     private function expectSubscription(?array &$trial, string $status): void
     {
@@ -76,21 +89,24 @@ class CardFreeSignupTest extends TestCase
         });
     }
 
-    public function test_registering_opens_a_seven_day_window_with_no_card(): void
+    public function test_registering_grants_free_credits_with_no_time_limit(): void
     {
         $user = $this->register();
 
-        $this->assertSame('2026-10-09 10:00:00', $user->promo_expires_at->toDateTimeString());
+        $this->assertSame(100, $user->fresh()->balanceInt);
+        $this->assertNull($user->promo_expires_at);
+        $this->assertSame('2026-10-02 10:00:00', $user->free_credits_at->toDateTimeString());
         $this->assertSame(['customer'], $user->roles()->pluck('name')->all());
 
         $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password'])
             ->assertOk()
             ->assertJsonPath('data.user.has_active_subscription', true)
             ->assertJsonPath('data.user.has_active_plan', false)
+            ->assertJsonPath('data.user.on_free_credits', true)
             ->assertJsonPath('data.user.access_expired', false);
     }
 
-    public function test_onboarding_completes_without_a_card_during_the_window(): void
+    public function test_onboarding_completes_without_a_card_while_credits_remain(): void
     {
         $user = $this->register();
 
@@ -101,15 +117,27 @@ class CardFreeSignupTest extends TestCase
         $this->assertNotNull($user->fresh()->onboarding_completed_at);
     }
 
-    public function test_after_seven_days_the_user_is_sent_to_billing(): void
+    public function test_the_app_stays_open_long_after_signup_while_credits_remain(): void
     {
         $user = $this->register();
         $headers = $this->authHeaders($user);
 
-        Carbon::setTestNow('2026-10-09 09:59:00');
+        Carbon::setTestNow('2027-10-02 10:00:00'); // a year later, credits untouched
+
+        $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.user.access_expired', false);
+    }
+
+    public function test_using_up_the_credits_sends_the_user_to_billing(): void
+    {
+        $user = $this->register();
+        $headers = $this->authHeaders($user);
         $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
 
-        Carbon::setTestNow('2026-10-09 10:01:00');
+        $this->useUpCredits($user);
+
         $this->withHeaders($headers)->getJson('/api/profile')
             ->assertOk()
             ->assertJsonPath('data.user.has_active_subscription', false)
@@ -120,12 +148,25 @@ class CardFreeSignupTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
     }
 
-    public function test_subscribing_after_the_window_charges_immediately(): void
+    public function test_free_credit_users_are_not_capped_by_the_free_plan_offer_limit(): void
+    {
+        Plan::create([
+            'name' => 'free', 'display_name' => 'Free', 'price' => 0, 'currency' => 'USD',
+            'is_active' => true, 'max_offers' => 0,
+        ]);
+        $user = $this->register();
+
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/tracking-events', [
+            'name' => 'First offer',
+            'offer_url' => 'https://example.com/first',
+        ])->assertCreated();
+    }
+
+    public function test_subscribing_charges_immediately_because_the_credits_were_the_trial(): void
     {
         $user = $this->register();
         $headers = $this->authHeaders($user);
         $this->plan();
-        Carbon::setTestNow('2026-10-12 10:00:00');
         $this->expectSubscription($trial, 'active');
 
         $this->withHeaders($headers)->postJson('/api/billing/stripe/subscribe', [
@@ -133,30 +174,41 @@ class CardFreeSignupTest extends TestCase
         ])->assertOk()->assertJsonPath('data.status', 'active');
 
         $this->assertSame([], $trial);
-        $this->withHeaders($headers)->getJson('/api/profile')
-            ->assertJsonPath('data.user.has_active_plan', true)
-            ->assertJsonPath('data.user.access_expired', false);
     }
 
-    public function test_subscribing_during_the_window_defers_the_charge_to_its_end(): void
+    public function test_a_subscriber_is_not_locked_when_their_balance_hits_zero(): void
     {
         $user = $this->register();
         $headers = $this->authHeaders($user);
         $this->plan();
-        Carbon::setTestNow('2026-10-05 10:00:00');
-        $this->expectSubscription($trial, 'trialing');
-
+        $this->expectSubscription($trial, 'active');
         $this->withHeaders($headers)->postJson('/api/billing/stripe/subscribe', [
             'payment_method_id' => 'pm_card', 'price_id' => 'price_starter',
-        ])->assertOk()->assertJsonPath('data.status', 'trialing');
+        ])->assertOk();
 
-        $this->assertSame(['trial_end' => Carbon::parse('2026-10-09 10:00:00')->getTimestamp()], $trial);
+        $this->useUpCredits($user);
+
+        $this->withHeaders($headers)->getJson('/api/profile')
+            ->assertJsonPath('data.user.has_active_plan', true)
+            ->assertJsonPath('data.user.on_free_credits', false)
+            ->assertJsonPath('data.user.access_expired', false);
+        $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
+    }
+
+    public function test_an_older_account_without_free_credits_is_not_locked_at_zero(): void
+    {
+        // Accounts created before free credits existed: no window, no plan, no balance.
+        $user = User::factory()->create(['promo_expires_at' => null, 'free_credits_at' => null]);
+
+        $this->withHeaders($this->authHeaders($user))->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.user.access_expired', false);
     }
 
     public function test_a_user_with_no_window_still_gets_the_card_trial(): void
     {
-        // Accounts created before the card-free window (still at the card step).
-        $user = User::factory()->create(['promo_expires_at' => null]);
+        // Accounts created before free credits existed (still at the card step).
+        $user = User::factory()->create(['promo_expires_at' => null, 'free_credits_at' => null]);
         $headers = $this->authHeaders($user);
         $this->plan();
         config(['services.stripe.trial_period_days' => 7]);

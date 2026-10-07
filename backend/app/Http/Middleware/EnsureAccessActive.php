@@ -7,9 +7,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Locks a user whose free window has closed (a card-free signup after
- * User::CARD_FREE_DAYS, or a promotional customer) and who has not subscribed
- * since to the endpoints needed to pick a plan. Everything else
+ * Locks a user whose free access has ended (a self-signup who used up their
+ * free credits, or a promotional customer whose window closed) and who has not
+ * subscribed since to the endpoints needed to pick a plan. Everything else
  * answers 403 with `code: access_expired` so the SPA can send them to Billing.
  * Applied after `api.auth` on the whole protected group.
  */
@@ -38,7 +38,9 @@ class EnsureAccessActive
             return response()->json([
                 'success' => false,
                 'code' => 'access_expired',
-                'message' => 'Your free access has ended. Choose a plan to keep using ViewsMax.',
+                'message' => $user->onFreeCredits()
+                    ? "You've used all your free credits. Choose a plan to keep using ViewsMax."
+                    : 'Your free access has ended. Choose a plan to keep using ViewsMax.',
             ], 403);
         }
 

@@ -1,12 +1,14 @@
-// Free access with no card on file: every new signup gets a 7-day window, and
-// admin-created promotional customers get one of any length (or forever). Once
-// it closes the user is sent to Billing. The backend is the source of truth
-// (`access_expired`), but the window can close while a cached session is open,
-// so the date is also checked here. A card-backed plan always wins.
+// Free access with no card on file: every new signup gets free credits with no
+// time limit (`on_free_credits`) and is sent to Billing once they are used up;
+// admin-created promotional customers get a window of any length (or forever)
+// and are sent to Billing when it closes. The backend is the source of truth
+// (`access_expired`), but a window can close while a cached session is open, so
+// its date is also checked here. A card-backed plan always wins.
 
 export interface AccessUser {
   has_active_plan?: boolean;
   promo_expires_at?: string | null;
+  on_free_credits?: boolean;
   access_expired?: boolean;
 }
 
@@ -20,18 +22,21 @@ export function isAccessExpired(user: AccessUser | null | undefined, now: number
 }
 
 /**
- * What adding a card costs today. The free window is the trial: a card added
- * while it is open isn't charged until it closes, and one added afterwards is
- * charged straight away. Users with no window (accounts from before it
- * existed) still get the card-backed trial. Mirrors the backend's
+ * What adding a card costs today. Free credits are the trial for a self-signup,
+ * so they are charged straight away. A promo window is the trial too: a card
+ * added while it is open isn't charged until it closes, and one added
+ * afterwards is charged straight away. Users with neither (accounts from before
+ * they existed) still get the card-backed trial. Mirrors the backend's
  * User::subscriptionTrialTerms.
  */
 export type CheckoutTerms =
   | { kind: "card-trial" }
   | { kind: "window"; chargeAt: number }
-  | { kind: "charge-now" };
+  | { kind: "charge-now" }
+  | { kind: "free-credits" };
 
 export function checkoutTerms(user: AccessUser | null | undefined, now: number = Date.now()): CheckoutTerms {
+  if (user?.on_free_credits) return { kind: "free-credits" };
   const end = user?.promo_expires_at ? Date.parse(user.promo_expires_at) : NaN;
   if (Number.isNaN(end)) return { kind: "card-trial" };
   return end > now ? { kind: "window", chargeAt: end } : { kind: "charge-now" };

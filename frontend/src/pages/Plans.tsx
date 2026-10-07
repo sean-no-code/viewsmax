@@ -55,8 +55,10 @@ const ctaLabel: Record<PlanCta, string> = {
 const Plans = () => {
 	const navigate = useNavigate();
 	const { user } = useAuth();
-	// Free window closed: subscribing now charges today, so don't promise a trial.
-	const trialUsed = checkoutTerms(user).kind === "charge-now";
+	// Free window closed, or on free credits: subscribing now charges today, so
+	// don't promise a trial.
+	const terms = checkoutTerms(user);
+	const trialUsed = terms.kind === "charge-now" || terms.kind === "free-credits";
 
 	const [active, setActive] = useState(() => getInitialSubscription());
 	const [plans, setPlans] = useState<PlanTier[]>([]);
@@ -315,9 +317,11 @@ const Plans = () => {
 					</h1>
 					{!isActive && (
 						<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-							{trialUsed
-								? "Your free trial has ended. Pick the tier that fits how you grow."
-								: "7-day free trial at $0, then pick the tier that fits how you grow."}
+							{terms.kind === "free-credits"
+								? "Your free credits were your trial. Pick the tier that fits how you grow."
+								: trialUsed
+									? "Your free trial has ended. Pick the tier that fits how you grow."
+									: "7-day free trial at $0, then pick the tier that fits how you grow."}
 						</p>
 					)}
 				</div>

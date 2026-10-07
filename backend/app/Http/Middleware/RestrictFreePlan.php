@@ -25,8 +25,8 @@ class RestrictFreePlan
             ], 401);
         }
 
-        // Admins and promotional customers (free window still open) bypass plan restrictions
-        if ($request->user()->isAdmin() || $request->user()->hasActivePromo()) {
+        // Admins and users with free access (promo window open, or free credits left) bypass plan restrictions
+        if ($request->user()->isAdmin() || $request->user()->hasFreeAccess()) {
             return $next($request);
         }
 
