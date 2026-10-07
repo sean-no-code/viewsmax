@@ -46,11 +46,14 @@ class WebActionCreditsTest extends TestCase
         return $this->user->fresh()->balanceInt;
     }
 
-    private function sendPost(string $status): \Illuminate\Testing\TestResponse
+    private function sendPost(string $status, int $images = 0): \Illuminate\Testing\TestResponse
     {
+        $media = array_map(fn ($i) => ['type' => 'image', 'url' => "https://example.com/{$i}.jpg"], range(1, max($images, 1)));
+
         return $this->postJson('/api/posts', array_filter([
             'caption' => 'Hello', 'platforms' => ['x'], 'status' => $status,
             'scheduled_at' => $status === 'scheduled' ? now()->addDay()->toIso8601String() : null,
+            'media' => $images > 0 ? $media : null,
         ]), $this->headers());
     }
 
@@ -95,6 +98,44 @@ class WebActionCreditsTest extends TestCase
         $this->sendPost('scheduled')->assertCreated();
 
         $this->assertSame(100 - (int) config('credits.mcp.tools.create_post'), $this->balance());
+    }
+
+    public function test_each_image_in_a_published_post_costs_the_same_as_an_ai_upload(): void
+    {
+        // Same total as the AI path (upload_media per image + create_post), but
+        // charged at publish for the media actually in the post, so uploading
+        // or swapping images in the composer costs nothing.
+        $this->fundCredits($this->user, 100);
+
+        $this->sendPost('scheduled', images: 2)->assertCreated();
+
+        $expected = (int) config('credits.mcp.tools.create_post') + 2 * (int) config('credits.mcp.tools.upload_media');
+        $this->assertSame(100 - $expected, $this->balance()); // 10 + 2 × 5 = 20
+    }
+
+    public function test_publishing_a_draft_with_an_image_charges_for_the_image_once(): void
+    {
+        $this->fundCredits($this->user, 100);
+        $id = $this->sendPost('draft', images: 1)->assertCreated()->json('id');
+        $this->assertSame(100, $this->balance());
+
+        $this->putJson("/api/posts/{$id}", [
+            'status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'platforms' => ['x'],
+            'caption' => 'Hello', 'media' => [['type' => 'image', 'url' => 'https://example.com/swapped.jpg']],
+        ], $this->headers())->assertOk();
+
+        $this->assertSame(85, $this->balance()); // 10 + 5, once
+    }
+
+    public function test_not_enough_credits_for_the_images_refuses_the_publish(): void
+    {
+        $this->fundCredits($this->user, 12);
+
+        $this->sendPost('scheduled', images: 1)
+            ->assertStatus(402)
+            ->assertJsonPath('message', 'Not enough credits to publish a post with 1 image or video (15 needed, 12 available). Choose a plan to get more credits.');
+
+        $this->assertSame(0, Post::count());
     }
 
     public function test_saving_a_draft_is_free_and_publishing_it_later_is_charged_once(): void
