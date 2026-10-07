@@ -14,9 +14,11 @@ const Checkout = () => {
   const { user, refreshUser } = useAuth();
   const [isComplete, setIsComplete] = useState(false);
   // What adding a card costs today: the card-backed trial, $0 until the free
-  // window closes, or the full price once it has (see checkoutTerms).
+  // window closes, or the full price once it has or when the user is on free
+  // credits (those were the trial; see checkoutTerms).
   const terms = checkoutTerms(user);
-  const chargeNow = terms.kind === "charge-now";
+  const chargeNow = terms.kind === "charge-now" || terms.kind === "free-credits";
+  const trialOver = terms.kind === "free-credits" ? "Your free credits were your trial" : "Your free trial has ended";
   const freeUntil = terms.kind === "window"
     ? new Date(terms.chargeAt).toLocaleDateString([], { day: "numeric", month: "short" })
     : null;
@@ -72,7 +74,7 @@ const Checkout = () => {
               Complete Your Subscription
             </h1>
             <p className="text-muted-foreground">
-              {chargeNow ? "Your free trial has ended — add your card to keep going" : freeUntil ? `Add your card — nothing to pay until ${freeUntil}` : "Add your card to start your free trial"}
+              {chargeNow ? `${trialOver} — add your card to keep going` : freeUntil ? `Add your card — nothing to pay until ${freeUntil}` : "Add your card to start your free trial"}
             </p>
           </div>
 
@@ -107,7 +109,7 @@ const Checkout = () => {
                         <span className={`text-lg font-semibold ${chargeNow ? "text-foreground" : "text-green-600"}`}>{chargeNow ? `$${planPrice}.00` : "$0.00"}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {chargeNow ? "Your free trial has ended — charged today" : "Free trial — no charge today"}
+                        {chargeNow ? `${trialOver} — charged today` : "Free trial — no charge today"}
                       </p>
                     </div>
                   </div>
