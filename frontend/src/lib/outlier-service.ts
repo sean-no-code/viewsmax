@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api-service';
+import { API_BASE_URL, viewsMaxApi } from './api-service';
 
 export type OutlierPlatform = 'youtube' | 'tiktok' | 'instagram';
 
@@ -163,11 +163,15 @@ async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
         let message = `Request failed (${response.status})`;
         try {
             const body = await response.json();
+            viewsMaxApi.noteCredits(body); // a refusal (402) carries the balance too
             message = body.error || body.message || message;
         } catch { /* ignore */ }
         throw new Error(message);
     }
-    return response.json();
+    const body = await response.json();
+    // Search, fetch, breakdown and channel add cost credits: update the badge.
+    viewsMaxApi.noteCredits(body);
+    return body;
 }
 
 export async function searchOutliers(filters: OutlierFilters): Promise<OutlierResponse> {

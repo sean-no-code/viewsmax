@@ -19,7 +19,7 @@ class PostMediaUploadTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $this->user = $this->fundedUser();
         $this->token = $this->user->createToken('test-token')->plainTextToken;
     }
 

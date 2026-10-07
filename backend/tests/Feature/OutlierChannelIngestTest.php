@@ -33,7 +33,7 @@ class OutlierChannelIngestTest extends TestCase
 
     private function authHeaders(?User $user = null): array
     {
-        $user ??= User::factory()->create();
+        $user ??= $this->fundedUser();
         $token = $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password'])
             ->json('data.token');
 
@@ -61,7 +61,7 @@ class OutlierChannelIngestTest extends TestCase
     public function test_add_queues_an_ingest_and_returns_202(): void
     {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
 
         $response = $this->withHeaders($this->authHeaders($user))
             ->postJson('/api/outliers/channels/add', ['input' => 'https://www.tiktok.com/@Khaby.Lame'])
@@ -101,7 +101,7 @@ class OutlierChannelIngestTest extends TestCase
     public function test_recently_ingested_channel_returns_immediately_and_follows_it(): void
     {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
         $channel = OutlierChannel::create([
             'platform' => 'tiktok', 'youtube_channel_id' => '127905465618821121', 'handle' => 'khaby.lame',
             'channel_name' => 'Khabane lame', 'subscriber_count' => 100, 'average_views' => 300, 'last_ingested_at' => now()->subHours(2),
@@ -143,7 +143,7 @@ class OutlierChannelIngestTest extends TestCase
     public function test_show_is_scoped_to_the_requesting_user(): void
     {
         Queue::fake();
-        $owner = User::factory()->create();
+        $owner = $this->fundedUser();
         $id = $this->withHeaders($this->authHeaders($owner))
             ->postJson('/api/outliers/channels/add', ['input' => 'https://www.youtube.com/@MrBeast'])->json('ingest_id');
 
@@ -183,7 +183,7 @@ class OutlierChannelIngestTest extends TestCase
 
     public function test_job_pulls_the_channel_marks_done_and_follows_it(): void
     {
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
         $this->fakeTiktokChannel([$this->tiktokPost('1', 100), $this->tiktokPost('2', 300), $this->tiktokPost('3', 500)]);
         $ingest = OutlierChannelIngest::create([
             'user_id' => $user->id, 'platform' => 'tiktok', 'input' => 'https://www.tiktok.com/@khaby.lame', 'handle' => 'khaby.lame',
@@ -217,7 +217,7 @@ class OutlierChannelIngestTest extends TestCase
     {
         Http::fake(['*' => Http::response(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Profile not found']], 404)]);
         $ingest = OutlierChannelIngest::create([
-            'user_id' => User::factory()->create()->id, 'platform' => 'tiktok', 'input' => '@nobody', 'handle' => 'nobody',
+            'user_id' => $this->fundedUser()->id, 'platform' => 'tiktok', 'input' => '@nobody', 'handle' => 'nobody',
         ]);
 
         app()->call([new IngestOutlierChannelJob($ingest->id), 'handle']);
@@ -231,7 +231,7 @@ class OutlierChannelIngestTest extends TestCase
     public function test_job_failed_hook_marks_the_row_so_it_never_sticks_in_processing(): void
     {
         $ingest = OutlierChannelIngest::create([
-            'user_id' => User::factory()->create()->id, 'platform' => 'instagram', 'input' => '@nasa', 'handle' => 'nasa',
+            'user_id' => $this->fundedUser()->id, 'platform' => 'instagram', 'input' => '@nasa', 'handle' => 'nasa',
             'status' => OutlierChannelIngest::STATUS_PROCESSING, 'started_at' => now(),
         ]);
 
@@ -260,7 +260,7 @@ class OutlierChannelIngestTest extends TestCase
             '*/youtube/v3/videos*' => Http::response(['items' => [$item('y1', 10), $item('y2', 1000)]], 200),
         ]);
         $ingest = OutlierChannelIngest::create([
-            'user_id' => User::factory()->create()->id, 'platform' => 'youtube', 'input' => 'https://www.youtube.com/@MrBeast', 'handle' => 'mrbeast',
+            'user_id' => $this->fundedUser()->id, 'platform' => 'youtube', 'input' => 'https://www.youtube.com/@MrBeast', 'handle' => 'mrbeast',
         ]);
 
         app()->call([new IngestOutlierChannelJob($ingest->id), 'handle']);

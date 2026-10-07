@@ -23,7 +23,7 @@ class TikTokComplianceTest extends TestCase
     {
         parent::setUp();
         Queue::fake();
-        $this->token = User::factory()->create()->createToken('t')->plainTextToken;
+        $this->token = $this->fundedUser()->createToken('t')->plainTextToken;
     }
 
     private function publishTikTok(array $options)

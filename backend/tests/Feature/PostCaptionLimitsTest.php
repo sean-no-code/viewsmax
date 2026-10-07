@@ -24,7 +24,7 @@ class PostCaptionLimitsTest extends TestCase
     {
         parent::setUp();
         Queue::fake();
-        $this->user = User::factory()->create();
+        $this->user = $this->fundedUser();
         $this->token = $this->user->createToken('test-token')->plainTextToken;
     }
 

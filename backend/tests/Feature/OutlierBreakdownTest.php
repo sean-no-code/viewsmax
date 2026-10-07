@@ -21,7 +21,7 @@ class OutlierBreakdownTest extends TestCase
 
     private function authHeaders(): array
     {
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
         $token = $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password'])
             ->json('data.token');
 

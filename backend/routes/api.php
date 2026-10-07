@@ -223,10 +223,11 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::get('/channels', [App\Http\Controllers\OutlierController::class, 'channels']);
         // Add a creator channel by profile URL / @handle (background pull of recent videos)
         Route::post('/channels/add', [App\Http\Controllers\OutlierChannelIngestController::class, 'store'])
-            ->middleware('throttle:outlier-channel-add');
+            ->middleware(['throttle:outlier-channel-add', 'credits.web:add_outlier_channel']);
         Route::get('/channels/ingests/{id}', [App\Http\Controllers\OutlierChannelIngestController::class, 'show'])->whereNumber('id');
-        Route::post('/search', [App\Http\Controllers\OutlierController::class, 'search']);
-        Route::post('/fetch', [App\Http\Controllers\OutlierController::class, 'fetchByUrl']);
+        // Website actions cost the same credits as the matching AI tool (ChargeWebAction).
+        Route::post('/search', [App\Http\Controllers\OutlierController::class, 'search'])->middleware('credits.web:search_outliers');
+        Route::post('/fetch', [App\Http\Controllers\OutlierController::class, 'fetchByUrl'])->middleware('credits.web:fetch_outlier');
 
         // Saved filter presets (per-user)
         Route::get('/saved-filters', [App\Http\Controllers\OutlierSavedFilterController::class, 'index']);
@@ -256,7 +257,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::get('/{platform}/{videoId}/breakdown', [App\Http\Controllers\OutlierBreakdownController::class, 'show'])
             ->whereIn('platform', ['youtube', 'tiktok', 'instagram']);
         Route::post('/{platform}/{videoId}/breakdown', [App\Http\Controllers\OutlierBreakdownController::class, 'store'])
-            ->whereIn('platform', ['youtube', 'tiktok', 'instagram']);
+            ->whereIn('platform', ['youtube', 'tiktok', 'instagram'])->middleware('credits.web:generate_outlier_breakdown');
     });
 
     // Analyzer Status Routes (protected)
@@ -452,12 +453,15 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     Route::apiResource('brands', BrandController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // Multi-platform Posts (compose + schedule)
-    Route::post('/posts/media', [PostMediaController::class, 'store']);
+    // Website actions cost the same credits as the matching AI tool (ChargeWebAction):
+    // uploads are charged once, on completion (the direct upload's first step only checks).
+    Route::post('/posts/media', [PostMediaController::class, 'store'])->middleware('credits.web:upload_media');
     // Presigned direct-to-R2 media uploads (browser → bucket, no server relay).
-    Route::post('/posts/media/direct', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'store']);
-    Route::post('/posts/media/direct/complete', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'complete']);
+    Route::post('/posts/media/direct', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'store'])->middleware('credits.web:upload_media,check');
+    Route::post('/posts/media/direct/complete', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'complete'])->middleware('credits.web:upload_media');
     Route::post('/posts/media/direct/abort', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'abort']);
     // Retry publishing for a single failed platform target (leaves siblings alone).
     Route::post('/posts/{post}/targets/{target}/retry', [PostController::class, 'retryTarget']);
-    Route::apiResource('posts', PostController::class);
+    // Publishing or scheduling a post costs the same as the AI's create_post; drafts are free.
+    Route::apiResource('posts', PostController::class)->middlewareFor(['store', 'update'], 'credits.web:create_post');
 });

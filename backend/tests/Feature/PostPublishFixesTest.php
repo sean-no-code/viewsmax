@@ -39,7 +39,7 @@ class PostPublishFixesTest extends TestCase
     {
         Log::spy();
         Queue::fake(); // keep the failure-email job from running inline under the Log spy
-        $post = $this->makePost(User::factory()->create());
+        $post = $this->makePost($this->fundedUser());
         $target = $post->targets()->create(['platform' => 'x', 'status' => PostTarget::STATUS_PENDING]);
 
         $target->forceFill(['status' => PostTarget::STATUS_FAILED, 'error' => 'boom'])->save();
@@ -54,7 +54,7 @@ class PostPublishFixesTest extends TestCase
     public function test_retry_requeues_only_the_failed_target(): void
     {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
         $post = $this->makePost($user);
         $failed = $post->targets()->create(['platform' => 'x', 'status' => PostTarget::STATUS_FAILED, 'error' => 'boom']);
         // A sibling that already published must never be touched (no double-post).
@@ -75,7 +75,7 @@ class PostPublishFixesTest extends TestCase
     public function test_only_a_failed_target_can_be_retried(): void
     {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
         $post = $this->makePost($user);
         $target = $post->targets()->create(['platform' => 'x', 'status' => PostTarget::STATUS_PUBLISHED]);
 
@@ -88,11 +88,11 @@ class PostPublishFixesTest extends TestCase
 
     public function test_retry_is_scoped_to_the_owner(): void
     {
-        $owner = User::factory()->create();
+        $owner = $this->fundedUser();
         $post = $this->makePost($owner);
         $target = $post->targets()->create(['platform' => 'x', 'status' => PostTarget::STATUS_FAILED, 'error' => 'boom']);
 
-        $intruder = User::factory()->create();
+        $intruder = $this->fundedUser();
         $this->withHeaders($this->authHeaders($intruder))
             ->postJson("/api/posts/{$post->id}/targets/{$target->id}/retry")
             ->assertNotFound();
@@ -102,7 +102,7 @@ class PostPublishFixesTest extends TestCase
     public function test_tiktok_accepts_a_photo_slideshow(): void
     {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
 
         $this->withHeaders($this->authHeaders($user))
             ->postJson('/api/posts', [
@@ -122,7 +122,7 @@ class PostPublishFixesTest extends TestCase
     public function test_tiktok_still_rejects_a_post_with_no_media(): void
     {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
 
         $this->withHeaders($this->authHeaders($user))
             ->postJson('/api/posts', [

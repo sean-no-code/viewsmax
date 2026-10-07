@@ -117,6 +117,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'mcp.audit' => \App\Http\Middleware\McpAuditLog::class,
             'mcp.notifications' => \App\Http\Middleware\McpAcceptNotifications::class,
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
+            'credits.web' => \App\Http\Middleware\ChargeWebAction::class,
             'restrict.free' => \App\Http\Middleware\RestrictFreePlan::class,
             'access.active' => \App\Http\Middleware\EnsureAccessActive::class,
             'verified.web' => \App\Http\Middleware\EnsureWebEmailVerified::class,

@@ -19,7 +19,7 @@ class PostMediaDirectUploadTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $this->user = $this->fundedUser();
         $this->token = $this->user->createToken('test-token')->plainTextToken;
     }
 
@@ -210,7 +210,7 @@ class PostMediaDirectUploadTest extends TestCase
 
     public function test_complete_rejects_paths_outside_own_prefix(): void
     {
-        $other = User::factory()->create();
+        $other = $this->fundedUser();
 
         $this->mockUploader(function (MockInterface $m) {
             $m->shouldReceive('completeMultipart')->never();
@@ -277,7 +277,7 @@ class PostMediaDirectUploadTest extends TestCase
 
     public function test_abort_rejects_paths_outside_own_prefix(): void
     {
-        $other = User::factory()->create();
+        $other = $this->fundedUser();
 
         $this->mockUploader(fn (MockInterface $m) => $m->shouldReceive('abortMultipart')->never());
 

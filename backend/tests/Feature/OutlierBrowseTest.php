@@ -14,7 +14,7 @@ class OutlierBrowseTest extends TestCase
 
     private function authHeaders(): array
     {
-        $user = User::factory()->create();
+        $user = $this->fundedUser();
         $token = $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password'])
             ->json('data.token');
 
@@ -420,7 +420,7 @@ class OutlierBrowseTest extends TestCase
     {
         $this->seedMixedPlatforms();
 
-        $admin = User::factory()->create();
+        $admin = $this->fundedUser();
         $admin->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'admin'], ['display_name' => 'Admin'])->id);
         $adminToken = $this->postJson('/api/login', ['email' => $admin->email, 'password' => 'password'])->json('data.token');
         $adminHeaders = ['Authorization' => 'Bearer '.$adminToken, 'Accept' => 'application/json'];

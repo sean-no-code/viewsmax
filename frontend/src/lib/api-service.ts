@@ -1111,9 +1111,13 @@ class ViewsMaxApiService {
       });
       if (!response.ok) {
         const errorData = await response.text();
+        const refusal = this.creditRefusal(response.status, errorData);
+        if (refusal) return { success: false, error: refusal };
         return { success: false, error: `Failed to create post: ${response.status} - ${errorData}` };
       }
-      return { success: true, data: await response.json() };
+      const created = await response.json();
+      this.extractCreditsFromResponse(created); // publishing/scheduling costs credits
+      return { success: true, data: created };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
@@ -1128,9 +1132,13 @@ class ViewsMaxApiService {
       });
       if (!response.ok) {
         const errorData = await response.text();
+        const refusal = this.creditRefusal(response.status, errorData);
+        if (refusal) return { success: false, error: refusal };
         return { success: false, error: `Failed to update post: ${response.status} - ${errorData}` };
       }
-      return { success: true, data: await response.json() };
+      const updated = await response.json();
+      this.extractCreditsFromResponse(updated); // publishing a draft costs credits
+      return { success: true, data: updated };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
@@ -1191,6 +1199,11 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ type, filename: file.name, mime: file.type, size: file.size }),
       });
+      if (response.status === 402) {
+        // Not enough credits to upload: the relay would refuse too, so stop here.
+        const refusal = this.creditRefusal(402, await response.text());
+        return { success: false, error: refusal || 'Not enough credits to upload media.' };
+      }
       if (response.status === 422) {
         // The file itself is invalid (size/mime) — the relay would reject it
         // identically, so surface the validation message instead of retrying.
@@ -1254,10 +1267,11 @@ class ViewsMaxApiService {
       }),
     });
     const body = await response.json().catch(() => null);
+    this.extractCreditsFromResponse(body); // a completed upload costs credits
     if (!response.ok || !body?.success) {
-      // Verification failures (422: too big / wrong mime) are terminal — the
-      // relay applies the same rules, so don't retry there.
-      if (response.status === 422) {
+      // Verification failures (422: too big / wrong mime) and "not enough
+      // credits" (402) are terminal — the relay applies the same rules.
+      if (response.status === 422 || response.status === 402) {
         return { success: false, error: body?.message || 'Uploaded file failed verification.' };
       }
       throw new Error(body?.message || `Completing the upload failed: ${response.status}`);
@@ -1300,12 +1314,14 @@ class ViewsMaxApiService {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               const result = JSON.parse(xhr.responseText);
+              this.extractCreditsFromResponse(result); // an upload costs credits
               resolve({ success: true, data: result.data || result });
             } catch {
               resolve({ success: false, error: 'Upload succeeded but the server response was invalid.' });
             }
           } else {
-            resolve({ success: false, error: `Failed to upload media: ${xhr.status} - ${xhr.responseText}` });
+            const refusal = this.creditRefusal(xhr.status, xhr.responseText);
+            resolve({ success: false, error: refusal || `Failed to upload media: ${xhr.status} - ${xhr.responseText}` });
           }
         };
         xhr.onerror = () => resolve({ success: false, error: 'Network error during upload. Check your connection and try again.' });
@@ -1569,6 +1585,30 @@ class ViewsMaxApiService {
   // Set callback to be called when user_credits is found in responses
   public setCreditsUpdateCallback(callback: ((credits: number) => void) | null) {
     this.creditsUpdateCallback = callback;
+  }
+
+  /**
+   * A response from an action that costs credits carries the new balance as
+   * `user_credits`; pass it on so the Credits badge updates straight away.
+   * Used by callers outside this class (e.g. outlier-service).
+   */
+  public noteCredits(responseData: unknown): void {
+    this.extractCreditsFromResponse(responseData);
+  }
+
+  /**
+   * "Not enough credits" (402, from ChargeWebAction) as the readable message
+   * the server sends, or null for any other failure. Also updates the badge.
+   */
+  private creditRefusal(status: number, body: string): string | null {
+    if (status !== 402) return null;
+    try {
+      const parsed = JSON.parse(body);
+      this.extractCreditsFromResponse(parsed);
+      return typeof parsed?.message === 'string' ? parsed.message : null;
+    } catch {
+      return null;
+    }
   }
 
   // Helper method to extract user_credits from response and notify callback

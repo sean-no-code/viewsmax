@@ -39,4 +39,18 @@ abstract class TestCase extends BaseTestCase
         $wallet->forceFill(['balance' => $balance])->saveQuietly();
         app(BookkeeperServiceInterface::class)->sync($wallet, $balance);
     }
+
+    /**
+     * A user who can afford the actions that cost credits: MCP tools, and the
+     * website actions priced like them (ChargeWebAction: publishing posts,
+     * uploads, outlier search/fetch/breakdown/channel add). For tests about
+     * something else that happen to go through one of those actions.
+     */
+    protected function fundedUser(array $attributes = [], int $credits = 10_000): User
+    {
+        $user = User::factory()->create($attributes);
+        $this->fundCredits($user, $credits);
+
+        return $user;
+    }
 }
