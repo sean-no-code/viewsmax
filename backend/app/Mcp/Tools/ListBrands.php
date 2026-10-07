@@ -46,7 +46,7 @@ class ListBrands extends ViewsMaxTool
                 'name' => $brand->name,
                 'accounts' => $brand->socialAccounts->map(fn ($a) => [
                     'platform' => $a->platform,
-                    'account_name' => $a->name ?? $a->username,
+                    'account_name' => $a->name ?? self::publicHandle($a->username),
                     'status' => $a->status,
                     'social_account_id' => $a->id,
                     'connection_id' => null,

@@ -184,6 +184,21 @@ abstract class ViewsMaxTool extends Tool
         ];
     }
 
+    /**
+     * A username is a public handle, never an address. LinkedIn's OIDC userinfo
+     * has no handle, and rows written before LinkedInProvider stopped storing
+     * the member's email there still hold it — an interior '@' means an email
+     * and is dropped. A leading '@' (YouTube customUrl) is a handle and kept.
+     */
+    protected static function publicHandle(?string $username): ?string
+    {
+        if ($username === null || $username === '' || str_contains(ltrim($username, '@'), '@')) {
+            return null;
+        }
+
+        return $username;
+    }
+
     protected static function trackedUrl(string $offerUrl, string $parameterId): string
     {
         return $offerUrl . (str_contains($offerUrl, '?') ? '&' : '?') . 'trk=' . $parameterId;

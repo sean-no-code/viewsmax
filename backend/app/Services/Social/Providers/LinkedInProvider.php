@@ -66,7 +66,10 @@ class LinkedInProvider extends AbstractSocialProvider implements SupportsComment
         $account = $this->storeAccount($user, [
             'platform_account_id' => $memberId,
             'name' => $profile['name'] ?? null,
-            'username' => $profile['email'] ?? null,
+            // OIDC userinfo has no vanity handle (that needs r_basicprofile), and
+            // the email is not a handle. Explicit null so a reconnect clears the
+            // email older code stored here (storeAccount is an updateOrCreate).
+            'username' => null,
             'avatar_url' => $profile['picture'] ?? null,
             'profile_url' => 'https://www.linkedin.com/in/me',
             'access_token' => $tokens->accessToken,

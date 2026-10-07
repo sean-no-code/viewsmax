@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\BeehiivConnection;
-use App\Models\FeatureRequest;
 use App\Models\Offer;
 use App\Models\SocialAccount;
 use App\Models\TrackingLink;
@@ -14,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * MCP tools for the remaining sidebar areas: Monetization/Offers, Analytics,
- * Connections, and Feature requests. These tools reuse the existing
+ * and Connections. These tools reuse the existing
  * controllers, so behavior (plan limits, ownership, validation) is identical
  * to the REST API the frontend uses.
  */
@@ -447,7 +446,6 @@ class McpOfferConnectionToolsTest extends TestCase
         $this->assertArrayNotHasKey('connect_page_url', $data);
         $this->assertArrayNotHasKey('next_step', $data);
     }
-
 
     public function test_get_connect_url_rejects_unknown_platform(): void
     {

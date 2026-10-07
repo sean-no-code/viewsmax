@@ -884,6 +884,163 @@ class McpServerTest extends TestCase
         $this->assertSame('legacy', $yt['store']);
     }
 
+    public function test_list_connected_accounts_never_returns_an_email_as_username(): void
+    {
+        $user = User::factory()->create();
+        SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'linkedin',
+            'platform_account_id' => 'li-1',
+            'name' => 'Jane Doe',
+            'username' => 'jane@example.com', // what LinkedInProvider stored before it stopped
+            'status' => 'connected',
+        ]);
+
+        $data = $this->toolJson($this->callTool($this->mcpKey($user), 'list_connected_accounts', []));
+
+        $row = collect($data['accounts'])->firstWhere('platform', 'linkedin');
+        $this->assertNull($row['username']);
+        $this->assertSame('Jane Doe', $row['account_name']);
+        $this->assertStringNotContainsString('jane@example.com', json_encode($data));
+    }
+
+    public function test_list_connected_accounts_account_name_never_falls_back_to_an_email(): void
+    {
+        $user = User::factory()->create();
+        SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'linkedin',
+            'platform_account_id' => 'li-1',
+            'name' => null,
+            'username' => 'jane@example.com',
+            'status' => 'connected',
+        ]);
+
+        $data = $this->toolJson($this->callTool($this->mcpKey($user), 'list_connected_accounts', []));
+
+        $row = collect($data['accounts'])->firstWhere('platform', 'linkedin');
+        $this->assertNull($row['account_name']);
+        $this->assertNull($row['username']);
+        $this->assertStringNotContainsString('jane@example.com', json_encode($data));
+    }
+
+    public function test_list_connected_accounts_keeps_handles_with_a_leading_at(): void
+    {
+        $user = User::factory()->create();
+        SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'youtube',
+            'platform_account_id' => 'UC-1',
+            'name' => 'ViewsMax',
+            'username' => '@viewsmax', // YouTube customUrl
+            'status' => 'connected',
+        ]);
+
+        $data = $this->toolJson($this->callTool($this->mcpKey($user), 'list_connected_accounts', []));
+
+        $this->assertSame('@viewsmax', collect($data['accounts'])->firstWhere('platform', 'youtube')['username']);
+    }
+
+    public function test_list_connected_accounts_folds_a_mirrored_connection_into_its_social_row(): void
+    {
+        $user = User::factory()->create();
+        // The YouTube/TikTok OAuth flows write a Connection and mirror it into
+        // SocialAccount — one account, two rows in the database.
+        $ytSocial = SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'youtube',
+            'platform_account_id' => 'UC-1',
+            'name' => 'My Channel',
+            'status' => 'connected',
+        ]);
+        $ytConn = Connection::create([
+            'user_id' => $user->id,
+            'provider' => 'youtube',
+            'account_name' => 'My Channel',
+            'account_id' => 'UC-1',
+            'access_token' => 'tok',
+        ]);
+        $ttSocial = SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'tiktok',
+            'platform_account_id' => 'tt-1',
+            'name' => 'My TikTok',
+            'status' => 'connected',
+        ]);
+        $ttConn = Connection::create([
+            'user_id' => $user->id,
+            'provider' => 'tiktok',
+            'account_name' => 'My TikTok',
+            'account_id' => 'tt-1',
+            'access_token' => 'tok',
+        ]);
+
+        $data = $this->toolJson($this->callTool($this->mcpKey($user), 'list_connected_accounts', []));
+
+        $accounts = collect($data['accounts']);
+        $this->assertCount(2, $accounts);
+        $this->assertSame(['social'], $accounts->pluck('store')->unique()->values()->all());
+
+        $yt = $accounts->firstWhere('platform', 'youtube');
+        $this->assertSame($ytSocial->id, $yt['social_account_id']);
+        $this->assertSame($ytConn->id, $yt['connection_id']);
+
+        $tt = $accounts->firstWhere('platform', 'tiktok');
+        $this->assertSame($ttSocial->id, $tt['social_account_id']);
+        $this->assertSame($ttConn->id, $tt['connection_id']);
+    }
+
+    public function test_list_connected_accounts_keeps_a_legacy_row_with_no_social_counterpart(): void
+    {
+        $user = User::factory()->create();
+        SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'youtube',
+            'platform_account_id' => 'UC-1',
+            'name' => 'My Channel',
+            'status' => 'connected',
+        ]);
+        $ttConn = Connection::create([
+            'user_id' => $user->id,
+            'provider' => 'tiktok',
+            'account_name' => 'Old TikTok',
+            'account_id' => 'tt-1',
+            'access_token' => 'tok',
+        ]);
+
+        $data = $this->toolJson($this->callTool($this->mcpKey($user), 'list_connected_accounts', []));
+
+        $accounts = collect($data['accounts']);
+        $this->assertCount(2, $accounts);
+        $this->assertSame('social', $accounts->firstWhere('platform', 'youtube')['store']);
+        $this->assertNull($accounts->firstWhere('platform', 'youtube')['connection_id']);
+
+        $tt = $accounts->firstWhere('platform', 'tiktok');
+        $this->assertSame('legacy', $tt['store']);
+        $this->assertSame($ttConn->id, $tt['connection_id']);
+        $this->assertNull($tt['social_account_id']);
+    }
+
+    public function test_list_brands_never_returns_an_email_as_account_name(): void
+    {
+        $user = User::factory()->create();
+        $li = SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'linkedin',
+            'platform_account_id' => 'li-1',
+            'name' => null,
+            'username' => 'jane@example.com',
+            'status' => 'connected',
+        ]);
+        $brand = $user->brands()->create(['name' => 'Acme']);
+        $brand->socialAccounts()->sync([$li->id]);
+
+        $data = $this->toolJson($this->callTool($this->mcpKey($user), 'list_brands', []));
+
+        $this->assertNull($data['brands'][0]['accounts'][0]['account_name']);
+        $this->assertStringNotContainsString('jane@example.com', json_encode($data));
+    }
+
     // ── brands ──────────────────────────────────────────────────────────────
 
     private function makeBrandWithAccounts(User $user): array

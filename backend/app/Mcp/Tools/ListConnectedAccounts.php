@@ -30,7 +30,10 @@ class ListConnectedAccounts extends ViewsMaxTool
             . 'newsletter connection if there is one — a platform can appear more '
             . 'than once when several accounts are connected on it. Each entry '
             . 'carries social_account_id or connection_id (matching list_brands) '
-            . 'plus its store. Posts can only publish to connected platforms; use '
+            . 'plus its store; a connection_id-only (legacy) entry is shown only '
+            . 'for platforms with no social_account_id entry. username is the '
+            . "platform's public handle where it has one, never an email. Posts "
+            . 'can only publish to connected platforms; use '
             . 'get_connect_url for anything missing. Beehiiv is connected via an '
             . 'API key on the Connections page, not get_connect_url, and is used '
             . 'for newsletter reach, not posting.';
@@ -40,20 +43,35 @@ class ListConnectedAccounts extends ViewsMaxTool
     {
         $user = $this->user();
 
-        // Accounts live in two stores (newer SocialAccount + legacy Connection);
-        // merge them the same way the frontend does. Every account is returned —
-        // multi-account platforms would be hidden by a per-platform dedup.
-        $accounts = $user->socialAccounts()->get()->map(fn ($a) => [
-            'platform' => $a->platform,
-            'account_name' => $a->name ?? $a->username,
-            'username' => $a->username,
-            'status' => $a->status,
-            'social_account_id' => $a->id,
-            'connection_id' => null,
-            'store' => 'social',
-        ]);
+        // Accounts live in two stores: SocialAccount, which publishing reads,
+        // and the legacy Connection rows the YouTube/TikTok flows still write
+        // and then mirror into SocialAccount. A mirrored connection is the same
+        // account, not a second one: its connection_id is carried on the social
+        // row (so list_brands still cross-references) instead of a duplicate
+        // row. Several social accounts on one platform are all returned.
+        $social = $user->socialAccounts()->get();
+        $connections = $user->connections()->get();
 
-        $legacy = $user->connections()->get()->map(fn ($c) => [
+        $accounts = $social->map(function ($a) use ($connections) {
+            $mirror = $connections->first(fn ($c) => $c->provider === $a->platform
+                && (string) $c->account_id === (string) $a->platform_account_id);
+            $handle = self::publicHandle($a->username);
+
+            return [
+                'platform' => $a->platform,
+                'account_name' => $a->name ?? $handle,
+                'username' => $handle,
+                'status' => $a->status,
+                'social_account_id' => $a->id,
+                'connection_id' => $mirror?->id,
+                'store' => 'social',
+            ];
+        });
+
+        // Only connections that were never mirrored (pre-mirror connects) are
+        // listed on their own.
+        $mirroredPlatforms = $social->pluck('platform')->unique();
+        $legacy = $connections->reject(fn ($c) => $mirroredPlatforms->contains($c->provider))->map(fn ($c) => [
             'platform' => $c->provider,
             'account_name' => $c->account_name,
             'username' => null,
