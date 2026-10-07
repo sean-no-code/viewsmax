@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,11 +32,20 @@ class EnsureAccessActive
         'api/subscriptions/*',
     ];
 
+    /**
+     * Minutes a free-credit user who just spent their last credits can still
+     * view things (GET only), so what they paid for finishes loading: search
+     * results, a breakdown being generated, a channel import. The SPA sends
+     * them to Billing on their next click.
+     */
+    public const LAST_CHARGE_VIEW_MINUTES = 10;
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
-        if ($user && $user->accessExpired() && ! $request->is(...self::ALLOWED_PATTERNS)) {
+        if ($user && $user->accessExpired() && ! $request->is(...self::ALLOWED_PATTERNS)
+            && ! $this->viewingWhatTheyPaidFor($request, $user)) {
             return response()->json([
                 'success' => false,
                 'code' => 'access_expired',
@@ -45,5 +56,17 @@ class EnsureAccessActive
         }
 
         return $next($request);
+    }
+
+    private function viewingWhatTheyPaidFor(Request $request, User $user): bool
+    {
+        if (! $request->isMethod('GET') || ! $user->onFreeCredits()) {
+            return false;
+        }
+
+        $lastCharge = $user->transactions()->where('type', 'withdraw')->latest('id')->value('created_at');
+
+        return $lastCharge !== null
+            && Carbon::parse($lastCharge)->gt(now()->subMinutes(self::LAST_CHARGE_VIEW_MINUTES));
     }
 }

@@ -2,6 +2,7 @@
 // Handles all communication with api.viewsmax.ai backend
 
 import { isMockApi, mockApi } from "@/lib/mock-api";
+import { requestAccessCheck, requestAccessCheckOnNextAction } from "@/lib/access";
 import {
   putWithProgress,
   uploadMultipartParts,
@@ -1572,7 +1573,10 @@ class ViewsMaxApiService {
 
   // Helper method to extract user_credits from response and notify callback
   private extractCreditsFromResponse(responseData: any): void {
+    if (responseData?.code === 'access_expired') requestAccessCheck();
     if (responseData && typeof responseData.user_credits === 'number') {
+      // The last credit is gone: show what it paid for, lock on the next click.
+      if (responseData.user_credits <= 0) requestAccessCheckOnNextAction();
       // Always store in localStorage for persistence
       localStorage.setItem('user_credits', responseData.user_credits.toString());
       // Notify callback if registered

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureAccessActive;
 use App\Models\Plan;
 use App\Models\Role;
 use App\Models\User;
@@ -75,6 +76,15 @@ class FreeCreditsSignupTest extends TestCase
         $user->forceWithdraw($user->balanceInt, ['description' => 'test: spend all']);
     }
 
+    /**
+     * Move the user's charges N minutes into the past. The wallet stamps
+     * transactions with the real clock, not Carbon's test time.
+     */
+    private function ageCharges(User $user, int $minutes): void
+    {
+        $user->transactions()->update(['created_at' => now()->subMinutes($minutes)]);
+    }
+
     /** Mock Stripe and capture the trial terms the subscription is created with. */
     private function expectSubscription(?array &$trial, string $status): void
     {
@@ -137,6 +147,7 @@ class FreeCreditsSignupTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
 
         $this->useUpCredits($user);
+        $this->ageCharges($user, EnsureAccessActive::LAST_CHARGE_VIEW_MINUTES + 1);
 
         $this->withHeaders($headers)->getJson('/api/profile')
             ->assertOk()
@@ -146,6 +157,26 @@ class FreeCreditsSignupTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('code', 'access_expired');
         $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
+    }
+
+    public function test_what_the_last_credits_paid_for_can_still_load_for_a_few_minutes(): void
+    {
+        $user = $this->register();
+        $headers = $this->authHeaders($user);
+
+        $this->useUpCredits($user);
+
+        // Viewing (search results, a breakdown being generated) still loads...
+        $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
+        // ...but nothing that changes or costs anything.
+        $this->withHeaders($headers)->postJson('/api/posts', ['caption' => 'hi'])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'access_expired');
+
+        $this->ageCharges($user, EnsureAccessActive::LAST_CHARGE_VIEW_MINUTES + 1);
+        $this->withHeaders($headers)->getJson('/api/posts')
+            ->assertForbidden()
+            ->assertJsonPath('code', 'access_expired');
     }
 
     public function test_free_credit_users_are_not_capped_by_the_free_plan_offer_limit(): void

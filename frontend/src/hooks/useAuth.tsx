@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { ACCESS_CHECK_EVENT } from "@/lib/access";
 import { viewsMaxApi } from '@/lib/api-service';
 import { disableTrackingForAdmin } from '@/lib/tracking';
 
@@ -166,6 +167,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
     setLoading(false);
   }, []);
+
+  // Free access can end mid-session (the last credit spent, here or by an AI
+  // assistant): re-read the profile when told, so the lock applies at once.
+  useEffect(() => {
+    const onCheck = () => { void refreshUser(); };
+    window.addEventListener(ACCESS_CHECK_EVENT, onCheck);
+    return () => window.removeEventListener(ACCESS_CHECK_EVENT, onCheck);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token]);
 
   // index.html blocks trackers at page load for admins; this stops any that
   // loaded before an admin logged in mid-session (no reload needed)

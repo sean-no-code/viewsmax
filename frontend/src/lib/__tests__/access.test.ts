@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { checkoutTerms, isAccessExpired, promoWindowLabel } from "../access";
+import { describe, expect, it, vi } from "vitest";
+import { ACCESS_CHECK_EVENT, checkoutTerms, isAccessExpired, promoWindowLabel, requestAccessCheckOnNextAction } from "../access";
 
 const NOW = Date.parse("2026-09-28T10:00:00Z");
 const past = "2026-09-27T10:00:00Z";
@@ -59,5 +59,37 @@ describe("promoWindowLabel", () => {
     expect(promoWindowLabel(null, NOW)).toBe("unlimited");
     expect(promoWindowLabel(future, NOW)).toMatch(/^until /);
     expect(promoWindowLabel(past, NOW)).toMatch(/^expired /);
+  });
+});
+
+describe("locking when the last free credits are spent", () => {
+  it("waits for the next click, so what was paid for stays on screen", () => {
+    const check = vi.fn();
+    window.addEventListener(ACCESS_CHECK_EVENT, check);
+
+    requestAccessCheckOnNextAction();
+    requestAccessCheckOnNextAction(); // a second charge in the same moment doesn't double up
+    expect(check).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    expect(check).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new Event("pointerdown"));
+    expect(check).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new Event("pointerdown"));
+    expect(check).toHaveBeenCalledTimes(1);
+    window.removeEventListener(ACCESS_CHECK_EVENT, check);
+  });
+
+  it("Enter counts as the next action", () => {
+    const check = vi.fn();
+    window.addEventListener(ACCESS_CHECK_EVENT, check);
+
+    requestAccessCheckOnNextAction();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+
+    expect(check).toHaveBeenCalledTimes(1);
+    window.removeEventListener(ACCESS_CHECK_EVENT, check);
   });
 });

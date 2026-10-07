@@ -14,6 +14,38 @@ export interface AccessUser {
 
 export const PROMO_ROLE = "promotional_customer";
 
+/**
+ * Fired when free access may have just ended: the next action after a charge
+ * left 0 credits, or a request that came back 403 `access_expired`. AuthProvider re-reads the profile,
+ * so the lock (Billing only) applies at once instead of on the next click,
+ * and the open page stops making requests that would all be refused.
+ */
+export const ACCESS_CHECK_EVENT = "viewsmax:access-check";
+
+export function requestAccessCheck(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(ACCESS_CHECK_EVENT));
+}
+
+let checkPending = false;
+
+/**
+ * A successful charge spent the last credits: the user paid for that result,
+ * so it stays on screen and the check runs on their next click or Enter.
+ */
+export function requestAccessCheckOnNextAction(): void {
+  if (typeof window === "undefined" || checkPending) return;
+  checkPending = true;
+  const onAction = (e: Event) => {
+    if (e instanceof KeyboardEvent && e.key !== "Enter") return;
+    window.removeEventListener("pointerdown", onAction, true);
+    window.removeEventListener("keydown", onAction, true);
+    checkPending = false;
+    requestAccessCheck();
+  };
+  window.addEventListener("pointerdown", onAction, true);
+  window.addEventListener("keydown", onAction, true);
+}
+
 export function isAccessExpired(user: AccessUser | null | undefined, now: number = Date.now()): boolean {
   if (!user) return false;
   if (user.access_expired) return true;
