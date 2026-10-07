@@ -4,7 +4,6 @@ namespace App\Mcp;
 
 use App\Mcp\Methods\SafeCallTool;
 use App\Mcp\Tools\AddOutlierChannel;
-use App\Mcp\Tools\CreateFeatureRequest;
 use App\Mcp\Tools\CreateOffer;
 use App\Mcp\Tools\CreatePost;
 use App\Mcp\Tools\CreateTrackingLink;
@@ -105,8 +104,6 @@ class ViewsMaxServer extends Server
         // Connections
         DisconnectAccount::class,
         GetConnectUrl::class,
-        // Feature requests
-        CreateFeatureRequest::class,
         // Outliers (research)
         ListOutliers::class,
         SearchOutliers::class,

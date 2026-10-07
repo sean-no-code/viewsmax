@@ -37,7 +37,7 @@ class AiDiscoveryTest extends TestCase
     {
         $tools = collect($this->getJson('/api/ai')->assertOk()->json('mcp.tools'));
 
-        $this->assertCount(30, $tools);
+        $this->assertCount(29, $tools);
 
         $tools->each(function (array $tool) {
             $this->assertNotSame('', $tool['name']);

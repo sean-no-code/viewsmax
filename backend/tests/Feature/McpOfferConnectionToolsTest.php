@@ -72,7 +72,7 @@ class McpOfferConnectionToolsTest extends TestCase
         foreach ([
             'list_offers', 'create_offer', 'get_offer', 'update_offer', 'delete_offer',
             'create_tracking_link', 'get_offer_stats', 'get_stats_timeseries',
-            'disconnect_account', 'get_connect_url', 'create_feature_request',
+            'disconnect_account', 'get_connect_url',
         ] as $tool) {
             $this->assertContains($tool, $names, "Missing tool {$tool}");
         }
@@ -448,19 +448,6 @@ class McpOfferConnectionToolsTest extends TestCase
         $this->assertArrayNotHasKey('next_step', $data);
     }
 
-    public function test_feature_requests_are_not_for_plans_or_billing(): void
-    {
-        // Review test N2: "Upgrade my plan" must not trigger a tool call.
-        $key = $this->mcpKey(User::factory()->create());
-        $tools = collect($this->withHeaders(['Authorization' => 'Bearer ' . $key, 'Accept' => 'application/json'])
-            ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list', 'params' => ['per_page' => 50]])
-            ->json('result.tools'))->keyBy('name');
-
-        $this->assertStringContainsString(
-            "Don't use this for plan, billing, or purchase requests",
-            $tools['create_feature_request']['description']
-        );
-    }
 
     public function test_get_connect_url_rejects_unknown_platform(): void
     {
@@ -468,18 +455,4 @@ class McpOfferConnectionToolsTest extends TestCase
         $this->assertToolError($this->callTool($key, 'get_connect_url', ['platform' => 'myspace']));
     }
 
-    // ── Feature requests ────────────────────────────────────────────────────
-
-    public function test_create_feature_request(): void
-    {
-        $user = User::factory()->create();
-        $key = $this->mcpKey($user);
-
-        $this->toolJson($this->callTool($key, 'create_feature_request', [
-            'title' => 'MCP is great',
-            'description' => 'Please add more tools.',
-        ]));
-
-        $this->assertSame(1, FeatureRequest::where('user_id', $user->id)->count());
-    }
 }

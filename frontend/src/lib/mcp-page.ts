@@ -91,12 +91,6 @@ export const TOOL_GROUPS: ToolGroup[] = [
       "get_outlier_channel_ingest",
     ],
   },
-  {
-    key: "feedback",
-    name: "Feedback",
-    blurb: "File a feature request on the user's behalf.",
-    tools: ["create_feature_request"],
-  },
 ];
 
 export interface Capability {
@@ -122,7 +116,6 @@ export const CAPABILITIES: Capability[] = [
   { task: "Generate and read an AI breakdown of why a video over-performed", tools: ["generate_outlier_breakdown", "get_outlier_breakdown"], access: "write" },
   { task: "Save outliers to a tagged library", tools: ["save_outlier", "list_saved_outliers", "remove_saved_outlier"], access: "write" },
   { task: "Follow a creator's channel and pull in their recent videos", tools: ["add_outlier_channel", "get_outlier_channel_ingest"], access: "write" },
-  { task: "File a feature request", tools: ["create_feature_request"], access: "write" },
 ];
 
 /** Things people ask for that the MCP does not do — stated so the page never over-claims. */

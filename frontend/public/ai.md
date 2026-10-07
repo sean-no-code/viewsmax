@@ -11,7 +11,7 @@ authenticated.
 - **MCP endpoint:** `https://api.viewsmax.com/api/mcp` (Streamable HTTP)
 - **Capability discovery (JSON):** `https://api.viewsmax.com/api/ai`
 - **REST API:** `https://api.viewsmax.com/api` — [OpenAPI spec](https://api.viewsmax.com/docs.openapi) · [API reference](https://api.viewsmax.com/docs)
-- **MCP server overview:** <https://viewsmax.com/mcp> (plain text: <https://viewsmax.com/mcp.md>) — what it exposes, auth modes, rate limits, and all 30 tools grouped by job
+- **MCP server overview:** <https://viewsmax.com/mcp> (plain text: <https://viewsmax.com/mcp.md>) — what it exposes, auth modes, rate limits, and all 29 tools grouped by job
 
 Step-by-step guides per agent: [Claude](https://viewsmax.com/claude) ·
 [Claude Code](https://viewsmax.com/claude-code) ·
@@ -124,13 +124,13 @@ curl -H "Authorization: Bearer vmx_YOUR_KEY" https://api.viewsmax.com/api/posts
 Responses use a `{ success, message, data }` envelope. Full reference:
 <https://api.viewsmax.com/docs>.
 
-## What agents can do (30 MCP tools)
+## What agents can do (29 MCP tools)
 
 `list_connected_accounts`, `list_brands`, `upload_media`, `create_post`,
 `list_posts`, `get_post`, `update_post`, `delete_post`, `list_offers`,
 `create_offer`, `get_offer`, `update_offer`, `delete_offer`,
 `create_tracking_link`, `get_offer_stats`, `get_stats_timeseries`,
-`disconnect_account`, `get_connect_url`, `create_feature_request`,
+`disconnect_account`, `get_connect_url`,
 `list_outliers`, `search_outliers`, `get_outlier`, `fetch_outlier`,
 `get_outlier_breakdown`, `generate_outlier_breakdown`, `list_saved_outliers`,
 `save_outlier`, `remove_saved_outlier`, `add_outlier_channel`,

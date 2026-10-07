@@ -728,11 +728,6 @@ vary: Origin
                 &quot;access&quot;: &quot;write&quot;
             },
             {
-                &quot;name&quot;: &quot;create_feature_request&quot;,
-                &quot;description&quot;: &quot;Submit a feature request to the ViewsMax team on the user&#039;s behalf.&quot;,
-                &quot;access&quot;: &quot;write&quot;
-            },
-            {
                 &quot;name&quot;: &quot;list_outliers&quot;,
                 &quot;description&quot;: &quot;Browse outlier videos &mdash; content that massively over-performed its channel&#039;s average (outlier_score = views &divide; channel average views) across YouTube, TikTok and Instagram. Without `query` this is the curated/featured feed; with `query` it returns title matches already in the database. If the response `status` is \&quot;queued\&quot; or \&quot;in_progress\&quot; no scrape has finished for that query yet &mdash; call search_outliers to start one, then re-run this tool. Filter by platform, score, views, subscribers, publish date, duration (long/shorts), channel ids or ISO country codes. Paginated (per_page &le; 50).&quot;,
                 &quot;access&quot;: &quot;read&quot;

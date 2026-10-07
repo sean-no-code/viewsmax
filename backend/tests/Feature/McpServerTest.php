@@ -197,7 +197,6 @@ class McpServerTest extends TestCase
         'get_stats_timeseries' => [true, false, false],
         'disconnect_account' => [false, true, false],
         'get_connect_url' => [true, false, false],
-        'create_feature_request' => [false, false, false],
         // Outlier research. search/fetch scrape public platforms, and the
         // breakdown job pulls the public video's transcript, so those are
         // open-world; saving again replaces tags, which is an overwrite.
@@ -606,7 +605,6 @@ class McpServerTest extends TestCase
         // optional and the AI can call e.g. update_post with no id.
         $expected = [
             'add_outlier_channel' => ['input'],
-            'create_feature_request' => ['description', 'title'],
             'create_offer' => ['offer_url'],
             'create_tracking_link' => ['tracking_event_id'],
             'delete_offer' => ['id'],
@@ -1008,7 +1006,7 @@ class McpServerTest extends TestCase
         $key = $this->mcpKeyWith(User::factory()->create(), ['mcp:read', 'mcp:write']);
         $tools = collect($this->rpc($key, 'tools/list')->assertOk()->json('result.tools'))->keyBy('name');
 
-        foreach (['create_post', 'create_offer', 'create_tracking_link', 'upload_media', 'create_feature_request'] as $name) {
+        foreach (['create_post', 'create_offer', 'create_tracking_link', 'upload_media'] as $name) {
             $this->assertStringContainsString(
                 "don't repeat a call that already succeeded",
                 $tools[$name]['description'],

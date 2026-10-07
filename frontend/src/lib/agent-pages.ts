@@ -23,7 +23,7 @@ export const MCP_TOOLS = [
   "list_posts", "get_post", "update_post", "delete_post", "list_offers",
   "create_offer", "get_offer", "update_offer", "delete_offer",
   "create_tracking_link", "get_offer_stats", "get_stats_timeseries",
-  "disconnect_account", "get_connect_url", "create_feature_request",
+  "disconnect_account", "get_connect_url",
   "list_outliers", "search_outliers", "get_outlier", "fetch_outlier",
   "get_outlier_breakdown", "generate_outlier_breakdown", "list_saved_outliers",
   "save_outlier", "remove_saved_outlier", "add_outlier_channel",
