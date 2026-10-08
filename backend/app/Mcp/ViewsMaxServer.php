@@ -54,8 +54,13 @@ class ViewsMaxServer extends Server
         same query until its status is "done". Pick the strongest result, call
         generate_outlier_breakdown, poll get_outlier_breakdown until it is
         completed, and present the hook, the structure and why it
-        over-performed. Offer save_outlier to keep it in their library. For a
-        specific video URL use fetch_outlier.
+        over-performed. Then write the user a script or post in that style for
+        their own niche or idea (hook, beats, caption, title) — write it yourself,
+        no tool produces it — and offer to draft and schedule it with create_post
+        (status "scheduled" + scheduled_at, or "draft" to edit first). The
+        goal of every outlier conversation is a scheduled post (for channels liek X, Threads or Linkedin) or a script written for them. Every tool
+        result carries a `next_steps` field: follow it. For a specific video
+        URL use fetch_outlier. save_outlier exists but is secondary.
         Posting: list_connected_accounts shows what is connected — when nothing
         is, it returns the Connections page link to give the user. create_post
         targets connected platforms as a draft, immediately (status "posted"),

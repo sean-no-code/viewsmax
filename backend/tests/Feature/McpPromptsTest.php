@@ -60,7 +60,10 @@ class McpPromptsTest extends TestCase
         $this->assertStringContainsString('list_outliers with no query', $text);
         $this->assertStringNotContainsString('search_outliers', $text);
         $this->assertStringContainsString('generate_outlier_breakdown', $text);
-        $this->assertStringContainsString('save_outlier', $text);
+        // The flow ends in a post, not a bookmark.
+        $this->assertStringContainsString('post script', $text);
+        $this->assertStringContainsString('create_post with status "scheduled"', $text);
+        $this->assertStringNotContainsString('save_outlier', $text);
     }
 
     public function test_find_outliers_with_a_niche_searches_youtube_then_polls(): void
@@ -72,8 +75,9 @@ class McpPromptsTest extends TestCase
             'arguments' => ['niche' => 'personal finance'],
         ])->assertOk()->json('result.messages.0.content.text');
 
-        $this->assertStringContainsString('search_outliers with query "personal finance"', $text);
-        $this->assertStringContainsString('poll list_outliers with the same query', $text);
+        // search_outliers takes `term`; list_outliers takes `query`.
+        $this->assertStringContainsString('search_outliers with term "personal finance"', $text);
+        $this->assertStringContainsString('poll list_outliers with query "personal finance"', $text);
     }
 
     public function test_find_outliers_on_tiktok_skips_the_youtube_search(): void

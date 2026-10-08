@@ -114,7 +114,7 @@ class PostFailureEmailTest extends TestCase
         $this->assertStringContainsString('x exploded', $html);
         $this->assertStringContainsString('grant video upload permission', $html);
         $this->assertStringContainsString('Open post history', $html);
-        $this->assertStringNotContainsString('POST_FAILURE_ADMIN_EMAIL', $html);
+        $this->assertStringNotContainsString('ADMIN_EMAIL', $html);
     }
 
     public function test_admin_copy_goes_to_the_configured_address_with_reasons_and_customer_details(): void
@@ -140,7 +140,7 @@ class PostFailureEmailTest extends TestCase
         $this->assertStringContainsString($this->user->email, $html);
         $this->assertStringContainsString("Post:</strong> #{$post->id}", $html);
         $this->assertStringContainsString('has been sent the matching failure email', $html);
-        $this->assertStringContainsString('POST_FAILURE_ADMIN_EMAIL', $html);
+        $this->assertStringContainsString('ADMIN_EMAIL', $html);
         $this->assertStringContainsString("Post #{$post->id} by {$this->user->email} failed to publish to X, Linkedin", $admin->envelope()->subject);
 
         $this->assertSame(

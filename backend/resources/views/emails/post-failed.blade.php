@@ -112,7 +112,7 @@
     </div>
     <div class="footer">
         @if ($forAdmin)
-            You're receiving this because POST_FAILURE_ADMIN_EMAIL is set to this address.
+            You're receiving this because ADMIN_EMAIL is set to this address.
         @else
             You're receiving this because publish-failure alerts are turned on.
             You can turn them off under Settings &rarr; Notifications.

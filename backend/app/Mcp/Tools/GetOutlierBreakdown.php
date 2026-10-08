@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Http\Controllers\OutlierBreakdownController;
+use App\Mcp\NextSteps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -53,7 +54,11 @@ class GetOutlierBreakdown extends ViewsMaxTool
         return $this->callController(
             fn (Request $request) => app(OutlierBreakdownController::class)->show($request, $validated['platform'], $validated['video_id']),
             [],
-            fn (array $data) => $data['data'] ?? $data
+            function (array $data) {
+                $breakdown = $data['data'] ?? $data;
+
+                return $breakdown + ['next_steps' => NextSteps::forBreakdown($breakdown)];
+            }
         );
     }
 }

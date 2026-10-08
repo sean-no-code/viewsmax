@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Http\Controllers\SavedOutlierController;
+use App\Mcp\NextSteps;
 use App\Models\OutlierVideo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -90,7 +91,7 @@ class SaveOutlier extends ViewsMaxTool
         return $this->callController(
             fn (Request $request) => app(SavedOutlierController::class)->store($request),
             $params,
-            fn (array $data) => ListSavedOutliers::serializeSaved((array) ($data['data'] ?? []))
+            fn (array $data) => ListSavedOutliers::serializeSaved((array) ($data['data'] ?? [])) + ['next_steps' => NextSteps::SAVED]
         );
     }
 }

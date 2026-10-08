@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Jobs\IngestOutlierByUrlJob;
+use App\Mcp\NextSteps;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
 use Illuminate\Support\Facades\Validator;
@@ -60,7 +61,7 @@ class GetOutlier extends ViewsMaxTool
             ->first();
 
         if ($video) {
-            return ToolResult::json(['status' => 'ready'] + $this->serializeOutlier($video->toArray()));
+            return ToolResult::json(['status' => 'ready'] + $this->serializeOutlier($video->toArray()) + ['next_steps' => NextSteps::READY_FOR_BREAKDOWN]);
         }
 
         // No row yet. fetch_outlier answers "queued" and tells the client to
@@ -81,6 +82,7 @@ class GetOutlier extends ViewsMaxTool
                 'platform' => $platform,
                 'video_id' => $videoId,
                 'message' => 'Still being fetched. Check again in about 15 seconds (Instagram can take a few minutes).',
+                'next_steps' => NextSteps::INGESTING,
             ]);
         }
 

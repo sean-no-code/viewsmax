@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Http\Controllers\OutlierController;
+use App\Mcp\NextSteps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -58,6 +59,7 @@ class FetchOutlier extends ViewsMaxTool
                 'platform' => $data['platform'] ?? $validated['platform'],
                 'video_id' => $data['video_id'] ?? null,
                 'outlier' => isset($data['data']) ? $this->serializeOutlier((array) $data['data']) : null,
+                'next_steps' => ($data['queued'] ?? false) ? NextSteps::INGESTING : NextSteps::READY_FOR_BREAKDOWN,
             ]
         );
     }

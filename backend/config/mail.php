@@ -141,6 +141,6 @@ return [
     |
     */
 
-    'post_failure_admin' => env('POST_FAILURE_ADMIN_EMAIL'),
+    'post_failure_admin' => env('ADMIN_EMAIL'),
 
 ];

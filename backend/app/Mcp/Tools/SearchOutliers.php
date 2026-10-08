@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Http\Controllers\OutlierController;
+use App\Mcp\NextSteps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -53,7 +54,8 @@ class SearchOutliers extends ViewsMaxTool
 
         return $this->callController(
             fn (Request $request) => app(OutlierController::class)->search($request),
-            $validated
+            $validated,
+            fn (array $data) => $data + ['next_steps' => NextSteps::POLL_SEARCH]
         );
     }
 }

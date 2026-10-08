@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Http\Controllers\OutlierController;
+use App\Mcp\NextSteps;
 use App\Models\OutlierVideo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -90,14 +91,25 @@ class ListOutliers extends ViewsMaxTool
         return $this->callController(
             fn (Request $request) => app(OutlierController::class)->index($request),
             array_filter($validated, fn ($v) => $v !== null),
-            fn (array $data) => [
-                'status' => $data['status'] ?? 'done',
-                'outliers' => array_map(fn ($v) => $this->serializeOutlier((array) $v), $data['data'] ?? []),
-                'page' => $data['current_page'] ?? 1,
-                'per_page' => $data['per_page'] ?? null,
-                'total' => $data['total'] ?? null,
-                'last_page' => $data['last_page'] ?? null,
-            ]
+            function (array $data) {
+                $status = $data['status'] ?? 'done';
+                $outliers = array_map(fn ($v) => $this->serializeOutlier((array) $v), $data['data'] ?? []);
+
+                return [
+                    'status' => $status,
+                    'outliers' => $outliers,
+                    'page' => $data['current_page'] ?? 1,
+                    'per_page' => $data['per_page'] ?? null,
+                    'total' => $data['total'] ?? null,
+                    'last_page' => $data['last_page'] ?? null,
+                    'next_steps' => match (true) {
+                        in_array($status, ['queued', 'in_progress'], true) => NextSteps::SEARCH_RUNNING,
+                        $status === 'failed' => NextSteps::SEARCH_FAILED,
+                        $outliers === [] => NextSteps::NO_RESULTS,
+                        default => NextSteps::PICK_ONE,
+                    },
+                ];
+            }
         );
     }
 }

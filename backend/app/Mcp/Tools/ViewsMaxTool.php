@@ -253,7 +253,8 @@ abstract class ViewsMaxTool extends Tool
                 'platform_post_id' => $t->platform_post_id,
                 'published_at' => $t->published_at?->toIso8601String(),
             ])->all(),
-            'publish_result' => $this->publishResult($post),
+            'publish_result' => $result = $this->publishResult($post),
+            'next_steps' => \App\Mcp\NextSteps::forPublishState($result['state']),
         ];
     }
 
