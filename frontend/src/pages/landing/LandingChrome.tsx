@@ -14,7 +14,7 @@ const API_DOCS = `${API_BASE_URL}/docs`;
 const BLOG = "https://blog.viewsmax.com";
 const RESOURCES: { label: string; desc: string; href: string; external?: boolean }[] = [
   { label: "API docs", desc: "REST API reference & OpenAPI spec", href: API_DOCS, external: true },
-  { label: "Install MCP", desc: "The ViewsMax MCP server: address, auth & 29 tools", href: "/mcp" },
+  { label: "Install MCP", desc: "The ViewsMax MCP server: address, auth & 26 tools", href: "/mcp" },
   { label: "CLI setup", desc: "Use ViewsMax from Claude Code", href: "/ai#cli" },
   { label: "Blog", desc: "Growth tactics & product updates", href: BLOG, external: true },
   { label: "Support", desc: "Join our Discord for help & updates", href: "https://discord.gg/Wwe57w3Dv5", external: true },

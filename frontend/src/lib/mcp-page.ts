@@ -61,14 +61,12 @@ export const TOOL_GROUPS: ToolGroup[] = [
   {
     key: "offers",
     name: "Offers & link tracking",
-    blurb: "Create offers with goals, mint a tracked link per placement, and read clicks, conversions and revenue over time.",
+    blurb: "Read and update your offers and their tracked links, and read clicks, conversions and revenue over time.",
     tools: [
       "list_offers",
-      "create_offer",
       "get_offer",
       "update_offer",
       "delete_offer",
-      "create_tracking_link",
       "get_offer_stats",
       "get_stats_timeseries",
     ],
@@ -76,7 +74,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
   {
     key: "outliers",
     name: "Outlier research",
-    blurb: "Find videos that beat their channel's average, get an AI breakdown of why, save the best, and follow creators.",
+    blurb: "Find videos that beat their channel's average, get an AI breakdown of why, and save the best.",
     tools: [
       "list_outliers",
       "search_outliers",
@@ -87,7 +85,6 @@ export const TOOL_GROUPS: ToolGroup[] = [
       "list_saved_outliers",
       "save_outlier",
       "remove_saved_outlier",
-      "add_outlier_channel",
       "get_outlier_channel_ingest",
     ],
   },
@@ -109,13 +106,13 @@ export const CAPABILITIES: Capability[] = [
   },
   { task: "Host an image or video by URL for TikTok, Instagram and YouTube posts", tools: ["upload_media"], access: "write" },
   { task: "Read each platform's publish result for a post", tools: ["get_post", "list_posts"], access: "read" },
-  { task: "Create offers and a tracked link per placement", tools: ["create_offer", "create_tracking_link"], access: "write" },
+  { task: "Read your offers and their tracked links", tools: ["list_offers", "get_offer"], access: "read" },
+  { task: "Update an offer's name, URL, goals or tracked links", tools: ["update_offer"], access: "write" },
   { task: "Read clicks, conversions and revenue — totals and a daily series", tools: ["get_offer_stats", "get_stats_timeseries"], access: "read" },
   { task: "Browse outlier videos by platform, score, views and date", tools: ["list_outliers", "get_outlier"], access: "read" },
   { task: "Search YouTube for a new topic, or pull in a specific video by URL", tools: ["search_outliers", "fetch_outlier"], access: "write" },
   { task: "Generate and read an AI breakdown of why a video over-performed", tools: ["generate_outlier_breakdown", "get_outlier_breakdown"], access: "write" },
   { task: "Save outliers to a tagged library", tools: ["save_outlier", "list_saved_outliers", "remove_saved_outlier"], access: "write" },
-  { task: "Follow a creator's channel and pull in their recent videos", tools: ["add_outlier_channel", "get_outlier_channel_ingest"], access: "write" },
 ];
 
 /** Things people ask for that the MCP does not do — stated so the page never over-claims. */
@@ -153,7 +150,6 @@ export const RATE_LIMITS: { scope: string; limit: string }[] = [
   { scope: "fetch_outlier", limit: "60 per hour" },
   { scope: "search_outliers", limit: "30 per hour" },
   { scope: "generate_outlier_breakdown", limit: "30 per hour" },
-  { scope: "add_outlier_channel", limit: "10 per hour" },
 ];
 
 export interface ClientRow {
@@ -253,7 +249,7 @@ export const MCP_FAQ: FaqItem[] = [
   },
   {
     q: "What are the rate limits?",
-    a: "120 MCP requests a minute per credential. Per hour: 180 create_post, 40 upload_media, 60 fetch_outlier, 30 search_outliers, 30 generate_outlier_breakdown and 10 add_outlier_channel. A limited call returns a retry-after hint rather than failing silently.",
+    a: "120 MCP requests a minute per credential. Per hour: 180 create_post, 40 upload_media, 60 fetch_outlier, 30 search_outliers, and 30 generate_outlier_breakdown. A limited call returns a retry-after hint rather than failing silently.",
   },
   {
     q: "Does the MCP server cost extra?",

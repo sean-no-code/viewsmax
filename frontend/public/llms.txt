@@ -11,7 +11,7 @@
 
 ## AI & Agent Access
 
-- [ViewsMax MCP server](https://viewsmax.com/mcp.md): what the MCP exposes (29 tools, grouped by job), auth modes, rate limits, and setup per client
+- [ViewsMax MCP server](https://viewsmax.com/mcp.md): what the MCP exposes (26 tools, grouped by job), auth modes, rate limits, and setup per client
 - [Connect your AI](https://viewsmax.com/ai.md): copy-paste setup for Claude, ChatGPT, Claude Code, Cursor, OpenClaw, Hermes Agent, and raw REST
 - [Capability discovery (JSON)](https://api.viewsmax.com/api/ai): MCP endpoint, auth modes, full tool list, rate limits
 - MCP endpoint: https://api.viewsmax.com/api/mcp (Streamable HTTP; Bearer auth — OAuth 2.1 + PKCE with dynamic client registration, or a `vmx_` API key from Settings → AI Assistant Access)

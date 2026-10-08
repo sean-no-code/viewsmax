@@ -96,7 +96,7 @@ class McpOutlierToolsTest extends TestCase
             'list_outliers', 'search_outliers', 'get_outlier', 'fetch_outlier',
             'get_outlier_breakdown', 'generate_outlier_breakdown',
             'list_saved_outliers', 'save_outlier', 'remove_saved_outlier',
-            'add_outlier_channel', 'get_outlier_channel_ingest',
+            'get_outlier_channel_ingest', // TEMP: add_outlier_channel is hidden from the MCP for now
         ] as $tool) {
             $this->assertContains($tool, $full, "Missing tool {$tool}");
         }
@@ -106,7 +106,7 @@ class McpOutlierToolsTest extends TestCase
         foreach (['list_outliers', 'get_outlier', 'get_outlier_breakdown', 'list_saved_outliers', 'get_outlier_channel_ingest'] as $tool) {
             $this->assertContains($tool, $read);
         }
-        foreach (['search_outliers', 'fetch_outlier', 'generate_outlier_breakdown', 'save_outlier', 'remove_saved_outlier', 'add_outlier_channel'] as $tool) {
+        foreach (['search_outliers', 'fetch_outlier', 'generate_outlier_breakdown', 'save_outlier', 'remove_saved_outlier'] as $tool) {
             $this->assertNotContains($tool, $read, "Read-only key should not see {$tool}");
         }
 
@@ -119,6 +119,8 @@ class McpOutlierToolsTest extends TestCase
 
     public function test_add_outlier_channel_queues_an_ingest_and_can_be_polled(): void
     {
+        $this->markTestSkipped('TEMP: add_outlier_channel is hidden from the MCP for now (see ViewsMaxServer::$tools).');
+
         $key = $this->mcpKey(User::factory()->create());
 
         $queued = $this->toolJson($this->callTool($key, 'add_outlier_channel', ['input' => 'https://www.tiktok.com/@khaby.lame']));
@@ -329,7 +331,8 @@ class McpOutlierToolsTest extends TestCase
 
         $description = $tools['search_outliers']['description'];
         $this->assertStringContainsString('fetch_outlier', $description);
-        $this->assertStringContainsString('add_outlier_channel', $description);
+        // TEMP: add_outlier_channel is hidden from the MCP, so the description must not point at it.
+        $this->assertStringNotContainsString('add_outlier_channel', $description);
         $this->assertStringNotContainsString('one URL at a time', $description);
     }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   AGENT_LIST,
@@ -51,11 +51,21 @@ describe("AGENT_LIST", () => {
 });
 
 describe("MCP_TOOLS", () => {
-  it("matches the tools the backend MCP server defines", () => {
-    const dir = join(process.cwd(), "..", "backend", "app", "Mcp", "Tools");
-    const names = readdirSync(dir)
-      .map((f) => readFileSync(join(dir, f), "utf8").match(/function name\(\): string\s*\{\s*return '([a-z_]+)'/)?.[1])
-      .filter(Boolean);
+  it("matches the tools the backend MCP server registers", () => {
+    // Read the $tools array in ViewsMaxServer.php rather than the Tools
+    // directory: a tool class can exist while its registration is commented
+    // out (hidden from the MCP), and the docs must list only what is served.
+    const backend = join(process.cwd(), "..", "backend", "app", "Mcp");
+    const server = readFileSync(join(backend, "ViewsMaxServer.php"), "utf8");
+    const block = server.match(/public array \$tools = \[([\s\S]*?)\];/)?.[1] ?? "";
+    const registered = block
+      .split("\n")
+      .filter((line) => !/^\s*\/\//.test(line))
+      .flatMap((line) => [...line.matchAll(/([A-Za-z]+)::class/g)].map((m) => m[1]));
+    expect(registered.length).toBeGreaterThan(0);
+    const names = registered.map(
+      (cls) => readFileSync(join(backend, "Tools", `${cls}.php`), "utf8").match(/function name\(\): string\s*\{\s*return '([a-z_]+)'/)?.[1],
+    );
     expect([...MCP_TOOLS].sort()).toEqual(names.sort());
   });
 });

@@ -17,7 +17,7 @@ class SiteChrome
         $blog = 'https://blog.viewsmax.com';
         $resources = [
             ['label' => 'API docs', 'desc' => 'REST API reference & OpenAPI spec', 'href' => url('/docs'), 'external' => true],
-            ['label' => 'Install MCP', 'desc' => 'The ViewsMax MCP server: address, auth & 29 tools', 'href' => $frontend.'/mcp'],
+            ['label' => 'Install MCP', 'desc' => 'The ViewsMax MCP server: address, auth & 26 tools', 'href' => $frontend.'/mcp'],
             ['label' => 'CLI setup', 'desc' => 'Use ViewsMax from Claude Code', 'href' => $frontend.'/ai#cli'],
             ['label' => 'Blog', 'desc' => 'Growth tactics & product updates', 'href' => $blog, 'external' => true],
             ['label' => 'Support', 'desc' => 'Join our Discord for help & updates', 'href' => 'https://discord.gg/Wwe57w3Dv5', 'external' => true],

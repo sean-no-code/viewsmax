@@ -48,17 +48,17 @@ const allNavigationItems: NavItem[] = [
       { title: "History", i18nKey: "nav.history", url: "/dashboard/post/history" },
     ]
   },
-  {
-    title: "Scripts",
-    i18nKey: "nav.scripts",
-    url: "/dashboard/scripts",
-    icon: ScrollText,
-    isProFeature: true,
-    subItems: [
-      { title: "Create", i18nKey: "nav.scriptsCreate", url: "/dashboard/scripts/create" },
-      { title: "Library", i18nKey: "nav.scriptsLibrary", url: "/dashboard/scripts/library" },
-    ]
-  },
+  // {
+  //   title: "Scripts",
+  //   i18nKey: "nav.scripts",
+  //   url: "/dashboard/scripts",
+  //   icon: ScrollText,
+  //   isProFeature: true,
+  //   subItems: [
+  //     { title: "Create", i18nKey: "nav.scriptsCreate", url: "/dashboard/scripts/create" },
+  //     { title: "Library", i18nKey: "nav.scriptsLibrary", url: "/dashboard/scripts/library" },
+  //   ]
+  // },
   {
     title: "Outliers",
     i18nKey: "nav.outliers",

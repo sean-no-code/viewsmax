@@ -42,16 +42,17 @@ class McpAuditLogTest extends TestCase
     public function test_successful_tool_calls_are_logged(): void
     {
         $user = User::factory()->create();
+        $offer = $user->offers()->create(['offer_url' => 'https://example.com/x']);
         $key = $this->mcpKey($user);
 
         $this->rpc($key, 'tools/call', [
-            'name' => 'create_offer',
-            'arguments' => ['name' => 'Audit me', 'offer_url' => 'https://example.com/x'],
+            'name' => 'update_offer',
+            'arguments' => ['id' => $offer->id, 'name' => 'Audit me'],
         ])->assertOk();
 
         $row = McpToolInvocation::where('user_id', $user->id)->first();
         $this->assertNotNull($row, 'Expected an audit row for the tool call.');
-        $this->assertSame('create_offer', $row->tool);
+        $this->assertSame('update_offer', $row->tool);
         $this->assertSame('Audit me', $row->arguments['name']);
         $this->assertFalse($row->is_error);
         $this->assertNull($row->error);

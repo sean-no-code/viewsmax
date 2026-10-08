@@ -26,7 +26,7 @@
             </style>
 
     <script>
-        var tryItOutBaseUrl = "https://api.viewsmax.com";
+        var tryItOutBaseUrl = "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app";
         var useCsrf = Boolean();
         var csrfUrl = "/sanctum/csrf-cookie";
     </script>
@@ -567,14 +567,14 @@ You can switch the language used with the tabs at the top right (or from the nav
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/ai" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/ai" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/ai"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/ai"
 );
 
 const headers = {
@@ -607,15 +607,15 @@ vary: Origin
 <code class="language-json" style="max-height: 300px;">{
     &quot;name&quot;: &quot;ViewsMax&quot;,
     &quot;summary&quot;: &quot;Outlier research + social posting + link tracking/analytics SaaS. AI agents act on a user&#039;s behalf: research outlier videos (content that massively over-performed its channel) and get AI breakdowns of why they worked &mdash; this works with nothing connected; compose and schedule posts to YouTube, TikTok, X, LinkedIn, Threads, Instagram, and Bluesky; create offers and tracked links; read click, conversion, and revenue stats. User data is private &mdash; all access is authenticated.&quot;,
-    &quot;site&quot;: &quot;https://viewsmax.com&quot;,
+    &quot;site&quot;: &quot;https://oxalic-carry-interparenthetically.ngrok-free.dev&quot;,
     &quot;docs&quot;: {
-        &quot;agents&quot;: &quot;https://viewsmax.com/ai.md&quot;,
-        &quot;llms_txt&quot;: &quot;https://viewsmax.com/llms.txt&quot;,
-        &quot;api_reference&quot;: &quot;https://api.viewsmax.com/docs&quot;,
-        &quot;openapi&quot;: &quot;https://api.viewsmax.com/docs.openapi&quot;
+        &quot;agents&quot;: &quot;https://oxalic-carry-interparenthetically.ngrok-free.dev/ai.md&quot;,
+        &quot;llms_txt&quot;: &quot;https://oxalic-carry-interparenthetically.ngrok-free.dev/llms.txt&quot;,
+        &quot;api_reference&quot;: &quot;https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/docs&quot;,
+        &quot;openapi&quot;: &quot;https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/docs.openapi&quot;
     },
     &quot;mcp&quot;: {
-        &quot;endpoint&quot;: &quot;https://api.viewsmax.com/api/mcp&quot;,
+        &quot;endpoint&quot;: &quot;https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/mcp&quot;,
         &quot;transport&quot;: &quot;streamable-http&quot;,
         &quot;auth&quot;: [
             {
@@ -627,8 +627,8 @@ vary: Origin
                     &quot;mcp:read&quot;,
                     &quot;mcp:write&quot;
                 ],
-                &quot;authorization_server_metadata&quot;: &quot;https://api.viewsmax.com/.well-known/oauth-authorization-server&quot;,
-                &quot;protected_resource_metadata&quot;: &quot;https://api.viewsmax.com/.well-known/oauth-protected-resource/api/mcp&quot;,
+                &quot;authorization_server_metadata&quot;: &quot;https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/.well-known/oauth-authorization-server&quot;,
+                &quot;protected_resource_metadata&quot;: &quot;https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/.well-known/oauth-protected-resource/api/mcp&quot;,
                 &quot;dynamic_client_registration&quot;: true
             },
             {
@@ -639,7 +639,7 @@ vary: Origin
                     &quot;read&quot;,
                     &quot;full&quot;
                 ],
-                &quot;obtain_at&quot;: &quot;https://viewsmax.com/dashboard/settings&quot;
+                &quot;obtain_at&quot;: &quot;https://oxalic-carry-interparenthetically.ngrok-free.dev/dashboard/settings&quot;
             }
         ],
         &quot;tools&quot;: [
@@ -689,11 +689,6 @@ vary: Origin
                 &quot;access&quot;: &quot;read&quot;
             },
             {
-                &quot;name&quot;: &quot;create_offer&quot;,
-                &quot;description&quot;: &quot;Create an offer (a promotion to track). Requires offer_url; optional name and goals (conversion events with a conversion_url and value). Subject to the user&#039;s plan offer limit. Each call creates a new offer, so don&#039;t repeat a call that already succeeded.&quot;,
-                &quot;access&quot;: &quot;write&quot;
-            },
-            {
                 &quot;name&quot;: &quot;get_offer&quot;,
                 &quot;description&quot;: &quot;Fetch one offer by id, with its tracking links and goals.&quot;,
                 &quot;access&quot;: &quot;read&quot;
@@ -706,11 +701,6 @@ vary: Origin
             {
                 &quot;name&quot;: &quot;delete_offer&quot;,
                 &quot;description&quot;: &quot;Delete an offer and stop tracking it.&quot;,
-                &quot;access&quot;: &quot;write&quot;
-            },
-            {
-                &quot;name&quot;: &quot;create_tracking_link&quot;,
-                &quot;description&quot;: &quot;Create a tracking link for an offer, to place in a video description, email, social bio, etc. Placement is one of: video, email, x, linkedin, podcast, blog, website, tiktok, ad, instagram, beehiiv, other &mdash; attaching a youtube_video_id or beehiiv_post_id auto-sets the matching placement. Each call creates a new tracking link, so don&#039;t repeat a call that already succeeded.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
@@ -740,7 +730,7 @@ vary: Origin
             },
             {
                 &quot;name&quot;: &quot;search_outliers&quot;,
-                &quot;description&quot;: &quot;Start a background YouTube search (YouTube Data API) for outlier videos matching a keyword/topic. Returns immediately with status \&quot;queued\&quot;; results land in the shared outlier database over the next minute or two &mdash; poll list_outliers with the same `query` until its status is \&quot;done\&quot;. Use exact_match to require the whole phrase. This search covers YouTube only: for TikTok and Instagram, add a single video by its link with fetch_outlier, or add a creator&#039;s channel with add_outlier_channel to pull in their recent videos.&quot;,
+                &quot;description&quot;: &quot;Start a background YouTube search (YouTube Data API) for outlier videos matching a keyword/topic. Returns immediately with status \&quot;queued\&quot;; results land in the shared outlier database over the next minute or two &mdash; poll list_outliers with the same `query` until its status is \&quot;done\&quot;. Use exact_match to require the whole phrase. This search covers YouTube only: for TikTok and Instagram, add a single video by its link with fetch_outlier.&quot;,
                 &quot;access&quot;: &quot;write&quot;
             },
             {
@@ -779,11 +769,6 @@ vary: Origin
                 &quot;access&quot;: &quot;write&quot;
             },
             {
-                &quot;name&quot;: &quot;add_outlier_channel&quot;,
-                &quot;description&quot;: &quot;Add a creator&#039;s channel to the outlier database from a profile URL or @handle (YouTube, TikTok, Instagram) and pull in their 10 most recent videos, scored against that channel&#039;s own median. Also adds the channel to the user&#039;s competitor list. Not for video links &mdash; use fetch_outlier for those. Returns `status: done` with the channel when it was pulled in the last 24 hours; otherwise `queued: true` with an ingest_id &mdash; poll get_outlier_channel_ingest until `done`, then list_outliers with `channels: [channel.id]` (and `duration_type: shorts` for TikTok/Instagram) to see the videos. No AI breakdowns are generated.&quot;,
-                &quot;access&quot;: &quot;write&quot;
-            },
-            {
                 &quot;name&quot;: &quot;get_outlier_channel_ingest&quot;,
                 &quot;description&quot;: &quot;Poll a channel add started by add_outlier_channel. `status` is queued, processing, done (then `channel` is set and `videos_added` says how many videos landed &mdash; use channel.id in list_outliers `channels`), or failed (then `error` explains why). Pulls take ~10-60 seconds; poll every 5-10 seconds.&quot;,
                 &quot;access&quot;: &quot;read&quot;
@@ -791,9 +776,9 @@ vary: Origin
         ]
     },
     &quot;rest&quot;: {
-        &quot;base_url&quot;: &quot;https://api.viewsmax.com/api&quot;,
+        &quot;base_url&quot;: &quot;https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api&quot;,
         &quot;auth&quot;: &quot;Same vmx_ API key as a Bearer token (posts, offers, tracking, stats, and outliers endpoints only; read-only keys are limited to GET).&quot;,
-        &quot;openapi&quot;: &quot;https://api.viewsmax.com/docs.openapi&quot;
+        &quot;openapi&quot;: &quot;https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/docs.openapi&quot;
     },
     &quot;rate_limits&quot;: {
         &quot;mcp_requests_per_minute&quot;: 120,
@@ -904,7 +889,7 @@ double-post to a platform that already succeeded.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/posts/architecto/targets/architecto/retry" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto/targets/architecto/retry" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -912,7 +897,7 @@ double-post to a platform that already succeeded.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/architecto/targets/architecto/retry"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto/targets/architecto/retry"
 );
 
 const headers = {
@@ -1072,7 +1057,7 @@ scheduled_at date window (from/to) used by the calendar view.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/posts" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -1080,7 +1065,7 @@ scheduled_at date window (from/to) used by the calendar view.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts"
 );
 
 const headers = {
@@ -1217,7 +1202,7 @@ per-platform results.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/posts" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -1245,7 +1230,7 @@ per-platform results.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts"
 );
 
 const headers = {
@@ -1653,7 +1638,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/posts/architecto" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -1661,7 +1646,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto"
 );
 
 const headers = {
@@ -1808,7 +1793,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://api.viewsmax.com/api/posts/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -1816,7 +1801,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto"
 );
 
 const headers = {
@@ -1967,7 +1952,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/posts/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -1975,7 +1960,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/architecto"
 );
 
 const headers = {
@@ -2128,7 +2113,7 @@ the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/posts/media" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -2137,7 +2122,7 @@ the platform publishing APIs (e.g. TikTok PULL_FROM_URL) can fetch.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/media"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media"
 );
 
 const headers = {
@@ -2296,7 +2281,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/posts/media/direct" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media/direct" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -2311,7 +2296,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/media/direct"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media/direct"
 );
 
 const headers = {
@@ -2504,7 +2489,7 @@ PUT cannot enforce size), and returns the media entry for the composer.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/posts/media/direct/complete" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media/direct/complete" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -2523,7 +2508,7 @@ PUT cannot enforce size), and returns the media entry for the composer.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/media/direct/complete"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media/direct/complete"
 );
 
 const headers = {
@@ -2742,7 +2727,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/posts/media/direct/abort" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media/direct/abort" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -2755,7 +2740,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/posts/media/direct/abort"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/posts/media/direct/abort"
 );
 
 const headers = {
@@ -2927,7 +2912,7 @@ power the analytics dashboards.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/tracking-events/offers" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/offers" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -2935,7 +2920,7 @@ power the analytics dashboards.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/offers"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/offers"
 );
 
 const headers = {
@@ -3069,7 +3054,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/tracking-events/stats" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/stats" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -3077,7 +3062,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/stats"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/stats"
 );
 
 const headers = {
@@ -3213,7 +3198,7 @@ day across the requested window (gaps filled with zeros).</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/tracking-events/timeseries" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/timeseries" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -3221,7 +3206,7 @@ day across the requested window (gaps filled with zeros).</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/timeseries"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/timeseries"
 );
 
 const headers = {
@@ -3359,7 +3344,7 @@ visitors + view counts. Pageview-based; falls back to link-click data
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/tracking-events/sources" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/sources" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -3367,7 +3352,7 @@ visitors + view counts. Pageview-based; falls back to link-click data
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/sources"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/sources"
 );
 
 const headers = {
@@ -3501,7 +3486,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/goal-types" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/goal-types" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -3509,7 +3494,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/goal-types"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/goal-types"
 );
 
 const headers = {
@@ -3643,7 +3628,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/tracking-events" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -3651,7 +3636,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events"
 );
 
 const headers = {
@@ -3785,7 +3770,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/tracking-events" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -3814,7 +3799,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events"
 );
 
 const headers = {
@@ -4116,7 +4101,7 @@ arbitrary user-defined &quot;custom&quot; events, which are stored verbatim. Mus
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/tracking-events/architecto" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -4124,7 +4109,7 @@ arbitrary user-defined &quot;custom&quot; events, which are stored verbatim. Mus
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto"
 );
 
 const headers = {
@@ -4271,7 +4256,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://api.viewsmax.com/api/tracking-events/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -4301,7 +4286,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto"
 );
 
 const headers = {
@@ -4632,7 +4617,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/tracking-events/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -4640,7 +4625,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto"
 );
 
 const headers = {
@@ -4793,7 +4778,7 @@ bios; ViewsMax records clicks and attributes conversions back to the link
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/tracking-links" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-links" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -4815,7 +4800,7 @@ bios; ViewsMax records clicks and attributes conversions back to the link
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-links"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-links"
 );
 
 const headers = {
@@ -5075,7 +5060,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://api.viewsmax.com/api/tracking-links/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-links/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -5096,7 +5081,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-links/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-links/architecto"
 );
 
 const headers = {
@@ -5360,7 +5345,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/tracking-links/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-links/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -5368,7 +5353,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-links/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-links/architecto"
 );
 
 const headers = {
@@ -5515,7 +5500,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/tracking-events/architecto/links" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto/links" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -5523,7 +5508,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/tracking-events/architecto/links"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/tracking-events/architecto/links"
 );
 
 const headers = {
@@ -5676,7 +5661,7 @@ endpoint. All endpoints are scoped to the authenticated user.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/contents/1/media" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1/media" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -5684,7 +5669,7 @@ endpoint. All endpoints are scoped to the authenticated user.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/contents/1/media"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1/media"
 );
 
 const headers = {
@@ -5840,7 +5825,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/contents?offer_id=12&amp;status=published" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents?offer_id=12&amp;status=published" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -5848,7 +5833,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/contents"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents"
 );
 
 const params = {
@@ -6021,7 +6006,7 @@ The <code>body</code> accepts long-form text. <code>media</code> accepts a singl
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/contents" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
@@ -6029,12 +6014,12 @@ The <code>body</code> accepts long-form text. <code>media</code> accepts a singl
     --form "body=Once upon a time..."\
     --form "offer_id=12"\
     --form "status=published"\
-    --form "media=@/tmp/phpdO7pvl" </code></pre></div>
+    --form "media=@/tmp/phpnewetM" </code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/contents"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents"
 );
 
 const headers = {
@@ -6235,7 +6220,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
                value=""
                data-component="body">
     <br>
-<p>A media file to attach (image/video/document, max 50 MB). Example: <code>/tmp/phpdO7pvl</code></p>
+<p>A media file to attach (image/video/document, max 50 MB). Example: <code>/tmp/phpnewetM</code></p>
         </div>
         </form>
 
@@ -6253,7 +6238,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/contents/1" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6261,7 +6246,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/contents/1"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1"
 );
 
 const headers = {
@@ -6414,7 +6399,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://api.viewsmax.com/api/contents/1" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: multipart/form-data" \
     --header "Accept: application/json" \
@@ -6422,12 +6407,12 @@ You can check the Dev Tools console for debugging information.</code></pre>
     --form "body=New body text..."\
     --form "offer_id=12"\
     --form "status=published"\
-    --form "media=@/tmp/phpLJcVDW" </code></pre></div>
+    --form "media=@/tmp/phpSFVlXS" </code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/contents/1"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1"
 );
 
 const headers = {
@@ -6625,7 +6610,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
                value=""
                data-component="body">
     <br>
-<p>Replacement media file (max 50 MB). Example: <code>/tmp/phpLJcVDW</code></p>
+<p>Replacement media file (max 50 MB). Example: <code>/tmp/phpSFVlXS</code></p>
         </div>
         </form>
 
@@ -6643,7 +6628,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/contents/1" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6651,7 +6636,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/contents/1"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/contents/1"
 );
 
 const headers = {
@@ -6792,7 +6777,7 @@ exchange). Prefer the /api/social endpoints for new integrations.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/connections" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/connections" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6800,7 +6785,7 @@ exchange). Prefer the /api/social endpoints for new integrations.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/connections"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/connections"
 );
 
 const headers = {
@@ -6934,7 +6919,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/connections/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/connections/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -6942,7 +6927,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/connections/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/connections/architecto"
 );
 
 const headers = {
@@ -7091,7 +7076,7 @@ the privacy/interaction UI from this before a post can be published.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/connections/tiktok/creator-info" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/connections/tiktok/creator-info" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7099,7 +7084,7 @@ the privacy/interaction UI from this before a post can be published.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/connections/tiktok/creator-info"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/connections/tiktok/creator-info"
 );
 
 const headers = {
@@ -7233,7 +7218,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/social/platforms" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/platforms" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7241,7 +7226,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/platforms"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/platforms"
 );
 
 const headers = {
@@ -7375,7 +7360,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/social/accounts" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/accounts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7383,7 +7368,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/accounts"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/accounts"
 );
 
 const headers = {
@@ -7517,7 +7502,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/social/accounts/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/accounts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7525,7 +7510,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/accounts/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/accounts/architecto"
 );
 
 const headers = {
@@ -7674,7 +7659,7 @@ with a `code` to be sent to exchange().</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/social/architecto/auth-url" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/architecto/auth-url" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -7682,7 +7667,7 @@ with a `code` to be sent to exchange().</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/architecto/auth-url"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/architecto/auth-url"
 );
 
 const headers = {
@@ -7830,7 +7815,7 @@ tokens and persist the connected account(s).</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/social/architecto/exchange" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/architecto/exchange" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -7844,7 +7829,7 @@ tokens and persist the connected account(s).</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/architecto/exchange"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/architecto/exchange"
 );
 
 const headers = {
@@ -8035,7 +8020,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/social/architecto/connect" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/architecto/connect" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8043,7 +8028,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/architecto/connect"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/architecto/connect"
 );
 
 const headers = {
@@ -8190,7 +8175,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/social/x/users/search?q=jane&amp;social_account_id=1" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/x/users/search?q=jane&amp;social_account_id=1" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -8203,7 +8188,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/x/users/search"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/x/users/search"
 );
 
 const params = {
@@ -8409,7 +8394,7 @@ read; the X API plan doesn&#039;t allow timeline reads.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/social/x/posts" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/x/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8417,7 +8402,7 @@ read; the X API plan doesn&#039;t allow timeline reads.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/x/posts"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/x/posts"
 );
 
 const headers = {
@@ -8551,7 +8536,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/social/posts" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8559,7 +8544,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/posts"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts"
 );
 
 const headers = {
@@ -8693,7 +8678,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/social/posts" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -8718,7 +8703,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/posts"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts"
 );
 
 const headers = {
@@ -8983,7 +8968,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/social/posts/architecto" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -8991,7 +8976,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/posts/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts/architecto"
 );
 
 const headers = {
@@ -9138,7 +9123,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/social/posts/architecto/retry" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts/architecto/retry" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9146,7 +9131,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/social/posts/architecto/retry"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/social/posts/architecto/retry"
 );
 
 const headers = {
@@ -9302,7 +9287,7 @@ management endpoints themselves require a login session, not a key.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/user/api-key" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/api-key" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9310,7 +9295,7 @@ management endpoints themselves require a login session, not a key.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/api-key"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/api-key"
 );
 
 const headers = {
@@ -9444,7 +9429,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/user/api-key/rotate" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/api-key/rotate" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -9456,7 +9441,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/api-key/rotate"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/api-key/rotate"
 );
 
 const headers = {
@@ -9616,7 +9601,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/plans" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/plans" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9624,7 +9609,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/plans"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/plans"
 );
 
 const headers = {
@@ -9758,7 +9743,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/plans/architecto" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/plans/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9766,7 +9751,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/plans/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/plans/architecto"
 );
 
 const headers = {
@@ -9917,7 +9902,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/feature-requests" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/feature-requests" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -9925,7 +9910,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/feature-requests"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/feature-requests"
 );
 
 const headers = {
@@ -10059,7 +10044,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/feature-requests" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/feature-requests" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -10073,7 +10058,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/feature-requests"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/feature-requests"
 );
 
 const headers = {
@@ -10251,7 +10236,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/feature-requests/architecto/upvote" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/feature-requests/architecto/upvote" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -10259,7 +10244,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/feature-requests/architecto/upvote"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/feature-requests/architecto/upvote"
 );
 
 const headers = {
@@ -10411,7 +10396,7 @@ Assistant Access) or the MCP OAuth flow instead of storing passwords.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/register" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/register" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
@@ -10425,7 +10410,7 @@ Assistant Access) or the MCP OAuth flow instead of storing passwords.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/register"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/register"
 );
 
 const headers = {
@@ -10617,7 +10602,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/login" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/login" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
@@ -10629,7 +10614,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/login"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/login"
 );
 
 const headers = {
@@ -10781,7 +10766,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/forgot-password" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/forgot-password" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -10793,7 +10778,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/forgot-password"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/forgot-password"
 );
 
 const headers = {
@@ -10945,7 +10930,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/reset-password" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/reset-password" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -10959,7 +10944,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/reset-password"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/reset-password"
 );
 
 const headers = {
@@ -11142,7 +11127,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/auth/verify-email" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/auth/verify-email" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -11154,7 +11139,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/auth/verify-email"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/auth/verify-email"
 );
 
 const headers = {
@@ -11305,7 +11290,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/auth/resend-verification" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/auth/resend-verification" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -11317,7 +11302,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/auth/resend-verification"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/auth/resend-verification"
 );
 
 const headers = {
@@ -11468,7 +11453,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/logout" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/logout" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11476,7 +11461,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/logout"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/logout"
 );
 
 const headers = {
@@ -11610,7 +11595,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/profile" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/profile" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11618,7 +11603,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/profile"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/profile"
 );
 
 const headers = {
@@ -11752,7 +11737,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/refresh" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/refresh" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11760,7 +11745,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/refresh"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/refresh"
 );
 
 const headers = {
@@ -11901,7 +11886,7 @@ account: current count, day-over-day delta across the range, and points.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/analytics/audience" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/analytics/audience" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -11909,7 +11894,7 @@ account: current count, day-over-day delta across the range, and points.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/analytics/audience"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/analytics/audience"
 );
 
 const headers = {
@@ -12044,7 +12029,7 @@ day-over-day delta. Optional ?platform= filter.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/analytics/posts" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/analytics/posts" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -12052,7 +12037,7 @@ day-over-day delta. Optional ?platform= filter.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/analytics/posts"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/analytics/posts"
 );
 
 const headers = {
@@ -12192,7 +12177,7 @@ Checks run 6h apart, up to 3 times per post, and stop on success.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/boosts/settings" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/boosts/settings" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -12200,7 +12185,7 @@ Checks run 6h apart, up to 3 times per post, and stop on success.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/boosts/settings"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/boosts/settings"
 );
 
 const headers = {
@@ -12334,7 +12319,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://api.viewsmax.com/api/boosts/settings/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/boosts/settings/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -12349,7 +12334,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/boosts/settings/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/boosts/settings/architecto"
 );
 
 const headers = {
@@ -12563,7 +12548,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/boosts/activity" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/boosts/activity" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -12571,7 +12556,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/boosts/activity"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/boosts/activity"
 );
 
 const headers = {
@@ -12712,7 +12697,7 @@ store: social_accounts (X, Instagram, ...) or legacy connections
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/brands" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -12720,7 +12705,7 @@ store: social_accounts (X, Instagram, ...) or legacy connections
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/brands"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands"
 );
 
 const headers = {
@@ -12854,7 +12839,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/brands" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -12873,7 +12858,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/brands"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands"
 );
 
 const headers = {
@@ -13061,7 +13046,7 @@ so a rename-only payload never wipes membership.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PUT \
-    "https://api.viewsmax.com/api/brands/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -13069,7 +13054,7 @@ so a rename-only payload never wipes membership.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/brands/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands/architecto"
 );
 
 const headers = {
@@ -13221,7 +13206,7 @@ lose their brand link.</h2>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/brands/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -13229,7 +13214,7 @@ lose their brand link.</h2>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/brands/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/brands/architecto"
 );
 
 const headers = {
@@ -13380,12 +13365,12 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/free-tools/transcript" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/free-tools/transcript" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"platform\": \"instagram\",
+    \"platform\": \"tiktok\",
     \"url\": \"http:\\/\\/www.bailey.biz\\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html\"
 }"
 </code></pre></div>
@@ -13393,7 +13378,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/free-tools/transcript"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/free-tools/transcript"
 );
 
 const headers = {
@@ -13403,7 +13388,7 @@ const headers = {
 };
 
 let body = {
-    "platform": "instagram",
+    "platform": "tiktok",
     "url": "http:\/\/www.bailey.biz\/quos-velit-et-fugiat-sunt-nihil-accusantium-harum.html"
 };
 
@@ -13432,7 +13417,7 @@ vary: Origin
 
 <code class="language-json" style="max-height: 300px;">{
     &quot;success&quot;: false,
-    &quot;message&quot;: &quot;That doesn&#039;t look like a valid instagram link.&quot;
+    &quot;message&quot;: &quot;That doesn&#039;t look like a valid tiktok link.&quot;
 }</code>
  </pre>
     </span>
@@ -13527,10 +13512,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="platform"                data-endpoint="POSTapi-free-tools-transcript"
-               value="instagram"
+               value="tiktok"
                data-component="body">
     <br>
-<p>Example: <code>instagram</code></p>
+<p>Example: <code>tiktok</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>
@@ -13562,7 +13547,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/health" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/health" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -13570,7 +13555,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/health"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/health"
 );
 
 const headers = {
@@ -13601,11 +13586,11 @@ vary: Origin
 
 <code class="language-json" style="max-height: 300px;">{
     &quot;status&quot;: &quot;healthy&quot;,
-    &quot;timestamp&quot;: &quot;2026-10-07T09:30:24.650400Z&quot;,
+    &quot;timestamp&quot;: &quot;2026-10-07T10:23:10.371100Z&quot;,
     &quot;service&quot;: &quot;ViewsMax API&quot;,
     &quot;version&quot;: &quot;1.0.0&quot;,
     &quot;scheduler&quot;: {
-        &quot;last_run_at&quot;: &quot;2026-10-07T09:30:03+00:00&quot;,
+        &quot;last_run_at&quot;: &quot;2026-10-07T10:23:00+00:00&quot;,
         &quot;running&quot;: true
     }
 }</code>
@@ -13710,7 +13695,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/user/settings" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/settings" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -13718,7 +13703,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/settings"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/settings"
 );
 
 const headers = {
@@ -13852,20 +13837,20 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PATCH \
-    "https://api.viewsmax.com/api/user/settings" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/settings" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"notify_post_failures\": true,
-    \"locale\": \"pt\"
+    \"notify_post_failures\": false,
+    \"locale\": \"fr\"
 }"
 </code></pre></div>
 
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/settings"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/settings"
 );
 
 const headers = {
@@ -13875,8 +13860,8 @@ const headers = {
 };
 
 let body = {
-    "notify_post_failures": true,
-    "locale": "pt"
+    "notify_post_failures": false,
+    "locale": "fr"
 };
 
 fetch(url, {
@@ -14010,7 +13995,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
             <code>false</code>
         </label>
     <br>
-<p>Example: <code>true</code></p>
+<p>Example: <code>false</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>locale</code></b>&nbsp;&nbsp;
@@ -14019,10 +14004,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="locale"                data-endpoint="PATCHapi-user-settings"
-               value="pt"
+               value="fr"
                data-component="body">
     <br>
-<p>Example: <code>pt</code></p>
+<p>Example: <code>fr</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>en</code></li> <li><code>es</code></li> <li><code>de</code></li> <li><code>fr</code></li> <li><code>pt</code></li></ul>
         </div>
@@ -14042,7 +14027,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/user" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14050,7 +14035,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user"
 );
 
 const headers = {
@@ -14184,7 +14169,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/user/mcp-activity" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/mcp-activity" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14192,7 +14177,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/mcp-activity"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/mcp-activity"
 );
 
 const headers = {
@@ -14330,7 +14315,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/image/generate/config" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/config" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14338,7 +14323,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/image/generate/config"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/config"
 );
 
 const headers = {
@@ -14491,7 +14476,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/image/generate?status=completed&amp;method=generate&amp;per_page=15" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate?status=completed&amp;method=generate&amp;per_page=15" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14499,7 +14484,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/image/generate"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate"
 );
 
 const params = {
@@ -14668,7 +14653,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/image/generate" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -14684,7 +14669,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/image/generate"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate"
 );
 
 const headers = {
@@ -14952,7 +14937,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/image/generate/123" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -14960,7 +14945,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/image/generate/123"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123"
 );
 
 const headers = {
@@ -15107,7 +15092,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/image/generate/123/status" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123/status" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -15115,7 +15100,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/image/generate/123/status"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123/status"
 );
 
 const headers = {
@@ -15309,7 +15294,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/image/generate/123/download" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123/download" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -15317,7 +15302,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/image/generate/123/download"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123/download"
 );
 
 const headers = {
@@ -15484,7 +15469,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/image/generate/123" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -15492,7 +15477,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/image/generate/123"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/image/generate/123"
 );
 
 const headers = {
@@ -15652,7 +15637,7 @@ start one with the search endpoint.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/outliers" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -15663,12 +15648,12 @@ start one with the search endpoint.</p>
     \"max_views\": 12,
     \"min_subs\": 77,
     \"max_subs\": 8,
-    \"published_before\": \"2026-10-07T09:30:24\",
-    \"published_after\": \"2026-10-07T09:30:24\",
-    \"sort_by\": \"date\",
+    \"published_before\": \"2026-10-07T10:23:10\",
+    \"published_after\": \"2026-10-07T10:23:10\",
+    \"sort_by\": \"score\",
     \"keyword_match\": \"architecto\",
     \"featured\": false,
-    \"platform\": \"youtube\",
+    \"platform\": \"tiktok\",
     \"channels\": [
         \"architecto\"
     ],
@@ -15683,7 +15668,7 @@ start one with the search endpoint.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers"
 );
 
 const headers = {
@@ -15699,12 +15684,12 @@ let body = {
     "max_views": 12,
     "min_subs": 77,
     "max_subs": 8,
-    "published_before": "2026-10-07T09:30:24",
-    "published_after": "2026-10-07T09:30:24",
-    "sort_by": "date",
+    "published_before": "2026-10-07T10:23:10",
+    "published_after": "2026-10-07T10:23:10",
+    "sort_by": "score",
     "keyword_match": "architecto",
     "featured": false,
-    "platform": "youtube",
+    "platform": "tiktok",
     "channels": [
         "architecto"
     ],
@@ -15905,10 +15890,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="published_before"                data-endpoint="GETapi-outliers"
-               value="2026-10-07T09:30:24"
+               value="2026-10-07T10:23:10"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-10-07T09:30:24</code></p>
+<p>Must be a valid date. Example: <code>2026-10-07T10:23:10</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>published_after</code></b>&nbsp;&nbsp;
@@ -15917,10 +15902,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="published_after"                data-endpoint="GETapi-outliers"
-               value="2026-10-07T09:30:24"
+               value="2026-10-07T10:23:10"
                data-component="body">
     <br>
-<p>Must be a valid date. Example: <code>2026-10-07T09:30:24</code></p>
+<p>Must be a valid date. Example: <code>2026-10-07T10:23:10</code></p>
         </div>
                 <div style=" padding-left: 28px;  clear: unset;">
             <b style="line-height: 2;"><code>sort_by</code></b>&nbsp;&nbsp;
@@ -15929,10 +15914,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="sort_by"                data-endpoint="GETapi-outliers"
-               value="date"
+               value="score"
                data-component="body">
     <br>
-<p>Example: <code>date</code></p>
+<p>Example: <code>score</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>score</code></li> <li><code>date</code></li> <li><code>views</code></li> <li><code>recent</code></li></ul>
         </div>
@@ -15989,10 +15974,10 @@ Must be one of:
  &nbsp;
                 <input type="text" style="display: none"
                               name="platform"                data-endpoint="GETapi-outliers"
-               value="youtube"
+               value="tiktok"
                data-component="body">
     <br>
-<p>Example: <code>youtube</code></p>
+<p>Example: <code>tiktok</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>
@@ -16064,12 +16049,12 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/outliers/channels" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/channels" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"platform\": \"instagram\",
+    \"platform\": \"tiktok\",
     \"q\": \"architecto\",
     \"limit\": 22
 }"
@@ -16078,7 +16063,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/channels"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/channels"
 );
 
 const headers = {
@@ -16088,7 +16073,7 @@ const headers = {
 };
 
 let body = {
-    "platform": "instagram",
+    "platform": "tiktok",
     "q": "architecto",
     "limit": 22
 };
@@ -16211,10 +16196,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="platform"                data-endpoint="GETapi-outliers-channels"
-               value="instagram"
+               value="tiktok"
                data-component="body">
     <br>
-<p>Example: <code>instagram</code></p>
+<p>Example: <code>tiktok</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>
@@ -16260,7 +16245,7 @@ otherwise HTTP 202 with an <code>ingest_id</code> to poll.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/outliers/channels/add" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/channels/add" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -16274,7 +16259,7 @@ otherwise HTTP 202 with an <code>ingest_id</code> to poll.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/channels/add"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/channels/add"
 );
 
 const headers = {
@@ -16455,7 +16440,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/outliers/channels/ingests/12" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/channels/ingests/12" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -16463,7 +16448,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/channels/ingests/12"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/channels/ingests/12"
 );
 
 const headers = {
@@ -16611,7 +16596,7 @@ with the same <code>query</code> until its <code>status</code> is <code>done</co
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/outliers/search" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/search" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -16624,7 +16609,7 @@ with the same <code>query</code> until its <code>status</code> is <code>done</co
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/search"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/search"
 );
 
 const headers = {
@@ -16803,7 +16788,7 @@ channel-listing endpoint there, so those are pulled one URL at a time).</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/outliers/fetch" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/fetch" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -16816,7 +16801,7 @@ channel-listing endpoint there, so those are pulled one URL at a time).</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/fetch"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/fetch"
 );
 
 const headers = {
@@ -16983,7 +16968,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/outliers/tags" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/tags" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -16991,7 +16976,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/tags"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/tags"
 );
 
 const headers = {
@@ -17125,7 +17110,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/outliers/library?q=hook&amp;tags[]=architecto&amp;platforms[]=architecto&amp;creator=architecto" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library?q=hook&amp;tags[]=architecto&amp;platforms[]=architecto&amp;creator=architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -17133,7 +17118,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/library"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library"
 );
 
 const params = {
@@ -17330,12 +17315,12 @@ same video again replaces its tags.</p>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/outliers/library" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
     --data "{
-    \"platform\": \"tiktok\",
+    \"platform\": \"instagram\",
     \"video_id\": \"architecto\",
     \"snapshot\": [],
     \"tags\": [
@@ -17347,7 +17332,7 @@ same video again replaces its tags.</p>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/library"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library"
 );
 
 const headers = {
@@ -17357,7 +17342,7 @@ const headers = {
 };
 
 let body = {
-    "platform": "tiktok",
+    "platform": "instagram",
     "video_id": "architecto",
     "snapshot": [],
     "tags": [
@@ -17483,10 +17468,10 @@ You can check the Dev Tools console for debugging information.</code></pre>
  &nbsp;
                 <input type="text" style="display: none"
                               name="platform"                data-endpoint="POSTapi-outliers-library"
-               value="tiktok"
+               value="instagram"
                data-component="body">
     <br>
-<p>Example: <code>tiktok</code></p>
+<p>Example: <code>instagram</code></p>
 Must be one of:
 <ul style="list-style-type: square;"><li><code>youtube</code></li> <li><code>tiktok</code></li> <li><code>instagram</code></li></ul>
         </div>
@@ -17544,7 +17529,7 @@ Must be one of:
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request PATCH \
-    "https://api.viewsmax.com/api/outliers/library/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -17558,7 +17543,7 @@ Must be one of:
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/library/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library/architecto"
 );
 
 const headers = {
@@ -17727,7 +17712,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/outliers/library/architecto" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library/architecto" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -17735,7 +17720,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/library/architecto"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/library/architecto"
 );
 
 const headers = {
@@ -17882,7 +17867,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/youtube/dQw4w9WgXcQ" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -17890,7 +17875,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/youtube/dQw4w9WgXcQ"
 );
 
 const headers = {
@@ -18050,7 +18035,7 @@ completed (<code>payload</code> holds the analysis) or failed (<code>error</code
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/youtube/dQw4w9WgXcQ/breakdown" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -18058,7 +18043,7 @@ completed (<code>payload</code> holds the analysis) or failed (<code>error</code
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/youtube/dQw4w9WgXcQ/breakdown"
 );
 
 const headers = {
@@ -18218,7 +18203,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/youtube/dQw4w9WgXcQ/breakdown" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -18226,7 +18211,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/outliers/youtube/dQw4w9WgXcQ/breakdown"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/outliers/youtube/dQw4w9WgXcQ/breakdown"
 );
 
 const headers = {
@@ -18389,7 +18374,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request GET \
-    --get "https://api.viewsmax.com/api/user/default-image" \
+    --get "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/default-image" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -18397,7 +18382,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/default-image"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/default-image"
 );
 
 const headers = {
@@ -18542,7 +18527,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request POST \
-    "https://api.viewsmax.com/api/user/default-image" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/default-image" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json" \
@@ -18551,7 +18536,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/default-image"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/default-image"
 );
 
 const headers = {
@@ -18695,7 +18680,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="bash-example">
     <pre><code class="language-bash">curl --request DELETE \
-    "https://api.viewsmax.com/api/user/default-image" \
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/default-image" \
     --header "Authorization: Bearer vmx_{YOUR_API_KEY}" \
     --header "Content-Type: application/json" \
     --header "Accept: application/json"</code></pre></div>
@@ -18703,7 +18688,7 @@ You can check the Dev Tools console for debugging information.</code></pre>
 
 <div class="javascript-example">
     <pre><code class="language-javascript">const url = new URL(
-    "https://api.viewsmax.com/api/user/default-image"
+    "https://9cb4-2405-9800-b910-14fa-61ad-60c9-873c-a44e.ngrok-free.app/api/user/default-image"
 );
 
 const headers = {

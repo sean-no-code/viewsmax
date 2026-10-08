@@ -188,11 +188,11 @@ class McpServerTest extends TestCase
         'update_post' => [false, true, true],
         'delete_post' => [false, true, false],
         'list_offers' => [true, false, false],
-        'create_offer' => [false, false, false],
+        // 'create_offer' => [false, false, false], // TEMP: hidden from the MCP for now
         'get_offer' => [true, false, false],
         'update_offer' => [false, true, false],
         'delete_offer' => [false, true, false],
-        'create_tracking_link' => [false, false, false],
+        // 'create_tracking_link' => [false, false, false], // TEMP: hidden from the MCP for now
         'get_offer_stats' => [true, false, false],
         'get_stats_timeseries' => [true, false, false],
         'disconnect_account' => [false, true, false],
@@ -211,7 +211,7 @@ class McpServerTest extends TestCase
         'remove_saved_outlier' => [false, true, false],
         // Pulling a creator's recent videos reaches YouTube/TikTok/Instagram
         // but only adds to ViewsMax's outlier database; checking it is a read.
-        'add_outlier_channel' => [false, false, true],
+        // 'add_outlier_channel' => [false, false, true], // TEMP: hidden from the MCP for now
         'get_outlier_channel_ingest' => [true, false, false],
     ];
 
@@ -604,9 +604,7 @@ class McpServerTest extends TestCase
         // Without "required" in the schema, clients show every input as
         // optional and the AI can call e.g. update_post with no id.
         $expected = [
-            'add_outlier_channel' => ['input'],
-            'create_offer' => ['offer_url'],
-            'create_tracking_link' => ['tracking_event_id'],
+            // TEMP: add_outlier_channel, create_offer and create_tracking_link are hidden from the MCP for now
             'delete_offer' => ['id'],
             'delete_post' => ['id'],
             'disconnect_account' => ['platform'],
@@ -1163,7 +1161,7 @@ class McpServerTest extends TestCase
         $key = $this->mcpKeyWith(User::factory()->create(), ['mcp:read', 'mcp:write']);
         $tools = collect($this->rpc($key, 'tools/list')->assertOk()->json('result.tools'))->keyBy('name');
 
-        foreach (['create_post', 'create_offer', 'create_tracking_link', 'upload_media'] as $name) {
+        foreach (['create_post', 'upload_media'] as $name) { // TEMP: create_offer and create_tracking_link are hidden
             $this->assertStringContainsString(
                 "don't repeat a call that already succeeded",
                 $tools[$name]['description'],

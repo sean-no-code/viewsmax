@@ -17,16 +17,21 @@ export const SKILL_URL = "https://viewsmax.com/skills/viewsmax/SKILL.md";
 export const API_KEY_PATH = "Settings → AI Assistant Access";
 export const UPDATED = "September 2026";
 
-/** Every MCP tool the server exposes (backend/app/Mcp/Tools), in the order ai.md lists them. */
+/**
+ * Every MCP tool the server registers (backend/app/Mcp/ViewsMaxServer.php $tools),
+ * in the order ai.md lists them.
+ * TEMP: create_offer, create_tracking_link and add_outlier_channel are hidden
+ * from the MCP for now and left out here too.
+ */
 export const MCP_TOOLS = [
   "list_connected_accounts", "list_brands", "upload_media", "create_post",
   "list_posts", "get_post", "update_post", "delete_post", "list_offers",
-  "create_offer", "get_offer", "update_offer", "delete_offer",
-  "create_tracking_link", "get_offer_stats", "get_stats_timeseries",
+  "get_offer", "update_offer", "delete_offer",
+  "get_offer_stats", "get_stats_timeseries",
   "disconnect_account", "get_connect_url",
   "list_outliers", "search_outliers", "get_outlier", "fetch_outlier",
   "get_outlier_breakdown", "generate_outlier_breakdown", "list_saved_outliers",
-  "save_outlier", "remove_saved_outlier", "add_outlier_channel",
+  "save_outlier", "remove_saved_outlier",
   "get_outlier_channel_ingest",
 ];
 

@@ -3,10 +3,10 @@
 namespace App\Mcp;
 
 use App\Mcp\Methods\SafeCallTool;
-use App\Mcp\Tools\AddOutlierChannel;
-use App\Mcp\Tools\CreateOffer;
+// use App\Mcp\Tools\AddOutlierChannel; // TEMP: tool hidden, see $tools
+// use App\Mcp\Tools\CreateOffer; // TEMP: tool hidden, see $tools
 use App\Mcp\Tools\CreatePost;
-use App\Mcp\Tools\CreateTrackingLink;
+// use App\Mcp\Tools\CreateTrackingLink; // TEMP: tool hidden, see $tools
 use App\Mcp\Tools\DeleteOffer;
 use App\Mcp\Tools\DeletePost;
 use App\Mcp\Tools\DisconnectAccount;
@@ -55,10 +55,7 @@ class ViewsMaxServer extends Server
         generate_outlier_breakdown, poll get_outlier_breakdown until it is
         completed, and present the hook, the structure and why it
         over-performed. Offer save_outlier to keep it in their library. For a
-        specific video URL use fetch_outlier; to study a creator,
-        add_outlier_channel with their profile URL or @handle pulls in their
-        recent videos (poll get_outlier_channel_ingest, then list_outliers with
-        channels: [id]).
+        specific video URL use fetch_outlier.
         Posting: list_connected_accounts shows what is connected — when nothing
         is, it returns the Connections page link to give the user. create_post
         targets connected platforms as a draft, immediately (status "posted"),
@@ -93,11 +90,11 @@ class ViewsMaxServer extends Server
         DeletePost::class,
         // Monetization / offers
         ListOffers::class,
-        CreateOffer::class,
+        // CreateOffer::class, // TEMP: hidden from the MCP for now
         GetOffer::class,
         UpdateOffer::class,
         DeleteOffer::class,
-        CreateTrackingLink::class,
+        // CreateTrackingLink::class, // TEMP: hidden from the MCP for now
         // Analytics
         GetOfferStats::class,
         GetStatsTimeseries::class,
@@ -114,7 +111,7 @@ class ViewsMaxServer extends Server
         ListSavedOutliers::class,
         SaveOutlier::class,
         RemoveSavedOutlier::class,
-        AddOutlierChannel::class,
+        // AddOutlierChannel::class, // TEMP: hidden from the MCP for now
         GetOutlierChannelIngest::class,
     ];
 

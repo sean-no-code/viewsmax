@@ -69,8 +69,9 @@ class McpOfferConnectionToolsTest extends TestCase
             ->json('result.tools'))->pluck('name');
 
         foreach ([
-            'list_offers', 'create_offer', 'get_offer', 'update_offer', 'delete_offer',
-            'create_tracking_link', 'get_offer_stats', 'get_stats_timeseries',
+            // TEMP: create_offer and create_tracking_link are hidden from the MCP for now
+            'list_offers', 'get_offer', 'update_offer', 'delete_offer',
+            'get_offer_stats', 'get_stats_timeseries',
             'disconnect_account', 'get_connect_url',
         ] as $tool) {
             $this->assertContains($tool, $names, "Missing tool {$tool}");
@@ -81,6 +82,8 @@ class McpOfferConnectionToolsTest extends TestCase
 
     public function test_create_offer_and_get_offer(): void
     {
+        $this->markTestSkipped('TEMP: create_offer is hidden from the MCP for now (see ViewsMaxServer::$tools).');
+
         $user = User::factory()->create();
         $key = $this->mcpKey($user);
 
@@ -128,6 +131,8 @@ class McpOfferConnectionToolsTest extends TestCase
 
     public function test_plan_limit_error_explains_the_limit_without_promoting_an_upgrade(): void
     {
+        $this->markTestSkipped('TEMP: create_offer is hidden from the MCP for now (see ViewsMaxServer::$tools).');
+
         // OpenAI: plugins "must not display subscription plans, initiate new
         // subscriptions, or promote upgrades", but they "may explain that a
         // certain feature is not available with the user's current plan".
@@ -178,6 +183,8 @@ class McpOfferConnectionToolsTest extends TestCase
 
     public function test_create_tracking_link_for_own_offer(): void
     {
+        $this->markTestSkipped('TEMP: create_tracking_link is hidden from the MCP for now (see ViewsMaxServer::$tools).');
+
         $user = User::factory()->create();
         $offer = $user->offers()->create(['offer_url' => 'https://example.com/x']);
 
@@ -201,6 +208,8 @@ class McpOfferConnectionToolsTest extends TestCase
 
     public function test_offer_tools_return_the_full_tracked_link_url(): void
     {
+        $this->markTestSkipped('TEMP: create_tracking_link is hidden from the MCP for now (see ViewsMaxServer::$tools).');
+
         // Without the URL the AI can only show a parameter id; the user needs
         // the link they paste into a video description or bio.
         $user = User::factory()->create();
@@ -229,6 +238,8 @@ class McpOfferConnectionToolsTest extends TestCase
 
     public function test_create_tracking_link_with_beehiiv_post_id_sets_beehiiv_placement(): void
     {
+        $this->markTestSkipped('TEMP: create_tracking_link is hidden from the MCP for now (see ViewsMaxServer::$tools).');
+
         // Mirrors the Offer Detail page's Beehiiv-post picker: attaching a post
         // auto-sets placement, the same way youtube_video_id sets "video".
         $user = User::factory()->create();
