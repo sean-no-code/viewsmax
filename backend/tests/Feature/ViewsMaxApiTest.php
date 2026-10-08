@@ -267,9 +267,12 @@ class ViewsMaxApiTest extends TestCase
         $create->assertStatus(201)
             ->assertJsonPath('data.upvotes_count', 1)
             ->assertJsonPath('data.has_upvoted', true)
-            ->assertJsonPath('data.status', null);
+            ->assertJsonPath('data.status', 'in_review');
 
         $id = $create->json('data.id');
+
+        // Others only see it once it is approved (FeatureRequestVisibilityTest covers the gate).
+        \App\Models\FeatureRequest::whereKey($id)->update(['status' => 'approved']);
 
         // A second user sees has_upvoted=false.
         $other = User::factory()->create();

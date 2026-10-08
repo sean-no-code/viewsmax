@@ -58,7 +58,6 @@ export default function DashboardLayout() {
     if (path.startsWith('/dashboard/monetization/links')) return 'Link';
     if (path.startsWith('/dashboard/analytics/platform')) return 'Analytics · Source';
     if (path.startsWith('/dashboard/analytics/overview')) return 'Revenue Growth';
-    if (path.startsWith('/dashboard/analytics/audience-growth')) return 'Audience Growth';
     if (path.startsWith('/dashboard/analytics/profile')) return 'Profile Performance';
     if (path.startsWith('/dashboard/analytics/posts')) return 'Post Performance';
     if (path.startsWith('/dashboard/analytics')) return 'Analytics';

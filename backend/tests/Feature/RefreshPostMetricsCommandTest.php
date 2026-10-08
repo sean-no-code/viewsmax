@@ -90,6 +90,7 @@ class RefreshPostMetricsCommandTest extends TestCase
 
         $manager = \Mockery::mock(SocialProviderManager::class);
         $manager->shouldReceive('supports')->andReturn(true);
+        $manager->shouldReceive('supportsStats')->andReturn(true);
         $manager->shouldReceive('for')->andReturn($provider);
         $this->app->instance(SocialProviderManager::class, $manager);
     }
@@ -115,6 +116,30 @@ class RefreshPostMetricsCommandTest extends TestCase
         $this->assertSame($this->user->id, $tweet->user_id);
         $vid = PostMetricSnapshot::where('remote_post_id', 'vid1')->first();
         $this->assertSame(1006, $vid->engagement_total); // 5+1+0+1000
+    }
+
+    public function test_records_a_fetch_failure_on_the_account_and_clears_it_on_success(): void
+    {
+        $x = $this->account('x');
+        $this->legacyTarget($x, 'tweet1');
+
+        $provider = \Mockery::mock(\App\Services\Social\Contracts\SocialProviderInterface::class);
+        $provider->shouldReceive('ensureFreshToken')->andReturnUsing(fn ($a) => $a);
+        $provider->shouldReceive('fetchPostMetrics')->once()->andThrow(new \RuntimeException('X API plan does not allow tweet lookups'));
+        $manager = \Mockery::mock(SocialProviderManager::class);
+        $manager->shouldReceive('supports')->andReturn(true);
+        $manager->shouldReceive('supportsStats')->andReturn(true);
+        $manager->shouldReceive('for')->andReturn($provider);
+        $this->app->instance(SocialProviderManager::class, $manager);
+
+        $this->artisan('posts:refresh-metrics')->assertExitCode(1);
+        $this->assertSame('X API plan does not allow tweet lookups', $x->fresh()->post_stats_error);
+        $this->assertSame(0, PostMetricSnapshot::count());
+
+        $this->fakeManager(['tweet1' => ['likes' => 4, 'comments' => 0, 'shares' => 0, 'views' => 0]]);
+        $this->artisan('posts:refresh-metrics')->assertExitCode(0);
+        $this->assertNull($x->fresh()->post_stats_error);
+        $this->assertSame(1, PostMetricSnapshot::count());
     }
 
     public function test_skips_posts_with_no_metrics_returned(): void

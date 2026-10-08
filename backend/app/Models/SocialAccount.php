@@ -28,6 +28,8 @@ class SocialAccount extends Model
         'metadata',
         'status',
         'last_error',
+        'follower_stats_error',
+        'post_stats_error',
         'last_synced_at',
     ];
 

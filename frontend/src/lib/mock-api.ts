@@ -8,7 +8,7 @@
 // State is persisted in localStorage under `mock_api_db` so the multi-step
 // onboarding flow stays coherent across navigations and reloads.
 
-import type { ApiResponse, Connection, FeatureRequest, OAuthProvider } from "@/lib/api-service";
+import type { ApiResponse, Connection, FeatureRequest, FeatureRequestStatus, OAuthProvider } from "@/lib/api-service";
 
 export const isMockApi = (): boolean => {
   try {
@@ -53,7 +53,8 @@ const seedFeatureRequests = (): FeatureRequest[] => [
     category: "Feature",
     upvotes_count: 12,
     has_upvoted: false,
-    status: "Planned",
+    status: "implemented",
+    is_mine: false,
     created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
   },
   {
@@ -63,7 +64,8 @@ const seedFeatureRequests = (): FeatureRequest[] => [
     category: "Improvement",
     upvotes_count: 5,
     has_upvoted: false,
-    status: null,
+    status: "approved",
+    is_mine: false,
     created_at: new Date(Date.now() - 86400000).toISOString(),
   },
 ];
@@ -314,10 +316,21 @@ export const mockApi = {
       category: data.category ?? null,
       upvotes_count: 1,
       has_upvoted: true,
-      status: null,
+      status: "in_review",
+      is_mine: true,
       created_at: new Date().toISOString(),
     };
     db.featureRequests = [fr, ...db.featureRequests];
+    saveDb(db);
+    return { success: true, data: fr };
+  },
+
+  async updateFeatureRequestStatus(id: number, status: FeatureRequestStatus): Promise<ApiResponse<FeatureRequest>> {
+    await delay(150);
+    const db = loadDb();
+    const fr = db.featureRequests.find((r) => r.id === id);
+    if (!fr) return { success: false, error: "Not found" };
+    fr.status = status;
     saveDb(db);
     return { success: true, data: fr };
   },

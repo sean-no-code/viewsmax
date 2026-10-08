@@ -7,6 +7,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Snapshots each connected account's follower/subscriber count once per day so
@@ -14,9 +15,10 @@ use Illuminate\Support\Facades\Log;
  * deltas). Iterates connected SocialAccounts (RefreshSocialTokens pattern) and
  * upserts one row per account per day (RefreshTrackingReach pattern).
  *
- * Platforms where the API/plan can't supply a count return null and are skipped
- * (never zeroed). Coverage expands as scopes/approvals land — see config/social
- * (tiktok stats_enabled, instagram reach_enabled) and the provider methods.
+ * Platforms without stats support (SocialProviderManager::supportsStats) are
+ * skipped (never zeroed). A supported platform that fails or returns nothing
+ * gets the reason written to social_accounts.follower_stats_error so the
+ * Analytics page can show it; a later success clears it.
  */
 class RefreshAudienceSnapshots extends Command
 {
@@ -33,7 +35,7 @@ class RefreshAudienceSnapshots extends Command
         $failed = 0;
 
         foreach ($accounts as $account) {
-            if (! $manager->supports($account->platform)) {
+            if (! $manager->supports($account->platform) || ! $manager->supportsStats($account->platform)) {
                 $skipped++;
 
                 continue;
@@ -45,7 +47,9 @@ class RefreshAudienceSnapshots extends Command
                 $count = $provider->fetchFollowerCount($account);
 
                 if ($count === null) {
+                    // Supported platform, nothing back: surfaced on the Analytics page.
                     $skipped++;
+                    $this->recordError($account, 'The platform returned no follower count.');
 
                     continue;
                 }
@@ -54,9 +58,11 @@ class RefreshAudienceSnapshots extends Command
                     ['social_account_id' => $account->id, 'snapshot_date' => now()->toDateString()],
                     ['follower_count' => (int) $count],
                 );
+                $this->recordError($account, null);
                 $captured++;
             } catch (\Throwable $e) {
                 $failed++;
+                $this->recordError($account, $e->getMessage());
                 Log::warning('Audience snapshot failed', [
                     'social_account_id' => $account->id,
                     'platform' => $account->platform,
@@ -69,5 +75,14 @@ class RefreshAudienceSnapshots extends Command
 
         // Only a total wipeout (had work, captured nothing, all errored) fails.
         return ($failed > 0 && $captured === 0 && $skipped === 0) ? self::FAILURE : self::SUCCESS;
+    }
+
+    /** Persist (or clear) why this run could not get a follower count for the account. */
+    private function recordError(SocialAccount $account, ?string $message): void
+    {
+        $message = $message === null ? null : Str::limit($message, 1000, '…');
+        if ($account->follower_stats_error !== $message) {
+            $account->forceFill(['follower_stats_error' => $message])->save();
+        }
     }
 }

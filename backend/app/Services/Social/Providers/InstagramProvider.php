@@ -67,9 +67,19 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
             $this->fail('token exchange', $short->status(), $short->body());
         }
 
-        $shortToken = $short->json('access_token');
-        $userId = $short->json('user_id');
+        // Meta documents this response as {"data":[{"access_token","user_id","permissions"}]}
+        // but some apps receive the flat {"access_token","user_id"} shape. Accept both:
+        // reading only the flat shape left $shortToken null, and sending an empty
+        // access_token to the long-lived exchange made Graph answer with the
+        // misleading "Unsupported request - method type: get" (code 100).
+        $shortToken = $short->json('access_token') ?? $short->json('data.0.access_token');
+        $userId = $short->json('user_id') ?? $short->json('data.0.user_id');
         Log::info('[Instagram] short-lived token obtained', ['has_token' => ! empty($shortToken), 'user_id' => $userId]);
+
+        if (empty($shortToken)) {
+            Log::error('[Instagram] token exchange returned no access_token', ['body' => $short->body()]);
+            $this->fail('token exchange', $short->status(), 'no access_token in response: '.$short->body());
+        }
 
         // Upgrade to a long-lived (~60 day) token. This must NOT fall back to
         // the 1-hour short-lived token: storing it (with no expiry) made a

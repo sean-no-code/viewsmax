@@ -343,6 +343,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     Route::get('/feature-requests', [FeatureRequestController::class, 'index']);
     Route::post('/feature-requests', [FeatureRequestController::class, 'store']);
     Route::post('/feature-requests/{id}/upvote', [FeatureRequestController::class, 'upvote']);
+    Route::patch('/feature-requests/{id}/status', [FeatureRequestController::class, 'updateStatus'])->middleware('role:admin');
 
     // Social media accounts: connect & manage (Facebook, Instagram, Threads,
     // LinkedIn, Bluesky, X, TikTok, YouTube, Google My Business).
@@ -437,8 +438,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     Route::get('tracking-events/sources', [TrackingEventController::class, 'getSources']);
 
     // Audience Growth: per-platform follower series + engagement-ranked posts.
-    Route::get('analytics/audience', [\App\Http\Controllers\AnalyticsGrowthController::class, 'audience']);
-    Route::get('analytics/posts', [\App\Http\Controllers\AnalyticsGrowthController::class, 'posts']);
+    Route::get('analytics/performance', [\App\Http\Controllers\AnalyticsPerformanceController::class, 'index']);
     Route::get('goal-types', [GoalTypeController::class, 'index']); // Seeded conversion event types
     Route::apiResource('tracking-events', TrackingEventController::class);
     Route::apiResource('tracking-links', TrackingLinkController::class)->except(['index']); // Standard CRUD

@@ -41,6 +41,7 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
         $manager = \Mockery::mock(SocialProviderManager::class);
         $manager->shouldReceive('supports')->andReturn(true);
+        $manager->shouldReceive('supportsStats')->andReturn(true);
         $manager->shouldReceive('for')->andReturn($provider);
 
         $this->app->instance(SocialProviderManager::class, $manager);
@@ -59,6 +60,52 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
         $x = AudienceSnapshot::whereHas('socialAccount', fn ($q) => $q->where('platform', 'x'))->first();
         $this->assertSame(1000, $x->follower_count);
         $this->assertSame(now()->toDateString(), $x->snapshot_date);
+    }
+
+    public function test_records_the_reason_when_a_supported_account_fails_and_clears_it_on_success(): void
+    {
+        $user = User::factory()->create();
+        $x = $this->account($user, 'x');
+
+        $provider = \Mockery::mock(\App\Services\Social\Contracts\SocialProviderInterface::class);
+        $provider->shouldReceive('ensureFreshToken')->andReturnUsing(fn ($a) => $a);
+        $provider->shouldReceive('fetchFollowerCount')->once()->andThrow(new \RuntimeException('HTTP 403 from X'));
+        $manager = \Mockery::mock(SocialProviderManager::class);
+        $manager->shouldReceive('supports')->andReturn(true);
+        $manager->shouldReceive('supportsStats')->andReturn(true);
+        $manager->shouldReceive('for')->andReturn($provider);
+        $this->app->instance(SocialProviderManager::class, $manager);
+
+        $this->artisan('audience:refresh')->assertExitCode(1);
+        $this->assertSame('HTTP 403 from X', $x->fresh()->follower_stats_error);
+        $this->assertSame(0, AudienceSnapshot::count());
+
+        // A supported platform answering null is also something the user should see.
+        $this->fakeManager([]);
+        $this->artisan('audience:refresh')->assertExitCode(0);
+        $this->assertSame('The platform returned no follower count.', $x->fresh()->follower_stats_error);
+
+        $this->fakeManager(['x' => 10]);
+        $this->artisan('audience:refresh')->assertExitCode(0);
+        $this->assertNull($x->fresh()->follower_stats_error);
+        $this->assertSame(1, AudienceSnapshot::count());
+    }
+
+    public function test_skips_platforms_without_stats_support_without_recording_an_error(): void
+    {
+        $user = User::factory()->create();
+        $li = $this->account($user, 'linkedin');
+        $provider = \Mockery::mock(\App\Services\Social\Contracts\SocialProviderInterface::class);
+        $provider->shouldNotReceive('fetchFollowerCount');
+        $manager = \Mockery::mock(SocialProviderManager::class);
+        $manager->shouldReceive('supports')->andReturn(true);
+        $manager->shouldReceive('supportsStats')->with('linkedin')->andReturn(false);
+        $manager->shouldReceive('for')->andReturn($provider);
+        $this->app->instance(SocialProviderManager::class, $manager);
+
+        $this->artisan('audience:refresh')->assertExitCode(0);
+        $this->assertNull($li->fresh()->follower_stats_error);
+        $this->assertSame(0, AudienceSnapshot::count());
     }
 
     public function test_skips_accounts_where_follower_count_is_unsupported(): void

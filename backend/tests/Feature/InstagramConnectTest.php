@@ -61,6 +61,50 @@ class InstagramConnectTest extends TestCase
         $this->assertTrue($account->token_expires_at->gt(now()->addDays(50)));
     }
 
+    /**
+     * Regression (customer-reported): Meta documents the short-lived token
+     * response as {"data":[{...}]}. Reading only the flat shape left the token
+     * null, and the long-lived exchange went out with an empty access_token —
+     * Graph answered "Unsupported request - method type: get" (code 100).
+     */
+    public function test_data_wrapped_short_lived_response_is_parsed(): void
+    {
+        Http::fake([
+            'api.instagram.com/oauth/access_token' => Http::response([
+                'data' => [['access_token' => 'short-lived', 'user_id' => 'ig-1', 'permissions' => 'instagram_business_basic']],
+            ], 200),
+            'graph.instagram.com/access_token*' => Http::response(['access_token' => 'long-lived', 'expires_in' => 5184000], 200),
+            'graph.instagram.com/*' => Http::response(['user_id' => 'ig-1', 'username' => 'viewsmax'], 200),
+        ]);
+
+        (new InstagramProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'graph.instagram.com/access_token')
+            && $request['access_token'] === 'short-lived');
+
+        $account = SocialAccount::sole();
+        $this->assertSame('ig-1', $account->platform_account_id);
+        $this->assertSame('long-lived', $account->access_token);
+    }
+
+    public function test_missing_short_lived_token_fails_before_long_lived_exchange(): void
+    {
+        Http::fake([
+            'api.instagram.com/oauth/access_token' => Http::response(['user_id' => 'ig-1'], 200),
+            'graph.instagram.com/*' => Http::response([], 200),
+        ]);
+
+        try {
+            (new InstagramProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+            $this->fail('Expected RuntimeException');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('no access_token in response', $e->getMessage());
+        }
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'graph.instagram.com/access_token'));
+        $this->assertSame(0, SocialAccount::count());
+    }
+
     public function test_token_expiring_soon_is_refreshed_proactively(): void
     {
         Http::fake([

@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { DateRange as DayRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { PRESETS, presetFor, presetRange, rangeLabel, type DateRange, type PresetId } from "@/lib/analytics-performance-mock";
+import { PRESETS, presetFor, presetRange, rangeLabel, type DateRange, type PresetId } from "@/lib/analytics-performance";
 
 interface Props {
   value: DateRange;

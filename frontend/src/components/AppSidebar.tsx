@@ -88,7 +88,6 @@ const allNavigationItems: NavItem[] = [
     isProFeature: false,
     subItems: [
       { title: "Revenue Growth", i18nKey: "nav.revenueGrowth", url: "/dashboard/analytics/overview" },
-      { title: "Audience Growth", i18nKey: "nav.audienceGrowth", url: "/dashboard/analytics/audience-growth", adminOnly: true },
       { title: "Profile Performance", i18nKey: "nav.profilePerformance", url: "/dashboard/analytics/profile", adminOnly: true },
       { title: "Post Performance", i18nKey: "nav.postPerformance", url: "/dashboard/analytics/posts", adminOnly: true },
     ]
@@ -108,8 +107,8 @@ export function AppSidebar() {
 
   const isAdmin = !!user?.is_admin;
 
-  // Audience Growth + Profile/Post performance are admin-only for now (the
-  // multi-platform data pipeline is still being finished) — hide them for non-admins.
+  // Profile/Post performance are admin-only for now (the multi-platform data
+  // pipeline is still being finished) — hide them for non-admins.
   const baseItems = allNavigationItems.map((item) =>
     item.subItems ? { ...item, subItems: item.subItems.filter((sub) => !sub.adminOnly || isAdmin) } : item,
   );

@@ -16,12 +16,16 @@ class FeatureRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $userId = $user->id;
+        $isAdmin = $user->isAdmin();
         $sort = $request->query('sort', 'top');
 
         $query = FeatureRequest::query()
+            ->visibleTo($user)
             ->withCount('votes as upvotes_count')
-            ->with(['votes' => fn ($q) => $q->where('user_id', $userId)]);
+            ->with(['votes' => fn ($q) => $q->where('user_id', $userId)])
+            ->when($isAdmin, fn ($q) => $q->with('user:id,name'));
 
         if ($sort === 'new') {
             $query->orderByDesc('created_at');
@@ -29,7 +33,7 @@ class FeatureRequestController extends Controller
             $query->orderByDesc('upvotes_count')->orderByDesc('created_at');
         }
 
-        $data = $query->get()->map(fn (FeatureRequest $fr) => $fr->toApiArray($userId));
+        $data = $query->get()->map(fn (FeatureRequest $fr) => $fr->toApiArray($userId, $isAdmin));
 
         return response()->json(['data' => $data]);
     }
@@ -73,11 +77,35 @@ class FeatureRequestController extends Controller
     }
 
     /**
-     * Toggle the caller's vote on a feature request.
+     * Admin: move a request through in_review → approved → implemented.
+     */
+    public function updateStatus(Request $request, int $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => ['required', 'string', 'in:'.implode(',', FeatureRequest::STATUSES)],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
+
+        $featureRequest = FeatureRequest::find($id);
+        if (! $featureRequest) {
+            return response()->json(['message' => 'Feature request not found.'], 404);
+        }
+
+        $featureRequest->update(['status' => $request->input('status')]);
+        $featureRequest->loadCount('votes as upvotes_count')->load('user:id,name');
+
+        return response()->json(['data' => $featureRequest->toApiArray($request->user()->id, true)]);
+    }
+
+    /**
+     * Toggle the caller's vote on a feature request (only ones the caller can see).
      */
     public function upvote(Request $request, int $id)
     {
-        $featureRequest = FeatureRequest::find($id);
+        $featureRequest = FeatureRequest::visibleTo($request->user())->find($id);
 
         if (! $featureRequest) {
             return response()->json(['message' => 'Feature request not found.'], 404);

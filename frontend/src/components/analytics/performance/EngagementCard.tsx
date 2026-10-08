@@ -1,6 +1,6 @@
 // Engagement: daily engagements stacked by network, plus a per-account table.
 import { useMemo, useState } from "react";
-import { dayLabel, type ProfileData } from "@/lib/analytics-performance-mock";
+import { dayLabel, type ProfileData } from "@/lib/analytics-performance";
 import { ChartFrame, SectionTitle, TableHead, TipRow } from "./chart";
 import { ROW, SECTION, deltaColor, niceTicks, xScale, yScale } from "./geometry";
 import { AccountCell, NetBadge } from "./NetBadge";
@@ -30,7 +30,7 @@ export function EngagementCard({ data }: { data: ProfileData }) {
     <section style={SECTION} aria-label="Engagement">
       <SectionTitle
         title="Engagement"
-        sub="Likes, comments, shares and saves by day, stacked by network"
+        sub="Likes, comments and shares gained by day, stacked by network"
         right={
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: "var(--ink-on-paper-2)" }}>
             {byNet.map((s) => (
@@ -68,7 +68,7 @@ export function EngagementCard({ data }: { data: ProfileData }) {
         {data.engagementRows.map((r) => (
           <div key={r.account.id} style={ROW}>
             <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-              <span style={{ flex: "1 1 auto", maxWidth: 190, minWidth: 0, display: "flex" }}><AccountCell account={r.account} net={r.net} /></span>
+              <span style={{ flex: "1 1 auto", maxWidth: 190, minWidth: 0, display: "flex" }}><AccountCell account={r.account} /></span>
               <span className="hidden sm:block" style={{ flex: "1 1 60px", height: 6, background: "var(--paper-2)", borderRadius: 3, overflow: "hidden", maxWidth: 140 }}>
                 <span style={{ display: "block", height: "100%", width: `${(r.share * 100).toFixed(1)}%`, background: r.net.color }} />
               </span>

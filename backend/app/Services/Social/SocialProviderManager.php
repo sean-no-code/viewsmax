@@ -51,6 +51,22 @@ class SocialProviderManager
     }
 
     /**
+     * Whether the platform can supply follower counts and post metrics under the
+     * current config. Gated platforms flip on when their scope/flag lands (see
+     * config/social: tiktok stats_enabled, instagram reach_enabled); the rest
+     * have no stats implementation yet (AbstractSocialProvider defaults).
+     */
+    public function supportsStats(string $platform): bool
+    {
+        return match (strtolower($platform)) {
+            'youtube', 'x' => true,
+            'instagram' => (bool) config('social.platforms.instagram.reach_enabled'),
+            'tiktok' => (bool) config('social.platforms.tiktok.stats_enabled'),
+            default => false,
+        };
+    }
+
+    /**
      * All supported platform keys.
      *
      * @return array<int, string>

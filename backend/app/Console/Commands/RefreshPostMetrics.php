@@ -17,6 +17,8 @@ use Illuminate\Support\Str;
  * targets from BOTH posting stores, dedupes by (platform, remote_post_id),
  * fetches metrics per account via the provider, and upserts one row per post
  * per day. Posts whose platform can't return metrics are skipped, not zeroed.
+ * A fetch failure is written to social_accounts.post_stats_error (cleared on
+ * the next success) so the Analytics page can show it.
  */
 class RefreshPostMetrics extends Command
 {
@@ -35,7 +37,8 @@ class RefreshPostMetrics extends Command
         foreach ($candidates->groupBy('social_account_id') as $accountId => $group) {
             $account = SocialAccount::find($accountId);
 
-            if (! $account || $account->status !== SocialAccount::STATUS_CONNECTED || ! $manager->supports($account->platform)) {
+            if (! $account || $account->status !== SocialAccount::STATUS_CONNECTED
+                || ! $manager->supports($account->platform) || ! $manager->supportsStats($account->platform)) {
                 $skipped += $group->count();
 
                 continue;
@@ -85,8 +88,10 @@ class RefreshPostMetrics extends Command
                     );
                     $captured++;
                 }
+                $this->recordError($account, null);
             } catch (\Throwable $e) {
                 $failed += $group->count();
+                $this->recordError($account, $e->getMessage());
                 Log::warning('Post metrics refresh failed', [
                     'social_account_id' => $accountId,
                     'error' => $e->getMessage(),
@@ -97,6 +102,15 @@ class RefreshPostMetrics extends Command
         $this->info("Posts: {$candidates->count()}, captured {$captured}, skipped {$skipped}, failed {$failed}.");
 
         return ($failed > 0 && $captured === 0 && $skipped === 0) ? self::FAILURE : self::SUCCESS;
+    }
+
+    /** Persist (or clear) why this run could not fetch post metrics for the account. */
+    private function recordError(SocialAccount $account, ?string $message): void
+    {
+        $message = $message === null ? null : Str::limit($message, 1000, '…');
+        if ($account->post_stats_error !== $message) {
+            $account->forceFill(['post_stats_error' => $message])->save();
+        }
     }
 
     /**

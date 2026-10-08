@@ -1,6 +1,7 @@
-// Follower growth: total followers as an area line, or net growth per day as bars.
+// Follower growth: total followers as an area line (broken where no account
+// has a snapshot yet), or net growth per day as bars.
 import { useMemo, useState } from "react";
-import { dayLabel, signed, type ProfileData } from "@/lib/analytics-performance-mock";
+import { dayLabel, signed, type ProfileData } from "@/lib/analytics-performance";
 import { ChartFrame, PillToggle, SectionTitle, TableHead, TipRow } from "./chart";
 import { ROW, SECTION, X0, X1, deltaColor, niceTicks, xScale, yScale } from "./geometry";
 import { AccountCell } from "./NetBadge";
@@ -8,23 +9,38 @@ import { AccountCell } from "./NetBadge";
 export type FollowerView = "total" | "net";
 const VIEWS: { id: FollowerView; label: string }[] = [{ id: "total", label: "Total followers" }, { id: "net", label: "Net per day" }];
 
+/** Runs of consecutive indexes with a value. */
+function segments(vals: (number | null)[]): number[][] {
+  const out: number[][] = [];
+  let run: number[] = [];
+  vals.forEach((v, i) => { if (v === null) { if (run.length) out.push(run); run = []; } else run.push(i); });
+  if (run.length) out.push(run);
+  return out;
+}
+
 export function FollowerGrowthCard({ data, view, onViewChange }: { data: ProfileData; view: FollowerView; onViewChange: (v: FollowerView) => void }) {
   const [hover, setHover] = useState<number | null>(null);
   const isTotal = view === "total";
-  const vals = isTotal ? data.followers.total : data.followers.net;
-  const n = vals.length, x = xScale(n);
+  const totals = data.followers.total;
+  const nets = data.followers.net;
+  const n = data.dates.length, x = xScale(n);
 
   const { ticks, y } = useMemo(() => {
-    const t = niceTicks(isTotal ? Math.min(...vals) : Math.min(0, ...vals), Math.max(...vals), 4);
+    const known = totals.filter((v): v is number => v !== null);
+    const t = isTotal
+      ? niceTicks(known.length ? Math.min(...known) : 0, known.length ? Math.max(...known) : 1, 4)
+      : niceTicks(Math.min(0, ...nets), Math.max(0, ...nets), 4);
     return { ticks: t, y: yScale(t[0], t[t.length - 1]) };
-  }, [vals, isTotal]);
+  }, [totals, nets, isTotal]);
 
-  const line = "M" + vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" L");
-  const area = `${line} L${x(n - 1)},${y(ticks[0])} L${x(0)},${y(ticks[0])} Z`;
+  const paths = useMemo(() => segments(totals).map((seg) => {
+    const line = "M" + seg.map((i) => `${x(i).toFixed(1)},${y(totals[i] as number).toFixed(1)}`).join(" L");
+    return { line, area: `${line} L${x(seg[seg.length - 1])},${y(ticks[0])} L${x(seg[0])},${y(ticks[0])} Z` };
+  }), [totals, ticks, x, y]);
   const bw = Math.max(1, ((X1 - X0) / n) * 0.62);
 
   const h = hover !== null && hover < n ? hover : null;
-  const net = h !== null ? data.followers.net[h] : 0;
+  const net = h !== null ? nets[h] : 0;
 
   return (
     <section style={SECTION} aria-label="Follower growth">
@@ -35,22 +51,24 @@ export function FollowerGrowthCard({ data, view, onViewChange }: { data: Profile
         yTicks={ticks.map((v) => ({ v, y: y(v) }))}
         hover={h}
         onHover={(i) => { if (i !== hover) setHover(i); }}
-        overlay={isTotal && h !== null ? <circle cx={x(h)} cy={y(vals[h])} r={5} style={{ fill: "var(--paper-0)", stroke: "var(--vm-volt-deep)", strokeWidth: 2.5 }} /> : null}
+        overlay={isTotal && h !== null && totals[h] !== null ? <circle cx={x(h)} cy={y(totals[h] as number)} r={5} style={{ fill: "var(--paper-0)", stroke: "var(--vm-volt-deep)", strokeWidth: 2.5 }} /> : null}
         tooltip={h !== null && (
           <>
             <div style={{ color: "var(--fg-3)", fontFamily: "var(--font-mono)" }}>{dayLabel(data.dates[h])}</div>
-            <TipRow value={data.followers.total[h].toLocaleString("en-US")} bold>Followers</TipRow>
+            <TipRow value={totals[h] === null ? "–" : (totals[h] as number).toLocaleString("en-US")} bold>Followers</TipRow>
             <TipRow value={signed(net)} bold color={net >= 0 ? "var(--vm-volt)" : "var(--down)"}>Net growth</TipRow>
           </>
         )}
       >
         {isTotal ? (
-          <>
-            <path d={area} style={{ fill: "var(--vm-volt-tint-l)" }} />
-            <path d={line} style={{ fill: "none", stroke: "var(--vm-volt-deep)", strokeWidth: 2.5, strokeLinejoin: "round" }} />
-          </>
+          paths.map((p, i) => (
+            <g key={i}>
+              <path d={p.area} style={{ fill: "var(--vm-volt-tint-l)" }} />
+              <path d={p.line} style={{ fill: "none", stroke: "var(--vm-volt-deep)", strokeWidth: 2.5, strokeLinejoin: "round" }} />
+            </g>
+          ))
         ) : (
-          vals.map((v, i) => (
+          nets.map((v, i) => (
             <rect key={i} x={x(i) - bw / 2} y={Math.min(y(v), y(0))} width={bw} height={Math.max(1, Math.abs(y(v) - y(0)))} rx={2}
               style={{ fill: v >= 0 ? "var(--vm-volt-deep)" : "var(--down)", opacity: h === null || h === i ? 1 : 0.45 }} />
           ))
@@ -61,7 +79,7 @@ export function FollowerGrowthCard({ data, view, onViewChange }: { data: Profile
         <TableHead cols={["Account", "Followers", "Net growth", "Change"]} />
         {data.followerRows.map((r) => (
           <div key={r.account.id} style={ROW}>
-            <AccountCell account={r.account} net={r.net} />
+            <AccountCell account={r.account} />
             <span style={{ textAlign: "right" }}>{r.followers}</span>
             <span style={{ textAlign: "right" }}>{r.growth}</span>
             <span style={{ textAlign: "right", fontWeight: 600, color: deltaColor(r.delta.dir) }}>{r.delta.label}</span>

@@ -1,11 +1,18 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { ChevronUp } from "lucide-react";
-import { viewsMaxApi, type FeatureRequest } from "@/lib/api-service";
+import { viewsMaxApi, type FeatureRequest, type FeatureRequestStatus } from "@/lib/api-service";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { CARD, Btn, Chip, SectionHead } from "@/components/analytics/primitives";
 import { Field, TextInput } from "@/components/analytics/Modal";
 
 const CATEGORIES = ["Feature", "Improvement", "Integration", "Other"];
+
+// Requests start in review (visible only to their author and admins) and are
+// shown to everyone once an admin approves them.
+const STATUS_LABEL: Record<FeatureRequestStatus, string> = { in_review: "In review", approved: "Approved", implemented: "Implemented" };
+const STATUS_TONE: Record<FeatureRequestStatus, "ghost" | "aqua" | "up"> = { in_review: "ghost", approved: "aqua", implemented: "up" };
+const STATUSES = Object.keys(STATUS_LABEL) as FeatureRequestStatus[];
 
 const textareaStyle: CSSProperties = {
   width: "100%", boxSizing: "border-box", background: "var(--paper-1)", border: "1px solid var(--line-1)",
@@ -14,6 +21,8 @@ const textareaStyle: CSSProperties = {
 };
 
 const FeatureRequests = () => {
+  const { user } = useAuth();
+  const isAdmin = !!user?.is_admin;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Feature");
@@ -50,13 +59,23 @@ const FeatureRequests = () => {
     setSubmitting(false);
 
     if (result.success && result.data) {
-      toast.success("Thanks! Your feature request was submitted.");
+      toast.success("Thanks! Your request is in review — it's visible to you now and to everyone once approved.");
       setTitle("");
       setDescription("");
       setCategory("Feature");
       setRequests((prev) => [result.data!, ...prev]);
     } else {
       toast.error(result.error || "Couldn't submit your request. Please try again.");
+    }
+  };
+
+  const handleStatusChange = async (id: number, status: FeatureRequestStatus) => {
+    const result = await viewsMaxApi.updateFeatureRequestStatus(id, status);
+    if (result.success && result.data) {
+      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: result.data!.status } : r)));
+      toast.success(`Marked as ${STATUS_LABEL[status].toLowerCase()}.`);
+    } else {
+      toast.error(result.error || "Couldn't update the status.");
     }
   };
 
@@ -145,9 +164,30 @@ const FeatureRequests = () => {
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 4 }}>
                       <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>{req.title}</span>
                       {req.category && <Chip tone="ghost">{req.category}</Chip>}
-                      {req.status && <Chip tone="aqua">{req.status}</Chip>}
+                      <Chip tone={STATUS_TONE[req.status] ?? "ghost"}>{STATUS_LABEL[req.status] ?? req.status}</Chip>
                     </div>
                     <p style={{ fontFamily: "var(--font-body)", fontSize: 13.5, color: "var(--ink-on-paper-2)", margin: 0, lineHeight: 1.5 }}>{req.description}</p>
+                    {req.status === "in_review" && req.is_mine && !isAdmin && (
+                      <p style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ink-on-paper-3)", margin: "6px 0 0" }}>
+                        Only you can see this until it's approved.
+                      </p>
+                    )}
+                    {isAdmin && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                        {req.requested_by && <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ink-on-paper-3)" }}>Requested by {req.requested_by}</span>}
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ink-on-paper-3)" }}>
+                          Status
+                          <select
+                            aria-label={`Status of ${req.title}`}
+                            value={req.status}
+                            onChange={(e) => handleStatusChange(req.id, e.target.value as FeatureRequestStatus)}
+                            style={{ fontFamily: "var(--font-body)", fontSize: 12, padding: "4px 8px", borderRadius: 8, border: "1px solid var(--line-2)", background: "var(--paper-0)", color: "var(--ink-on-paper-1)" }}
+                          >
+                            {STATUSES.map((st) => <option key={st} value={st}>{STATUS_LABEL[st]}</option>)}
+                          </select>
+                        </label>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

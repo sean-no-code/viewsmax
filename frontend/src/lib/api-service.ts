@@ -234,6 +234,7 @@ export interface BoostCheck {
   setting?: BoostSetting | null;
 }
 
+export type FeatureRequestStatus = 'in_review' | 'approved' | 'implemented';
 export interface FeatureRequest {
   id: number;
   title: string;
@@ -241,7 +242,10 @@ export interface FeatureRequest {
   category?: string | null;
   upvotes_count: number;
   has_upvoted: boolean;
-  status?: string | null;
+  // in_review requests are only listed for their author (and admins) until approved.
+  status: FeatureRequestStatus;
+  is_mine: boolean;
+  requested_by?: string | null; // admins only
   created_at: string;
 }
 
@@ -512,40 +516,43 @@ export interface TrafficSourcesData {
 }
 
 // Audience Growth — per-platform follower series from /api/analytics/audience.
-export interface AudiencePoint {
-  date: string;
-  followers: number;
-}
-
-export interface AudiencePlatformSeries {
+// GET /api/analytics/performance — everything the Profile/Post performance
+// pages need for a date range. `days` holds the previous period followed by
+// the current one; the per-account arrays line up with it.
+export interface PerformanceAccount {
+  id: number;
   platform: string;
+  name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  profile_url: string | null;
+  status: string;             // 'connected' | 'needs_reauth' | 'revoked' | 'error'
+  last_error: string | null;
+  supported: boolean;         // platform can supply stats under current config
+  follower_stats_error: string | null;
+  post_stats_error: string | null;
+  followers: (number | null)[];   // forward-filled; null before the first snapshot
+  engagement: { likes: number[]; comments: number[]; shares: number[]; views: number[] }; // per-day growth
+}
+export interface PerformancePost {
+  id: string;
   account_id: number;
-  account_name: string | null;
-  // Whether the platform can supply a follower count under current config;
-  // false → the UI shows a "not supported" state.
-  supported: boolean;
-  current: number | null;
-  delta: number;
-  points: AudiencePoint[];
-}
-
-export interface AudienceGrowthData {
-  platforms: AudiencePlatformSeries[];
-}
-
-// One engagement-ranked post from /api/analytics/posts.
-export interface TopPost {
   platform: string;
   remote_post_id: string;
   url: string | null;
   caption: string | null;
-  published_at: string | null;
+  published_at: string;
   likes: number;
   comments: number;
   shares: number;
   views: number;
-  engagement_total: number;
-  engagement_delta: number;
+}
+export interface PerformanceData {
+  from: string;
+  to: string;
+  days: string[];
+  accounts: PerformanceAccount[];
+  posts: PerformancePost[];
 }
 
 export interface PostMediaItem {
@@ -985,43 +992,19 @@ class ViewsMaxApiService {
   }
 
   // Audience Growth: per-platform follower series over a date range.
-  async getAudienceGrowth(filters?: { from?: Date; to?: Date }): Promise<ApiResponse<AudienceGrowthData>> {
-    if (isMockApi()) return { success: true, data: { platforms: [] } };
+  /** Profile/Post performance data for a date range (both periods for deltas). */
+  async getAnalyticsPerformance(filters: { from: Date; to: Date }): Promise<ApiResponse<PerformanceData>> {
+    const formatDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (isMockApi()) return { success: true, data: { from: formatDate(filters.from), to: formatDate(filters.to), days: [], accounts: [], posts: [] } };
     try {
-      const params = new URLSearchParams();
-      const formatDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (filters?.from) params.append('from', formatDate(filters.from));
-      if (filters?.to) params.append('to', formatDate(filters.to));
-
-      const response = await fetch(`${this.baseUrl}/api/analytics/audience?${params.toString()}`, {
+      const params = new URLSearchParams({ from: formatDate(filters.from), to: formatDate(filters.to) });
+      const response = await fetch(`${this.baseUrl}/api/analytics/performance?${params.toString()}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
-      if (!response.ok) return { success: false, error: `Failed to fetch audience growth: ${response.status}` };
+      if (!response.ok) return { success: false, error: `Failed to fetch analytics: ${response.status}` };
       const result = await response.json();
       return { success: true, data: result.data };
-    } catch (error) {
-      return { success: false, error: `Network error: ${error.message}` };
-    }
-  }
-
-  // Audience Growth: posts ranked by engagement (optional platform filter).
-  async getTopPosts(filters?: { from?: Date; to?: Date; platform?: string }): Promise<ApiResponse<TopPost[]>> {
-    if (isMockApi()) return { success: true, data: [] };
-    try {
-      const params = new URLSearchParams();
-      const formatDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (filters?.from) params.append('from', formatDate(filters.from));
-      if (filters?.to) params.append('to', formatDate(filters.to));
-      if (filters?.platform) params.append('platform', filters.platform);
-
-      const response = await fetch(`${this.baseUrl}/api/analytics/posts?${params.toString()}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      if (!response.ok) return { success: false, error: `Failed to fetch top posts: ${response.status}` };
-      const result = await response.json();
-      return { success: true, data: result.data?.posts || [] };
     } catch (error) {
       return { success: false, error: `Network error: ${error.message}` };
     }
@@ -5558,6 +5541,23 @@ class ViewsMaxApiService {
         success: false,
         error: `Network error: ${error.message}`
       };
+    }
+  }
+
+  /** Admin: move a feature request to in_review / approved / implemented. */
+  async updateFeatureRequestStatus(id: number, status: FeatureRequestStatus): Promise<ApiResponse<FeatureRequest>> {
+    if (isMockApi()) return mockApi.updateFeatureRequestStatus(id, status);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/feature-requests/${id}/status`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ status }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return { success: false, error: result.message || `Failed to update status: ${response.status}` };
+      return { success: true, data: result.data };
+    } catch (error) {
+      return { success: false, error: `Network error: ${error.message}` };
     }
   }
 

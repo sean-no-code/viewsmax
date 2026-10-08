@@ -3,7 +3,7 @@
 // and a dark tooltip anchored to the hovered column; pill toggles; section and
 // table scaffolding. Geometry and style constants live in geometry.ts.
 import type { CSSProperties, ReactNode } from "react";
-import { dayLabel, fmt } from "@/lib/analytics-performance-mock";
+import { dayLabel, fmt } from "@/lib/analytics-performance";
 import { TABLE_GRID, X0, X1, Y0, Y1, xScale } from "./geometry";
 
 const MONO: CSSProperties = { font: "500 11px var(--font-mono)", fill: "var(--ink-on-paper-3)" };

@@ -37,7 +37,6 @@ import OfferDetail from "./pages/analytics/OfferDetail";
 import AnalyticsLinkDetail from "./pages/analytics/LinkDetail";
 import AnalyticsSources from "./pages/analytics/Sources";
 import AnalyticsPlatformDetail from "./pages/analytics/PlatformDetail";
-import AnalyticsAudienceGrowth from "./pages/analytics/AudienceGrowth";
 import AnalyticsPerformance from "./pages/analytics/Performance";
 import Post from "./pages/post/Post";
 import PostDrafts from "./pages/post/Drafts";
@@ -219,7 +218,7 @@ const App = () => (
                   <Route path="analytics/overview" element={<AnalyticsOverview />} />
                   <Route path="analytics/sources" element={<AnalyticsSources />} />
                   {/* Admin-only while the multi-platform data pipeline is finished */}
-                  <Route path="analytics/audience-growth" element={<AdminRoute><AnalyticsAudienceGrowth /></AdminRoute>} />
+                  <Route path="analytics/audience-growth" element={<Navigate to="/dashboard/analytics/profile" replace />} />
                   <Route path="analytics/profile" element={<AdminRoute><AnalyticsPerformance tab="profile" /></AdminRoute>} />
                   <Route path="analytics/posts" element={<AdminRoute><AnalyticsPerformance tab="posts" /></AdminRoute>} />
                   <Route path="analytics/platform/:id" element={<AnalyticsPlatformDetail />} />

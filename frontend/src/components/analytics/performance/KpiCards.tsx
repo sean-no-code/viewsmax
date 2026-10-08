@@ -1,4 +1,4 @@
-import type { Kpi } from "@/lib/analytics-performance-mock";
+import type { Kpi } from "@/lib/analytics-performance";
 import { deltaColor } from "./geometry";
 
 export function KpiCards({ kpis }: { kpis: Kpi[] }) {
