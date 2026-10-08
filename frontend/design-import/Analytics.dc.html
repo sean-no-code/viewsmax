@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/viewsmax-design-system-cc91e48d-ac65-424e-8e00-20e5e5f299ca/colors_and_type.css">
+<link rel="stylesheet" href="_ds/viewsmax-design-system-cc91e48d-ac65-424e-8e00-20e5e5f299ca/styles.css">
+<script src="_ds/viewsmax-design-system-cc91e48d-ac65-424e-8e00-20e5e5f299ca/_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--paper-1);font-family:var(--font-body);color:var(--ink-on-paper-1)}a{color:var(--vm-red-deep)}a:hover{color:var(--vm-red)}</style>
+</helmet>
+<div style="display:flex;min-height:100vh;background:var(--paper-1)">
+  <aside style="width:216px;flex-shrink:0;background:var(--paper-0);border-right:1px solid var(--line-1);padding:20px 12px;display:flex;flex-direction:column;gap:24px">
+    <div style="font-family:var(--font-display);font-weight:800;font-size:20px;letter-spacing:-0.02em;padding:0 8px;display:flex;align-items:center;gap:8px">
+      <span style="width:22px;height:22px;border-radius:6px;background:var(--vm-red);display:inline-block"></span>ViewsMax
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px;font-size:14px">
+      <div style="padding:8px;color:var(--ink-on-paper-2)">Dashboard</div>
+      <div style="padding:8px;color:var(--ink-on-paper-2)">Publish</div>
+      <div style="padding:8px;color:var(--ink-on-paper-2)">Inbox</div>
+      <div style="padding:8px;font-weight:600">Analytics</div>
+      <div style="display:flex;flex-direction:column;gap:2px;padding-left:8px">
+        <div onClick="{{ goProfile }}" style="padding:7px 10px;border-radius:8px;cursor:pointer;background:{{ navProfileBg }};font-weight:{{ navProfileW }}">Profile performance</div>
+        <div onClick="{{ goPosts }}" style="padding:7px 10px;border-radius:8px;cursor:pointer;background:{{ navPostsBg }};font-weight:{{ navPostsW }}">Post performance</div>
+      </div>
+      <div style="padding:8px;color:var(--ink-on-paper-2)">Settings</div>
+    </nav>
+  </aside>
+
+  <main style="flex:1;min-width:0;padding:28px 32px 56px;display:flex;flex-direction:column;gap:24px;max-width:1280px">
+    <header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+      <h1 style="margin:0;font-family:var(--font-display);font-weight:800;font-size:32px;letter-spacing:-0.02em">{{ title }}</h1>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <x-import component-from-global-scope="ViewsMaxUI.Popover" hint-size="200px,38px">
+          <x-import component-from-global-scope="ViewsMaxUI.PopoverTrigger" class-name="rounded-md border border-line-2 bg-paper-0" hint-size="200px,38px">
+            <span style="display:flex;align-items:center;gap:8px;padding:8px 12px;font:600 13px var(--font-body);color:var(--ink-on-paper-1)">
+              <span style="display:flex">
+                <sc-for list="{{ srcDots }}" as="d" hint-placeholder-count="3"><span style="width:20px;height:20px;border-radius:6px;margin-left:-5px;background:{{ d.badge }};border:2px solid var(--paper-0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><sc-if value="{{ d.hasIcon }}" hint-placeholder-val="{{ true }}"><img src="{{ d.icon }}" alt="" style="width:10px;height:10px;display:block"></sc-if><sc-if value="{{ d.noIcon }}" hint-placeholder-val="{{ false }}"><span style="font:800 9px var(--font-body);color:#fff">in</span></sc-if></span></sc-for>
+              </span>
+              {{ srcLabel }}
+              <span style="color:var(--ink-on-paper-3)">▾</span>
+            </span>
+          </x-import>
+          <x-import component-from-global-scope="ViewsMaxUI.PopoverContent" align="end" class-name="w-auto p-0" hint-size="300px,400px">
+            <div style="width:300px;display:flex;flex-direction:column;font-size:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line-1)">
+                <span style="font-weight:700">Sources</span>
+                <span onClick="{{ selectAll }}" style="font-size:13px;font-weight:600;color:var(--vm-red-deep);cursor:pointer">Select all</span>
+              </div>
+              <div style="max-height:380px;overflow-y:auto;padding:6px 0">
+                <sc-for list="{{ srcGroups }}" as="g" hint-placeholder-count="5">
+                  <div style="display:flex;flex-direction:column;padding:4px 0">
+                    <div onClick="{{ g.toggle }}" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;font-weight:600" style-hover="background:var(--paper-2)">
+                      <x-import component-from-global-scope="ViewsMaxUI.Checkbox" checked="{{ g.checked }}" style="pointer-events:none;display:flex" hint-size="16px,16px"></x-import>
+                      <span style="width:20px;height:20px;border-radius:6px;background:{{ g.badge }};display:flex;align-items:center;justify-content:center;flex-shrink:0"><sc-if value="{{ g.hasIcon }}" hint-placeholder-val="{{ true }}"><img src="{{ g.icon }}" alt="" style="width:11px;height:11px;display:block"></sc-if><sc-if value="{{ g.noIcon }}" hint-placeholder-val="{{ false }}"><span style="font:800 10px var(--font-body);color:#fff">in</span></sc-if></span>
+                      {{ g.label }}
+                    </div>
+                    <sc-for list="{{ g.accounts }}" as="a" hint-placeholder-count="1">
+                      <div onClick="{{ a.toggle }}" style="display:flex;align-items:center;gap:10px;padding:7px 14px 7px 40px;cursor:pointer;color:var(--ink-on-paper-2)" style-hover="background:var(--paper-2)">
+                        <x-import component-from-global-scope="ViewsMaxUI.Checkbox" checked="{{ a.checked }}" style="pointer-events:none;display:flex" hint-size="16px,16px"></x-import>
+                        <x-import component-from-global-scope="ViewsMaxUI.Avatar" class-name="h-6 w-6" hint-size="24px,24px"><x-import component-from-global-scope="ViewsMaxUI.AvatarFallback" class-name="text-xs font-semibold" style="background:{{ a.tint }}" hint-size="24px,24px">{{ a.initials }}</x-import></x-import>
+                        {{ a.handle }}
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </x-import>
+        </x-import>
+
+        <x-import component-from-global-scope="ViewsMaxUI.Popover" hint-size="220px,38px">
+          <x-import component-from-global-scope="ViewsMaxUI.PopoverTrigger" class-name="rounded-md border border-line-2 bg-paper-0" hint-size="220px,38px">
+            <span style="display:flex;align-items:center;gap:8px;padding:8px 12px;font:600 13px var(--font-body);color:var(--ink-on-paper-1)">
+              {{ rangeTrigger }}
+              <span style="color:var(--ink-on-paper-3)">▾</span>
+            </span>
+          </x-import>
+          <x-import component-from-global-scope="ViewsMaxUI.PopoverContent" align="end" class-name="w-auto p-0" hint-size="700px,360px">
+            <div style="display:flex">
+              <div style="display:flex;flex-direction:column;gap:2px;padding:10px;border-right:1px solid var(--line-1);min-width:150px">
+                <sc-for list="{{ presets }}" as="p" hint-placeholder-count="6">
+                  <div onClick="{{ p.pick }}" style="padding:8px 10px;border-radius:7px;font-size:13px;cursor:pointer;background:{{ p.bg }};font-weight:{{ p.w }}" style-hover="background:var(--paper-2)">{{ p.label }}</div>
+                </sc-for>
+              </div>
+              <x-import component-from-global-scope="ViewsMaxUI.Calendar" mode="range" selected="{{ draft }}" on-select="{{ onRangeSelect }}" number-of-months="{{ 2 }}" default-month="{{ calMonth }}" disabled="{{ calDisabled }}" week-starts-on="{{ 1 }}" hint-size="560px,330px"></x-import>
+            </div>
+          </x-import>
+        </x-import>
+
+        <x-import component-from-global-scope="ViewsMaxUI.Button" variant="outline" size="sm" hint-size="110px,36px">Export CSV</x-import>
+      </div>
+    </header>
+
+    <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--paper-0);border:1px solid var(--line-1);border-radius:var(--r-md);padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:13px;color:var(--ink-on-paper-2)">{{ k.label }}</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:30px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums">{{ k.value }}</div>
+            <div style="font-size:13px;font-weight:600;color:{{ k.dColor }}">{{ k.delta }} <span style="font-weight:400;color:var(--ink-on-paper-3)">vs previous period</span></div>
+          </div>
+        </sc-for>
+      </div>
+
+      <section style="background:var(--paper-0);border:1px solid var(--line-1);border-radius:var(--r-md);padding:22px 24px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:20px;letter-spacing:-0.01em">Follower growth</h2>
+            <div style="font-size:13px;color:var(--ink-on-paper-3)">Selected sources, by day</div>
+          </div>
+          <div style="display:flex;gap:2px;padding:3px;background:var(--paper-2);border:1px solid var(--line-1);border-radius:10px">
+            <sc-for list="{{ fModes }}" as="m" hint-placeholder-count="2">
+              <button onClick="{{ m.pick }}" style="border:0;cursor:pointer;padding:5px 11px;border-radius:7px;font:600 12px var(--font-body);background:{{ m.bg }};color:{{ m.fg }};box-shadow:{{ m.shadow }}">{{ m.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="position:relative" onMouseLeave="{{ clearHoverF }}">
+          <svg viewBox="0 0 800 250" style="width:100%;height:auto;display:block;overflow:visible">
+            <sc-for list="{{ fc.yTicks }}" as="t" hint-placeholder-count="4">
+              <line x1="48" x2="792" y1="{{ t.y }}" y2="{{ t.y }}" style="stroke:var(--line-1);stroke-width:1"></line>
+              <text x="40" y="{{ t.ty }}" text-anchor="end" style="font:500 11px var(--font-mono);fill:var(--ink-on-paper-3)">{{ t.label }}</text>
+            </sc-for>
+            <sc-for list="{{ fc.xTicks }}" as="t" hint-placeholder-count="6">
+              <text x="{{ t.x }}" y="242" text-anchor="middle" style="font:500 11px var(--font-mono);fill:var(--ink-on-paper-3)">{{ t.label }}</text>
+            </sc-for>
+            <sc-if value="{{ fc.isTotal }}" hint-placeholder-val="{{ true }}">
+              <path d="{{ fc.area }}" style="fill:var(--vm-volt-tint-l)"></path>
+              <path d="{{ fc.line }}" style="fill:none;stroke:var(--vm-volt-deep);stroke-width:2.5;stroke-linejoin:round"></path>
+            </sc-if>
+            <sc-for list="{{ fc.bars }}" as="b" hint-placeholder-count="0">
+              <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="2" style="fill:{{ b.color }};opacity:{{ b.op }}"></rect>
+            </sc-for>
+            <sc-if value="{{ fHover.show }}" hint-placeholder-val="{{ false }}">
+              <line x1="{{ fHover.x }}" x2="{{ fHover.x }}" y1="12" y2="222" style="stroke:var(--ink-on-paper-3);stroke-width:1;stroke-dasharray:3 3"></line>
+            </sc-if>
+            <sc-if value="{{ fHover.dot }}" hint-placeholder-val="{{ false }}">
+              <circle cx="{{ fHover.x }}" cy="{{ fHover.y }}" r="5" style="fill:var(--paper-0);stroke:var(--vm-volt-deep);stroke-width:2.5"></circle>
+            </sc-if>
+            <sc-for list="{{ fc.hits }}" as="h" hint-placeholder-count="0">
+              <rect x="{{ h.x }}" y="0" width="{{ h.w }}" height="222" onMouseEnter="{{ h.enter }}" style="fill:transparent"></rect>
+            </sc-for>
+          </svg>
+          <sc-if value="{{ fHover.show }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:0;left:{{ fHover.left }};transform:{{ fHover.tx }};pointer-events:none;background:var(--ink-900);color:var(--fg-1);border-radius:10px;padding:10px 12px;font-size:12px;display:flex;flex-direction:column;gap:4px;min-width:140px;box-shadow:var(--shadow-md)">
+              <div style="color:var(--fg-3);font-family:var(--font-mono)">{{ fHover.date }}</div>
+              <div style="display:flex;justify-content:space-between;gap:12px"><span>Followers</span><b style="font-variant-numeric:tabular-nums">{{ fHover.total }}</b></div>
+              <div style="display:flex;justify-content:space-between;gap:12px"><span>Net growth</span><b style="color:{{ fHover.netColor }};font-variant-numeric:tabular-nums">{{ fHover.net }}</b></div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex;flex-direction:column;border-top:1px solid var(--line-1)">
+          <div style="display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));gap:12px;padding:10px 0;font-size:12px;color:var(--ink-on-paper-3);border-bottom:1px solid var(--line-1)">
+            <span>Account</span><span style="text-align:right">Followers</span><span style="text-align:right">Net growth</span><span style="text-align:right">Change</span>
+          </div>
+          <sc-for list="{{ fRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));gap:12px;padding:11px 0;font-size:14px;border-bottom:1px solid var(--line-1);font-variant-numeric:tabular-nums">
+              <span style="display:flex;align-items:center;gap:10px;min-width:0">
+                <span style="position:relative;display:flex;flex-shrink:0">
+                  <x-import component-from-global-scope="ViewsMaxUI.Avatar" class-name="h-8 w-8" hint-size="32px,32px"><x-import component-from-global-scope="ViewsMaxUI.AvatarFallback" class-name="text-xs font-semibold" style="background:{{ r.tint }}" hint-size="32px,32px">{{ r.initials }}</x-import></x-import>
+                  <span style="position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;border-radius:5px;background:{{ r.badge }};border:2px solid var(--paper-0);display:flex;align-items:center;justify-content:center"><sc-if value="{{ r.hasIcon }}" hint-placeholder-val="{{ true }}"><img src="{{ r.icon }}" alt="" style="width:8px;height:8px;display:block"></sc-if><sc-if value="{{ r.noIcon }}" hint-placeholder-val="{{ false }}"><span style="font:800 7px var(--font-body);color:#fff">in</span></sc-if></span>
+                </span>
+                <span style="display:flex;flex-direction:column;min-width:0;line-height:1.25"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.handle }}</span><span style="font-size:12px;color:var(--ink-on-paper-3)">{{ r.net }}</span></span>
+              </span>
+              <span style="text-align:right">{{ r.followers }}</span>
+              <span style="text-align:right">{{ r.growth }}</span>
+              <span style="text-align:right;font-weight:600;color:{{ r.dColor }}">{{ r.delta }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="background:var(--paper-0);border:1px solid var(--line-1);border-radius:var(--r-md);padding:22px 24px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:20px;letter-spacing:-0.01em">Engagement</h2>
+            <div style="font-size:13px;color:var(--ink-on-paper-3)">Likes, comments, shares and saves by day, stacked by network</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-on-paper-2)">
+            <sc-for list="{{ legend }}" as="l" hint-placeholder-count="5">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;border-radius:5px;background:{{ l.badge }};display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px {{ l.color }}"><sc-if value="{{ l.hasIcon }}" hint-placeholder-val="{{ true }}"><img src="{{ l.icon }}" alt="" style="width:9px;height:9px;display:block"></sc-if><sc-if value="{{ l.noIcon }}" hint-placeholder-val="{{ false }}"><span style="font:800 8px var(--font-body);color:#fff">in</span></sc-if></span>{{ l.name }}</span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="position:relative" onMouseLeave="{{ clearHoverE }}">
+          <svg viewBox="0 0 800 250" style="width:100%;height:auto;display:block;overflow:visible">
+            <sc-for list="{{ ec.yTicks }}" as="t" hint-placeholder-count="4">
+              <line x1="48" x2="792" y1="{{ t.y }}" y2="{{ t.y }}" style="stroke:var(--line-1);stroke-width:1"></line>
+              <text x="40" y="{{ t.ty }}" text-anchor="end" style="font:500 11px var(--font-mono);fill:var(--ink-on-paper-3)">{{ t.label }}</text>
+            </sc-for>
+            <sc-for list="{{ ec.xTicks }}" as="t" hint-placeholder-count="6">
+              <text x="{{ t.x }}" y="242" text-anchor="middle" style="font:500 11px var(--font-mono);fill:var(--ink-on-paper-3)">{{ t.label }}</text>
+            </sc-for>
+            <sc-for list="{{ ec.layers }}" as="ly" hint-placeholder-count="0">
+              <path d="{{ ly.d }}" style="fill:{{ ly.color }};opacity:0.85;stroke:var(--paper-0);stroke-width:1"></path>
+            </sc-for>
+            <sc-if value="{{ eHover.show }}" hint-placeholder-val="{{ false }}">
+              <line x1="{{ eHover.x }}" x2="{{ eHover.x }}" y1="12" y2="222" style="stroke:var(--ink-on-paper-1);stroke-width:1;stroke-dasharray:3 3"></line>
+            </sc-if>
+            <sc-for list="{{ ec.hits }}" as="h" hint-placeholder-count="0">
+              <rect x="{{ h.x }}" y="0" width="{{ h.w }}" height="222" onMouseEnter="{{ h.enter }}" style="fill:transparent"></rect>
+            </sc-for>
+          </svg>
+          <sc-if value="{{ eHover.show }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:0;left:{{ eHover.left }};transform:{{ eHover.tx }};pointer-events:none;background:var(--ink-900);color:var(--fg-1);border-radius:10px;padding:10px 12px;font-size:12px;display:flex;flex-direction:column;gap:4px;min-width:160px;box-shadow:var(--shadow-md)">
+              <div style="color:var(--fg-3);font-family:var(--font-mono)">{{ eHover.date }}</div>
+              <sc-for list="{{ eHover.rows }}" as="r" hint-placeholder-count="0">
+                <div style="display:flex;justify-content:space-between;gap:12px"><span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:2px;background:{{ r.color }}"></span>{{ r.name }}</span><span style="font-variant-numeric:tabular-nums">{{ r.v }}</span></div>
+              </sc-for>
+              <div style="display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--ink-600);padding-top:4px;margin-top:2px"><span>Total</span><b style="font-variant-numeric:tabular-nums">{{ eHover.total }}</b></div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex;flex-direction:column;border-top:1px solid var(--line-1)">
+          <div style="display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));gap:12px;padding:10px 0;font-size:12px;color:var(--ink-on-paper-3);border-bottom:1px solid var(--line-1)">
+            <span>Account</span><span style="text-align:right">Engagements</span><span style="text-align:right">Eng. rate</span><span style="text-align:right">Change</span>
+          </div>
+          <sc-for list="{{ eRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));gap:12px;padding:11px 0;font-size:14px;border-bottom:1px solid var(--line-1);font-variant-numeric:tabular-nums;align-items:center">
+              <span style="display:flex;align-items:center;gap:10px;min-width:0">
+                <span style="display:flex;align-items:center;gap:10px;width:190px;flex-shrink:0;min-width:0">
+                  <span style="position:relative;display:flex;flex-shrink:0">
+                    <x-import component-from-global-scope="ViewsMaxUI.Avatar" class-name="h-8 w-8" hint-size="32px,32px"><x-import component-from-global-scope="ViewsMaxUI.AvatarFallback" class-name="text-xs font-semibold" style="background:{{ r.tint }}" hint-size="32px,32px">{{ r.initials }}</x-import></x-import>
+                    <span style="position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;border-radius:5px;background:{{ r.badge }};border:2px solid var(--paper-0);display:flex;align-items:center;justify-content:center"><sc-if value="{{ r.hasIcon }}" hint-placeholder-val="{{ true }}"><img src="{{ r.icon }}" alt="" style="width:8px;height:8px;display:block"></sc-if><sc-if value="{{ r.noIcon }}" hint-placeholder-val="{{ false }}"><span style="font:800 7px var(--font-body);color:#fff">in</span></sc-if></span>
+                  </span>
+                  <span style="display:flex;flex-direction:column;min-width:0;line-height:1.25"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.handle }}</span><span style="font-size:12px;color:var(--ink-on-paper-3)">{{ r.net }}</span></span>
+                </span>
+                <span style="flex:1;height:6px;background:var(--paper-2);border-radius:3px;overflow:hidden;max-width:140px"><span style="display:block;height:100%;width:{{ r.share }};background:{{ r.color }}"></span></span>
+              </span>
+              <span style="text-align:right">{{ r.eng }}</span>
+              <span style="text-align:right">{{ r.rate }}</span>
+              <span style="text-align:right;font-weight:600;color:{{ r.dColor }}">{{ r.delta }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ isPosts }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+        <div style="font-size:13px;color:var(--ink-on-paper-3)">{{ postCount }}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--ink-on-paper-3)">Sort by</span>
+          <x-import component-from-global-scope="ViewsMaxUI.Select" value="{{ sort }}" on-value-change="{{ setSort }}" hint-size="180px,38px">
+            <x-import component-from-global-scope="ViewsMaxUI.SelectTrigger" class-name="w-auto bg-paper-0" hint-size="180px,38px">
+              <x-import component-from-global-scope="ViewsMaxUI.SelectValue" hint-size="120px,20px"></x-import>
+            </x-import>
+            <x-import component-from-global-scope="ViewsMaxUI.SelectContent" hint-size="180px,200px">
+              <x-import component-from-global-scope="ViewsMaxUI.SelectItem" value="rate" hint-size="100%,32px">Engagement rate</x-import>
+              <x-import component-from-global-scope="ViewsMaxUI.SelectItem" value="eng" hint-size="100%,32px">Engagements</x-import>
+              <x-import component-from-global-scope="ViewsMaxUI.SelectItem" value="imp" hint-size="100%,32px">Impressions</x-import>
+              <x-import component-from-global-scope="ViewsMaxUI.SelectItem" value="shares" hint-size="100%,32px">Shares</x-import>
+              <x-import component-from-global-scope="ViewsMaxUI.SelectItem" value="date" hint-size="100%,32px">Published date</x-import>
+            </x-import>
+          </x-import>
+          <div style="display:flex;gap:2px;padding:3px;background:var(--paper-2);border:1px solid var(--line-1);border-radius:10px">
+            <sc-for list="{{ layouts }}" as="m" hint-placeholder-count="2">
+              <button onClick="{{ m.pick }}" style="border:0;cursor:pointer;padding:5px 11px;border-radius:7px;font:600 12px var(--font-body);background:{{ m.bg }};color:{{ m.fg }};box-shadow:{{ m.shadow }}">{{ m.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px">
+          <sc-for list="{{ posts }}" as="p" hint-placeholder-count="8">
+            <article style="background:var(--paper-0);border:1px solid var(--line-1);border-top:3px solid {{ p.color }};border-radius:var(--r-md);overflow:hidden;display:flex;flex-direction:column">
+              <div style="padding:14px 16px 10px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                  <span style="display:flex;align-items:center;gap:10px;min-width:0">
+                    <span style="position:relative;display:flex;flex-shrink:0">
+                      <x-import component-from-global-scope="ViewsMaxUI.Avatar" class-name="h-8 w-8" hint-size="32px,32px"><x-import component-from-global-scope="ViewsMaxUI.AvatarFallback" class-name="text-xs font-semibold" style="background:{{ p.tint }}" hint-size="32px,32px">{{ p.initials }}</x-import></x-import>
+                      <span style="position:absolute;right:-4px;bottom:-4px;width:16px;height:16px;border-radius:5px;background:{{ p.badge }};border:2px solid var(--paper-0);display:flex;align-items:center;justify-content:center"><sc-if value="{{ p.hasIcon }}" hint-placeholder-val="{{ true }}"><img src="{{ p.icon }}" alt="" style="width:8px;height:8px;display:block"></sc-if><sc-if value="{{ p.noIcon }}" hint-placeholder-val="{{ false }}"><span style="font:800 7px var(--font-body);color:#fff">in</span></sc-if></span>
+                    </span>
+                    <span style="display:flex;flex-direction:column;min-width:0;line-height:1.25"><span style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.handle }}</span><span style="font-size:12px;color:var(--ink-on-paper-3)">{{ p.net }}</span></span>
+                  </span>
+                  <span style="font:500 11px var(--font-mono);color:var(--ink-on-paper-3);flex-shrink:0">{{ p.date }}</span>
+                </div>
+                <div style="font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:39px;text-wrap:pretty">{{ p.caption }}</div>
+              </div>
+              <div style="margin:0 16px;aspect-ratio:16/10;border-radius:10px;background:repeating-linear-gradient(135deg,var(--paper-2) 0 10px,var(--paper-3) 10px 11px);display:flex;align-items:flex-end;padding:8px">
+                <span style="font:500 11px var(--font-mono);color:var(--ink-on-paper-2);background:var(--paper-0);padding:3px 7px;border-radius:5px">{{ p.type }}</span>
+              </div>
+              <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;font-size:13px;font-variant-numeric:tabular-nums">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:1px solid var(--line-1)">
+                  <span style="font-weight:600">{{ p.primaryLabel }}</span>
+                  <span style="font-family:var(--font-display);font-weight:800;font-size:22px">{{ p.primaryValue }}</span>
+                </div>
+                <sc-for list="{{ p.stats }}" as="s" hint-placeholder-count="4">
+                  <div style="display:flex;justify-content:space-between;color:var(--ink-on-paper-2)"><span>{{ s.l }}</span><span style="color:var(--ink-on-paper-1)">{{ s.v }}</span></div>
+                </sc-for>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--paper-0);border:1px solid var(--line-1);border-radius:var(--r-md);overflow-x:auto">
+          <div style="min-width:760px">
+            <div style="display:grid;grid-template-columns:minmax(0,3fr) repeat(5,minmax(0,1fr));gap:12px;padding:12px 20px;font-size:12px;color:var(--ink-on-paper-3);border-bottom:1px solid var(--line-1)">
+              <span>Post</span><span style="text-align:right">Impressions</span><span style="text-align:right">Engagements</span><span style="text-align:right">Eng. rate</span><span style="text-align:right">Shares</span><span style="text-align:right">Published</span>
+            </div>
+            <sc-for list="{{ posts }}" as="p" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:minmax(0,3fr) repeat(5,minmax(0,1fr));gap:12px;padding:12px 20px;font-size:14px;border-bottom:1px solid var(--line-1);align-items:center;font-variant-numeric:tabular-nums">
+                <span style="display:flex;align-items:center;gap:12px;min-width:0">
+                  <span style="width:56px;height:36px;flex-shrink:0;border-radius:6px;border-left:3px solid {{ p.color }};background:repeating-linear-gradient(135deg,var(--paper-2) 0 8px,var(--paper-3) 8px 9px)"></span>
+                  <span style="display:flex;flex-direction:column;min-width:0;gap:2px">
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.caption }}</span>
+                    <span style="font-size:12px;color:var(--ink-on-paper-3)">{{ p.net }} {{ p.handle }} · {{ p.type }}</span>
+                  </span>
+                </span>
+                <span style="text-align:right">{{ p.imp }}</span>
+                <span style="text-align:right">{{ p.eng }}</span>
+                <span style="text-align:right;font-weight:600">{{ p.rate }}</span>
+                <span style="text-align:right">{{ p.shares }}</span>
+                <span style="text-align:right;font:500 12px var(--font-mono);color:var(--ink-on-paper-3)">{{ p.date }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;page&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;profile&quot;,&quot;posts&quot;],&quot;default&quot;:&quot;profile&quot;,&quot;tsType&quot;:&quot;'profile'|'posts'&quot;},&quot;followerView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;total&quot;,&quot;net&quot;],&quot;default&quot;:&quot;total&quot;,&quot;tsType&quot;:&quot;'total'|'net'&quot;},&quot;postLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;grid&quot;,&quot;list&quot;],&quot;default&quot;:&quot;grid&quot;,&quot;tsType&quot;:&quot;'grid'|'list'&quot;}}">
+const NETS = [
+  { id: 'yt', name: 'YouTube', color: 'var(--data-red)', badge: '#FF0033', slug: 'youtube' },
+  { id: 'tt', name: 'TikTok', color: 'var(--data-indigo)', badge: '#111111', slug: 'tiktok' },
+  { id: 'ig', name: 'Instagram', color: 'var(--data-pink)', badge: '#E1306C', slug: 'instagram' },
+  { id: 'li', name: 'LinkedIn', color: 'var(--data-blue)', badge: '#0A66C2', slug: null },
+  { id: 'x', name: 'X', color: 'var(--ink-on-paper-2)', badge: '#000000', slug: 'x' }
+];
+const TINTS = ['var(--vm-volt-tint-l)', 'var(--paper-3)', 'var(--paper-2)'];
+function ico(netId) { const n = NETS.find(z => z.id === netId); return { badge: n.badge, hasIcon: !!n.slug, noIcon: !n.slug, icon: n.slug ? `https://cdn.simpleicons.org/${n.slug}/white` : '' }; }
+function who(a, i) { return { initials: a.initials, tint: TINTS[i % TINTS.length], ...ico(a.net) }; }
+const NET = Object.fromEntries(NETS.map(n => [n.id, n]));
+const ACCOUNTS = [
+  { id: 'yt1', net: 'yt', initials: 'VM', handle: '@viewsmax', base: 15200, mean: 50, eng: 420, imp: 9 },
+  { id: 'yt2', net: 'yt', initials: 'VS', handle: '@viewsmax.shorts', base: 4600, mean: 14, eng: 120, imp: 6 },
+  { id: 'tt1', net: 'tt', initials: 'VM', handle: '@viewsmax', base: 11200, mean: 52, eng: 430, imp: 7 },
+  { id: 'ig1', net: 'ig', initials: 'VM', handle: '@viewsmax', base: 6100, mean: 16, eng: 190, imp: 4 },
+  { id: 'ig2', net: 'ig', initials: 'ST', handle: '@viewsmax.studio', base: 2200, mean: 5, eng: 60, imp: 2 },
+  { id: 'li1', net: 'li', initials: 'VM', handle: 'ViewsMax', base: 2400, mean: 9, eng: 95, imp: 1.4 },
+  { id: 'x1', net: 'x', initials: 'VM', handle: '@viewsmax', base: 2700, mean: 2.5, eng: 45, imp: 1 },
+  { id: 'x2', net: 'x', initials: 'VH', handle: '@viewsmax_help', base: 600, mean: 0.6, eng: 10, imp: 0.4 }
+];
+const CAPTIONS = [
+  ['yt1', 'Video', 'I tested 5 thumbnail styles for 30 days. Here is what won.'],
+  ['tt1', 'Short video', 'The 3-second hook rule nobody talks about'],
+  ['ig1', 'Reel', 'Behind the edit: how we cut a 40 min shoot into 60 seconds'],
+  ['yt2', 'Short', 'Stop uploading at 5pm. Do this instead.'],
+  ['li1', 'Document', 'Our Q3 creator report: what grew, what stalled, what we cut'],
+  ['tt1', 'Short video', 'Replying to every comment for a week changed this'],
+  ['ig1', 'Carousel', '7 title formulas we use on every upload'],
+  ['x1', 'Thread', 'A thread on retention graphs and the 30-second cliff'],
+  ['yt1', 'Video', 'Full channel audit: 10K to 100K in one year'],
+  ['ig2', 'Image', 'New studio setup is finally done'],
+  ['tt1', 'Short video', 'POV: your first video hits 1M views'],
+  ['x2', 'Post', 'Upload issues are fixed. Thanks for your patience.'],
+  ['li1', 'Text', 'Hiring our first full-time editor. What we look for.'],
+  ['yt2', 'Short', 'One lighting change, twice the watch time'],
+  ['x1', 'Post', 'Hot take: posting daily is not the reason you are growing'],
+  ['ig2', 'Reel', 'Recording a whole week of content in one afternoon'],
+  ['tt1', 'Short video', 'Things I would never do as a new creator'],
+  ['yt1', 'Video', 'We let our audience pick every video for a month']
+];
+const END = new Date(2026, 9, 5);
+const H = 640;
+const MIN_DATE = new Date(2026, 0, 1);
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY = 86400000;
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function idxOf(d) { return H - 1 - Math.round((END - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / DAY); }
+function dLabel(d) { return MON[d.getMonth()] + ' ' + d.getDate(); }
+function fmt(n) { const a = Math.abs(n); if (a >= 1e6) return (n / 1e6).toFixed(1) + 'M'; if (a >= 1e4) return (n / 1e3).toFixed(1) + 'K'; return Math.round(n).toLocaleString('en-US'); }
+function signed(n) { return (n > 0 ? '+' : '') + fmt(n); }
+function delta(cur, prev) { if (!prev) return { delta: '–', dColor: 'var(--ink-on-paper-3)' }; const p = (cur - prev) / Math.abs(prev) * 100; const up = p >= 0; return { delta: (up ? '▲ ' : '▼ ') + Math.abs(p).toFixed(1) + '%', dColor: up ? 'var(--up)' : 'var(--down)' }; }
+function niceTicks(min, max, n) { const span = max - min || 1; const raw = span / n; const mag = Math.pow(10, Math.floor(Math.log10(raw))); const step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw); const lo = Math.floor(min / step) * step; const hi = Math.ceil(max / step) * step; const out = []; for (let v = lo; v <= hi + step / 2; v += step) out.push(v); return out; }
+const X0 = 48, X1 = 792, Y0 = 12, Y1 = 222;
+
+const HIST = (() => {
+  const r = rng(11);
+  const spikes = Array.from({ length: H }, () => r() > 0.93 ? 1 : 0);
+  const dates = Array.from({ length: H }, (_, i) => addDays(END, i - (H - 1)));
+  const acc = {};
+  ACCOUNTS.forEach(a => {
+    const net = [], eng = [], imp = [], fol = [];
+    let run = a.base * 0.55;
+    for (let i = 0; i < H; i++) {
+      const g = 0.6 + 0.7 * (i / H), s = spikes[i] && r() > 0.3 ? 1 : 0;
+      const v = Math.round(a.mean * g * (r() * 1.5 - 0.2) + s * a.mean * (3 + r() * 3));
+      run += v; net.push(v); fol.push(Math.round(run));
+      const e = Math.round(a.eng * g * (0.5 + r()) + s * a.eng * (2 + r() * 2));
+      eng.push(e); imp.push(Math.round(e * (19 + r() * 8)));
+    }
+    acc[a.id] = { net, eng, imp, fol };
+  });
+  return { dates, acc };
+})();
+
+const PRESETS = [['Last 7 days', 7], ['Last 28 days', 28], ['Last 90 days', 90], ['This month', 'tm'], ['Last month', 'lm'], ['Year to date', 'ytd']];
+function presetRange(p) {
+  if (typeof p === 'number') return { from: addDays(END, -(p - 1)), to: END };
+  if (p === 'tm') return { from: new Date(END.getFullYear(), END.getMonth(), 1), to: END };
+  if (p === 'lm') return { from: new Date(END.getFullYear(), END.getMonth() - 1, 1), to: new Date(END.getFullYear(), END.getMonth(), 0) };
+  return { from: MIN_DATE, to: END };
+}
+const same = (a, b) => a && b && a.toDateString() === b.toDateString();
+
+class Component extends DCLogic {
+  state = { tab: this.props.page ?? 'profile', range: presetRange(28), draft: presetRange(28), sel: ACCOUNTS.map(a => a.id), fMode: this.props.followerView ?? 'total', hf: null, he: null, sort: 'rate', layout: this.props.postLayout ?? 'grid' };
+
+  setSel(ids) { if (ids.length) this.setState({ sel: ACCOUNTS.map(a => a.id).filter(id => ids.includes(id)), hf: null, he: null }); }
+  xs(n) { return i => n === 1 ? (X0 + X1) / 2 : X0 + (X1 - X0) * i / (n - 1); }
+  xTicks(dates, x) { const n = dates.length, k = Math.min(6, n); const out = []; for (let j = 0; j < k; j++) { const i = k === 1 ? 0 : Math.round(j * (n - 1) / (k - 1)); out.push({ x: x(i), label: dLabel(dates[i]) }); } return out; }
+  hits(n, x, key) { const w = (X1 - X0) / Math.max(n - 1, 1); return Array.from({ length: n }, (_, i) => ({ x: x(i) - w / 2, w, enter: () => this.state[key] !== i && this.setState({ [key]: i }) })); }
+  toggles(opts, cur, key) { return opts.map(([v, label]) => ({ label, pick: () => this.setState({ [key]: v, hf: null, he: null }), bg: v === cur ? 'var(--paper-0)' : 'transparent', fg: v === cur ? 'var(--ink-on-paper-1)' : 'var(--ink-on-paper-2)', shadow: v === cur ? '0 1px 2px rgba(0,0,0,.08)' : 'none' })); }
+  hoverBox(i, x) { const pct = (x(i) / 800) * 100; return { left: pct + '%', tx: pct > 70 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)' }; }
+
+  renderVals() {
+    const { tab, range, draft, sel, fMode, hf, he, sort, layout } = this.state;
+    const a0 = idxOf(range.from), a1 = idxOf(range.to), L = a1 - a0 + 1;
+    const p0 = a0 - L;
+    const accs = ACCOUNTS.filter(a => sel.includes(a.id));
+    const nets = NETS.filter(n => accs.some(a => a.net === n.id));
+    const curIdx = Array.from({ length: L }, (_, i) => a0 + i);
+    const dates = curIdx.map(i => HIST.dates[i]);
+    const S = (id, k, from, to) => { const arr = HIST.acc[id][k]; let s = 0; for (let i = from; i <= to; i++) s += arr[i]; return s; };
+    const SA = (k, from, to, list = accs) => list.reduce((t, a) => t + S(a.id, k, from, to), 0);
+    const day = (k, i, list = accs) => list.reduce((t, a) => t + HIST.acc[a.id][k][i], 0);
+    const n = L, x = this.xs(n);
+
+    const folEnd = day('fol', a1), folPrevEnd = day('fol', a1 - L);
+    const netCur = SA('net', a0, a1), netPrev = SA('net', p0, a0 - 1);
+    const engCur = SA('eng', a0, a1), engPrev = SA('eng', p0, a0 - 1);
+    const impCur = SA('imp', a0, a1), impPrev = SA('imp', p0, a0 - 1);
+    const kpis = [
+      { label: 'Total followers', value: fmt(folEnd), ...delta(folEnd, folPrevEnd) },
+      { label: 'Net follower growth', value: signed(netCur), ...delta(netCur, netPrev) },
+      { label: 'Engagements', value: fmt(engCur), ...delta(engCur, engPrev) },
+      { label: 'Engagement rate (per impression)', value: (engCur / impCur * 100).toFixed(1) + '%', ...delta(engCur / impCur, engPrev / impPrev) }
+    ];
+
+    const isTotal = fMode === 'total';
+    const fVals = curIdx.map(i => day(isTotal ? 'fol' : 'net', i));
+    const ft = niceTicks(isTotal ? Math.min(...fVals) : Math.min(0, ...fVals), Math.max(...fVals), 4);
+    const flo = ft[0], fhi = ft[ft.length - 1];
+    const fy = v => Y1 - (v - flo) / (fhi - flo || 1) * (Y1 - Y0);
+    const fc = { isTotal, line: '', area: '', bars: [], yTicks: ft.map(v => ({ y: fy(v), ty: fy(v) + 4, label: fmt(v) })), xTicks: this.xTicks(dates, x), hits: this.hits(n, x, 'hf') };
+    if (isTotal) {
+      const line = 'M' + fVals.map((v, i) => x(i).toFixed(1) + ',' + fy(v).toFixed(1)).join(' L');
+      fc.line = line; fc.area = line + ` L${x(n - 1)},${Y1} L${x(0)},${Y1} Z`;
+    } else {
+      const bw = Math.max(1, (X1 - X0) / n * 0.62);
+      fc.bars = fVals.map((v, i) => ({ x: x(i) - bw / 2, y: Math.min(fy(v), fy(0)), w: bw, h: Math.max(1, Math.abs(fy(v) - fy(0))), color: v >= 0 ? 'var(--vm-volt-deep)' : 'var(--down)', op: hf === null || hf === i ? 1 : 0.45 }));
+    }
+    let fHover = { show: false, dot: false };
+    if (hf !== null && hf < n) {
+      const i = curIdx[hf], nv = day('net', i);
+      fHover = { show: true, dot: isTotal, x: x(hf), y: fy(fVals[hf]), date: dLabel(dates[hf]), total: day('fol', i).toLocaleString('en-US'), net: signed(nv), netColor: nv >= 0 ? 'var(--vm-volt)' : 'var(--down)', ...this.hoverBox(hf, x) };
+    }
+    const fRows = accs.map(a => { const c = S(a.id, 'net', a0, a1), p = S(a.id, 'net', p0, a0 - 1); return { ...who(a, ACCOUNTS.indexOf(a)), net: NET[a.net].name, handle: a.handle, color: NET[a.net].color, followers: fmt(HIST.acc[a.id].fol[a1]), growth: signed(c), ...delta(c, p) }; });
+
+    const totals = curIdx.map(i => day('eng', i));
+    const et = niceTicks(0, Math.max(...totals), 4), ehi = et[et.length - 1];
+    const ey = v => Y1 - v / ehi * (Y1 - Y0);
+    const cum = curIdx.map(() => 0);
+    const layers = nets.map(nt => {
+      const list = accs.filter(a => a.net === nt.id), lower = cum.slice();
+      curIdx.forEach((di, i) => { cum[i] += day('eng', di, list); });
+      const top = cum.map((v, i) => x(i).toFixed(1) + ',' + ey(v).toFixed(1));
+      const bot = lower.map((v, i) => x(i).toFixed(1) + ',' + ey(v).toFixed(1)).reverse();
+      return { color: nt.color, d: 'M' + top.join(' L') + ' L' + bot.join(' L') + ' Z' };
+    });
+    const ec = { layers, yTicks: et.map(v => ({ y: ey(v), ty: ey(v) + 4, label: fmt(v) })), xTicks: this.xTicks(dates, x), hits: this.hits(n, x, 'he') };
+    let eHover = { show: false, rows: [] };
+    if (he !== null && he < n) {
+      const i = curIdx[he];
+      eHover = { show: true, x: x(he), date: dLabel(dates[he]), total: totals[he].toLocaleString('en-US'), rows: nets.map(nt => ({ name: nt.name, color: nt.color, v: day('eng', i, accs.filter(a => a.net === nt.id)).toLocaleString('en-US') })).reverse(), ...this.hoverBox(he, x) };
+    }
+    const eRows = accs.map(a => { const c = S(a.id, 'eng', a0, a1), p = S(a.id, 'eng', p0, a0 - 1), im = S(a.id, 'imp', a0, a1); return { ...who(a, ACCOUNTS.indexOf(a)), net: NET[a.net].name, handle: a.handle, color: NET[a.net].color, eng: fmt(c), rate: (c / im * 100).toFixed(1) + '%', share: (c / engCur * 100).toFixed(1) + '%', ...delta(c, p) }; });
+
+    // Sources picker
+    const allOn = sel.length === ACCOUNTS.length;
+    const srcGroups = NETS.map(nt => {
+      const ids = ACCOUNTS.filter(a => a.net === nt.id).map(a => a.id);
+      const on = ids.filter(id => sel.includes(id)).length;
+      return { ...ico(nt.id), label: `All ${nt.name} accounts`, color: nt.color, checked: on === ids.length ? true : on ? 'indeterminate' : false,
+        toggle: () => this.setSel(on === ids.length ? sel.filter(id => !ids.includes(id)) : [...sel, ...ids]),
+        accounts: ids.map(id => { const a = ACCOUNTS.find(z => z.id === id), c = sel.includes(id); return { ...who(a, ACCOUNTS.indexOf(a)), handle: a.handle, checked: c, toggle: () => this.setSel(c ? sel.filter(s => s !== id) : [...sel, id]) }; }) };
+    });
+    let srcLabel = 'All sources';
+    if (!allOn) {
+      const fullNets = NETS.filter(nt => ACCOUNTS.filter(a => a.net === nt.id).every(a => sel.includes(a.id)));
+      if (accs.length === 1) srcLabel = `${NET[accs[0].net].name} ${accs[0].handle}`;
+      else if (nets.length === 1 && fullNets.length === 1) srcLabel = `All ${nets[0].name} accounts`;
+      else srcLabel = `${accs.length} of ${ACCOUNTS.length} accounts`;
+    }
+
+    // Date picker
+    const presets = PRESETS.map(([label, p]) => { const r = presetRange(p), on = same(r.from, range.from) && same(r.to, range.to); return { label, on, bg: on ? 'var(--paper-2)' : 'transparent', w: on ? 600 : 400, pick: () => this.setState({ range: r, draft: r, hf: null, he: null }) }; });
+    const active = presets.find(p => p.on);
+    const yr = d => ', ' + d.getFullYear();
+    const span = `${dLabel(range.from)}${range.from.getFullYear() !== range.to.getFullYear() ? yr(range.from) : ''} – ${dLabel(range.to)}${yr(range.to)}`;
+
+    // Posts
+    const pr = rng(99 + a0 * 7 + L);
+    const count = Math.min(CAPTIONS.length, Math.max(4, Math.round(L * 0.6)));
+    let posts = CAPTIONS.slice(0, count).map(([aid, type, caption], i) => {
+      const a = ACCOUNTS.find(z => z.id === aid);
+      const imp = Math.round(a.imp * 1000 * (0.4 + pr() * 2.2)), rate = 0.015 + pr() * 0.09, eng = Math.round(imp * rate);
+      const comments = Math.round(eng * (0.05 + pr() * 0.08)), shares = Math.round(eng * (0.04 + pr() * 0.1)), saves = Math.round(eng * (0.03 + pr() * 0.08));
+      const off = Math.min(L - 1, Math.floor(i * L / count + pr() * (L / count)));
+      return { aid, a, type, caption, imp, eng, rate: eng / imp, likes: eng - comments - shares - saves, comments, shares, saves, off, d: HIST.dates[a1 - off] };
+    }).filter(p => sel.includes(p.aid));
+    const key = { rate: 'rate', eng: 'eng', imp: 'imp', shares: 'shares', date: 'off' }[sort];
+    posts.sort((p, q) => sort === 'date' ? p.off - q.off : q[key] - p[key]);
+    const primary = { rate: ['Engagement rate', p => (p.rate * 100).toFixed(1) + '%'], eng: ['Engagements', p => fmt(p.eng)], imp: ['Impressions', p => fmt(p.imp)], shares: ['Shares', p => fmt(p.shares)], date: ['Engagement rate', p => (p.rate * 100).toFixed(1) + '%'] }[sort];
+    const statDefs = [['Impressions', 'imp'], ['Engagements', 'eng'], ['Likes', 'likes'], ['Comments', 'comments'], ['Shares', 'shares'], ['Saves', 'saves']].filter(([l]) => l !== primary[0]).slice(0, 5);
+    const postsOut = posts.map(p => ({ ...who(p.a, ACCOUNTS.indexOf(p.a)), net: NET[p.a.net].name, handle: p.a.handle, color: NET[p.a.net].color, type: p.type, caption: p.caption, date: dLabel(p.d) + yr(p.d), imp: fmt(p.imp), eng: fmt(p.eng), rate: (p.rate * 100).toFixed(1) + '%', shares: fmt(p.shares), primaryLabel: primary[0], primaryValue: primary[1](p), stats: statDefs.map(([l, k]) => ({ l, v: fmt(p[k]) })) }));
+
+    const isProfile = tab === 'profile';
+    return {
+      isProfile, isPosts: !isProfile,
+      title: isProfile ? 'Profile performance' : 'Post performance',
+      goProfile: () => this.setState({ tab: 'profile' }), goPosts: () => this.setState({ tab: 'posts' }),
+      navProfileBg: isProfile ? 'var(--paper-2)' : 'transparent', navProfileW: isProfile ? 600 : 400,
+      navPostsBg: !isProfile ? 'var(--paper-2)' : 'transparent', navPostsW: !isProfile ? 600 : 400,
+      srcGroups, srcLabel, srcDots: nets.map(n => ico(n.id)), selectAll: () => this.setSel(ACCOUNTS.map(a => a.id)),
+      presets, rangeTrigger: active ? `${active.label} · ${span}` : span,
+      draft, calMonth: new Date(range.to.getFullYear(), range.to.getMonth() - 1, 1), calDisabled: [{ after: END }, { before: MIN_DATE }],
+      onRangeSelect: r => { if (r && r.from && r.to) this.setState({ draft: r, range: r, hf: null, he: null }); else this.setState({ draft: r || { from: undefined } }); },
+      kpis, fc, fHover, fRows, clearHoverF: () => this.setState({ hf: null }),
+      fModes: this.toggles([['total', 'Total followers'], ['net', 'Net per day']], fMode, 'fMode'),
+      ec, eHover, eRows, legend: nets.map(n => ({ ...ico(n.id), name: n.name, color: n.color })), clearHoverE: () => this.setState({ he: null }),
+      sort, setSort: v => this.setState({ sort: v }),
+      layouts: this.toggles([['grid', 'Grid'], ['list', 'List']], layout, 'layout'),
+      isGrid: layout === 'grid', isList: layout === 'list',
+      posts: postsOut, postCount: `${postsOut.length} posts published in this period`
+    };
+  }
+}
+</script>
+</body>
+</html>
+
