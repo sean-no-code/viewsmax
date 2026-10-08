@@ -38,6 +38,7 @@ import AnalyticsLinkDetail from "./pages/analytics/LinkDetail";
 import AnalyticsSources from "./pages/analytics/Sources";
 import AnalyticsPlatformDetail from "./pages/analytics/PlatformDetail";
 import AnalyticsAudienceGrowth from "./pages/analytics/AudienceGrowth";
+import AnalyticsPerformance from "./pages/analytics/Performance";
 import Post from "./pages/post/Post";
 import PostDrafts from "./pages/post/Drafts";
 import PostScheduled from "./pages/post/Scheduled";
@@ -73,6 +74,7 @@ import { AIModelProcessingProvider } from "./contexts/AIModelProcessingContext";
 import { UserCreditsProvider } from "./contexts/UserCreditsContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProFeatureRoute from "./components/ProFeatureRoute";
+import AdminRoute from "./components/AdminRoute";
 import Outliers from "./pages/Outliers";
 import OutliersLibrary from "./pages/OutliersLibrary";
 import OutlierBreakdown from "./pages/OutlierBreakdown";
@@ -216,7 +218,10 @@ const App = () => (
                   <Route path="analytics" element={<Navigate to="/dashboard/analytics/overview" replace />} />
                   <Route path="analytics/overview" element={<AnalyticsOverview />} />
                   <Route path="analytics/sources" element={<AnalyticsSources />} />
-                  <Route path="analytics/audience-growth" element={<AnalyticsAudienceGrowth />} />
+                  {/* Admin-only while the multi-platform data pipeline is finished */}
+                  <Route path="analytics/audience-growth" element={<AdminRoute><AnalyticsAudienceGrowth /></AdminRoute>} />
+                  <Route path="analytics/profile" element={<AdminRoute><AnalyticsPerformance tab="profile" /></AdminRoute>} />
+                  <Route path="analytics/posts" element={<AdminRoute><AnalyticsPerformance tab="posts" /></AdminRoute>} />
                   <Route path="analytics/platform/:id" element={<AnalyticsPlatformDetail />} />
                   {/* Offers (formerly Landing Pages) — amalgamated with Links under Monetization */}
                   <Route path="monetization/offers" element={<Offers />} />

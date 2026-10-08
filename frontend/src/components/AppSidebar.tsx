@@ -1,6 +1,6 @@
 import { BarChart3, DollarSign, Send, Plug, Zap, CalendarDays, ScrollText, TrendingUp, Crown, type LucideIcon } from "lucide-react";
 
-type NavSubItem = { title: string; i18nKey?: string; url: string };
+type NavSubItem = { title: string; i18nKey?: string; url: string; adminOnly?: boolean };
 type NavItem = {
   title: string;
   i18nKey?: string;
@@ -88,7 +88,9 @@ const allNavigationItems: NavItem[] = [
     isProFeature: false,
     subItems: [
       { title: "Revenue Growth", i18nKey: "nav.revenueGrowth", url: "/dashboard/analytics/overview" },
-      { title: "Audience Growth", i18nKey: "nav.audienceGrowth", url: "/dashboard/analytics/audience-growth" },
+      { title: "Audience Growth", i18nKey: "nav.audienceGrowth", url: "/dashboard/analytics/audience-growth", adminOnly: true },
+      { title: "Profile Performance", i18nKey: "nav.profilePerformance", url: "/dashboard/analytics/profile", adminOnly: true },
+      { title: "Post Performance", i18nKey: "nav.postPerformance", url: "/dashboard/analytics/posts", adminOnly: true },
     ]
   },
   { title: "Boosts", i18nKey: "nav.boosts", url: "/dashboard/boosts", icon: Zap, isProFeature: false },
@@ -106,12 +108,10 @@ export function AppSidebar() {
 
   const isAdmin = !!user?.is_admin;
 
-  // Audience Growth is admin-only for now (multi-platform data pipeline still
-  // being finished) — hide it from the Analytics submenu for non-admins.
+  // Audience Growth + Profile/Post performance are admin-only for now (the
+  // multi-platform data pipeline is still being finished) — hide them for non-admins.
   const baseItems = allNavigationItems.map((item) =>
-    item.title === "Analytics" && item.subItems
-      ? { ...item, subItems: item.subItems.filter((sub) => sub.title !== "Audience Growth" || isAdmin) }
-      : item,
+    item.subItems ? { ...item, subItems: item.subItems.filter((sub) => !sub.adminOnly || isAdmin) } : item,
   );
 
   // An expired promotional customer can only reach Billing until they subscribe.

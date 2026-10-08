@@ -77,11 +77,12 @@ export function Chip({ children, tone = "tag", active, onClick }: { children: Re
 }
 
 /* ---------- platform glyph ---------- */
-const BRAND_MARKS: Record<string, (c: string) => ReactNode> = {
+export const BRAND_MARKS: Record<string, (c: string) => ReactNode> = {
   youtube: (c) => (<g><rect x="3" y="5.5" width="18" height="13" rx="3.6" fill="#fff" /><path d="M10.6 9.2 L15.6 12 L10.6 14.8 Z" fill={c} /></g>),
   instagram: () => (<g fill="none" stroke="#fff" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="4.7" /><circle cx="12" cy="12" r="3.7" /><circle cx="16.7" cy="7.3" r="0.4" strokeWidth="2.4" /></g>),
   tiktok: () => (<g fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4.5 V14.3 a3 3 0 1 1 -3 -3" /><path d="M13 4.6 c0.6 2.3 2.5 3.6 4.6 3.7" /></g>),
   x: () => (<path d="M6.2 6.2 L17.8 17.8 M17.8 6.2 L6.2 17.8" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" />),
+  linkedin: () => (<text x="12" y="16.6" textAnchor="middle" fontFamily="var(--font-body)" fontWeight="800" fontSize="13" fill="#fff">in</text>),
   facebook: () => (<path d="M14.7 8.1 H16.6 V5.2 H14.2 C12.3 5.2 11.3 6.5 11.3 8.3 V9.7 H9.3 v2.8 h2 V19.5 h2.9 v-7 h2.1 l0.4 -2.8 h-2.5 V8.6 C14.2 8.3 14.3 8.1 14.7 8.1 Z" fill="#fff" />),
   email: () => (<g fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.4" /><path d="M4.4 7.6 L12 12.6 L19.6 7.6" /></g>),
 };
