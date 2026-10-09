@@ -129,7 +129,7 @@ class WebActionCreditsTest extends TestCase
         foreach (['create_post', 'update_post', 'delete_post', 'upload_media', 'search_outliers', 'fetch_outlier',
             'generate_outlier_breakdown', 'add_outlier_channel', 'save_outlier', 'remove_saved_outlier', 'create_offer',
             'update_offer', 'delete_offer', 'create_tracking_link', 'get_connect_url', 'disconnect_account',
-            'create_feature_request'] as $tool) {
+            'create_feature_request', 'x_link'] as $tool) {
             $this->assertSame($ai($tool), $credits->webActionCost($tool), "{$tool} must cost the same as the AI");
         }
 
@@ -208,6 +208,36 @@ class WebActionCreditsTest extends TestCase
             ->assertSuccessful()
             ->assertHeader('X-User-Credits', '75'); // no JSON body: the badge reads the header
         $this->assertSame(75, $this->balance()); // delete_post
+    }
+
+    public function test_an_x_post_with_a_link_costs_the_x_link_price(): void
+    {
+        $this->fundCredits($this->user, 100);
+        $scheduled = ['status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'platforms' => ['x']];
+
+        $this->postJson('/api/posts', ['caption' => 'Read https://example.com/post'] + $scheduled, $this->headers())
+            ->assertCreated();
+        $this->assertSame(65, $this->balance()); // create_post 10 + x_link 25
+
+        // A comment with a link is its own X post.
+        $this->postJson('/api/posts', ['caption' => 'No link here', 'comments' => [['body' => 'More at www.example.com']]] + $scheduled, $this->headers())
+            ->assertCreated();
+        $this->assertSame(30, $this->balance());
+    }
+
+    public function test_a_draft_with_a_link_is_charged_for_it_when_it_goes_out(): void
+    {
+        $this->fundCredits($this->user, 100);
+        $id = $this->postJson('/api/posts', ['caption' => 'See example.com', 'platforms' => ['x'], 'status' => 'draft'], $this->headers())
+            ->assertCreated()->json('id');
+        $this->assertSame(90, $this->balance());
+
+        $this->putJson("/api/posts/{$id}", ['status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String()], $this->headers())
+            ->assertOk();
+        $this->assertSame(60, $this->balance()); // update_post 5 + x_link 25
+
+        $this->putJson("/api/posts/{$id}", ['caption' => 'See example.com today'], $this->headers())->assertOk();
+        $this->assertSame(55, $this->balance()); // already out: the link isn't charged again
     }
 
     public function test_an_edit_price_of_zero_makes_editing_free(): void

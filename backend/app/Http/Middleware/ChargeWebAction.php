@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Post;
 use App\Models\User;
 use App\Services\CreditService;
+use App\Support\XLinkCharge;
 use Bavix\Wallet\Exceptions\BalanceIsEmpty;
 use Bavix\Wallet\Exceptions\InsufficientFunds;
 use Closure;
@@ -25,7 +26,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Posts: creating one costs create_post (drafts included) and every edit costs
  * update_post, like the AI. Images and videos cost upload_media each, but when
  * the post is published or scheduled rather than at upload, so swapping
- * images in the composer is free; a file is only ever charged once.
+ * images in the composer is free; a file is only ever charged once. Each X
+ * post with a link adds x_link per X account (App\Support\XLinkCharge).
  *
  * AI tools call the controllers directly, not through these routes, so an AI
  * action is never charged twice.
@@ -71,14 +73,18 @@ class ChargeWebAction
             return $next($request);
         }
 
-        $media = in_array($action, ['create_post', 'update_post'], true) ? $this->mediaToCharge($request, $user) : 0;
-        $cost = $this->credits->webActionCost($action) + $media * $this->credits->webActionCost('upload_media');
+        $isPost = in_array($action, ['create_post', 'update_post'], true);
+        $media = $isPost ? $this->mediaToCharge($request, $user) : 0;
+        $xLinks = $isPost ? XLinkCharge::count($user, $request->all(), $this->savedPost($request, $user)) : 0;
+        $cost = $this->credits->webActionCost($action)
+            + $media * $this->credits->webActionCost('upload_media')
+            + $xLinks * $this->credits->webActionCost('x_link');
 
         if ($cost <= 0) {
             return $next($request);
         }
 
-        $label = $this->label($action, $media);
+        $label = $this->label($action, $media, $xLinks);
 
         if ($user->balanceInt < $cost) {
             Log::channel('credits')->info('Web action refused: insufficient credits', [
@@ -117,10 +123,16 @@ class ChargeWebAction
      * or scheduled, minus any already charged (it was already out with them).
      * A draft charges none yet.
      */
-    private function mediaToCharge(Request $request, User $user): int
+    private function savedPost(Request $request, User $user): ?Post
     {
         $existing = $request->route('post');
-        $post = $existing === null ? null : $user->posts()->find($existing);
+
+        return $existing === null ? null : $user->posts()->with('targets', 'comments')->find($existing);
+    }
+
+    private function mediaToCharge(Request $request, User $user): int
+    {
+        $post = $this->savedPost($request, $user);
 
         $status = $request->input('status', $post?->status ?? Post::STATUS_DRAFT);
         if (! in_array($status, [Post::STATUS_SCHEDULED, Post::STATUS_POSTED], true)) {
@@ -134,11 +146,15 @@ class ChargeWebAction
         return max(0, count($media) - $charged);
     }
 
-    private function label(string $action, int $media): string
+    private function label(string $action, int $media, int $xLinks = 0): string
     {
+        $parts = array_filter([
+            $media > 0 ? sprintf('%d %s', $media, $media === 1 ? 'image or video' : 'images or videos') : null,
+            $xLinks > 0 ? ($xLinks === 1 ? 'a link on X' : sprintf('links on X (%d X posts)', $xLinks)) : null,
+        ]);
         $label = self::LABELS[$action] ?? $action;
 
-        return $media > 0 ? sprintf('%s with %d %s', $label, $media, $media === 1 ? 'image or video' : 'images or videos') : $label;
+        return $parts === [] ? $label : $label . ' with ' . implode(' and ', $parts);
     }
 
     private function charge(User $user, string $action, int $cost, string $label): void

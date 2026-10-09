@@ -56,7 +56,8 @@ class SafeCallTool extends CallTool
         // Resolve once: tools() instantiates every registered tool per call.
         $tool = $context->tools()->first(fn (Tool $tool) => $tool->name() === $name);
         $user = request()->user();
-        $cost = ($tool instanceof ViewsMaxTool && $user instanceof User) ? $tool->creditCost() : 0;
+        $arguments = is_array($request->params['arguments'] ?? null) ? $request->params['arguments'] : [];
+        $cost = ($tool instanceof ViewsMaxTool && $user instanceof User) ? $tool->creditCost($arguments) : 0;
 
         if ($cost > 0 && $user->balanceInt < $cost) {
             Log::channel('credits')->info('MCP tool refused: insufficient credits', [

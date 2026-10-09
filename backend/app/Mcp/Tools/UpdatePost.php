@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\PostController;
 use App\Models\Post;
+use App\Support\XLinkCharge;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -84,6 +85,15 @@ class UpdatePost extends ViewsMaxTool
                     . 'Pass an empty array to remove them all.',
             ])
             ->boolean('shorten_links')->description('Replace URLs in the caption/overrides/comments with tracked short links that count clicks.')->optional();
+    }
+
+    /** update_post, plus the X link price for each X post with a link it sends out (a draft going out). */
+    public function creditCost(array $arguments = []): int
+    {
+        $post = isset($arguments['id']) ? $this->user()->posts()->with('targets', 'comments')->find((int) $arguments['id']) : null;
+        $links = $post === null ? 0 : XLinkCharge::count($this->user(), $arguments, $post);
+
+        return parent::creditCost() + $links * app(\App\Services\CreditService::class)->mcpToolCost('x_link', true);
     }
 
     public function handle(array $arguments): ToolResult

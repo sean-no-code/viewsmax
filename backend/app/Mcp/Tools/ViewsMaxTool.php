@@ -55,9 +55,11 @@ abstract class ViewsMaxTool extends Tool
     /**
      * Credits one successful call of this tool costs (config/credits.php
      * `mcp`). Charged by SafeCallTool; surfaced in tools/list descriptions
-     * and the /api/ai discovery document so agents can budget.
+     * and the /api/ai discovery document so agents can budget. A tool whose
+     * price depends on the call (create_post / update_post: X posts with a
+     * link) adds to it from $arguments.
      */
-    public function creditCost(): int
+    public function creditCost(array $arguments = []): int
     {
         return app(CreditService::class)->mcpToolCost($this->name(), $this->isWrite());
     }
@@ -69,8 +71,16 @@ abstract class ViewsMaxTool extends Tool
     public function describedWithCost(): string
     {
         $cost = $this->creditCost();
+        $text = rtrim($this->description()) . sprintf(' Costs %d %s per call.', $cost, $cost === 1 ? 'credit' : 'credits');
 
-        return rtrim($this->description()) . sprintf(' Costs %d %s per call.', $cost, $cost === 1 ? 'credit' : 'credits');
+        if (in_array($this->name(), ['create_post', 'update_post'], true)) {
+            $text .= sprintf(
+                ' Publishing or scheduling to X costs %d more per X account for each X post (the post or a comment) that contains a link.',
+                app(CreditService::class)->mcpToolCost('x_link', true),
+            );
+        }
+
+        return $text;
     }
 
     /**

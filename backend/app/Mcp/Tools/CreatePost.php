@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\PostController;
 use App\Models\Post;
+use App\Support\XLinkCharge;
 use App\Services\Social\PostPublishDispatcher;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Http\Request;
@@ -222,6 +223,14 @@ class CreatePost extends ViewsMaxTool
                 $this->user()->posts()->with('targets')->findOrFail($data['id'])
             )
         );
+    }
+
+    /** create_post, plus the X link price for each X post with a link it sends out. */
+    public function creditCost(array $arguments = []): int
+    {
+        $links = $arguments === [] ? 0 : XLinkCharge::count($this->user(), $arguments);
+
+        return parent::creditCost() + $links * app(\App\Services\CreditService::class)->mcpToolCost('x_link', true);
     }
 
     /**

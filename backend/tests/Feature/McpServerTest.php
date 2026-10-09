@@ -1314,7 +1314,7 @@ class McpServerTest extends TestCase
     {
         $credits = app(\App\Services\CreditService::class);
 
-        $this->assertSame(1, $credits->mcpToolCost('list_offers', false));
+        $this->assertSame(0, $credits->mcpToolCost('list_offers', false)); // viewing is free
         $this->assertSame(5, $credits->mcpToolCost('create_offer', true));
         $this->assertSame(25, $credits->mcpToolCost('generate_outlier_breakdown', true));
 
@@ -1328,10 +1328,10 @@ class McpServerTest extends TestCase
         $offer = $user->offers()->create(['offer_url' => 'https://example.com/a']);
 
         $this->toolJson($this->callTool($key, 'list_offers'));
-        $this->assertSame(99, $user->fresh()->balanceInt);
+        $this->assertSame(100, $user->fresh()->balanceInt); // viewing is free
 
         $this->toolJson($this->callTool($key, 'update_offer', ['id' => $offer->id, 'name' => 'A']));
-        $this->assertSame(94, $user->fresh()->balanceInt);
+        $this->assertSame(95, $user->fresh()->balanceInt);
     }
 
     public function test_failed_tool_call_is_not_charged(): void
@@ -1359,12 +1359,39 @@ class McpServerTest extends TestCase
         $this->assertSame(3, $user->fresh()->balanceInt); // never negative
     }
 
-    public function test_zero_balance_refuses_even_read_tools(): void
+    public function test_zero_balance_still_allows_viewing_but_refuses_changes(): void
     {
         [$user, $key] = $this->mcpKeyWithBalance(0);
+        $offer = $user->offers()->create(['offer_url' => 'https://example.com/a']);
 
-        $this->assertToolError($this->callTool($key, 'list_offers'), 'Not enough credits');
+        $this->toolJson($this->callTool($key, 'list_offers'));
+        $this->assertToolError($this->callTool($key, 'update_offer', ['id' => $offer->id, 'name' => 'A']), 'Not enough credits');
         $this->assertSame(0, $user->fresh()->balanceInt);
+    }
+
+    public function test_an_x_post_with_a_link_costs_the_x_link_price_per_x_account(): void
+    {
+        [$user, $key] = $this->mcpKeyWithBalance(200);
+        foreach (['x-1', 'x-2'] as $id) {
+            SocialAccount::create([
+                'user_id' => $user->id, 'platform' => 'x', 'platform_account_id' => $id, 'name' => $id, 'username' => $id,
+                'access_token' => 't', 'token_expires_at' => now()->addDay(), 'scopes' => ['tweet.write'],
+                'status' => SocialAccount::STATUS_CONNECTED,
+            ]);
+        }
+        $scheduled = ['status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'platforms' => ['x']];
+
+        // No link: just create_post.
+        $this->toolJson($this->callTool($key, 'create_post', ['caption' => 'Hello'] + $scheduled));
+        $this->assertSame(190, $user->fresh()->balanceInt);
+
+        // A link: create_post + x_link (10 + 25 = 35).
+        $this->toolJson($this->callTool($key, 'create_post', ['caption' => 'Read example.com/post'] + $scheduled));
+        $this->assertSame(155, $user->fresh()->balanceInt);
+
+        // An email isn't a link; a draft isn't charged for links until it goes out.
+        $this->toolJson($this->callTool($key, 'create_post', ['caption' => 'Mail me@example.com', 'status' => 'draft', 'platforms' => ['x']]));
+        $this->assertSame(145, $user->fresh()->balanceInt);
     }
 
     public function test_unknown_tool_is_free(): void
@@ -1380,8 +1407,9 @@ class McpServerTest extends TestCase
         $key = $this->mcpKey(User::factory()->create());
         $tools = collect($this->rpc($key, 'tools/list', ['per_page' => 50])->json('result.tools'))->keyBy('name');
 
-        $this->assertStringEndsWith('Costs 10 credits per call.', $tools['create_post']['description']);
-        $this->assertStringEndsWith('Costs 1 credit per call.', $tools['list_offers']['description']);
+        $this->assertStringContainsString('Costs 10 credits per call.', $tools['create_post']['description']);
+        $this->assertStringContainsString('costs 25 more per X account', $tools['create_post']['description']);
+        $this->assertStringEndsWith('Costs 0 credits per call.', $tools['list_offers']['description']);
     }
 
     public function test_server_instructions_explain_that_tool_calls_consume_credits(): void
@@ -1402,14 +1430,14 @@ class McpServerTest extends TestCase
         Log::shouldReceive('channel')->twice()->with('credits')
             ->andReturn($spy = \Mockery::mock(\Psr\Log\LoggerInterface::class));
         $spy->shouldReceive('info')->once()
-            ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'charged') && $ctx['tool'] === 'list_offers' && $ctx['cost'] === 1);
+            ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'charged') && $ctx['tool'] === 'update_offer' && $ctx['cost'] === 5);
         $spy->shouldReceive('info')->once()
             ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'insufficient') && $ctx['tool'] === 'update_offer');
 
-        [$user, $key] = $this->mcpKeyWithBalance(1);
+        [$user, $key] = $this->mcpKeyWithBalance(5);
         $offer = $user->offers()->create(['offer_url' => 'https://example.com/a']);
 
-        $this->toolJson($this->callTool($key, 'list_offers'));
+        $this->toolJson($this->callTool($key, 'update_offer', ['id' => $offer->id, 'name' => 'B']));
         $this->assertToolError(
             $this->callTool($key, 'update_offer', ['id' => $offer->id, 'name' => 'A']),
             'Not enough credits'

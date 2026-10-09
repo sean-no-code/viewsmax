@@ -88,8 +88,9 @@ class AiDiscoveryController extends Controller
                 'tools' => $tools,
             ],
             'credits' => [
-                'note' => 'Every successful tool call deducts credits from the user\'s monthly '
-                    . 'allowance (each tool lists its cost); a call is refused before running '
+                'note' => 'Every successful tool call that changes something, posts or researches '
+                    . 'outliers deducts credits from the user\'s monthly allowance (each tool '
+                    . 'lists its cost; viewing is free); a call is refused before running '
                     . 'when the balance is below the cost. Failed calls are free. Credits and '
                     . 'billing are managed in the ViewsMax web app.',
                 'defaults' => [

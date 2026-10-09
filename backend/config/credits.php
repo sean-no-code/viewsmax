@@ -73,7 +73,7 @@ return [
     |
     */
     'mcp' => [
-        'read_default' => env('CREDITS_MCP_READ_DEFAULT', 1),
+        'read_default' => env('CREDITS_MCP_READ_DEFAULT', 0),           // viewing is free; outlier searches are charged below
         'write_default' => env('CREDITS_MCP_WRITE_DEFAULT', 5),
         'tools' => [
             'create_post' => env('CREDITS_MCP_CREATE_POST', 10),
@@ -82,6 +82,9 @@ return [
             'fetch_outlier' => env('CREDITS_MCP_FETCH_OUTLIER', 10),
             'generate_outlier_breakdown' => env('CREDITS_MCP_GENERATE_OUTLIER_BREAKDOWN', 25),
             'add_outlier_channel' => env('CREDITS_MCP_ADD_OUTLIER_CHANNEL', 25),
+            // Extra per X post with a link, per X account (X charges $0.20 vs $0.015;
+            // App\Support\XLinkCharge): 10 + 25 = 35 for one X account.
+            'x_link' => env('CREDITS_MCP_X_LINK', 25),
         ],
     ],
 
@@ -110,6 +113,7 @@ return [
             'update_post' => env('CREDITS_WEB_UPDATE_POST', 5),            // every edit, incl. publishing a draft
             'delete_post' => env('CREDITS_WEB_DELETE_POST', 5),
             'upload_media' => env('CREDITS_WEB_UPLOAD_MEDIA', 5),          // per image/video, when the post is published or scheduled
+            'x_link' => env('CREDITS_WEB_X_LINK', 25),                     // extra per X post with a link, per X account (as mcp)
             // Outliers
             'search_outliers' => env('CREDITS_WEB_SEARCH_OUTLIERS', 10),
             'fetch_outlier' => env('CREDITS_WEB_FETCH_OUTLIER', 10),
