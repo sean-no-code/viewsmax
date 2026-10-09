@@ -33,11 +33,11 @@ export function rewardfulReferral(): string | null {
 // `/storage` prefix, so they pass through untouched.
 export function resolveMediaUrl(url?: string | null): string | undefined {
   if (!url) return url ?? undefined;
-  if (!API_BASE_URL) return url;
   const at = url.indexOf("/storage/");
   if (at === -1) return url;
   try {
-    return new URL(url.slice(at), API_BASE_URL).href;
+    // Empty base means same-origin (dev proxy): rebase onto the page origin.
+    return new URL(url.slice(at), API_BASE_URL || window.location.origin).href;
   } catch {
     return url;
   }

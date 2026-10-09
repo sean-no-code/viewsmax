@@ -103,9 +103,13 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Host only — the frontend appends "/api/..." itself. Including /api here
-      # produces requests to /api/api/... which 404.
-      VITE_API_BASE_URL: http://localhost:8000
+      # Empty on purpose: the Vite dev server proxies /api, /storage, /docs and
+      # friends to the backend (see frontend/vite.config.ts), so the browser
+      # stays same-origin. That is what keeps the app working through an ngrok
+      # tunnel, where Chrome refuses public-page -> http://localhost requests.
+      # If you set this to a host, use the host only (no /api suffix).
+      VITE_API_BASE_URL: ""
+      VITE_DEV_PROXY_TARGET: http://app:8000
     volumes:
       - ./frontend:/app
       # Same trick as vendor/: keep the image's node_modules from being hidden.
