@@ -217,6 +217,20 @@ class CreditService
     }
 
     /**
+     * Credits a website action costs (config/credits.php `web`): `read` is the
+     * read default, a named action its own price, anything else the write
+     * default.
+     */
+    public function webActionCost(string $action): int
+    {
+        if ($action === 'read') {
+            return (int) config('credits.web.read_default', 0);
+        }
+
+        return (int) (config("credits.web.tools.{$action}") ?? config('credits.web.write_default', 0));
+    }
+
+    /**
      * Get the cost for a specific operation type from config.
      *
      * @param string $type

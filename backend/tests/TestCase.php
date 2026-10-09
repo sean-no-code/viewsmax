@@ -18,6 +18,23 @@ abstract class TestCase extends BaseTestCase
     protected $connectionsToTransact = [null, 'outlier_db'];
 
     /**
+     * Website actions are free in tests (config/credits.php `web` all 0), so a
+     * test about something else doesn't need a funded user to save an offer
+     * or connect an account. A test about website credits sets this to true to
+     * use the real prices.
+     */
+    protected bool $chargeWebActions = false;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (! $this->chargeWebActions) {
+            config(['credits.web' => ['read_default' => 0, 'write_default' => 0, 'tools' => []]]);
+        }
+    }
+
+    /**
      * Give a test user a durable credit balance.
      *
      * Under RefreshDatabase the wallet package (bavix/laravel-wallet) never

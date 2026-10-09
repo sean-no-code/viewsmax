@@ -776,6 +776,8 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         // Surface the backend's friendly message (e.g. the plan offer-limit
@@ -808,6 +810,8 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -1054,6 +1058,8 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify({ api_key: apiKey, publication_id: publicationId }),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
       const body = await response.json().catch(() => ({}));
       if (!response.ok) return { success: false, error: body.message || `Couldn't connect Beehiiv (${response.status}).` };
       return { success: true, data: body.data || body };
@@ -1065,6 +1071,8 @@ class ViewsMaxApiService {
   async disconnectBeehiiv(): Promise<ApiResponse<void>> {
     try {
       const response = await fetch(`${this.baseUrl}/api/beehiiv/connection`, { method: 'DELETE', headers: this.getAuthHeaders() });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
       if (!response.ok) throw new Error(`Failed to disconnect Beehiiv: ${response.status}`);
       return { success: true };
     } catch (error) {
@@ -1130,6 +1138,8 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
       if (!response.ok) {
         const errorData = await response.text();
         const refusal = this.creditRefusal(response.status, errorData);
@@ -1150,6 +1160,8 @@ class ViewsMaxApiService {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
       if (!response.ok) return { success: false, error: `Failed to delete post: ${response.status}` };
       return { success: true };
     } catch (error) {
@@ -1168,6 +1180,8 @@ class ViewsMaxApiService {
         method: 'POST',
         headers: this.getAuthHeaders(),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
       if (!response.ok) {
         const errorData = await response.text();
         return { success: false, error: `Failed to retry: ${response.status} - ${errorData}` };
@@ -1366,6 +1380,8 @@ class ViewsMaxApiService {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -1436,6 +1452,8 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -1474,6 +1492,8 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -1594,6 +1614,20 @@ class ViewsMaxApiService {
    */
   public noteCredits(responseData: unknown): void {
     this.extractCreditsFromResponse(responseData);
+  }
+
+  /**
+   * For a website action that costs credits: updates the Credits badge from the
+   * X-User-Credits header (set even when there's no JSON body, e.g. a 204), and
+   * returns the server's readable message when it was refused (402).
+   */
+  private async noteCharge(response: Response): Promise<string | null> {
+    const credits = Number(response.headers?.get?.('X-User-Credits'));
+    if (response.headers?.get?.('X-User-Credits') && Number.isFinite(credits)) {
+      this.extractCreditsFromResponse({ user_credits: credits });
+    }
+    if (response.status !== 402) return null;
+    return this.creditRefusal(402, await response.clone().text()) ?? 'Not enough credits. Choose a plan to get more credits.';
   }
 
   /**
@@ -1767,6 +1801,8 @@ class ViewsMaxApiService {
           redirect_uri: redirectUri
         }),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -3807,6 +3843,8 @@ class ViewsMaxApiService {
           'Authorization': `Bearer ${token}`
         },
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -5011,6 +5049,8 @@ class ViewsMaxApiService {
           ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
         }),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -5044,6 +5084,8 @@ class ViewsMaxApiService {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -5337,6 +5379,8 @@ class ViewsMaxApiService {
           ...(payload.redirectUri ? { redirect_uri: payload.redirectUri } : {}),
         }),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         return { success: false, error: result.message || `Connection failed: ${response.status}` };
@@ -5354,6 +5398,8 @@ class ViewsMaxApiService {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
       if (!response.ok) {
         return { success: false, error: `Failed to disconnect: ${response.status}` };
       }
@@ -5550,6 +5596,8 @@ class ViewsMaxApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -5579,6 +5627,8 @@ class ViewsMaxApiService {
         method: 'POST',
         headers: this.getAuthHeaders(),
       });
+      const refused = await this.noteCharge(response);
+      if (refused) return { success: false, error: refused };
 
       if (!response.ok) {
         const errorData = await response.text();

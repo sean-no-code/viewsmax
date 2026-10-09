@@ -60,6 +60,10 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `withdraw()` only on a non-error result (never negative), recorded as `credits_charged` on the
   `mcp_tool_invocations` audit row, and logged to the `credits` channel (`CREDITS_LOG_ENABLED`).
   In tests use `$this->fundCredits($user, n)` (see `tests/TestCase.php`) rather than `deposit()`.
+  Website actions are priced the same way under `web` (same layout as `mcp`, both defaults 0):
+  tag a route `credits.web:<action>` (`App\Http\Middleware\ChargeWebAction`); `credits.web:read`
+  on the logged-in group prices GETs. Web prices are 0 in tests unless the test sets
+  `protected bool $chargeWebActions = true`.
 - **Posting (in progress).** Two parallel systems exist: `Post`/`PostTarget` and
   `SocialPost`/`SocialPostTarget`. One composed post fans out to many per-platform targets. Real
   publish-to-platform is still being built; compose/create endpoints (`POST /posts`) exist.

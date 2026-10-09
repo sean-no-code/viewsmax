@@ -135,7 +135,8 @@ Route::match(['get', 'post'], '/social/{platform}/data-deletion', [SocialWebhook
 
 // Protected routes (authentication required). `access.active` locks a user
 // whose free window has closed to the billing endpoints.
-Route::middleware(['api.auth', 'access.active'])->group(function () {
+// credits.web:read prices every GET in this group (config/credits.php web.read_default, 0 = free).
+Route::middleware(['api.auth', 'access.active', 'credits.web:read'])->group(function () {
 
     // Outlier Multiplier Endpoint
     Route::get('/multiplier/{videoId}', [OutlierController::class, 'getMultiplier']);
@@ -231,27 +232,27 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
 
         // Saved filter presets (per-user)
         Route::get('/saved-filters', [App\Http\Controllers\OutlierSavedFilterController::class, 'index']);
-        Route::post('/saved-filters', [App\Http\Controllers\OutlierSavedFilterController::class, 'store']);
-        Route::delete('/saved-filters/{id}', [App\Http\Controllers\OutlierSavedFilterController::class, 'destroy']);
+        Route::post('/saved-filters', [App\Http\Controllers\OutlierSavedFilterController::class, 'store'])->middleware('credits.web:saved_filter');
+        Route::delete('/saved-filters/{id}', [App\Http\Controllers\OutlierSavedFilterController::class, 'destroy'])->middleware('credits.web:saved_filter');
 
         // Competitor channels (per-user)
         Route::get('/competitors', [App\Http\Controllers\OutlierCompetitorController::class, 'index']);
-        Route::post('/competitors', [App\Http\Controllers\OutlierCompetitorController::class, 'store']);
-        Route::delete('/competitors/{channelId}', [App\Http\Controllers\OutlierCompetitorController::class, 'destroy'])->whereNumber('channelId');
+        Route::post('/competitors', [App\Http\Controllers\OutlierCompetitorController::class, 'store'])->middleware('credits.web:competitor');
+        Route::delete('/competitors/{channelId}', [App\Http\Controllers\OutlierCompetitorController::class, 'destroy'])->whereNumber('channelId')->middleware('credits.web:competitor');
 
         // Saved-outliers library + tags (per-user)
         Route::get('/tags', [App\Http\Controllers\SavedOutlierController::class, 'tags']);
         Route::get('/library', [App\Http\Controllers\SavedOutlierController::class, 'index']);
-        Route::post('/library', [App\Http\Controllers\SavedOutlierController::class, 'store']);
-        Route::patch('/library/{id}', [App\Http\Controllers\SavedOutlierController::class, 'update']);
-        Route::delete('/library/{id}', [App\Http\Controllers\SavedOutlierController::class, 'destroy']);
+        Route::post('/library', [App\Http\Controllers\SavedOutlierController::class, 'store'])->middleware('credits.web:save_outlier');
+        Route::patch('/library/{id}', [App\Http\Controllers\SavedOutlierController::class, 'update'])->middleware('credits.web:update_saved_outlier');
+        Route::delete('/library/{id}', [App\Http\Controllers\SavedOutlierController::class, 'destroy'])->middleware('credits.web:remove_saved_outlier');
 
         // Single video + AI breakdown (registered last; {platform} is constrained so
         // these can never shadow the literal routes above)
         Route::get('/{platform}/{videoId}', [App\Http\Controllers\OutlierController::class, 'show'])
             ->whereIn('platform', ['youtube', 'tiktok', 'instagram']);
         Route::post('/{platform}/{videoId}/refresh-media', [App\Http\Controllers\OutlierController::class, 'refreshMedia'])
-            ->whereIn('platform', ['instagram']);
+            ->whereIn('platform', ['instagram'])->middleware('credits.web:refresh_outlier_media');
         Route::post('/{platform}/{videoId}/feature', [App\Http\Controllers\OutlierController::class, 'toggleFeature'])
             ->whereIn('platform', ['youtube', 'tiktok', 'instagram'])->middleware('role:admin');
         Route::get('/{platform}/{videoId}/breakdown', [App\Http\Controllers\OutlierBreakdownController::class, 'show'])
@@ -301,7 +302,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
 
     // YouTube OAuth routes (authenticated users)
     Route::prefix('auth/youtube')->group(function () {
-        Route::post('/exchange', [YouTubeOAuthController::class, 'exchange']);
+        Route::post('/exchange', [YouTubeOAuthController::class, 'exchange'])->middleware('credits.web:get_connect_url');
         Route::post('/refresh', [YouTubeOAuthController::class, 'refresh']);
         Route::get('/status', [YouTubeOAuthController::class, 'status']);
     });
@@ -320,15 +321,15 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     // Connections (multi-provider OAuth). YouTube is handled by the explicit
     // route above; this generic exchange covers tiktok|instagram.
     Route::get('/connections', [ConnectionController::class, 'index']);
-    Route::delete('/connections/{id}', [ConnectionController::class, 'destroy']);
+    Route::delete('/connections/{id}', [ConnectionController::class, 'destroy'])->middleware('credits.web:disconnect_account');
 
     // Beehiiv API-key connection (per user; key stored encrypted, never returned).
     Route::get('/beehiiv/connection', [\App\Http\Controllers\BeehiivController::class, 'show']);
-    Route::post('/beehiiv/connection', [\App\Http\Controllers\BeehiivController::class, 'store']);
-    Route::delete('/beehiiv/connection', [\App\Http\Controllers\BeehiivController::class, 'destroy']);
+    Route::post('/beehiiv/connection', [\App\Http\Controllers\BeehiivController::class, 'store'])->middleware('credits.web:get_connect_url');
+    Route::delete('/beehiiv/connection', [\App\Http\Controllers\BeehiivController::class, 'destroy'])->middleware('credits.web:disconnect_account');
     Route::get('/beehiiv/posts', [\App\Http\Controllers\BeehiivController::class, 'posts']);
     Route::post('/auth/{provider}/exchange', [ConnectionController::class, 'exchange'])
-        ->whereIn('provider', ['tiktok', 'instagram']);
+        ->whereIn('provider', ['tiktok', 'instagram'])->middleware('credits.web:get_connect_url');
 
     // TikTok publishing prerequisites: creator info drives the required privacy /
     // interaction options in the composer before a post can be published.
@@ -342,8 +343,8 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
 
     // Feature requests
     Route::get('/feature-requests', [FeatureRequestController::class, 'index']);
-    Route::post('/feature-requests', [FeatureRequestController::class, 'store']);
-    Route::post('/feature-requests/{id}/upvote', [FeatureRequestController::class, 'upvote']);
+    Route::post('/feature-requests', [FeatureRequestController::class, 'store'])->middleware('credits.web:create_feature_request');
+    Route::post('/feature-requests/{id}/upvote', [FeatureRequestController::class, 'upvote'])->middleware('credits.web:upvote_feature_request');
     Route::patch('/feature-requests/{id}/status', [FeatureRequestController::class, 'updateStatus'])->middleware('role:admin');
 
     // Social media accounts: connect & manage (Facebook, Instagram, Threads,
@@ -354,14 +355,14 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
 
         // Connected accounts.
         Route::get('/accounts', [SocialAccountController::class, 'index']);
-        Route::delete('/accounts/{id}', [SocialAccountController::class, 'destroy']);
+        Route::delete('/accounts/{id}', [SocialAccountController::class, 'destroy'])->middleware('credits.web:disconnect_account');
 
         // OAuth connect flow (frontend opens the URL, then posts back the code).
         Route::get('/{platform}/auth-url', [SocialAccountController::class, 'authUrl']);
-        Route::post('/{platform}/exchange', [SocialAccountController::class, 'exchange']);
+        Route::post('/{platform}/exchange', [SocialAccountController::class, 'exchange'])->middleware('credits.web:get_connect_url');
 
         // Credential-based connect (non-OAuth platforms, e.g. Bluesky).
-        Route::post('/{platform}/connect', [SocialAccountController::class, 'connectWithCredentials']);
+        Route::post('/{platform}/connect', [SocialAccountController::class, 'connectWithCredentials'])->middleware('credits.web:get_connect_url');
 
         // Published X posts (both stores) — for pinning tracking links.
         Route::get('/x/posts', [SocialPostController::class, 'xPosts']);
@@ -385,7 +386,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::post('/{channel}/refresh', [ChannelController::class, 'refresh']);
         Route::get('/{id}/analytics/comprehensive', [ChannelController::class, 'getComprehensiveAnalytics']);
         Route::get('/{id}/playlists', [ChannelController::class, 'getPlaylists']);
-        Route::delete('/{id}', [ChannelController::class, 'destroy']);
+        Route::delete('/{id}', [ChannelController::class, 'destroy'])->middleware('credits.web:disconnect_account');
     });
 
     // Privacy consent routes (authenticated users)
@@ -441,8 +442,15 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     // Audience Growth: per-platform follower series + engagement-ranked posts.
     Route::get('analytics/performance', [\App\Http\Controllers\AnalyticsPerformanceController::class, 'index']);
     Route::get('goal-types', [GoalTypeController::class, 'index']); // Seeded conversion event types
-    Route::apiResource('tracking-events', TrackingEventController::class);
-    Route::apiResource('tracking-links', TrackingLinkController::class)->except(['index']); // Standard CRUD
+    // Offers (tracking events) and tracking links cost credits like the AI's offer tools.
+    Route::apiResource('tracking-events', TrackingEventController::class)
+        ->middlewareFor('store', 'credits.web:create_offer')
+        ->middlewareFor('update', 'credits.web:update_offer')
+        ->middlewareFor('destroy', 'credits.web:delete_offer');
+    Route::apiResource('tracking-links', TrackingLinkController::class)->except(['index']) // Standard CRUD
+        ->middlewareFor('store', 'credits.web:create_tracking_link')
+        ->middlewareFor('update', 'credits.web:update_tracking_link')
+        ->middlewareFor('destroy', 'credits.web:delete_tracking_link');
     Route::get('/tracking-events/{event}/links', [TrackingLinkController::class, 'index']); // Nested List
 
     // Content (long-form body + optional media file), attachable to an Offer
@@ -453,15 +461,18 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     Route::apiResource('brands', BrandController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // Multi-platform Posts (compose + schedule)
-    // Uploading in the composer is free (a draft step: people swap images); the post
-    // is charged when it is published or scheduled (credits.web:create_post below).
+    // Uploading in the composer is free (people swap images); each image or video
+    // is charged when the post is published or scheduled (ChargeWebAction).
     Route::post('/posts/media', [PostMediaController::class, 'store']);
     // Presigned direct-to-R2 media uploads (browser → bucket, no server relay).
     Route::post('/posts/media/direct', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'store']);
     Route::post('/posts/media/direct/complete', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'complete']);
     Route::post('/posts/media/direct/abort', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'abort']);
     // Retry publishing for a single failed platform target (leaves siblings alone).
-    Route::post('/posts/{post}/targets/{target}/retry', [PostController::class, 'retryTarget']);
-    // Publishing or scheduling a post costs the same as the AI's create_post; drafts are free.
-    Route::apiResource('posts', PostController::class)->middlewareFor(['store', 'update'], 'credits.web:create_post');
+    Route::post('/posts/{post}/targets/{target}/retry', [PostController::class, 'retryTarget'])->middleware('credits.web:retry_post');
+    // Posts cost credits like the AI's create_post / update_post / delete_post.
+    Route::apiResource('posts', PostController::class)
+        ->middlewareFor('store', 'credits.web:create_post')
+        ->middlewareFor('update', 'credits.web:update_post')
+        ->middlewareFor('destroy', 'credits.web:delete_post');
 });

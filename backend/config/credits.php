@@ -84,4 +84,53 @@ return [
             'add_outlier_channel' => env('CREDITS_MCP_ADD_OUTLIER_CHANNEL', 25),
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Website Action Costs
+    |--------------------------------------------------------------------------
+    |
+    | Credits a website action costs (App\Http\Middleware\ChargeWebAction),
+    | laid out like `mcp` above. Same rules as the AI: refused before running
+    | when the balance is too low, charged only on success, never negative.
+    | 0 = free. An action not listed in `tools` costs the write default, and
+    | every GET costs the read default.
+    |
+    | Actions named after an AI tool are set to what the AI charges today.
+    | read_default is per API request, not per page: one page load makes
+    | several (often 5+), so 1 here can cost 5+ credits a page.
+    |
+    */
+    'web' => [
+        'read_default' => env('CREDITS_WEB_READ_DEFAULT', 0),
+        'write_default' => env('CREDITS_WEB_WRITE_DEFAULT', 0),
+        'tools' => [
+            // Posts
+            'create_post' => env('CREDITS_WEB_CREATE_POST', 10),           // drafts included
+            'update_post' => env('CREDITS_WEB_UPDATE_POST', 5),            // every edit, incl. publishing a draft
+            'delete_post' => env('CREDITS_WEB_DELETE_POST', 5),
+            'upload_media' => env('CREDITS_WEB_UPLOAD_MEDIA', 5),          // per image/video, when the post is published or scheduled
+            // Outliers
+            'search_outliers' => env('CREDITS_WEB_SEARCH_OUTLIERS', 10),
+            'fetch_outlier' => env('CREDITS_WEB_FETCH_OUTLIER', 10),
+            'generate_outlier_breakdown' => env('CREDITS_WEB_GENERATE_OUTLIER_BREAKDOWN', 25),
+            'add_outlier_channel' => env('CREDITS_WEB_ADD_OUTLIER_CHANNEL', 25),
+            'save_outlier' => env('CREDITS_WEB_SAVE_OUTLIER', 5),
+            'remove_saved_outlier' => env('CREDITS_WEB_REMOVE_SAVED_OUTLIER', 5),
+            // Offers and tracking links
+            'create_offer' => env('CREDITS_WEB_CREATE_OFFER', 5),
+            'update_offer' => env('CREDITS_WEB_UPDATE_OFFER', 5),
+            'delete_offer' => env('CREDITS_WEB_DELETE_OFFER', 5),
+            'create_tracking_link' => env('CREDITS_WEB_CREATE_TRACKING_LINK', 5),
+            // Accounts
+            'get_connect_url' => env('CREDITS_WEB_GET_CONNECT_URL', 5),    // connecting an account
+            'disconnect_account' => env('CREDITS_WEB_DISCONNECT_ACCOUNT', 5),
+            // Feature requests
+            'create_feature_request' => env('CREDITS_WEB_CREATE_FEATURE_REQUEST', 5),
+            // Website-only actions (no AI tool) use write_default unless set here:
+            // retry_post, update_saved_outlier, saved_filter, competitor,
+            // refresh_outlier_media, update_tracking_link, delete_tracking_link,
+            // upvote_feature_request.
+        ],
+    ],
 ];

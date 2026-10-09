@@ -46,6 +46,12 @@ class AttachCreditsToResponse
             $response->setData($data);
         }
 
+        // Also as a header, so responses without a JSON body (e.g. a 204 after
+        // a delete that cost credits) still update the Credits badge.
+        if ($request->user()) {
+            $response->headers->set('X-User-Credits', (string) $request->user()->balanceInt);
+        }
+
         return $response;
     }
 }

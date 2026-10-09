@@ -12,15 +12,16 @@ use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
- * Website actions that match an AI (MCP) tool cost the same credits as that
- * tool, from the same price list (config/credits.php `mcp`). Same rules as the
- * AI: refused up front when the balance is too low, charged only when the
- * action succeeds, never below zero. Reading pages stays free, and saving a
- * draft is free: a post is charged when it is published or scheduled.
+ * Website actions cost credits from config/credits.php `web`, set to what the
+ * matching AI tool charges today. Same rules as the AI: refused up front when
+ * the balance is too low, charged only when the action succeeds, never below
+ * zero. Reads and website-only actions are free (0) unless priced there.
  */
 class WebActionCreditsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected bool $chargeWebActions = true;
 
     private User $user;
 
@@ -61,11 +62,39 @@ class WebActionCreditsTest extends TestCase
     {
         $routes = [
             'POST api/posts' => 'create_post',
-            'PUT api/posts/{post}' => 'create_post',
+            'PUT api/posts/{post}' => 'update_post',
+            'DELETE api/posts/{post}' => 'delete_post',
+            'POST api/posts/{post}/targets/{target}/retry' => 'retry_post',
             'POST api/outliers/search' => 'search_outliers',
             'POST api/outliers/fetch' => 'fetch_outlier',
             'POST api/outliers/{platform}/{videoId}/breakdown' => 'generate_outlier_breakdown',
             'POST api/outliers/channels/add' => 'add_outlier_channel',
+            'POST api/outliers/library' => 'save_outlier',
+            'PATCH api/outliers/library/{id}' => 'update_saved_outlier',
+            'DELETE api/outliers/library/{id}' => 'remove_saved_outlier',
+            'POST api/outliers/saved-filters' => 'saved_filter',
+            'DELETE api/outliers/saved-filters/{id}' => 'saved_filter',
+            'POST api/outliers/competitors' => 'competitor',
+            'DELETE api/outliers/competitors/{channelId}' => 'competitor',
+            'POST api/outliers/{platform}/{videoId}/refresh-media' => 'refresh_outlier_media',
+            'POST api/tracking-events' => 'create_offer',
+            'PUT api/tracking-events/{tracking_event}' => 'update_offer',
+            'DELETE api/tracking-events/{tracking_event}' => 'delete_offer',
+            'POST api/tracking-links' => 'create_tracking_link',
+            'PUT api/tracking-links/{tracking_link}' => 'update_tracking_link',
+            'DELETE api/tracking-links/{tracking_link}' => 'delete_tracking_link',
+            'POST api/auth/youtube/exchange' => 'get_connect_url',
+            'POST api/auth/{provider}/exchange' => 'get_connect_url',
+            'POST api/social/{platform}/exchange' => 'get_connect_url',
+            'POST api/social/{platform}/connect' => 'get_connect_url',
+            'POST api/beehiiv/connection' => 'get_connect_url',
+            'DELETE api/connections/{id}' => 'disconnect_account',
+            'DELETE api/social/accounts/{id}' => 'disconnect_account',
+            'DELETE api/channels/{id}' => 'disconnect_account',
+            'DELETE api/beehiiv/connection' => 'disconnect_account',
+            'POST api/feature-requests' => 'create_feature_request',
+            'POST api/feature-requests/{id}/upvote' => 'upvote_feature_request',
+            'GET api/posts' => 'read',
         ];
 
         foreach ($routes as $route => $tool) {
@@ -86,12 +115,32 @@ class WebActionCreditsTest extends TestCase
             $found = collect(Route::getRoutes()->getRoutes())
                 ->first(fn ($r) => $r->uri() === $uri && in_array($method, $r->methods(), true));
             $this->assertNotNull($found, "Route {$route} not found");
-            $charging = array_filter($found->gatherMiddleware(), fn ($m) => is_string($m) && str_starts_with($m, 'credits.web'));
+            // credits.web:read is on the whole group and only prices GETs.
+            $charging = array_filter($found->gatherMiddleware(), fn ($m) => is_string($m) && str_starts_with($m, 'credits.web') && $m !== 'credits.web:read');
             $this->assertSame([], array_values($charging), "{$route} must not charge credits");
         }
     }
 
-    public function test_publishing_a_post_costs_the_same_as_the_ai_create_post(): void
+    public function test_the_default_prices_match_what_the_ai_charges_today(): void
+    {
+        $credits = app(\App\Services\CreditService::class);
+        $ai = fn (string $tool) => $credits->mcpToolCost($tool, true);
+
+        foreach (['create_post', 'update_post', 'delete_post', 'upload_media', 'search_outliers', 'fetch_outlier',
+            'generate_outlier_breakdown', 'add_outlier_channel', 'save_outlier', 'remove_saved_outlier', 'create_offer',
+            'update_offer', 'delete_offer', 'create_tracking_link', 'get_connect_url', 'disconnect_account',
+            'create_feature_request'] as $tool) {
+            $this->assertSame($ai($tool), $credits->webActionCost($tool), "{$tool} must cost the same as the AI");
+        }
+
+        // Reads and website-only actions are free unless priced in config.
+        foreach (['read', 'retry_post', 'saved_filter', 'competitor', 'refresh_outlier_media', 'update_tracking_link',
+            'delete_tracking_link', 'upvote_feature_request', 'update_saved_outlier'] as $action) {
+            $this->assertSame(0, $credits->webActionCost($action), "{$action} must be free by default");
+        }
+    }
+
+    public function test_creating_a_post_costs_the_same_as_the_ai_create_post(): void
     {
         $this->fundCredits($this->user, 100);
 
@@ -117,14 +166,17 @@ class WebActionCreditsTest extends TestCase
     {
         $this->fundCredits($this->user, 100);
         $id = $this->sendPost('draft', images: 1)->assertCreated()->json('id');
-        $this->assertSame(100, $this->balance());
+        $this->assertSame(90, $this->balance()); // a draft costs create_post; its image is charged when it goes out
 
         $this->putJson("/api/posts/{$id}", [
             'status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'platforms' => ['x'],
             'caption' => 'Hello', 'media' => [['type' => 'image', 'url' => 'https://example.com/swapped.jpg']],
         ], $this->headers())->assertOk();
+        $this->assertSame(80, $this->balance()); // edit 5 + the image 5
 
-        $this->assertSame(85, $this->balance()); // 10 + 5, once
+        // Editing it again doesn't charge for the same image twice.
+        $this->putJson("/api/posts/{$id}", ['caption' => 'Edited'], $this->headers())->assertOk();
+        $this->assertSame(75, $this->balance()); // edit 5 only
     }
 
     public function test_not_enough_credits_for_the_images_refuses_the_publish(): void
@@ -133,25 +185,64 @@ class WebActionCreditsTest extends TestCase
 
         $this->sendPost('scheduled', images: 1)
             ->assertStatus(402)
-            ->assertJsonPath('message', 'Not enough credits to publish a post with 1 image or video (15 needed, 12 available). Choose a plan to get more credits.');
+            ->assertJsonPath('message', 'Not enough credits to create a post with 1 image or video (15 needed, 12 available). Choose a plan to get more credits.');
 
         $this->assertSame(0, Post::count());
     }
 
-    public function test_saving_a_draft_is_free_and_publishing_it_later_is_charged_once(): void
+    public function test_a_draft_costs_the_same_as_the_ai_and_every_edit_costs_update_post(): void
     {
         $this->fundCredits($this->user, 100);
 
         $id = $this->sendPost('draft')->assertCreated()->json('id');
-        $this->assertSame(100, $this->balance());
+        $this->assertSame(90, $this->balance()); // create_post, draft or not
 
         $publish = ['status' => 'scheduled', 'scheduled_at' => now()->addDay()->toIso8601String(), 'platforms' => ['x'], 'caption' => 'Hello'];
         $this->putJson("/api/posts/{$id}", $publish, $this->headers())->assertOk();
-        $this->assertSame(90, $this->balance());
+        $this->assertSame(85, $this->balance()); // update_post
 
-        // Editing a post that is already scheduled doesn't charge again.
         $this->putJson("/api/posts/{$id}", ['caption' => 'Edited'] + $publish, $this->headers())->assertOk();
+        $this->assertSame(80, $this->balance()); // update_post again
+
+        $this->deleteJson("/api/posts/{$id}", [], $this->headers())
+            ->assertSuccessful()
+            ->assertHeader('X-User-Credits', '75'); // no JSON body: the badge reads the header
+        $this->assertSame(75, $this->balance()); // delete_post
+    }
+
+    public function test_an_edit_price_of_zero_makes_editing_free(): void
+    {
+        config(['credits.web.tools.update_post' => 0]);
+        $this->fundCredits($this->user, 100);
+        $id = $this->sendPost('draft')->assertCreated()->json('id');
+
+        $this->putJson("/api/posts/{$id}", ['caption' => 'Edited', 'platforms' => ['x']], $this->headers())->assertOk();
+
         $this->assertSame(90, $this->balance());
+    }
+
+    public function test_website_only_actions_are_free_until_priced(): void
+    {
+        $this->fundCredits($this->user, 100);
+        $offer = $this->user->offers()->create(['offer_url' => 'https://example.com/a']);
+        $link = $offer->links()->create(['name' => 'Bio', 'placement' => 'youtube', 'parameter_id' => 'bio1']);
+
+        $this->putJson("/api/tracking-links/{$link->id}", ['name' => 'Bio 2'], $this->headers())->assertOk();
+        $this->assertSame(100, $this->balance());
+
+        config(['credits.web.tools.update_tracking_link' => 2]);
+        $this->putJson("/api/tracking-links/{$link->id}", ['name' => 'Bio 3'], $this->headers())->assertOk();
+        $this->assertSame(98, $this->balance());
+    }
+
+    public function test_creating_an_offer_costs_the_same_as_the_ai(): void
+    {
+        $this->fundCredits($this->user, 100);
+
+        $this->postJson('/api/tracking-events', ['offer_url' => 'https://example.com/a', 'name' => 'A'], $this->headers())
+            ->assertSuccessful();
+
+        $this->assertSame(95, $this->balance());
     }
 
     public function test_not_enough_credits_refuses_before_anything_happens(): void
@@ -161,7 +252,7 @@ class WebActionCreditsTest extends TestCase
         $this->sendPost('scheduled')
             ->assertStatus(402)
             ->assertJsonPath('code', 'insufficient_credits')
-            ->assertJsonPath('message', 'Not enough credits to publish a post (10 needed, 3 available). Choose a plan to get more credits.');
+            ->assertJsonPath('message', 'Not enough credits to create a post (10 needed, 3 available). Choose a plan to get more credits.');
 
         $this->assertSame(0, Post::count());
         $this->assertSame(3, $this->balance());
@@ -193,7 +284,7 @@ class WebActionCreditsTest extends TestCase
         $this->sendPost('scheduled')->assertCreated()->assertJsonPath('user_credits', 90);
     }
 
-    public function test_reading_pages_stays_free(): void
+    public function test_reading_pages_is_free_by_default(): void
     {
         $this->fundCredits($this->user, 100);
 
@@ -201,6 +292,19 @@ class WebActionCreditsTest extends TestCase
         $this->getJson('/api/outliers', $this->headers());
 
         $this->assertSame(100, $this->balance());
+    }
+
+    public function test_a_read_price_charges_every_read_but_never_the_account_and_billing_pages(): void
+    {
+        config(['credits.web.read_default' => 1]);
+        $this->fundCredits($this->user, 100);
+
+        $this->getJson('/api/posts', $this->headers())->assertOk();
+        $this->assertSame(99, $this->balance());
+
+        $this->getJson('/api/profile', $this->headers())->assertOk();
+        $this->getJson('/api/plans', $this->headers())->assertOk();
+        $this->assertSame(99, $this->balance());
     }
 
     public function test_an_ai_publish_is_charged_once_not_twice(): void

@@ -51,7 +51,7 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['X-User-Credits'], // read by the SPA's Credits badge
 
     'max_age' => 0,
 

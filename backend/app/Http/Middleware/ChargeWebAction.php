@@ -13,53 +13,76 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Charges a website action the same credits as the matching AI (MCP) tool:
- * `credits.web:<tool>` reads the price from config/credits.php `mcp`, the
- * list SafeCallTool uses, so the two never drift apart.
+ * Charges a website action its price from config/credits.php `web`:
+ * `credits.web:<action>` on a route, named after the matching AI tool where
+ * there is one. `credits.web:read` sits on the whole logged-in group and
+ * prices every GET (read_default, 0 unless changed).
  *
  * Same rules as the AI: refused with 402 before anything runs when the balance
  * is below the price, charged only after a successful (2xx) response, never
- * below zero. Uploading media in the composer is free: when a post is
- * published or scheduled it costs create_post plus upload_media for each image
- * or video in it, the same total the AI pays (upload_media per file, then
- * create_post), so swapping images while writing never costs anything.
+ * below zero. A price of 0 does nothing.
+ *
+ * Posts: creating one costs create_post (drafts included) and every edit costs
+ * update_post, like the AI. Images and videos cost upload_media each, but when
+ * the post is published or scheduled rather than at upload, so swapping
+ * images in the composer is free; a file is only ever charged once.
  *
  * AI tools call the controllers directly, not through these routes, so an AI
- * action is never charged twice. A post is charged when it is published or
- * scheduled, not when saved as a draft, and only once.
+ * action is never charged twice.
  */
 class ChargeWebAction
 {
     /** What the refusal message calls each action. */
     private const LABELS = [
-        'create_post' => 'publish a post',
+        'create_post' => 'create a post',
+        'update_post' => 'edit a post',
+        'delete_post' => 'delete a post',
+        'retry_post' => 'retry a post',
         'search_outliers' => 'search outliers',
         'fetch_outlier' => 'fetch an outlier',
         'generate_outlier_breakdown' => 'generate an AI breakdown',
         'add_outlier_channel' => 'add an outlier channel',
+        'save_outlier' => 'save an outlier',
+        'update_saved_outlier' => 'edit a saved outlier',
+        'remove_saved_outlier' => 'remove a saved outlier',
+        'saved_filter' => 'save a filter',
+        'competitor' => 'change your competitors',
+        'refresh_outlier_media' => 'refresh outlier media',
+        'create_offer' => 'create an offer',
+        'update_offer' => 'edit an offer',
+        'delete_offer' => 'delete an offer',
+        'create_tracking_link' => 'create a tracking link',
+        'update_tracking_link' => 'edit a tracking link',
+        'delete_tracking_link' => 'delete a tracking link',
+        'get_connect_url' => 'connect an account',
+        'disconnect_account' => 'disconnect an account',
+        'create_feature_request' => 'send a feature request',
+        'upvote_feature_request' => 'upvote a feature request',
+        'read' => 'view this page',
     ];
 
     public function __construct(private CreditService $credits) {}
 
-    public function handle(Request $request, Closure $next, string $tool): Response
+    public function handle(Request $request, Closure $next, string $action): Response
     {
         $user = $request->user();
 
-        if (! $user instanceof User || ! $this->charges($request, $tool, $user)) {
+        if (! $user instanceof User || ($action === 'read' && ! $this->isPricedRead($request))) {
             return $next($request);
         }
 
-        $media = $tool === 'create_post' ? $this->mediaCount($request, $user) : 0;
-        $cost = $this->credits->mcpToolCost($tool, true) + $media * $this->credits->mcpToolCost('upload_media', true);
-        $label = $this->label($tool, $media);
+        $media = in_array($action, ['create_post', 'update_post'], true) ? $this->mediaToCharge($request, $user) : 0;
+        $cost = $this->credits->webActionCost($action) + $media * $this->credits->webActionCost('upload_media');
 
         if ($cost <= 0) {
             return $next($request);
         }
 
+        $label = $this->label($action, $media);
+
         if ($user->balanceInt < $cost) {
             Log::channel('credits')->info('Web action refused: insufficient credits', [
-                'user_id' => $user->id, 'tool' => $tool, 'cost' => $cost, 'balance' => $user->balanceInt,
+                'user_id' => $user->id, 'tool' => $action, 'cost' => $cost, 'balance' => $user->balanceInt,
             ]);
 
             return response()->json([
@@ -77,71 +100,63 @@ class ChargeWebAction
         $response = $next($request);
 
         if ($response->isSuccessful()) {
-            $this->charge($user, $tool, $cost, $label);
+            $this->charge($user, $action, $cost, $label);
         }
 
         return $response;
     }
 
-    /**
-     * Posts are charged when they go out (published or scheduled), once: saving
-     * a draft is free, and editing a post that was already published or
-     * scheduled doesn't charge again. Every other action is always charged.
-     */
-    private function charges(Request $request, string $tool, User $user): bool
+    /** Reads are GETs, minus what a locked user still needs (profile, plans, billing). */
+    private function isPricedRead(Request $request): bool
     {
-        if ($tool !== 'create_post') {
-            return true;
-        }
-
-        $goesOut = in_array($request->input('status'), [Post::STATUS_SCHEDULED, Post::STATUS_POSTED], true);
-        $existing = $request->route('post');
-
-        if ($existing === null) {
-            return $goesOut;
-        }
-
-        $post = $user->posts()->find($existing);
-
-        return $goesOut && $post?->status === Post::STATUS_DRAFT;
+        return $request->isMethod('GET') && ! $request->is(...EnsureAccessActive::ALLOWED_PATTERNS);
     }
 
-    /** Images and videos in the post being published (the request's, else the saved post's). */
-    private function mediaCount(Request $request, User $user): int
+    /**
+     * Images and videos to charge for: those in the post when it is published
+     * or scheduled, minus any already charged (it was already out with them).
+     * A draft charges none yet.
+     */
+    private function mediaToCharge(Request $request, User $user): int
     {
-        if (is_array($request->input('media'))) {
-            return count($request->input('media'));
-        }
-
         $existing = $request->route('post');
         $post = $existing === null ? null : $user->posts()->find($existing);
 
-        return is_array($post?->media) ? count($post->media) : 0;
+        $status = $request->input('status', $post?->status ?? Post::STATUS_DRAFT);
+        if (! in_array($status, [Post::STATUS_SCHEDULED, Post::STATUS_POSTED], true)) {
+            return 0;
+        }
+
+        $media = is_array($request->input('media')) ? $request->input('media') : ($post?->media ?? []);
+        $alreadyOut = $post !== null && $post->status !== Post::STATUS_DRAFT;
+        $charged = $alreadyOut && is_array($post->media) ? count($post->media) : 0;
+
+        return max(0, count($media) - $charged);
     }
 
-    private function label(string $tool, int $media): string
+    private function label(string $action, int $media): string
     {
-        $label = self::LABELS[$tool] ?? $tool;
+        $label = self::LABELS[$action] ?? $action;
 
         return $media > 0 ? sprintf('%s with %d %s', $label, $media, $media === 1 ? 'image or video' : 'images or videos') : $label;
     }
 
-    private function charge(User $user, string $tool, int $cost, string $label): void
+    private function charge(User $user, string $action, int $cost, string $label): void
     {
         try {
-            $user->withdraw($cost, ['description' => 'Website: ' . $label, 'type' => 'web_action', 'tool' => $tool]);
+            $user->withdraw($cost, ['description' => 'Website: ' . $label, 'type' => 'web_action', 'tool' => $action]);
         } catch (InsufficientFunds|BalanceIsEmpty) {
             // The balance changed while the action ran; the work is done, so
             // skip the charge rather than go negative (same as the AI).
             Log::channel('credits')->warning('Web charge skipped: balance changed mid-request', [
-                'user_id' => $user->id, 'tool' => $tool, 'cost' => $cost, 'balance' => $user->balanceInt,
+                'user_id' => $user->id, 'tool' => $action, 'cost' => $cost, 'balance' => $user->balanceInt,
             ]);
 
             return;
         }
 
         Log::channel('credits')->info('Web action charged', [
-            'user_id' => $user->id, 'tool' => $tool, 'cost' => $cost, 'balance_after' => $user->balanceInt,
+            'user_id' => $user->id, 'tool' => $action, 'cost' => $cost, 'balance_after' => $user->balanceInt,
         ]);
     }
 }
