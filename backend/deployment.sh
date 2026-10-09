@@ -32,10 +32,23 @@ cd "$(dirname "$0")"
 # root) then `sudo -u <web-user> ./deployment.sh` keeps every file writable by
 # both the deploy and the running app. Mixed ownership shows up as
 # "Permission denied" / "Unable to delete file" from whichever side lost.
+#
+# To make that foolproof the script re-executes itself as the owner of storage/
+# whenever it is started as someone else (e.g. root), so an accidental
+# `sudo ./deployment.sh` still runs every command as the web user.
 STORAGE_OWNER="$(stat -c '%U' storage 2>/dev/null || stat -f '%Su' storage)"
 if [ "$STORAGE_OWNER" != "$(id -un)" ]; then
-  printf '\033[1;33m  ! storage/ is owned by %s but you are %s — files written by this deploy may be unwritable by PHP-FPM (and vice versa).\033[0m\n' "$STORAGE_OWNER" "$(id -un)"
-  printf '\033[1;33m    Fix once: chown -R %s:%s . (backend root), then always deploy as that user: sudo -u %s ./deployment.sh\033[0m\n' "$STORAGE_OWNER" "$STORAGE_OWNER" "$STORAGE_OWNER"
+  if command -v sudo >/dev/null 2>&1; then
+    printf '\033[1;33m  ! storage/ is owned by %s but you are %s — re-running as %s.\033[0m\n' "$STORAGE_OWNER" "$(id -un)" "$STORAGE_OWNER"
+    exec sudo -u "$STORAGE_OWNER" env \
+      PULL="${PULL:-0}" MAINTENANCE="${MAINTENANCE:-0}" SKIP_SCRIBE="${SKIP_SCRIBE:-0}" \
+      COMPOSER_CMD="${COMPOSER_CMD:-}" \
+      COMPOSER_HOME="${COMPOSER_HOME:-/tmp/composer-$STORAGE_OWNER}" \
+      bash "$PWD/$(basename "$0")" "$@"
+  fi
+  printf '\033[1;31m  ! storage/ is owned by %s but you are %s and sudo is unavailable — files written by this deploy would be unwritable by PHP-FPM (and vice versa).\033[0m\n' "$STORAGE_OWNER" "$(id -un)"
+  printf '\033[1;31m    Fix once: chown -R %s:%s . (backend root), then deploy as that user: sudo -u %s ./deployment.sh\033[0m\n' "$STORAGE_OWNER" "$STORAGE_OWNER" "$STORAGE_OWNER"
+  exit 1
 fi
 
 # ---- config (override via env vars) ---------------------------------------
@@ -45,6 +58,7 @@ SKIP_SCRIBE="${SKIP_SCRIBE:-0}"
 # Regenerates the optimized autoloader (drops deleted/renamed classes from the
 # classmap). If this pull changed composer.json/lock, use `composer install
 # --optimize-autoloader` instead — dump-autoload alone won't install new deps.
+COMPOSER_CMD="${COMPOSER_CMD:-}"
 COMPOSER_CMD="${COMPOSER_CMD:-composer dump-autoload -o}"
 
 say()  { printf '\n\033[1;36m▶ %s\033[0m\n' "$*"; }

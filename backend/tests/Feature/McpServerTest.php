@@ -10,8 +10,10 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Mockery;
 use Tests\TestCase;
 
 /**
@@ -489,6 +491,38 @@ class McpServerTest extends TestCase
             $this->callTool($key, 'upload_media', ['url' => 'https://example.com/b.png']),
             'rate limit'
         );
+    }
+
+    public function test_hourly_limit_fails_open_when_the_cache_backend_breaks(): void
+    {
+        Storage::fake('public');
+        config(['filesystems.media_disk' => 'public']);
+        Http::fake(['example.com/*' => Http::response('bytes', 200, ['Content-Type' => 'image/png'])]);
+        $key = $this->mcpKey(User::factory()->create());
+
+        // Reproduce the production failure: the file cache store throwing from
+        // fopen() for the tool's bucket only. Other keys (the per-token
+        // per-minute throttle middleware) keep working through the real limiter.
+        $real = $this->app->make(\Illuminate\Cache\RateLimiter::class);
+        $broken = Mockery::mock($real);
+        $broken->shouldReceive('tooManyAttempts')->andReturnUsing(function (string $bucket, int $max) use ($real) {
+            if (str_starts_with($bucket, 'mcp-tool:')) {
+                throw new \ErrorException('fopen(storage/framework/cache/data/95/0b/950b76f5): Failed to open stream: No such file or directory');
+            }
+
+            return $real->tooManyAttempts($bucket, $max);
+        });
+        RateLimiter::swap($broken);
+        Log::spy();
+
+        $json = $this->toolJson($this->callTool($key, 'upload_media', ['url' => 'https://example.com/a.png']));
+
+        $this->assertArrayHasKey('url', $json);
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn (string $message, array $context) => $message === 'MCP hourly limit unavailable; allowing call'
+                && $context['tool'] === 'upload_media'
+                && $context['exception'] instanceof \ErrorException)
+            ->once();
     }
 
     public function test_mcp_is_rate_limited_per_token(): void

@@ -16,6 +16,7 @@
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.29",
         "sarfrazrizwan/laravel-brevo": "^1.0",
+        "sentry/sentry-laravel": "^4.29",
         "stripe/stripe-php": "^20.2"
     },
     "require-dev": {

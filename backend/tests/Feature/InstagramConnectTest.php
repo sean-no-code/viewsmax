@@ -43,6 +43,30 @@ class InstagramConnectTest extends TestCase
         $this->assertSame(0, SocialAccount::count());
     }
 
+    public function test_failed_long_lived_exchange_looks_up_the_account_with_the_short_token(): void
+    {
+        // Graph rejected a non-empty short token in production for one account while
+        // another connected fine, so the failure path must identify the account
+        // (account_type) using the still-valid short-lived token.
+        Http::fake([
+            'api.instagram.com/oauth/access_token' => Http::response(['access_token' => 'short-lived', 'user_id' => 'ig-1'], 200),
+            'graph.instagram.com/access_token*' => Http::response(['error' => ['message' => 'Unsupported request - method type: get', 'code' => 100]], 400),
+            'graph.instagram.com/*/me*' => Http::response(['user_id' => 'ig-1', 'username' => 'someone', 'account_type' => 'PERSONAL'], 200),
+        ]);
+
+        try {
+            (new InstagramProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+            $this->fail('expected the connect to fail');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('Unsupported request', $e->getMessage());
+        }
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'graph.instagram.com/')
+            && str_contains($request->url(), '/me')
+            && $request->hasHeader('Authorization', 'Bearer short-lived'));
+        $this->assertSame(0, SocialAccount::count());
+    }
+
     public function test_successful_connect_stores_the_long_lived_token_with_a_real_expiry(): void
     {
         Http::fake([

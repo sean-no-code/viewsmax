@@ -92,7 +92,26 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         ]);
 
         if (! $long->successful() || ! $long->json('access_token')) {
-            Log::error('[Instagram] long-lived token exchange failed', ['http_status' => $long->status(), 'body' => $long->body()]);
+            // Graph answers "Unsupported request - method type: get" (code 100) for
+            // an empty access_token, but also for tokens it will not extend — seen
+            // in production for one account while another connected fine with the
+            // same build. The short-lived token is still valid for an hour, so ask
+            // Graph who it belongs to: account_type tells us whether the account is
+            // a professional one (personal accounts cannot use this API).
+            $whoami = Http::withToken($shortToken)
+                ->get($this->graphBase().'/me', ['fields' => 'user_id,username,account_type'])
+                ->json();
+
+            Log::error('[Instagram] long-lived token exchange failed', [
+                'http_status' => $long->status(),
+                'body' => $long->body(),
+                'short_token_length' => strlen($shortToken),
+                'ig_user_id' => $userId,
+                'granted_permissions' => $short->json('permissions') ?? $short->json('data.0.permissions'),
+                'account_type' => $whoami['account_type'] ?? null,
+                'username' => $whoami['username'] ?? null,
+                'whoami_error' => $whoami['error']['message'] ?? null,
+            ]);
             $this->fail('long-lived token exchange', $long->status(), $long->body());
         }
 

@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\ToolResult;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 abstract class ViewsMaxTool extends Tool
 {
@@ -60,20 +62,35 @@ abstract class ViewsMaxTool extends Tool
     /**
      * Per-user hourly throttle for expensive tools. Returns an error result
      * when the budget (config/mcp.php rate_limits.{key}_per_hour) is spent.
+     *
+     * Fails open: the throttle is a safety cap, not the feature. If the cache
+     * backend itself breaks (seen in production as the file store failing to
+     * fopen() a storage/framework/cache/data/xx/yy path PHP-FPM could not
+     * create, because a deploy had run artisan as a different user), the call
+     * is allowed and the real cause is logged instead of every rate-limited
+     * tool failing until someone fixes the server.
      */
     protected function hourlyLimit(string $key): ?ToolResult
     {
         $max = (int) config("mcp.rate_limits.{$key}_per_hour");
         $bucket = sprintf('mcp-tool:%s:%d', $key, $this->user()->id);
 
-        if (RateLimiter::tooManyAttempts($bucket, $max)) {
-            return ToolResult::error(
-                "Rate limit exceeded: at most {$max} {$this->name()} calls per hour. "
-                . 'Try again in ' . RateLimiter::availableIn($bucket) . ' seconds.'
-            );
-        }
+        try {
+            if (RateLimiter::tooManyAttempts($bucket, $max)) {
+                return ToolResult::error(
+                    "Rate limit exceeded: at most {$max} {$this->name()} calls per hour. "
+                    . 'Try again in ' . RateLimiter::availableIn($bucket) . ' seconds.'
+                );
+            }
 
-        RateLimiter::hit($bucket, 3600);
+            RateLimiter::hit($bucket, 3600);
+        } catch (Throwable $e) {
+            Log::warning('MCP hourly limit unavailable; allowing call', [
+                'tool' => $this->name(),
+                'user_id' => $this->user()->id,
+                'exception' => $e,
+            ]);
+        }
 
         return null;
     }
