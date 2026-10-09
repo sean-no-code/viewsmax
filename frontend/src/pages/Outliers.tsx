@@ -297,12 +297,17 @@ export default function Outliers() {
         // A keyword search kicks off an async YouTube scrape, then polls; empty query browses.
         if (query.trim()) {
             setLoading(true);
-            setVideos([]);
             try {
                 await startSearchOutliers(query.trim(), exactMatch);
             } catch (e) {
+                // Refused (e.g. not enough credits) or failed: the search never ran,
+                // so keep the list that was showing rather than listing matches as
+                // if it had.
                 toast.error(e instanceof Error ? e.message : 'Failed to start search');
+                setLoading(false);
+                return;
             }
+            setVideos([]);
             let attempts = 0;
             const poll = async () => {
                 attempts += 1;

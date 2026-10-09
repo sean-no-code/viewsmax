@@ -19,8 +19,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Same rules as the AI: refused with 402 before anything runs when the balance
  * is below the price, charged only after a successful (2xx) response, never
- * below zero. `credits.web:<tool>,check` only does the up-front check (the
- * first step of a two-step upload, charged on completion).
+ * below zero. Uploading media in the composer is free: the post is charged
+ * when it is published or scheduled.
  *
  * AI tools call the controllers directly, not through these routes, so an AI
  * action is never charged twice. A post is charged when it is published or
@@ -31,7 +31,6 @@ class ChargeWebAction
     /** What the refusal message calls each action. */
     private const LABELS = [
         'create_post' => 'publish a post',
-        'upload_media' => 'upload media',
         'search_outliers' => 'search outliers',
         'fetch_outlier' => 'fetch an outlier',
         'generate_outlier_breakdown' => 'generate an AI breakdown',
@@ -40,7 +39,7 @@ class ChargeWebAction
 
     public function __construct(private CreditService $credits) {}
 
-    public function handle(Request $request, Closure $next, string $tool, ?string $mode = null): Response
+    public function handle(Request $request, Closure $next, string $tool): Response
     {
         $user = $request->user();
 
@@ -73,7 +72,7 @@ class ChargeWebAction
 
         $response = $next($request);
 
-        if ($mode !== 'check' && $response->isSuccessful()) {
+        if ($response->isSuccessful()) {
             $this->charge($user, $tool, $cost);
         }
 

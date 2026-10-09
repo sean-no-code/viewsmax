@@ -453,12 +453,12 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     Route::apiResource('brands', BrandController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // Multi-platform Posts (compose + schedule)
-    // Website actions cost the same credits as the matching AI tool (ChargeWebAction):
-    // uploads are charged once, on completion (the direct upload's first step only checks).
-    Route::post('/posts/media', [PostMediaController::class, 'store'])->middleware('credits.web:upload_media');
+    // Uploading in the composer is free (a draft step: people swap images); the post
+    // is charged when it is published or scheduled (credits.web:create_post below).
+    Route::post('/posts/media', [PostMediaController::class, 'store']);
     // Presigned direct-to-R2 media uploads (browser → bucket, no server relay).
-    Route::post('/posts/media/direct', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'store'])->middleware('credits.web:upload_media,check');
-    Route::post('/posts/media/direct/complete', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'complete'])->middleware('credits.web:upload_media');
+    Route::post('/posts/media/direct', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'store']);
+    Route::post('/posts/media/direct/complete', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'complete']);
     Route::post('/posts/media/direct/abort', [\App\Http\Controllers\PostMediaDirectUploadController::class, 'abort']);
     // Retry publishing for a single failed platform target (leaves siblings alone).
     Route::post('/posts/{post}/targets/{target}/retry', [PostController::class, 'retryTarget']);

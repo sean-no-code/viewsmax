@@ -59,8 +59,6 @@ class WebActionCreditsTest extends TestCase
         $routes = [
             'POST api/posts' => 'create_post',
             'PUT api/posts/{post}' => 'create_post',
-            'POST api/posts/media' => 'upload_media',
-            'POST api/posts/media/direct/complete' => 'upload_media',
             'POST api/outliers/search' => 'search_outliers',
             'POST api/outliers/fetch' => 'fetch_outlier',
             'POST api/outliers/{platform}/{videoId}/breakdown' => 'generate_outlier_breakdown',
@@ -73,6 +71,20 @@ class WebActionCreditsTest extends TestCase
                 ->first(fn ($r) => $r->uri() === $uri && in_array($method, $r->methods(), true));
             $this->assertNotNull($found, "Route {$route} not found");
             $this->assertContains("credits.web:{$tool}", $found->gatherMiddleware(), "{$route} must charge {$tool}");
+        }
+    }
+
+    public function test_uploading_media_on_the_website_is_free(): void
+    {
+        // In the composer an upload is a draft step (people swap images); the
+        // post is charged when it is published or scheduled.
+        foreach (['POST api/posts/media', 'POST api/posts/media/direct', 'POST api/posts/media/direct/complete'] as $route) {
+            [$method, $uri] = explode(' ', $route);
+            $found = collect(Route::getRoutes()->getRoutes())
+                ->first(fn ($r) => $r->uri() === $uri && in_array($method, $r->methods(), true));
+            $this->assertNotNull($found, "Route {$route} not found");
+            $charging = array_filter($found->gatherMiddleware(), fn ($m) => is_string($m) && str_starts_with($m, 'credits.web'));
+            $this->assertSame([], array_values($charging), "{$route} must not charge credits");
         }
     }
 
