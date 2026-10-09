@@ -11,6 +11,7 @@ import { FiltersPanel, useUrlFilters, matchesText, matchesMulti, matchesRange, m
 import { PlacementIcon } from "@/components/analytics/PlacementIcon";
 import { fmtNum, fmtMoneyK, fmtMoney, fmtPct, platformMeta, type PageMetric } from "@/lib/analytics-model";
 import { viewsMaxApi } from "@/lib/api-service";
+import { useAuth } from "@/hooks/useAuth";
 
 function OfferCard({ page, onOpen }: { page: PageMetric; onOpen: () => void }) {
   return (
@@ -120,9 +121,16 @@ export default function Offers() {
   const [offerCount, setOfferCount] = useState(0);
   const [planName, setPlanName] = useState("current");
   const atOfferCap = offerLimit !== null && offerCount >= offerLimit;
+  // Free credits mean full access until they're used up (no Free-plan cap),
+  // matching the backend's RestrictFreePlan.
+  const onFreeCredits = !!useAuth().user?.on_free_credits;
 
   useEffect(() => {
     (async () => {
+      if (onFreeCredits) {
+        setOfferLimit(null);
+        return;
+      }
       const [planRes, eventsRes] = await Promise.all([
         viewsMaxApi.getCurrentPlan(),
         viewsMaxApi.getTrackingEvents(),
@@ -142,7 +150,7 @@ export default function Offers() {
       }
       if (eventsRes.success && Array.isArray(eventsRes.data)) setOfferCount(eventsRes.data.length);
     })();
-  }, [model]);
+  }, [model, onFreeCredits]);
 
   return (
     <AnalyticsShell>
