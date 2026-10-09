@@ -44,7 +44,7 @@ export async function hasUserConsented(userId: string): Promise<boolean> {
   // Step 2: If no local storage data, check database via /check endpoint
   try {
     console.debug('No local consent found, checking database...');
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
     const consentUrl = `${apiBaseUrl}/api/user/consent/check`;
     
     
@@ -109,7 +109,7 @@ export async function recordUserConsent(userId: string): Promise<void> {
   
   // Only check database if consent was not present in local storage
   try {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '';
     const checkUrl = `${apiBaseUrl}/api/user/consent/check`;
     
     // Get auth session for headers

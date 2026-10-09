@@ -91,6 +91,12 @@ Route::get('/health', function () {
     ]);
 });
 
+// Queue monitor (ops only): the queue heartbeat status for the server itself.
+// Restricted to QUEUE_MONITOR_ALLOWED_IPS (404 to anyone else), noindex, and
+// deliberately absent from every sitemap. 200 = healthy, 503 = stuck/down.
+Route::get('/queue-monitor', \App\Http\Controllers\QueueMonitorController::class)
+    ->middleware('allowed-ips');
+
 // Test thumbnail generation endpoint (public for testing)
 Route::post('/test/thumbnails', function (Illuminate\Http\Request $request) {
     $request->validate([
