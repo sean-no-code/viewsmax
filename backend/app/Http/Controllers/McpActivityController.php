@@ -19,7 +19,7 @@ class McpActivityController extends Controller
         $activity = McpToolInvocation::where('user_id', $request->user()->id)
             ->latest('created_at')
             ->latest('id')
-            ->paginate($perPage, ['id', 'tool', 'arguments', 'is_error', 'error', 'auth_mode', 'created_at']);
+            ->paginate($perPage, ['id', 'tool', 'arguments', 'is_error', 'error', 'auth_mode', 'credits_charged', 'created_at']);
 
         return response()->json([
             'success' => true,

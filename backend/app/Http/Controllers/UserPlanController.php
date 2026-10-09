@@ -133,7 +133,6 @@ class UserPlanController extends Controller
 
         try {
             $user = $request->user();
-            $plan = Plan::where('name', Plan::getDefaultPlan())->first();
             $subscriptionId = $request->stripe_subscription_id;
 
             $existing = $user->plans()
@@ -145,9 +144,9 @@ class UserPlanController extends Controller
                     'success' => true,
                     'message' => 'Subscription already active',
                     'data' => [
-                        'plan' => $plan,
+                        'plan' => $existing,
                         'user' => $user->load('plans'),
-                        'credits_allocated' => $creditService->getSubscriptionCredits($plan),
+                        'credits_allocated' => $creditService->getSubscriptionCredits($existing),
                     ],
                 ]);
             }
@@ -181,6 +180,16 @@ class UserPlanController extends Controller
             }
 
             $priceId = $request->stripe_price_id ?? ($subDetails['items']['data'][0]['price']['id'] ?? null);
+
+            // The tier the user actually bought (matched by Stripe price), so
+            // the plan row and its monthly credits are the right tier's.
+            $plan = CreditService::planForStripePrice($priceId);
+            if (! $plan) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No plan matches this subscription.',
+                ], 422);
+            }
 
             DB::transaction(function () use ($user, $plan, $subscriptionId, $priceId, $subDetails, $status) {
                 $activeIds = $user->plans()

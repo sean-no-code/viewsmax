@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Mcp\Methods\SafeCallTool;
 use App\Models\McpToolInvocation;
 use Closure;
 use Illuminate\Http\Request as LaravelRequest;
@@ -32,6 +33,8 @@ class McpAuditLog
                     'is_error' => $error !== null,
                     'error' => $error,
                     'auth_mode' => $request->attributes->get('mcp_auth_mode'),
+                    // Set by SafeCallTool after a successful, metered call.
+                    'credits_charged' => $request->attributes->get(SafeCallTool::CHARGED_ATTRIBUTE),
                 ]);
             } catch (\Throwable $e) {
                 report($e);

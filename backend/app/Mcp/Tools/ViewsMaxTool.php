@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Jobs\GenerateOutlierBreakdownJob;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\CreditService;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -49,6 +50,35 @@ abstract class ViewsMaxTool extends Tool
         $granted = \App\Http\Middleware\McpAuth::grantedScopes(request());
 
         return in_array($this->requiresWrite() ? 'mcp:write' : 'mcp:read', $granted, true);
+    }
+
+    /**
+     * Credits one successful call of this tool costs (config/credits.php
+     * `mcp`). Charged by SafeCallTool; surfaced in tools/list descriptions
+     * and the /api/ai discovery document so agents can budget.
+     */
+    public function creditCost(): int
+    {
+        return app(CreditService::class)->mcpToolCost($this->name(), $this->isWrite());
+    }
+
+    /**
+     * The tool's description with its credit cost appended, so the AI sees
+     * the price wherever the description is shown (tools/list, /api/ai).
+     */
+    public function describedWithCost(): string
+    {
+        $cost = $this->creditCost();
+
+        return rtrim($this->description()) . sprintf(' Costs %d %s per call.', $cost, $cost === 1 ? 'credit' : 'credits');
+    }
+
+    /**
+     * What tools/list sends: the package's shape, with the priced description.
+     */
+    public function toArray(): array
+    {
+        return ['description' => $this->describedWithCost()] + parent::toArray();
     }
 
     /**

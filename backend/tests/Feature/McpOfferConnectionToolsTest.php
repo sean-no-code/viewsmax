@@ -23,6 +23,8 @@ class McpOfferConnectionToolsTest extends TestCase
 
     private function mcpKey(User $user): string
     {
+        $this->fundCredits($user, 10_000); // MCP tool calls cost credits; keep test users funded
+
         $login = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->withHeaders(['Authorization' => 'Bearer ' . $login])

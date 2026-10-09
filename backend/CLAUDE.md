@@ -52,6 +52,14 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   not by numeric limits.
 - **Billing.** `BillingController` + `StripeService` handle Stripe. Subscriptions live on the
   `user_plans` pivot (`stripe_subscription_id`, `status`, `expires_at`).
+- **Credits.** Wallet = `bavix/laravel-wallet` on `User` (`$user->balanceInt`). All amounts live in
+  `config/credits.php` (env-overridable): per-tier monthly allowance under `subscription_credits.plans`
+  (keyed by `plans.name`; there is deliberately no plan column or seeder value — `Plan` appends
+  `monthly_credits` from config) and per-tool MCP costs under `mcp`. Every MCP `tools/call` is metered
+  in `App\Mcp\Methods\SafeCallTool`: refused with a tool error when balance < cost, charged via
+  `withdraw()` only on a non-error result (never negative), recorded as `credits_charged` on the
+  `mcp_tool_invocations` audit row, and logged to the `credits` channel (`CREDITS_LOG_ENABLED`).
+  In tests use `$this->fundCredits($user, n)` (see `tests/TestCase.php`) rather than `deposit()`.
 - **Posting (in progress).** Two parallel systems exist: `Post`/`PostTarget` and
   `SocialPost`/`SocialPostTarget`. One composed post fans out to many per-platform targets. Real
   publish-to-platform is still being built; compose/create endpoints (`POST /posts`) exist.

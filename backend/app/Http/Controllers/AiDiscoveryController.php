@@ -17,7 +17,7 @@ class AiDiscoveryController extends Controller
     /**
      * Bump the suffix whenever build() changes so deploys invalidate cleanly.
      */
-    private const CACHE_KEY = 'ai-discovery:v4';
+    private const CACHE_KEY = 'ai-discovery:v5';
 
     /**
      * AI capability discovery
@@ -39,8 +39,9 @@ class AiDiscoveryController extends Controller
             ->map(fn (string $class) => app($class))
             ->map(fn ($tool) => [
                 'name' => $tool->name(),
-                'description' => $tool->description(),
+                'description' => $tool->describedWithCost(),
                 'access' => $tool->isWrite() ? 'write' : 'read',
+                'credits' => $tool->creditCost(),
             ])
             ->values()
             ->all();
@@ -85,6 +86,16 @@ class AiDiscoveryController extends Controller
                     ],
                 ],
                 'tools' => $tools,
+            ],
+            'credits' => [
+                'note' => 'Every successful tool call deducts credits from the user\'s monthly '
+                    . 'allowance (each tool lists its cost); a call is refused before running '
+                    . 'when the balance is below the cost. Failed calls are free. Credits and '
+                    . 'billing are managed in the ViewsMax web app.',
+                'defaults' => [
+                    'read' => (int) config('credits.mcp.read_default'),
+                    'write' => (int) config('credits.mcp.write_default'),
+                ],
             ],
             'rest' => [
                 'base_url' => url('/api'),

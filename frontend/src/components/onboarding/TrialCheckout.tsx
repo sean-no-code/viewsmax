@@ -3,7 +3,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import type { Appearance } from "@stripe/stripe-js";
 import { Check, Loader2, Lock } from "lucide-react";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
-import { sortPlansByPrice, formatLimit, PLAN_INCLUDES } from "@/lib/plan-helpers";
+import { sortPlansByPrice, formatLimit, formatMonthlyCredits, PLAN_INCLUDES } from "@/lib/plan-helpers";
 import { isMockApi } from "@/lib/mock-api";
 import { useAuth } from "@/hooks/useAuth";
 import { activateSubscription, stripePromise } from "@/components/StripeTrialStep";
@@ -21,7 +21,7 @@ interface TrialCheckoutProps {
 
 /**
  * Feature bullets for a plan: the tier's limit lines (seeded list, else derived
- * from the numeric limits) followed by what every paid plan includes.
+ * from the numeric limits), its monthly credits, then what every paid plan includes.
  */
 function featuresFor(plan: PlanTier): string[] {
   const limits = plan.features && plan.features.length
@@ -31,7 +31,7 @@ function featuresFor(plan: PlanTier): string[] {
         formatLimit(plan.max_offers, "offer"),
         `${formatLimit(plan.max_posts_per_month, "post")}/mo`,
       ];
-  return [...limits, ...PLAN_INCLUDES];
+  return [...limits, formatMonthlyCredits(plan.monthly_credits), ...PLAN_INCLUDES];
 }
 
 const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
