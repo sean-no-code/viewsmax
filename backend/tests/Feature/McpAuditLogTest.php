@@ -59,18 +59,19 @@ class McpAuditLogTest extends TestCase
         $this->assertFalse($row->is_error);
         $this->assertNull($row->error);
         $this->assertSame('key', $row->auth_mode);
-        $this->assertSame(5, $row->credits_charged); // create_offer = write default
+        $this->assertSame(5, $row->credits_charged); // update_offer = write default
     }
 
     public function test_calls_refused_for_insufficient_credits_are_logged_as_errors_with_no_charge(): void
     {
         $user = User::factory()->create();
+        $offer = $user->offers()->create(['offer_url' => 'https://example.com/x']);
         $key = $this->mcpKey($user);
         $user->withdraw($user->balanceInt); // drain the test funding
 
         $this->rpc($key, 'tools/call', [
-            'name' => 'create_offer',
-            'arguments' => ['name' => 'Refused', 'offer_url' => 'https://example.com/x'],
+            'name' => 'update_offer',
+            'arguments' => ['id' => $offer->id, 'name' => 'Refused'],
         ])->assertOk();
 
         $row = McpToolInvocation::where('user_id', $user->id)->first();

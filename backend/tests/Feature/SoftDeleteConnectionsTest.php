@@ -202,7 +202,7 @@ class SoftDeleteConnectionsTest extends TestCase
         $this->assertNotNull(\App\Models\Video::find($video->id));
     }
 
-    public function test_a_disconnected_account_is_left_out_of_the_ai_tools_and_audience_page(): void
+    public function test_a_disconnected_account_is_left_out_of_the_ai_tools_and_performance_pages(): void
     {
         $user = User::factory()->create();
         $kept = $this->socialAccount($user, 'x', 'x-1');
@@ -212,9 +212,8 @@ class SoftDeleteConnectionsTest extends TestCase
         $listed = json_decode($this->callTool($user, 'list_connected_accounts')->assertOk()->json('result.content.0.text'), true);
         $this->assertSame(['x'], array_column($listed['accounts'], 'platform'));
 
-        $platforms = $this->getJson('/api/analytics/audience', $this->authHeaders($user))->assertOk()->json('data.platforms');
-        $this->assertCount(1, $platforms);
-        $this->assertStringContainsString((string) $kept->id, json_encode($platforms));
+        $accounts = $this->getJson('/api/analytics/performance', $this->authHeaders($user))->assertOk()->json('data.accounts');
+        $this->assertSame([$kept->id], array_column($accounts, 'id'));
     }
 
     public function test_reconnecting_youtube_through_the_older_path_brings_all_three_rows_back(): void

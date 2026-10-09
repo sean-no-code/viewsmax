@@ -518,6 +518,7 @@ class McpServerTest extends TestCase
         });
         RateLimiter::swap($broken);
         Log::spy();
+        Log::shouldReceive('channel')->andReturn(Log::getFacadeRoot()); // the credits log goes through channel()
 
         $json = $this->toolJson($this->callTool($key, 'upload_media', ['url' => 'https://example.com/a.png']));
 
@@ -1324,11 +1325,12 @@ class McpServerTest extends TestCase
     public function test_successful_tool_call_charges_its_credit_cost(): void
     {
         [$user, $key] = $this->mcpKeyWithBalance(100);
+        $offer = $user->offers()->create(['offer_url' => 'https://example.com/a']);
 
         $this->toolJson($this->callTool($key, 'list_offers'));
         $this->assertSame(99, $user->fresh()->balanceInt);
 
-        $this->toolJson($this->callTool($key, 'create_offer', ['offer_url' => 'https://example.com/a', 'name' => 'A']));
+        $this->toolJson($this->callTool($key, 'update_offer', ['id' => $offer->id, 'name' => 'A']));
         $this->assertSame(94, $user->fresh()->balanceInt);
     }
 
@@ -1344,15 +1346,16 @@ class McpServerTest extends TestCase
     {
         config(['mcp.frontend_url' => 'https://app.viewsmax.test']);
         [$user, $key] = $this->mcpKeyWithBalance(3);
+        $offer = $user->offers()->create(['offer_url' => 'https://example.com/a', 'name' => 'Before']);
 
-        $response = $this->callTool($key, 'create_offer', ['offer_url' => 'https://example.com/a', 'name' => 'A']);
+        $response = $this->callTool($key, 'update_offer', ['id' => $offer->id, 'name' => 'A']);
 
         $this->assertToolError($response, 'Not enough credits');
         $text = $response->json('result.content.0.text');
         $this->assertStringContainsString('5 needed, 3 available', $text);
         $this->assertStringContainsString('https://app.viewsmax.test', $text);
         $this->assertStringNotContainsStringIgnoringCase('upgrade', $text); // no upsell in AI-facing text
-        $this->assertSame(0, \App\Models\Offer::count()); // refused before running
+        $this->assertSame('Before', $offer->fresh()->name); // refused before running
         $this->assertSame(3, $user->fresh()->balanceInt); // never negative
     }
 
@@ -1401,13 +1404,14 @@ class McpServerTest extends TestCase
         $spy->shouldReceive('info')->once()
             ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'charged') && $ctx['tool'] === 'list_offers' && $ctx['cost'] === 1);
         $spy->shouldReceive('info')->once()
-            ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'insufficient') && $ctx['tool'] === 'create_offer');
+            ->withArgs(fn ($msg, $ctx) => str_contains($msg, 'insufficient') && $ctx['tool'] === 'update_offer');
 
-        [, $key] = $this->mcpKeyWithBalance(1);
+        [$user, $key] = $this->mcpKeyWithBalance(1);
+        $offer = $user->offers()->create(['offer_url' => 'https://example.com/a']);
 
         $this->toolJson($this->callTool($key, 'list_offers'));
         $this->assertToolError(
-            $this->callTool($key, 'create_offer', ['offer_url' => 'https://example.com/a']),
+            $this->callTool($key, 'update_offer', ['id' => $offer->id, 'name' => 'A']),
             'Not enough credits'
         );
     }

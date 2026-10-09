@@ -28,6 +28,8 @@ class McpNextStepsTest extends TestCase
 
     private function mcpKey(User $user): string
     {
+        $this->fundCredits($user, 1000); // every tool call costs credits
+
         $login = $user->createToken('mobile-app')->plainTextToken;
 
         return $this->withHeaders(['Authorization' => 'Bearer ' . $login])
