@@ -3,6 +3,9 @@
 namespace App\Support;
 
 use App\Exceptions\AccountAlreadyConnectedException;
+use App\Models\Channel;
+use App\Models\Connection;
+use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +45,28 @@ class AccountOwnership
 
         if ($owner) {
             throw AccountAlreadyConnectedException::forOwner($owner, $platform);
+        }
+    }
+
+    /**
+     * One platform account can be stored in up to three places for a user (a
+     * social account, a connection, and for YouTube a channel), and different
+     * screens read different ones. Disconnecting it in one place disconnects
+     * the rest, so it can't linger in e.g. the post composer. Each delete runs
+     * its model's own disconnect handling; rows already disconnected are
+     * skipped, which also ends the chain.
+     */
+    public static function disconnectEverywhere(?int $userId, string $platform, ?string $accountId): void
+    {
+        if (! $userId || $accountId === null || $accountId === '') {
+            return;
+        }
+
+        SocialAccount::where('user_id', $userId)->where('platform', $platform)->where('platform_account_id', $accountId)->get()->each->delete();
+        Connection::where('user_id', $userId)->where('provider', $platform)->where('account_id', $accountId)->get()->each->delete();
+
+        if ($platform === 'youtube') {
+            Channel::where('user_id', $userId)->where('youtube_channel_id', $accountId)->get()->each->delete();
         }
     }
 }

@@ -30,6 +30,10 @@ trait SoftDeletesConnection
     {
         static::softDeleted(function (self $model) {
             $model->forceFill($model->clearedOnDisconnect)->saveQuietly();
+
+            // The same account stored elsewhere (connection/channel mirrors) goes too.
+            [$userId, $platform, $accountId] = static::accountIdentity($model->getAttributes());
+            AccountOwnership::disconnectEverywhere($userId, $platform, $accountId);
         });
     }
 

@@ -143,6 +143,37 @@ class SoftDeleteConnectionsTest extends TestCase
         $this->getJson('/api/boosts/settings', $headers)->assertOk()->assertJsonCount(0, 'data');
     }
 
+    public function test_disconnecting_youtube_anywhere_disconnects_it_everywhere(): void
+    {
+        // One YouTube channel is stored three times (social account, connection,
+        // channel); the composer reads them all, so the ✕ must remove all three.
+        $user = User::factory()->create();
+        $account = $this->socialAccount($user, 'youtube', 'UC123');
+        $connection = $user->connections()->create(['provider' => 'youtube', 'account_name' => 'Ch', 'account_id' => 'UC123', 'access_token' => 't']);
+        $channel = Channel::create(['user_id' => $user->id, 'youtube_channel_id' => 'UC123', 'channel_name' => 'Ch']);
+        $otherChannel = Channel::create(['user_id' => $user->id, 'youtube_channel_id' => 'UC999', 'channel_name' => 'Other']);
+
+        $this->deleteJson("/api/social/accounts/{$account->id}", [], $this->authHeaders($user))->assertOk();
+
+        $this->assertSoftDeleted('social_accounts', ['id' => $account->id]);
+        $this->assertSoftDeleted('connections', ['id' => $connection->id]);
+        $this->assertSoftDeleted('channels', ['id' => $channel->id]);
+        $this->assertNotSoftDeleted('channels', ['id' => $otherChannel->id]);
+        $this->getJson('/api/connections', $this->authHeaders($user))->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_disconnecting_the_older_connection_disconnects_its_mirror_too(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->socialAccount($user, 'tiktok', 'open1');
+        $connection = $user->connections()->create(['provider' => 'tiktok', 'account_name' => 'TT', 'account_id' => 'open1', 'access_token' => 't']);
+
+        $this->deleteJson("/api/connections/{$connection->id}", [], $this->authHeaders($user))->assertOk();
+
+        $this->assertSoftDeleted('social_accounts', ['id' => $account->id]);
+        $this->getJson('/api/social/accounts', $this->authHeaders($user))->assertOk()->assertJsonCount(0, 'data');
+    }
+
     public function test_disconnecting_wipes_the_metadata_that_can_hold_page_tokens(): void
     {
         $user = User::factory()->create();
