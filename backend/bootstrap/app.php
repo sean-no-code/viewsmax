@@ -93,6 +93,14 @@ return Application::configure(basePath: dirname(__DIR__))
             ->hourly()
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-trial-reminders scheduled run failed'));
+
+        // Queue heartbeat: dispatch a tiny job and email ADMIN_EMAIL when
+        // heartbeats stop being processed (workers dead or queue wedged).
+        // No overlap lock on purpose — the lock lives in the cache, and a cache
+        // outage must not silence the very check that reports outages.
+        $schedule->command('queue:heartbeat')
+            ->everyFiveMinutes()
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('queue:heartbeat scheduled run failed'));
     })
     ->withMiddleware(function (Middleware $middleware): void {
         // Ensure CORS runs globally and at the start of the API stack
@@ -114,6 +122,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'plan' => \App\Http\Middleware\CheckPlan::class,
             'api.auth' => \App\Http\Middleware\ApiAuth::class,
             'mcp.auth' => \App\Http\Middleware\McpAuth::class,
+            'allowed-ips' => \App\Http\Middleware\RestrictToAllowedIps::class,
             'mcp.audit' => \App\Http\Middleware\McpAuditLog::class,
             'mcp.notifications' => \App\Http\Middleware\McpAcceptNotifications::class,
             'check.credits' => \App\Http\Middleware\CheckCredits::class,

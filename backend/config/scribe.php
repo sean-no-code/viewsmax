@@ -49,6 +49,7 @@ return [
             // contents, connections, feature requests, API keys, plans.
             'exclude' => [
                 'api/admin/*',
+                'api/queue-monitor', // ops only, IP-restricted (config/monitoring.php)
                 'api/webhooks/*',
                 'api/test/*',
                 'api/track/*',

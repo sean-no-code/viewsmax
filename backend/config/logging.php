@@ -115,6 +115,25 @@ return [
             'permission' => 0777,
         ],
 
+        // Queue heartbeat (config/monitoring.php, queue:heartbeat +
+        // App\Jobs\QueueHeartbeatJob): one line per dispatch, per processed
+        // heartbeat (with its lag) and per stuck/recovered email,
+        // in storage/logs/queue-heartbeat.log. QUEUE_HEARTBEAT_LOG_ENABLED=false
+        // silences it.
+        'queue_heartbeat' => [
+            'driver' => 'stack',
+            'channels' => env('QUEUE_HEARTBEAT_LOG_ENABLED', true) ? ['queue_heartbeat_file'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+        'queue_heartbeat_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/queue-heartbeat.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'mail_file' => [
             'driver' => 'single',
             'path' => storage_path('logs/mail.log'),
