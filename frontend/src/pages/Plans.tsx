@@ -318,7 +318,7 @@ const Plans = () => {
 					{!isActive && (
 						<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
 							{terms.kind === "free-credits"
-								? "Your free credits were your trial. Pick the tier that fits how you grow."
+								? "Pick the tier that fits how you grow."
 								: trialUsed
 									? "Your free trial has ended. Pick the tier that fits how you grow."
 									: "7-day free trial at $0, then pick the tier that fits how you grow."}

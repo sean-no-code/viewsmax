@@ -43,7 +43,7 @@ export function checkoutCopy(terms: CheckoutTerms) {
       cta: "Subscribe now",
       busy: "Subscribing…",
       lead: "Charged today.",
-      note: "Your free credits were your trial, so your card is charged now and then monthly. Your plan's monthly credits replace any free credits left. Cancel anytime.",
+      note: "Your card is charged now and then monthly. Your plan's monthly credits replace any free credits left. Cancel anytime.",
       banner: null,
     };
   }

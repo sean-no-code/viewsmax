@@ -16,18 +16,18 @@ vi.mock("@/components/StripeTrialStep", () => ({ default: () => <div>card form</
 import Checkout from "../Checkout";
 
 describe("Checkout for a user on free credits", () => {
-  it("says they're charged today and that the free credits were the trial", () => {
+  it("says they're charged today, without mentioning a trial", () => {
     render(
       <MemoryRouter initialEntries={["/checkout?plan=Starter&price=29&period=month"]}>
         <Checkout />
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Your free credits were your trial — add your card to keep going")).toBeInTheDocument();
+    expect(screen.getByText("Add your card to subscribe")).toBeInTheDocument();
     expect(screen.getByText("$29.00")).toBeInTheDocument();
-    expect(screen.getByText("Your free credits were your trial — charged today")).toBeInTheDocument();
+    expect(screen.getByText("Charged today")).toBeInTheDocument();
     expect(screen.getByText("$29/month, starting today")).toBeInTheDocument();
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
-    expect(screen.queryByText(/start your free trial/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/trial/i)).not.toBeInTheDocument();
   });
 });
