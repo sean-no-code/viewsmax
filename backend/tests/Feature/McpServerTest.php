@@ -115,6 +115,16 @@ class McpServerTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_unverified_users_key_is_rejected(): void
+    {
+        $key = $this->mcpKey(User::factory()->unverified()->create());
+
+        $this->rpc($key, 'tools/list')
+            ->assertForbidden()
+            ->assertJsonPath('success', false)
+            ->assertHeaderMissing('WWW-Authenticate');
+    }
+
     public function test_key_in_the_url_path_is_no_longer_accepted(): void
     {
         // The key-in-URL mode was removed as a security liability: secrets in

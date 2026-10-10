@@ -131,6 +131,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified.web' => \App\Http\Middleware\EnsureWebEmailVerified::class,
         ]);
 
+        // Passport declares /oauth/authorize itself, so the verification gate
+        // goes on the web group, limited to that path: an unverified session
+        // must not reach the consent screen and mint an MCP token.
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureWebEmailVerified::class.':oauth/authorize');
+
         // Dynamic Client Registration (RFC 7591) is a plain JSON API call made
         // directly by an OAuth client (e.g. Claude), not a browser form
         // submission — it has no CSRF token and shouldn't need one. It's

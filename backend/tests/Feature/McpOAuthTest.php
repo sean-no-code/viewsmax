@@ -420,4 +420,38 @@ class McpOAuthTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    public function test_unverified_user_is_sent_to_verify_instead_of_the_consent_screen(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient('Claude', [self::REDIRECT_URI], confidential: false);
+        $url = '/oauth/authorize?' . http_build_query([
+            'client_id' => $client->id,
+            'redirect_uri' => self::REDIRECT_URI,
+            'response_type' => 'code',
+            'code_challenge' => str_repeat('x', 43),
+            'code_challenge_method' => 'S256',
+        ]);
+
+        $this->actingAs($user, 'web')->get($url)->assertRedirect(route('register.verify'));
+        $this->assertNull(session('authToken'), 'The consent step must not start for an unverified user.');
+
+        // The verify page picks up the pending consent so signup resumes there.
+        $this->get(route('register.verify'))->assertOk();
+        $this->assertSame('Claude', session(\App\Http\Controllers\Auth\WebRegisterController::SESSION_CLIENT));
+
+        $this->post('/oauth/authorize', ['auth_token' => 'anything'])->assertRedirect(route('register.verify'));
+    }
+
+    public function test_oauth_token_stops_working_if_the_account_is_unverified(): void
+    {
+        $user = User::factory()->create();
+        $accessToken = $this->issueAccessToken($user);
+        $user->forceFill(['email_verified_at' => null])->save();
+
+        $this->withHeaders(['Authorization' => 'Bearer ' . $accessToken])
+            ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'])
+            ->assertForbidden()
+            ->assertHeaderMissing('WWW-Authenticate');
+    }
 }
