@@ -296,7 +296,27 @@ class WebRegisterTest extends TestCase
     {
         $this->postJson('/api/register', ['name' => 'App User', 'email' => 'app@example.com', 'password' => 'password123', 'password_confirmation' => 'password123'])->assertStatus(201);
 
-        Mail::assertSent(VerifyEmailMail::class, fn ($m) => $m->hasTo('app@example.com') && $m->verifyUrl === null);
+        $mail = Mail::sent(VerifyEmailMail::class, fn ($m) => $m->hasTo('app@example.com'))->sole();
+        $this->assertStringStartsWith(rtrim(config('app.frontend_url'), '/').'/verify-email?token=', $mail->verifyUrl);
+        $this->assertEmailLinksTo($mail, $mail->verifyUrl);
+    }
+
+    public function test_agent_signup_email_links_to_the_api_host(): void
+    {
+        $this->post('/register', self::FORM);
+
+        $mail = Mail::sent(VerifyEmailMail::class, fn ($m) => $m->hasTo(self::FORM['email']))->sole();
+        $this->assertEmailLinksTo($mail, $mail->verifyUrl);
+    }
+
+    /** The rendered email carries the link in both the button and the copy-paste text. */
+    private function assertEmailLinksTo(VerifyEmailMail $mail, string $url): void
+    {
+        $html = $mail->render();
+        $escaped = e($url);
+
+        $this->assertStringContainsString('href="'.$escaped.'"', $html, 'button has no link');
+        $this->assertSame(2, substr_count($html, $escaped), 'link missing from the button or the text');
     }
 
     public function test_setup_and_connect_require_a_web_login(): void

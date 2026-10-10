@@ -35,6 +35,10 @@ class SafeCallTool extends CallTool
 {
     public function handle(JsonRpcRequest $request, ServerContext $context)
     {
+        if (request()->user()?->accessExpired()) {
+            return JsonRpcResponse::create($request->id, ToolResult::error(self::upgradeMessage()));
+        }
+
         try {
             return parent::handle($request, $context);
         } catch (Throwable $e) {
@@ -52,6 +56,23 @@ class SafeCallTool extends CallTool
                 ToolResult::error(UserSafeError::message($e, $this->fallbackMessage($name, $context)))
             );
         }
+    }
+
+    /**
+     * Free trial over and no paid plan since (User::accessExpired, the same
+     * test EnsureAccessActive applies to the REST API). Every tools/call gets
+     * this instead of running, as an HTTP 200 tool result the AI can relay;
+     * initialize and tools/list still work so the connector stays attached.
+     */
+    public static function upgradeMessage(): string
+    {
+        return 'Your ViewsMax free trial has ended. Please upgrade to a paid subscription to continue using ViewsMax: '
+            .self::billingPageUrl();
+    }
+
+    public static function billingPageUrl(): string
+    {
+        return rtrim((string) config('mcp.frontend_url'), '/').'/dashboard/billing';
     }
 
     private function fallbackMessage(string $name, ServerContext $context): string

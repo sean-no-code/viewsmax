@@ -143,4 +143,17 @@ return [
 
     'post_failure_admin' => env('ADMIN_EMAIL'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Address
+    |--------------------------------------------------------------------------
+    |
+    | Where operator-facing copies of customer emails go, e.g. the
+    | `user:verify-email-dry-run` command that renders a user's verification
+    | email and sends it here instead of to the user.
+    |
+    */
+
+    'admin_address' => env('ADMIN_EMAIL'),
+
 ];
