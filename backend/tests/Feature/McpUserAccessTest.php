@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Mcp\Methods\SafeCallTool;
+use App\Support\UserAccess;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -10,10 +10,12 @@ use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * Once the free trial is over and no plan has replaced it, MCP tool calls
- * answer 200 with an upgrade message and the Billing link instead of running.
+ * A user who can't use ViewsMax right now (unverified email, free trial over
+ * with no plan since — see UserAccess) gets that answer from every tools/call
+ * as an HTTP 200 tool result the AI can relay. initialize and tools/list still
+ * work so the connector stays attached and nothing counts as a server error.
  */
-class McpAccessExpiredTest extends TestCase
+class McpUserAccessTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -46,7 +48,7 @@ class McpAccessExpiredTest extends TestCase
 
     public function test_expired_trial_gets_an_upgrade_message_with_the_billing_link(): void
     {
-        config(['mcp.frontend_url' => 'https://app.example.com/']);
+        config(['app.frontend_url' => 'https://app.example.com/']);
         $user = User::factory()->create(['promo_expires_at' => now()->subDay()]);
         $key = $this->mcpKey($user);
 
@@ -57,7 +59,7 @@ class McpAccessExpiredTest extends TestCase
             ->assertJsonMissingPath('error');
 
         $text = $response->json('result.content.0.text');
-        $this->assertSame(SafeCallTool::upgradeMessage(), $text);
+        $this->assertSame(UserAccess::denial($user)->message, $text);
         $this->assertStringContainsString('upgrade to a paid subscription to continue using ViewsMax', $text);
         $this->assertStringContainsString('https://app.example.com/dashboard/billing', $text);
     }
@@ -70,6 +72,24 @@ class McpAccessExpiredTest extends TestCase
             ->assertOk()->assertJsonPath('result.serverInfo.name', 'ViewsMax');
         $tools = $this->rpc($key, 'tools/list')->assertOk()->json('result.tools');
         $this->assertNotEmpty($tools);
+    }
+
+    public function test_unverified_email_gets_a_verify_message_instead_of_running_the_tool(): void
+    {
+        $user = User::factory()->unverified()->create(['signup_source' => 'agent']);
+        $key = $this->mcpKey($user);
+
+        $this->rpc($key, 'tools/list')->assertOk()->assertJsonMissingPath('error');
+
+        $response = $this->rpc($key, 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
+            ->assertOk()
+            ->assertJsonPath('result.isError', true)
+            ->assertJsonMissingPath('error');
+
+        $text = $response->json('result.content.0.text');
+        $this->assertSame(UserAccess::denial($user)->message, $text);
+        $this->assertStringContainsString('Verify your email address', $text);
+        $this->assertStringContainsString(route('login'), $text);
     }
 
     public function test_users_in_trial_or_on_a_plan_or_without_a_window_are_not_gated(): void

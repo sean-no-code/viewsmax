@@ -98,6 +98,7 @@ class User extends Authenticatable implements Wallet
             'onboarding_completed_at' => 'datetime',
             'card_added_at' => 'datetime',
             'promo_expires_at' => 'datetime',
+            'free_trial_reminder_sent_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'youtube_token_expires_at' => 'datetime',

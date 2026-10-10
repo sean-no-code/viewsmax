@@ -94,6 +94,14 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-trial-reminders scheduled run failed'));
 
+        // Card-free signups: "your free trial ends tomorrow, pick a plan" a
+        // day before promo_expires_at. Hourly for the same reason as above;
+        // users.free_trial_reminder_sent_at keeps it once-only.
+        $schedule->command('subscriptions:send-free-trial-reminders')
+            ->hourly()
+            ->withoutOverlapping(10)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-free-trial-reminders scheduled run failed'));
+
         // Queue heartbeat: dispatch a tiny job and email ADMIN_EMAIL when
         // heartbeats stop being processed (workers dead or queue wedged).
         // No overlap lock on purpose — the lock lives in the cache, and a cache
@@ -128,13 +136,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
             'restrict.free' => \App\Http\Middleware\RestrictFreePlan::class,
             'access.active' => \App\Http\Middleware\EnsureAccessActive::class,
-            'verified.web' => \App\Http\Middleware\EnsureWebEmailVerified::class,
+            'access.web' => \App\Http\Middleware\EnsureWebAccess::class,
         ]);
 
-        // Passport declares /oauth/authorize itself, so the verification gate
-        // goes on the web group, limited to that path: an unverified session
-        // must not reach the consent screen and mint an MCP token.
-        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureWebEmailVerified::class.':oauth/authorize');
+        // Passport declares /oauth/authorize itself, so the access gate goes
+        // on the web group, limited to that path: a session that can't use
+        // ViewsMax must not reach the consent screen and mint an MCP token.
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureWebAccess::class.':oauth/authorize');
 
         // Dynamic Client Registration (RFC 7591) is a plain JSON API call made
         // directly by an OAuth client (e.g. Claude), not a browser form

@@ -443,15 +443,38 @@ class McpOAuthTest extends TestCase
         $this->post('/oauth/authorize', ['auth_token' => 'anything'])->assertRedirect(route('register.verify'));
     }
 
-    public function test_oauth_token_stops_working_if_the_account_is_unverified(): void
+    public function test_oauth_tool_calls_tell_an_unverified_account_to_verify(): void
     {
         $user = User::factory()->create();
         $accessToken = $this->issueAccessToken($user);
         $user->forceFill(['email_verified_at' => null])->save();
 
-        $this->withHeaders(['Authorization' => 'Bearer ' . $accessToken])
+        $headers = ['Authorization' => 'Bearer ' . $accessToken];
+        $this->withHeaders($headers)
             ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'])
-            ->assertForbidden()
-            ->assertHeaderMissing('WWW-Authenticate');
+            ->assertOk()->assertJsonMissingPath('error');
+
+        $this->withHeaders($headers)
+            ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/call', 'params' => ['name' => 'list_connected_accounts', 'arguments' => []]])
+            ->assertOk()
+            ->assertJsonPath('result.isError', true)
+            ->assertJsonPath('result.content.0.text', \App\Support\UserAccess::denial($user->fresh())->message);
+    }
+
+    public function test_expired_user_is_sent_to_billing_instead_of_the_consent_screen(): void
+    {
+        config(['app.frontend_url' => 'https://app.example.com']);
+        $user = User::factory()->create(['promo_expires_at' => now()->subDay()]);
+        $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient('Claude', [self::REDIRECT_URI], confidential: false);
+
+        $this->actingAs($user, 'web')->get('/oauth/authorize?' . http_build_query([
+            'client_id' => $client->id,
+            'redirect_uri' => self::REDIRECT_URI,
+            'response_type' => 'code',
+            'code_challenge' => str_repeat('x', 43),
+            'code_challenge_method' => 'S256',
+        ]))->assertRedirect('https://app.example.com/dashboard/billing');
+
+        $this->assertNull(session('authToken'), 'The consent step must not start for an expired user.');
     }
 }

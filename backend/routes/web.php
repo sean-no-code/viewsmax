@@ -83,7 +83,7 @@ Route::middleware('auth:web')->group(function () {
     Route::get('/register/verify', [WebRegisterController::class, 'verify'])->name('register.verify');
     Route::post('/register/resend-verification', [WebRegisterController::class, 'resendVerification'])->name('register.resend')->middleware('throttle:3,1');
 
-    Route::middleware('verified.web')->group(function () {
+    Route::middleware('access.web')->group(function () {
         Route::get('/register/setup', [WebRegisterController::class, 'setup'])->name('register.setup');
         Route::get('/register/continue', [WebRegisterController::class, 'continue'])->name('register.continue');
         Route::get('/connect/{platform}', [WebConnectController::class, 'start'])->name('connect.start');

@@ -2,23 +2,25 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\UserAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Locks a user whose free window has closed (a card-free signup after
- * User::CARD_FREE_DAYS, or a promotional customer) and who has not subscribed
- * since to the endpoints needed to pick a plan. Everything else
- * answers 403 with `code: access_expired` so the SPA can send them to Billing.
- * Applied after `api.auth` on the whole protected group.
+ * REST delivery of UserAccess: a user who can't use ViewsMax right now
+ * (unverified email, or a free window that closed with no subscription
+ * since) is locked to the endpoints needed to fix that — their own
+ * profile/session, plan listings, checkout. Everything else answers 403 with
+ * the denial (`code`, `message`, `url`); the SPA keys off `code`
+ * (`access_expired` sends them to Billing). Applied after `api.auth` on the
+ * whole protected group.
  */
 class EnsureAccessActive
 {
     /**
-     * Routes an expired user may still call: their own profile/session, plan
-     * listings, and the Stripe checkout/portal endpoints. Patterns go to
-     * Request::is(), so wildcards are explicit.
+     * Routes a denied user may still call. Patterns go to Request::is(), so
+     * wildcards are explicit.
      */
     public const ALLOWED_PATTERNS = [
         'api/profile',
@@ -33,13 +35,10 @@ class EnsureAccessActive
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+        $denial = $user ? UserAccess::denial($user) : null;
 
-        if ($user && $user->accessExpired() && ! $request->is(...self::ALLOWED_PATTERNS)) {
-            return response()->json([
-                'success' => false,
-                'code' => 'access_expired',
-                'message' => 'Your free access has ended. Choose a plan to keep using ViewsMax.',
-            ], 403);
+        if ($denial && ! $request->is(...self::ALLOWED_PATTERNS)) {
+            return response()->json($denial->toArray(), 403);
         }
 
         return $next($request);

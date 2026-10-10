@@ -47,10 +47,6 @@ class McpAuth
     public function handle(LaravelRequest $request, Closure $next): SymfonyResponse
     {
         if ($user = $this->resolveOAuthUser($request)) {
-            if (! $user->email_verified_at) {
-                return self::unverifiedResponse();
-            }
-
             $request->setUserResolver(fn () => $user);
             Auth::setUser($user);
             $request->attributes->set('mcp_auth_mode', 'oauth');
@@ -77,10 +73,6 @@ class McpAuth
             );
         }
 
-        if (! $accessToken->tokenable?->email_verified_at) {
-            return self::unverifiedResponse();
-        }
-
         $request->attributes->set(self::SCOPES_ATTRIBUTE, $scopes);
         $request->setUserResolver(fn () => $accessToken->tokenable);
 
@@ -93,18 +85,6 @@ class McpAuth
         $accessToken->forceFill(['last_used_at' => now()])->save();
 
         return $next($request);
-    }
-
-    /**
-     * A valid credential for an account whose email isn't verified yet. 403,
-     * not 401: re-running OAuth can't fix it, so no WWW-Authenticate challenge.
-     */
-    private static function unverifiedResponse(): SymfonyResponse
-    {
-        return ResponseFacade::json([
-            'success' => false,
-            'message' => 'Verify your email address before using ViewsMax. Open the link we emailed you, or sign in at ' . url('/login') . ' to resend it.',
-        ], 403);
     }
 
     /**
