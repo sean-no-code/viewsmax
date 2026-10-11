@@ -20,20 +20,17 @@ export function isAccessExpired(user: AccessUser | null | undefined, now: number
 }
 
 /**
- * What adding a card costs today. The free window is the trial: a card added
- * while it is open isn't charged until it closes, and one added afterwards is
- * charged straight away. Users with no window (accounts from before it
- * existed) still get the card-backed trial. Mirrors the backend's
- * User::subscriptionTrialTerms.
+ * What adding a card costs today. The free window is the only trial: a card
+ * added while it is open isn't charged until it closes, and one added at any
+ * other time (window closed, or no window at all) is charged straight away.
+ * Mirrors the backend's User::subscriptionTrialTerms.
  */
 export type CheckoutTerms =
-  | { kind: "card-trial" }
   | { kind: "window"; chargeAt: number }
   | { kind: "charge-now" };
 
 export function checkoutTerms(user: AccessUser | null | undefined, now: number = Date.now()): CheckoutTerms {
   const end = user?.promo_expires_at ? Date.parse(user.promo_expires_at) : NaN;
-  if (Number.isNaN(end)) return { kind: "card-trial" };
   return end > now ? { kind: "window", chargeAt: end } : { kind: "charge-now" };
 }
 

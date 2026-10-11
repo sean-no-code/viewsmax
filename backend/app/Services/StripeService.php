@@ -10,6 +10,7 @@ use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\Customer;
 use Stripe\Invoice;
 use Stripe\PaymentMethod;
+use Stripe\Price;
 use Stripe\SetupIntent;
 use Stripe\Stripe;
 use Stripe\Subscription;
@@ -20,6 +21,22 @@ class StripeService
     public function __construct()
     {
         Stripe::setApiKey(config('services.stripe.secret'));
+    }
+
+    /**
+     * A recurring price's current amount (major units) and upper-case
+     * currency, for syncing plans.price from Stripe. Throws on an unknown id.
+     *
+     * @return array{amount: float, currency: string}
+     */
+    public function retrievePrice(string $priceId): array
+    {
+        $price = Price::retrieve($priceId);
+
+        return [
+            'amount' => ((int) $price->unit_amount) / 100,
+            'currency' => strtoupper((string) $price->currency),
+        ];
     }
 
     /**
@@ -267,11 +284,11 @@ class StripeService
 
     /**
      * Create a subscription on the given price. $trial is Stripe's
-     * `trial_period_days` or `trial_end` (no charge today); empty charges the
+     * `trial_end` (no charge until the free window closes); empty charges the
      * saved card now, and a declined card fails the call instead of leaving
      * an incomplete subscription behind.
      *
-     * @param  array{trial_period_days?: int, trial_end?: int}  $trial
+     * @param  array{trial_end?: int}  $trial
      */
     public function createSubscription(User $user, string $priceId, array $trial, ?string $referralId = null): array
     {

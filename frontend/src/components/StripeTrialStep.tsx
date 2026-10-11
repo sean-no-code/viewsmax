@@ -34,19 +34,10 @@ interface StripeTrialStepProps {
 
 const fmtDate = (at: number) => new Date(at).toLocaleDateString([], { day: "numeric", month: "short" });
 
-// Payment-step copy for each case of checkoutTerms: the card-backed trial, a
-// card added during the free window ($0 until it closes), or one added after
-// it (charged today).
+// Payment-step copy for each case of checkoutTerms: a card added during the
+// free window ($0 until it closes), or one added at any other time (charged
+// today). There is no card-backed Stripe trial.
 function checkoutCopy(terms: CheckoutTerms) {
-  if (terms.kind === "charge-now") {
-    return {
-      cta: "Subscribe now",
-      busy: "Subscribing…",
-      lead: "Charged today.",
-      note: "Your free trial has ended, so your card is charged now and then monthly. Cancel anytime.",
-      banner: null,
-    };
-  }
   if (terms.kind === "window") {
     const until = fmtDate(terms.chargeAt);
     return {
@@ -58,11 +49,11 @@ function checkoutCopy(terms: CheckoutTerms) {
     };
   }
   return {
-    cta: "Start 7-day free trial",
-    busy: "Starting trial…",
-    lead: "$0 today.",
-    note: "Your 7-day free trial starts now — you won't be charged until it ends. Cancel anytime.",
-    banner: {},
+    cta: "Subscribe now",
+    busy: "Subscribing…",
+    lead: "Charged today.",
+    note: "Your card is charged now and then monthly. Cancel anytime.",
+    banner: null,
   };
 }
 

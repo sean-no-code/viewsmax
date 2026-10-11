@@ -11,7 +11,7 @@ type Step = "connect" | "trial";
 
 const STEPS: { key: Step; label: string }[] = [
   { key: "connect", label: "Connect accounts" },
-  { key: "trial", label: "Choose plan & start trial" },
+  { key: "trial", label: "Choose your plan" },
 ];
 
 const pillStyle: React.CSSProperties = {
@@ -107,7 +107,7 @@ const Onboarding = () => {
     );
   }
 
-  const title = step === "trial" ? "Start your free trial" : "Set up your account";
+  const title = step === "trial" ? "Choose your plan" : "Set up your account";
 
   return (
     <div className="onboarding-wizard" style={{ minHeight: "100vh", background: "var(--paper-1)", color: "var(--ink-on-paper-1)", fontFamily: "var(--font-body)", padding: "28px clamp(16px, 5vw, 40px) 64px" }}>

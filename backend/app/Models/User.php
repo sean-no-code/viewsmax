@@ -253,20 +253,16 @@ class User extends Authenticatable implements Wallet
     }
 
     /**
-     * Stripe trial terms for a new subscription. The free window is the trial:
-     * a card added while it is open isn't charged until it closes, and one
-     * added afterwards is charged straight away. Users with no window (accounts
-     * from before it existed, unlimited promos) keep the card-backed trial.
+     * Stripe trial terms for a new subscription. The free window is the only
+     * trial: a card added while it is open isn't charged until it closes, and
+     * one added at any other time (window closed, or no window at all) is
+     * charged straight away. There is no separate Stripe trial period.
      *
-     * @return array{trial_period_days?: int, trial_end?: int}
+     * @return array{trial_end?: int}
      */
     public function subscriptionTrialTerms(): array
     {
-        if (is_null($this->promo_expires_at)) {
-            return ['trial_period_days' => (int) config('services.stripe.trial_period_days', 3)];
-        }
-
-        return $this->promo_expires_at->isFuture()
+        return $this->hasActivePromo() && $this->promo_expires_at
             ? ['trial_end' => $this->promo_expires_at->getTimestamp()]
             : [];
     }

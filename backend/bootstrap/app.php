@@ -42,6 +42,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(30)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:process-expired scheduled run failed'));
 
+        // Prices live in Stripe; keep plans.price in step with them (also run
+        // by deployment.sh so a dashboard change lands on the next deploy).
+        $schedule->command('plans:sync-stripe-prices')
+            ->daily()
+            ->withoutOverlapping(10)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('plans:sync-stripe-prices scheduled run failed'));
+
         // Keep social connections alive: refresh soon-expiring tokens daily.
         // Meta-family tokens can only be refreshed BEFORE expiry — without
         // this, an account not published to for ~60 days dies and forces a

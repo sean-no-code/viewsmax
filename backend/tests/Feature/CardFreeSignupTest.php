@@ -153,19 +153,19 @@ class CardFreeSignupTest extends TestCase
         $this->assertSame(['trial_end' => Carbon::parse('2026-10-09 10:00:00')->getTimestamp()], $trial);
     }
 
-    public function test_a_user_with_no_window_still_gets_the_card_trial(): void
+    public function test_a_user_with_no_window_is_charged_today(): void
     {
-        // Accounts created before the card-free window (still at the card step).
+        // Accounts created before the card-free window (still at the card step):
+        // no Stripe trial period, the card is charged on day one.
         $user = User::factory()->create(['promo_expires_at' => null]);
         $headers = $this->authHeaders($user);
         $this->plan();
-        config(['services.stripe.trial_period_days' => 7]);
-        $this->expectSubscription($trial, 'trialing');
+        $this->expectSubscription($trial, 'active');
 
         $this->withHeaders($headers)->postJson('/api/billing/stripe/subscribe', [
             'payment_method_id' => 'pm_card', 'price_id' => 'price_starter',
-        ])->assertOk();
+        ])->assertOk()->assertJsonPath('data.status', 'active');
 
-        $this->assertSame(['trial_period_days' => 7], $trial);
+        $this->assertSame([], $trial);
     }
 }

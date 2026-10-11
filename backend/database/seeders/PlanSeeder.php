@@ -15,7 +15,9 @@ class PlanSeeder extends Seeder
     {
         // Per-tier limits and credits are read from env (with sensible defaults),
         // same as stripe_price_id — so a tier is tuned by setting env vars and
-        // re-running this seeder. NULL means "unlimited" for a limit. Returns
+        // re-running this seeder. `price` is only a default for a brand-new
+        // row: once a plan is linked to a Stripe price, plans:sync-stripe-prices
+        // owns price + currency and re-seeding leaves them alone. NULL means "unlimited" for a limit. Returns
         // null when an env var is unset *and* the default is null (= unlimited).
         $num = fn (string $key, ?int $default = null): ?int => ($v = env($key, $default)) === null ? null : (int) $v;
 
@@ -43,7 +45,7 @@ class PlanSeeder extends Seeder
                 'name' => 'starter',
                 'display_name' => 'Starter',
                 'description' => 'For creators just getting started',
-                'price' => 29.00,
+                'price' => 19.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [
@@ -79,7 +81,7 @@ class PlanSeeder extends Seeder
                 'name' => 'pro',
                 'display_name' => 'Pro',
                 'description' => 'For professionals scaling their reach',
-                'price' => 69.00,
+                'price' => 59.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [
@@ -97,7 +99,7 @@ class PlanSeeder extends Seeder
                 'name' => 'agency',
                 'display_name' => 'Agency',
                 'description' => 'Unlimited everything for agencies',
-                'price' => 109.00,
+                'price' => 79.00,
                 'currency' => 'USD',
                 'billing_cycle' => 'monthly',
                 'features' => [
@@ -114,6 +116,11 @@ class PlanSeeder extends Seeder
         ];
 
         foreach ($plans as $plan) {
+            $existing = Plan::where('name', $plan['name'])->first();
+            if ($existing?->stripe_price_id) {
+                unset($plan['price'], $plan['currency']);
+            }
+
             Plan::updateOrCreate(
                 ['name' => $plan['name']],
                 $plan

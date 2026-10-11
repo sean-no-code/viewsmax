@@ -92,6 +92,12 @@ php artisan optimize:clear
 say "migrate"
 php artisan migrate 
 
+# ---- 5. plan prices from Stripe --------------------------------------------
+# Stripe is the source of truth for what a plan costs; a price changed in the
+# dashboard reaches /api/plans and Billing here (and daily via the scheduler).
+say "plans:sync-stripe-prices"
+php artisan plans:sync-stripe-prices || warn "plans:sync-stripe-prices failed — plan prices may be stale"
+
 
 # ---- 6. rebuild caches ----------------------------------------------------
 # Deliberately cache ONLY config. Events + routes stay on runtime discovery so a
