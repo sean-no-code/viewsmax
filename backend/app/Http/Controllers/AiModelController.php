@@ -56,7 +56,7 @@ class AiModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve AI models',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -129,7 +129,7 @@ class AiModelController extends Controller
             $thumbnailFileUpload = null;
 
             foreach ($request->file('images') as $index => $image) {
-                $fileName = time() . '_' . $index . '.' . $image->getClientOriginalExtension();
+                $fileName = time() . '_' . $index . '.' . $image->extension();
                 $path = $image->storeAs('ai-models/' . $userId, $fileName, 'public');
 
                 // Create file upload record for training images
@@ -148,7 +148,7 @@ class AiModelController extends Controller
 
                 // Use the first image as thumbnail - create a separate thumbnail file
                 if ($index === 0) {
-                    $thumbnailFileName = time() . '_thumbnail.' . $image->getClientOriginalExtension();
+                    $thumbnailFileName = time() . '_thumbnail.' . $image->extension();
                     $thumbnailPath = $image->storeAs('ai-models/' . $userId, $thumbnailFileName, 'public');
 
                     $thumbnailFileUpload = FileUpload::create([
@@ -208,7 +208,7 @@ class AiModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create AI model',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -241,7 +241,7 @@ class AiModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve AI model',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -282,7 +282,7 @@ class AiModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete AI model',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -311,7 +311,7 @@ class AiModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve AI model types',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -340,7 +340,7 @@ class AiModelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve ethnicities',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }

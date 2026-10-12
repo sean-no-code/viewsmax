@@ -86,7 +86,7 @@ class ScriptController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve scripts',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -337,7 +337,7 @@ public function store(Request $request)
                 try {
                     $script->update([
                         'status' => 'failed',
-                        'error_message' => $e->getMessage()
+                        'error_message' => \App\Support\UserSafeError::detail($e) ?? 'Script generation failed. Please try again.',
                     ]);
                     
                     Log::info('Script status updated to failed', [
@@ -354,7 +354,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to create script: ', $e)
             ], 500);
         }
     }
@@ -382,7 +382,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to retrieve script: ', $e)
             ], 500);
         }
     }
@@ -514,7 +514,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to update script: ', $e)
             ], 500);
         }
     }
@@ -648,7 +648,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to delete script: ', $e)
             ], 500);
         }
     }
@@ -681,7 +681,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve script status: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to retrieve script status: ', $e)
             ], 500);
         }
     }

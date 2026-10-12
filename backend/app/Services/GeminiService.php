@@ -67,7 +67,7 @@ class GeminiService implements ThumbnailServiceInterface
         Log::info("GeminiService::generateThumbnailImage started", [
             'description' => $description,
             'description_length' => strlen($description),
-            'api_key' => $this->apiKey,
+            'api_key_set' => ! empty($this->apiKey),
             'model' => $this->model
         ]);
 
@@ -337,7 +337,7 @@ class GeminiService implements ThumbnailServiceInterface
             'image_url_length' => strlen($imageUrl),
             'modification_prompt' => $modificationPrompt,
             'modification_prompt_length' => strlen($modificationPrompt),
-            'api_key' => $this->apiKey,
+            'api_key_set' => ! empty($this->apiKey),
             'model' => $this->model
         ]);
 

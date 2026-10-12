@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { POST_SORTS, dayLabelYear, fmt, rateLabel, type PostSort, type PostStat } from "@/lib/analytics-performance";
 import { PillToggle } from "./chart";
 import { AccountCell } from "./NetBadge";
+import { safeHref } from "@/lib/safe-href";
 
 export type PostLayout = "grid" | "list";
 const LAYOUTS: { id: PostLayout; label: string }[] = [{ id: "grid", label: "Grid" }, { id: "list", label: "List" }];
@@ -28,8 +29,9 @@ interface Props {
 }
 
 function Caption({ p, style }: { p: PostStat; style?: React.CSSProperties }) {
-  return p.url
-    ? <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", ...style }}>{p.caption}</a>
+  const href = safeHref(p.url);
+  return href
+    ? <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none", ...style }}>{p.caption}</a>
     : <span style={style}>{p.caption}</span>;
 }
 

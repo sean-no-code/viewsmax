@@ -56,7 +56,7 @@ class PromptController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve prompts',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -87,7 +87,7 @@ class PromptController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve prompt',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -141,7 +141,7 @@ class PromptController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve prompts by type',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -174,7 +174,7 @@ class PromptController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve prompt types',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -236,7 +236,7 @@ class PromptController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update prompt',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }

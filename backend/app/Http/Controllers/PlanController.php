@@ -25,7 +25,7 @@ class PlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plans',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -46,7 +46,7 @@ class PlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Plan not found',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 404);
         }
     }

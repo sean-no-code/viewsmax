@@ -72,7 +72,7 @@ class PostMediaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload media: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to upload media: ', $e),
             ], 500);
         }
     }

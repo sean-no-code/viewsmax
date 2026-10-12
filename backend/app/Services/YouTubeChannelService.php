@@ -1341,7 +1341,7 @@ class YouTubeChannelService
         Log::info('Fetching video from API', [
             'video_id' => $videoId,
             'source' => 'api',
-            'apikey' => $this->apiKey,
+            'api_key_set' => ! empty($this->apiKey),
             'bypass_cache' => $bypassCache
         ]);
 

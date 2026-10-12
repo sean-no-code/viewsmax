@@ -59,7 +59,7 @@ class VideoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve videos',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -108,7 +108,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create video: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to create video: ', $e)
             ], 500);
         }
     }
@@ -185,7 +185,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update video: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to update video: ', $e)
             ], 500);
         }
     }
@@ -209,7 +209,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete video: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to delete video: ', $e)
             ], 500);
         }
     }
@@ -248,7 +248,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to attach titles: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to attach titles: ', $e)
             ], 500);
         }
     }
@@ -287,7 +287,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to detach titles: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to detach titles: ', $e)
             ], 500);
         }
     }
@@ -500,7 +500,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to start video review: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to start video review: ', $e)
             ], 500);
         }
     }

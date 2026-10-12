@@ -14,6 +14,7 @@ import InspirationsInput, { Inspiration } from "@/components/InspirationsInput";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { safeHref } from "@/lib/safe-href";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -914,7 +915,7 @@ const ScriptWizard = ({ initialTopic = '', scriptId, onScriptGenerated }: Script
                           {research.references.map((source, idx) => (
                         <a
                             key={idx}
-                          href={source.url}
+                          href={safeHref(source.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm hover:bg-muted/80 transition-colors"

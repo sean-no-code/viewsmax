@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { fmtFull, platformMeta } from "@/lib/analytics-model";
 import type { TrafficSourcesData } from "@/lib/api-service";
 import { PlacementIcon } from "@/components/analytics/PlacementIcon";
+import { safeHref } from "@/lib/safe-href";
 
 const CARD_STYLE: CSSProperties = { background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, boxShadow: "0 1px 2px rgba(10,10,12,.04)", overflow: "hidden" };
 const headCell: CSSProperties = { textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".05em", textTransform: "uppercase", color: "rgba(255,255,255,.6)", fontWeight: 600 };
@@ -111,7 +112,7 @@ export function TrafficSources({ data, loading, limit, moreHref }: {
         {referrers.map((r, idx) => (
           <div key={r.referrer} style={{ display: "grid", gridTemplateColumns: grid2, alignItems: "center", padding: "10px 18px", background: idx % 2 === 1 ? "var(--paper-1)" : "transparent" }}>
             <a
-              href={r.referrer}
+              href={safeHref(r.referrer)}
               target="_blank"
               rel="noopener noreferrer"
               title={r.referrer}

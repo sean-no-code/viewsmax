@@ -61,6 +61,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Every URL we generate (emailed verification links included) uses
+        // APP_URL, never the request's Host header — a forged Host would
+        // otherwise point a genuine email at an attacker's domain.
+        \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
+
         // Register observer for VideoTranscription
         VideoTranscription::observe(VideoTranscriptionObserver::class);
 
@@ -126,6 +131,20 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configureMcpRateLimiters(): void
     {
+        // Sign-in endpoints (login, reset, verify): 5/min per address+IP stops
+        // guessing one account's password, 30/min per IP stops spraying many.
+        RateLimiter::for('auth', fn (Request $request) => [
+            Limit::perMinute(5)->by('auth:'.strtolower((string) $request->input('email')).'|'.$request->ip()),
+            Limit::perMinute(30)->by('auth-ip:'.$request->ip()),
+        ]);
+
+        // Endpoints that send email (forgot password, resend verification,
+        // register): 3/min per address stops mail-bombing one inbox.
+        RateLimiter::for('auth-mail', fn (Request $request) => [
+            Limit::perMinute(3)->by('auth-mail:'.strtolower((string) $request->input('email'))),
+            Limit::perHour(30)->by('auth-mail-ip:'.$request->ip()),
+        ]);
+
         $limits = fn (string $key): int => (int) config("mcp.rate_limits.{$key}");
 
         RateLimiter::for('mcp-key-rotate', function (Request $request) use ($limits) {

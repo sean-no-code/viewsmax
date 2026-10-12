@@ -94,7 +94,7 @@ class ConnectionController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to connect '.$provider.'. '.$e->getMessage(),
+                'message' => 'Failed to connect '.$provider.\App\Support\UserSafeError::withDetail('. ', $e),
             ], 422);
         }
     }
@@ -131,7 +131,7 @@ class ConnectionController extends Controller
 
             return response()->json([
                 'code' => 'creator_cannot_post',
-                'message' => $e->getMessage(),
+                'message' => \App\Support\UserSafeError::detail($e),
             ], 422);
         } catch (\Exception $e) {
             Log::error('TikTok creator info failed', [
@@ -139,7 +139,7 @@ class ConnectionController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => $e->getMessage()], 422);
+            return response()->json(['message' => \App\Support\UserSafeError::detail($e)], 422);
         }
     }
 

@@ -24,19 +24,10 @@ class YouTubeOAuthController extends Controller
         // Store tokens for the authenticated user
         $user = Auth::user();
 
-        // Debug logging
-        Log::info('YouTube OAuth exchange debug', [
-            'user' => $user ? $user->id : 'null',
-            'auth_guard' => Auth::getDefaultDriver(),
-            'request_headers' => $request->headers->all(),
-            'bearer_token' => $request->bearerToken(),
-        ]);
-
         if (! $user) {
-            Log::error('No authenticated user found during YouTube OAuth exchange', [
-                'bearer_token' => $request->bearerToken(),
-                'authorization_header' => $request->header('Authorization'),
-                'all_headers' => $request->headers->all(),
+            // Never log the bearer token or headers: they are live credentials.
+            Log::warning('No authenticated user found during YouTube OAuth exchange', [
+                'has_bearer' => $request->bearerToken() !== null,
             ]);
 
             return response()->json([
@@ -193,7 +184,7 @@ class YouTubeOAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to exchange authorization code',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -348,7 +339,7 @@ class YouTubeOAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to refresh access token',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -392,7 +383,7 @@ class YouTubeOAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to check OAuth status',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }

@@ -216,9 +216,19 @@ return Application::configure(basePath: dirname(__DIR__))
                     $status = (is_int($code) && $code >= 400 && $code < 600) ? $code : 500;
                 }
 
+                // Exception text can carry SQL, hosts and URLs: only HTTP/auth
+                // exceptions (whose messages are written for clients) and our own
+                // user-safe errors reach the response unless debugging.
+                $message = match (true) {
+                    $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface,
+                    $e instanceof \Illuminate\Auth\AuthenticationException => $e->getMessage(),
+                    $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException => 'Not found.',
+                    default => \App\Support\UserSafeError::detail($e) ?? 'Something went wrong on our side. Please try again.',
+                };
+
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage(),
+                    'message' => $message,
                     'error' => config('app.debug') ? [
                         'file' => $e->getFile(),
                         'line' => $e->getLine(),

@@ -60,7 +60,7 @@ Route::post('/login', function (Request $request) {
     $request->session()->regenerate();
 
     return redirect()->intended('/');
-});
+})->middleware('throttle:auth');
 
 // End the browser session (the consent screen and setup pages run on the
 // 'web' guard; the SPA's own sign-out doesn't touch it).

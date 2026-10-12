@@ -55,14 +55,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public routes (no authentication required)
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-mail');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-mail');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
 
 // Email verification (magic link) - public, no auth
-Route::post('/auth/verify-email', [AuthController::class, 'verifyEmail']);
-Route::post('/auth/resend-verification', [AuthController::class, 'resendVerification']);
+Route::post('/auth/verify-email', [AuthController::class, 'verifyEmail'])->middleware('throttle:auth');
+Route::post('/auth/resend-verification', [AuthController::class, 'resendVerification'])->middleware('throttle:auth-mail');
 
 // AI agent capability discovery (public, cached) — see AiDiscoveryController.
 Route::get('/ai', [\App\Http\Controllers\AiDiscoveryController::class, 'index'])
@@ -404,7 +404,8 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::get('/types', [PromptController::class, 'getTypes']);
         Route::get('/type/{typeName}', [PromptController::class, 'getByType']);
         Route::get('/{prompt}', [PromptController::class, 'show']);
-        Route::put('/{prompt}', [PromptController::class, 'update']);
+        // Prompts are global (they feed every user's image generation): admin-only writes.
+        Route::put('/{prompt}', [PromptController::class, 'update'])->middleware('role:admin');
     });
 
     // Image Generation API Routes (Flux 2) - protected
