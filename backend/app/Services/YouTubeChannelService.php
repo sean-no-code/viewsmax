@@ -1282,24 +1282,25 @@ class YouTubeChannelService
             $maxTotal
         );
 
-        $importedCount = 0;
-        $updatedCount = 0;
+        // One upsert instead of an updateOrCreate per video (a SELECT plus a
+        // write each — Sentry flagged it as an N+1 on the OAuth exchange).
+        // Keyed by id so a repeat across pages can't hit the same row twice.
+        $rows = collect($videos)
+            ->filter(fn ($videoData) => ! empty($videoData['id']))
+            ->mapWithKeys(fn ($videoData) => [
+                $videoData['id'] => ['channel_id' => $channel->id] + $this->mapVideoDataToDatabase($videoData),
+            ]);
 
-        foreach ($videos as $videoData) {
-            $mappedData = $this->mapVideoDataToDatabase($videoData);
-            $mappedData['channel_id'] = $channel->id;
+        $existingCount = $rows->isEmpty() ? 0 : Video::whereIn('youtube_video_id', $rows->keys())->count();
 
-            $video = Video::updateOrCreate(
-                ['youtube_video_id' => $videoData['id']],
-                $mappedData
-            );
+        $rows->values()->chunk(500)->each(fn ($chunk) => Video::upsert(
+            $chunk->all(),
+            ['youtube_video_id'],
+            array_keys($chunk->first())
+        ));
 
-            if ($video->wasRecentlyCreated) {
-                $importedCount++;
-            } else {
-                $updatedCount++;
-            }
-        }
+        $importedCount = $rows->count() - $existingCount;
+        $updatedCount = $existingCount;
 
         Log::info('Videos imported successfully', [
             'channel_id' => $channel->id,
