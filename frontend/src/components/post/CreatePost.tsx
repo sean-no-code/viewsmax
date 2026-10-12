@@ -1190,20 +1190,19 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     {pinterestAccounts.map((a) => {
                       const entry = pinBoards[a.id!];
                       const value = c.pinterest.board_ids[String(a.id)] ?? "";
-                      const missing = !value;
                       return (
                         <label key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
-                            Board{pinterestAccounts.length > 1 ? ` for ${a.name ?? "this account"}` : ""} <span style={{ color: "var(--vm-red)" }}>*</span>
+                            Board{pinterestAccounts.length > 1 ? ` for ${a.name ?? "this account"}` : ""}
                           </span>
                           <select
                             aria-label={`Pinterest board${a.name ? ` for ${a.name}` : ""}`}
                             value={value}
                             onChange={(e) => c.patchPinterest({ board_ids: { ...c.pinterest.board_ids, [String(a.id)]: e.target.value } })}
                             disabled={entry?.state === "loading"}
-                            style={{ ...fieldBase, width: 300, maxWidth: "100%", borderColor: missing ? "var(--vm-red)" : undefined }}
+                            style={{ ...fieldBase, width: 260, maxWidth: "100%", color: value ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}
                           >
-                            <option value="" disabled>{entry?.state === "loading" ? "Loading boards…" : "Choose a board"}</option>
+                            <option value="" disabled>{entry?.state === "loading" ? "Loading boards…" : "Choose a board…"}</option>
                             {(entry?.boards ?? []).map((b) => (
                               <option key={b.id} value={b.id}>{b.name}{b.privacy === "SECRET" ? " (secret)" : ""}</option>
                             ))}
@@ -1230,10 +1229,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       ["alt_text", "Alt text", 500, "Describes the image for people using screen readers. Leave empty to skip.", "text"],
                     ] as const).map(([key, label, max, help, type]) => (
                       <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <span style={{ display: "flex", justifyContent: "space-between", maxWidth: 480, fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
-                          <span>{label} (optional)</span>
-                          {key !== "link" && <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{c.pinterest[key].length}/{max}</span>}
-                        </span>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{label}</span>
                         <input
                           type={type}
                           aria-label={`Pinterest ${label.toLowerCase()}`}
