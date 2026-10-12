@@ -162,6 +162,32 @@ class SocialAccountController extends Controller
         ]);
     }
 
+    /**
+     * List a Pinterest account's boards (every Pin goes on a board). Fetched
+     * live from Pinterest and cached on the account.
+     */
+    public function boards(int $id)
+    {
+        $account = Auth::user()->socialAccounts()->where('platform', 'pinterest')->findOrFail($id);
+        $provider = $this->manager->for('pinterest');
+
+        try {
+            $boards = $provider->boards($provider->ensureFreshToken($account));
+        } catch (\Throwable $e) {
+            Log::warning('Pinterest board list failed', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not load your Pinterest boards. Try again, or reconnect the account.',
+            ], 502);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $boards,
+        ]);
+    }
+
     protected function ensureConfigured(string $platform, &$response): bool
     {
         if (! $this->manager->supports($platform)) {

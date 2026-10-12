@@ -8,6 +8,7 @@ use App\Services\Social\Providers\FacebookProvider;
 use App\Services\Social\Providers\GoogleBusinessProvider;
 use App\Services\Social\Providers\InstagramProvider;
 use App\Services\Social\Providers\LinkedInProvider;
+use App\Services\Social\Providers\PinterestProvider;
 use App\Services\Social\Providers\ThreadsProvider;
 use App\Services\Social\Providers\TikTokProvider;
 use App\Services\Social\Providers\XProvider;
@@ -25,6 +26,7 @@ class SocialProviderManager
         'threads' => ThreadsProvider::class,
         'linkedin' => LinkedInProvider::class,
         'bluesky' => BlueskyProvider::class,
+        'pinterest' => PinterestProvider::class,
         'x' => XProvider::class,
         'tiktok' => TikTokProvider::class,
         'youtube' => YouTubeProvider::class,

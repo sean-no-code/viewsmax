@@ -39,6 +39,29 @@ class ListConnectedAccounts extends ViewsMaxTool
             . 'for newsletter reach, not posting.';
     }
 
+    /**
+     * A Pinterest account's boards as {id, name}, fetched live (Pinterest's
+     * developer guidelines forbid storing API data). Empty when Pinterest
+     * can't be reached, so one failing account doesn't break the listing.
+     */
+    private static function pinterestBoards(\App\Models\SocialAccount $account): array
+    {
+        try {
+            $provider = app(\App\Services\Social\SocialProviderManager::class)->for('pinterest');
+
+            return array_map(
+                fn ($b) => ['id' => $b['id'], 'name' => $b['name']],
+                $provider->boards($provider->ensureFreshToken($account))
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Pinterest boards for list_connected_accounts failed', [
+                'social_account_id' => $account->id, 'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
     public function handle(array $arguments): ToolResult
     {
         $user = $this->user();
@@ -57,7 +80,7 @@ class ListConnectedAccounts extends ViewsMaxTool
                 && (string) $c->account_id === (string) $a->platform_account_id);
             $handle = self::publicHandle($a->username);
 
-            return [
+            return array_filter([
                 'platform' => $a->platform,
                 'account_name' => $a->name ?? $handle,
                 'username' => $handle,
@@ -65,7 +88,10 @@ class ListConnectedAccounts extends ViewsMaxTool
                 'social_account_id' => $a->id,
                 'connection_id' => $mirror?->id,
                 'store' => 'social',
-            ];
+                // Every Pin goes on a board: the AI passes one of these as
+                // options.pinterest.board_id. Fetched live, never stored.
+                'boards' => $a->platform === 'pinterest' ? self::pinterestBoards($a) : null,
+            ], fn ($v, $k) => $k !== 'boards' || $v !== null, ARRAY_FILTER_USE_BOTH);
         });
 
         // Only connections that were never mirrored (pre-mirror connects) are

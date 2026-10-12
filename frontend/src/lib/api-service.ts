@@ -589,6 +589,25 @@ export interface LinkedInOptions {
   first_comment?: string;
 }
 
+// Sent exactly as typed: nothing is filled in for the user, and an empty
+// field means the Pin has none of it.
+export interface PinterestOptions {
+  // Board per Pinterest account (social account id -> board id). Required.
+  board_ids: Record<string, string>;
+  // Pin title, max 100.
+  title: string;
+  // Where the Pin links to, max 2048.
+  link: string;
+  // Image description for screen readers, max 500.
+  alt_text: string;
+}
+
+export interface PinterestBoard {
+  id: string;
+  name: string;
+  privacy?: string | null;
+}
+
 // An X post published through the app — pickable as a tracking-link source.
 export interface XPublishedPost {
   id: string;         // tweet id
@@ -5283,6 +5302,24 @@ class ViewsMaxApiService {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         return { success: false, error: result.message || `Connection failed: ${response.status}` };
+      }
+      return { success: true, data: result.data || [] };
+    } catch (error) {
+      return { success: false, error: `Network error: ${error.message}` };
+    }
+  }
+
+  // A Pinterest account's boards, fetched live (every Pin goes on a board).
+  async getPinterestBoards(accountId: number): Promise<ApiResponse<PinterestBoard[]>> {
+    if (isMockApi()) return { success: true, data: [] };
+    try {
+      const response = await fetch(`${this.baseUrl}/api/social/accounts/${accountId}/boards`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { success: false, error: result.message || `Failed to load boards: ${response.status}` };
       }
       return { success: true, data: result.data || [] };
     } catch (error) {

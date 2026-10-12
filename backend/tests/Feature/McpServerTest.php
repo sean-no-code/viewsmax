@@ -608,10 +608,27 @@ class McpServerTest extends TestCase
         $key = $this->mcpKey(User::factory()->create());
 
         $this->assertToolError(
-            $this->callTool($key, 'create_post', ['caption' => 'Nope', 'platforms' => ['pinterest']]),
-            'pinterest'
+            $this->callTool($key, 'create_post', ['caption' => 'Nope', 'platforms' => ['snapchat']]),
+            'snapchat'
         );
         $this->assertSame(0, Post::count());
+    }
+
+    public function test_pinterest_rules_appear_only_once_pinterest_is_set_up(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+        $describe = fn () => collect($this->rpc($key, 'tools/list', ['per_page' => 50])->assertOk()->json('result.tools'))
+            ->keyBy('name')['create_post'];
+
+        config(['social.platforms.pinterest.client_id' => null, 'social.platforms.pinterest.client_secret' => null]);
+        $this->assertStringNotContainsStringIgnoringCase('pinterest', json_encode($describe()));
+
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+        $tool = $describe();
+        $this->assertStringContainsString('options.pinterest.board_id', $tool['description']);
+        $this->assertStringContainsString('ask which one', $tool['description']);
+        $this->assertStringContainsString('never choose it for them', $tool['description']);
+        $this->assertStringContainsString('pinterest: { board_id', json_encode($tool['inputSchema']));
     }
 
     public function test_post_tools_only_offer_platforms_that_are_set_up(): void

@@ -103,6 +103,25 @@ return [
             ],
         ],
 
+        'pinterest' => [
+            'label' => 'Pinterest',
+            'enabled' => env('PINTEREST_ENABLED', true),
+            'client_id' => env('PINTEREST_CLIENT_ID'),
+            'client_secret' => env('PINTEREST_CLIENT_SECRET'),
+            // Send every call to api-sandbox.pinterest.com. Pins made there
+            // are visible only to their creator, and video Pins don't work.
+            'sandbox' => env('PINTEREST_SANDBOX', false),
+            // Local testing only: send calls to a mock of Pinterest's official
+            // API spec instead (see tests/Contract/README.md). Leave empty.
+            'api_base' => env('PINTEREST_API_BASE'),
+            'scopes' => [
+                'user_accounts:read',
+                'boards:read',
+                'pins:read',
+                'pins:write',
+            ],
+        ],
+
         'bluesky' => [
             'label' => 'Bluesky',
             'enabled' => env('BLUESKY_ENABLED', true),

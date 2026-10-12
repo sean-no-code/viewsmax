@@ -7,6 +7,7 @@ use App\Models\PostTarget;
 use App\Services\Social\PostPublishDispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
@@ -56,7 +57,7 @@ class PostController extends Controller
      * per-platform results.
      *
      * @bodyParam caption string The post text / caption. Example: Big news today!
-     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads. Example: ["tiktok","instagram"]
+     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest. Example: ["tiktok","instagram"]
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
@@ -71,6 +72,12 @@ class PostController extends Controller
      * @bodyParam options.youtube.privacy_status string public, unlisted, or private. Example: public
      * @bodyParam options.instagram.cover_url string Public cover image URL for an Instagram Reel.
      * @bodyParam options.linkedin.first_comment string A comment auto-posted right after publishing.
+     * @bodyParam options.pinterest.board_ids object Board per Pinterest account, keyed by social_account_id (boards from GET /api/social/accounts/{id}/boards). Required to publish; never chosen for you.
+     * @bodyParam options.pinterest.board_id string Board for a single Pinterest account, instead of board_ids. Example: 1234567890
+     * @bodyParam options.pinterest.title string Pin title (max 100). Empty = no title.
+     * @bodyParam options.pinterest.link string Where the Pin links to (max 2048). Empty = no link.
+     * @bodyParam options.pinterest.alt_text string Image description for screen readers (max 500). Empty = none.
+     * @bodyParam options.pinterest.cover_url string Cover image URL; required for a video Pin.
      */
     public function store(Request $request)
     {
@@ -212,6 +219,20 @@ class PostController extends Controller
             'options' => 'nullable|array',
         ]);
 
+        // Pinterest fields go out exactly as typed, so their limits (Pinterest's
+        // API spec) are checked even on drafts. A separate validator: nested
+        // rules in the one above would strip every other platform's options
+        // from the validated data.
+        Validator::make($request->input('options.pinterest') ?? [], [
+            'board_id' => 'nullable|string|max:64',
+            'board_ids' => 'nullable|array',
+            'board_ids.*' => 'nullable|string|max:64',
+            'title' => 'nullable|string|max:100',
+            'link' => 'nullable|url|max:2048',
+            'alt_text' => 'nullable|string|max:500',
+            'cover_url' => 'nullable|url',
+        ])->validate();
+
         // Back-compat: the old LinkedIn-only first_comment option becomes the
         // first composed comment (the generic system posts it now).
         $firstComment = trim((string) data_get($data, 'options.linkedin.first_comment', ''));
@@ -341,6 +362,40 @@ class PostController extends Controller
                 abort(response()->json([
                     'message' => 'YouTube requires an uploaded video before publishing or scheduling.',
                 ], 422));
+            }
+        }
+
+        // Every Pin is an image or a video; Pinterest has no text-only posts.
+        if ($publishing && in_array('pinterest', $platformList, true)) {
+            $hasMedia = collect($data['media'] ?? $post?->media ?? [])
+                ->contains(fn ($m) => in_array($m['type'] ?? null, ['image', 'video'], true) && ! empty($m['url']));
+            if (! $hasMedia) {
+                abort(response()->json([
+                    'message' => 'Pinterest needs an image or a video before publishing or scheduling.',
+                ], 422));
+            }
+
+            // No board is ever picked for the user: every Pinterest target
+            // needs one chosen for its own account (a board belongs to one
+            // account), or the single board_id when no account is pinned.
+            $pin = $data['options']['pinterest']
+                ?? $post?->targets()->where('platform', 'pinterest')->value('options')
+                ?? [];
+            if (isset($data['targets'])) {
+                $pinTargets = array_filter($data['targets'], fn ($t) => $t['platform'] === 'pinterest');
+            } elseif (isset($data['platforms'])) {
+                $pinTargets = [['platform' => 'pinterest']];
+            } else {
+                $pinTargets = $post?->targets()->where('platform', 'pinterest')->get(['social_account_id'])->toArray() ?? [];
+            }
+            foreach ($pinTargets as $t) {
+                $accountId = $t['social_account_id'] ?? null;
+                $board = ($accountId !== null ? ($pin['board_ids'][(string) $accountId] ?? null) : null) ?? ($pin['board_id'] ?? null);
+                if (blank($board)) {
+                    abort(response()->json([
+                        'message' => 'Choose a Pinterest board for every Pinterest account before publishing or scheduling.',
+                    ], 422));
+                }
             }
         }
 

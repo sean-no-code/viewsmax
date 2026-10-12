@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Icon, Btn } from "@/components/analytics/primitives";
 import { PLATFORMS, PMAP, PAvatar, MediaTile, PostPreview, CountChip, usePostComposer, platformAllowedForType, type Composer } from "@/components/post/composer";
-import { viewsMaxApi, resolveMediaUrl, type Brand } from "@/lib/api-service";
+import { viewsMaxApi, resolveMediaUrl, type Brand, type PinterestBoard } from "@/lib/api-service";
 import { useAccountDirectory } from "@/components/post/useAccountDirectory";
 import { useBrands } from "@/components/post/useBrands";
 import MentionTextarea from "@/components/post/MentionTextarea";
@@ -56,6 +56,7 @@ const PRIVACY_LABELS: Record<string, string> = {
 // Platforms surfaced in the "Publishing to" picker — the ones the connections
 // screen can actually connect today. Order follows the PLATFORMS catalog.
 const SUPPORTED_PLATFORM_IDS = ["youtube", "tiktok", "instagram", "x", "linkedin", "facebook", "threads", "bluesky"];
+const SHOWN_WHEN_CONNECTED_IDS = ["pinterest"];
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -316,13 +317,6 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const navigate = useNavigate();
   const c = usePostComposer();
   const [tab, setTab] = useState("all"); // 'all' or platform id
-  // The picker always shows these; connected ones are selectable, the rest get
-  // a red "connect" badge linking to the connections screen.
-  const supportedPlatforms = PLATFORMS.filter((p) => SUPPORTED_PLATFORM_IDS.includes(p.id));
-  // Narrow the picker to platforms that can carry the chosen post type. A "text"
-  // post hides media-only platforms (YouTube/TikTok/Instagram); a "media" post
-  // hides text-only ones (X).
-  const visiblePlatforms = supportedPlatforms.filter((p) => platformAllowedForType(p.id, c.postType));
   // Connected accounts, merged from both backends: the legacy Connection store
   // (YouTube/TikTok/Instagram — drives posting) and the newer SocialAccount
   // store (X, LinkedIn, Threads, …). The directory also carries each account's
@@ -330,6 +324,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   // reconnectIds: platforms whose account exists but can't publish until the
   // user re-runs OAuth (expired/revoked token) — shown as "Reconnect".
   const { directory: accountDirectory, accountsByPlatform, connectedIds, reconnectIds, loading: connLoading } = useAccountDirectory();
+  // The picker always shows these; connected ones are selectable, the rest get
+  // a red "connect" badge linking to the connections screen. Platforms still
+  // waiting on their app approval only show once an account is connected.
+  const supportedPlatforms = PLATFORMS.filter((p) => SUPPORTED_PLATFORM_IDS.includes(p.id)
+    || (SHOWN_WHEN_CONNECTED_IDS.includes(p.id) && connectedIds.includes(p.id)));
+  // Narrow the picker to platforms that can carry the chosen post type. A "text"
+  // post hides media-only platforms (YouTube/TikTok/Instagram); a "media" post
+  // hides text-only ones (X).
+  const visiblePlatforms = supportedPlatforms.filter((p) => platformAllowedForType(p.id, c.postType));
   const connectedCount = visiblePlatforms.filter((p) => connectedIds.includes(p.id) && !reconnectIds.includes(p.id)).length;
   const { brands } = useBrands();
 
@@ -503,9 +506,31 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   // (LinkedIn's old first-comment moved to the generic Comments card).
   const mediaVideoPost = c.postType === "media" && hasVideo;
   const optionTabs = c.selected.filter((id) =>
-    id === "tiktok" || id === "youtube" || (id === "instagram" && mediaVideoPost)
+    id === "tiktok" || id === "youtube" || id === "pinterest" || (id === "instagram" && mediaVideoPost)
   );
   const activeOptTab = optionTabs.includes(optTab) ? optTab : (optionTabs[0] ?? "");
+
+  // Pinterest: one board picker per picked account (a board belongs to one
+  // account), loaded live. Nothing is chosen for the user; publishing waits
+  // until every account has a board.
+  const pinterestSelected = c.selected.includes("pinterest");
+  const pinterestAccounts = (accountsByPlatform["pinterest"] ?? []).filter((a) => a.id !== null
+    && (c.accountSel["pinterest"]?.length ? c.accountSel["pinterest"].includes(a.id) : true))
+    .slice(0, c.accountSel["pinterest"]?.length ? undefined : 1);
+  const pinAccountKey = pinterestAccounts.map((a) => a.id).join(",");
+  const [pinBoards, setPinBoards] = useState<Record<number, { state: "loading" | "idle" | "error"; boards: PinterestBoard[] }>>({});
+  const loadPinBoards = async (accountId: number) => {
+    setPinBoards((m) => ({ ...m, [accountId]: { state: "loading", boards: m[accountId]?.boards ?? [] } }));
+    const res = await viewsMaxApi.getPinterestBoards(accountId);
+    setPinBoards((m) => ({ ...m, [accountId]: res.success ? { state: "idle", boards: res.data ?? [] } : { state: "error", boards: [] } }));
+  };
+  useEffect(() => {
+    if (pinterestSelected) pinterestAccounts.forEach((a) => loadPinBoards(a.id!));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinterestSelected, pinAccountKey]);
+  const pinterestMissingBoard = pinterestSelected && pinterestAccounts.some((a) => !c.pinterest.board_ids[String(a.id)]);
+  // A video Pin needs a cover image, chosen on purpose in the Pinterest tab.
+  const pinterestNeedsCover = pinterestSelected && mediaVideoPost && !c.cover?.url;
 
   // TikTok audit compliance — gating shared by the options tab, the pre-publish
   // declaration, and persist(). Publishing is blocked until the user has made
@@ -529,6 +554,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     : tiktokBrandedPrivate ? "Branded content can't be set to private on TikTok."
     : tiktokDurationOver ? `Your TikTok video is ${Math.round(tiktokVideoDuration)}s — this account allows up to ${tiktokMaxDur}s.`
     : null;
+  const pinterestBlockReason: string | null = !pinterestSelected ? null
+    : pinterestMissingBoard ? "Choose a Pinterest board before publishing."
+    : pinterestNeedsCover ? "Add a cover image for the Pinterest video Pin."
+    : null;
+  const blockReason = tiktokBlockReason ?? pinterestBlockReason;
 
   // Shared cover uploader — one uploaded image drives both the YouTube thumbnail
   // and the Instagram Reel cover, so the same control renders in either tab.
@@ -578,6 +608,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     if (status !== "draft" && c.selected.includes("youtube") && !c.media.some((m) => m.type === "video" && m.url)) {
       toast.error("YouTube needs an uploaded video."); return;
     }
+    // Every Pin is an image or a video, and a video Pin needs a cover image.
+    if (status !== "draft" && c.selected.includes("pinterest") && !c.media.some((m) => m.url)) {
+      toast.error("Pinterest needs an uploaded image or video."); return;
+    }
+    if (status !== "draft" && pinterestBlockReason) { toast.error(pinterestBlockReason); return; }
     setSaving(true);
     // The date + time inputs are the user's LOCAL wall-clock. Convert to a UTC
     // ISO string (…Z) so the backend stores UTC and every view renders it back
@@ -606,6 +641,21 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
       // Instagram Reels take a public cover image URL.
       if (mediaPost && c.selected.includes("instagram") && c.cover?.url) {
         o.instagram = { cover_url: c.cover.url };
+      }
+      // Pinterest: exactly what was typed. Empty fields are left out, so the
+      // Pin has no title/link/alt text rather than one we made up.
+      if (c.selected.includes("pinterest")) {
+        const pin: Record<string, unknown> = { board_ids: c.pinterest.board_ids };
+        // Single-account posts send board_id too (targets without a pinned account use it).
+        if (pinterestAccounts.length === 1) {
+          const only = c.pinterest.board_ids[String(pinterestAccounts[0].id)];
+          if (only) pin.board_id = only;
+        }
+        for (const k of ["title", "link", "alt_text"] as const) {
+          if (c.pinterest[k].trim() !== "") pin[k] = c.pinterest[k].trim();
+        }
+        if (mediaPost && c.cover?.url) pin.cover_url = c.cover.url;
+        o.pinterest = pin;
       }
       return Object.keys(o).length ? o : undefined;
     };
@@ -901,6 +951,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 12, flexWrap: "wrap" }}>
                     {c.selected.map((id) => <CountChip key={id} id={id} status={c.status} />)}
                   </div>
+                  {c.selected.includes("pinterest") && (
+                    <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+                      This text is the Pinterest description. Pinterest also has a title:{" "}
+                      <button onClick={() => setTab("pinterest")} style={{ background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 11.5, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>open the Pinterest tab</button>.
+                    </div>
+                  )}
                   {captionHasDelimiter && c.selected.some((id) => id !== "x") && (
                     <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
                       <code style={{ fontFamily: "var(--font-mono)", background: "var(--paper-2)", padding: "1px 5px", borderRadius: 4 }}>---</code> starts a new tweet on X only — other platforms post it as plain text.
@@ -919,8 +975,24 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 </>
               ) : (
                 <>
+                  {tab === "pinterest" && (
+                    <label style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+                      <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>
+                        <span>Pinterest title (optional)</span>
+                        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 11.5, color: "var(--ink-on-paper-3)" }}>{c.pinterest.title.length}/100</span>
+                      </span>
+                      <input
+                        aria-label="Pinterest title"
+                        value={c.pinterest.title}
+                        maxLength={100}
+                        onChange={(e) => c.patchPinterest({ title: e.target.value })}
+                        style={fieldBase}
+                        placeholder="The bold headline under the image. Leave empty for a Pin without a title."
+                      />
+                    </label>
+                  )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>Custom text for {PMAP[tab].name}</span>
+                    <span style={{ fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>{tab === "pinterest" ? "Pinterest description" : `Custom text for ${PMAP[tab].name}`}</span>
                     {c.overrides[tab] != null && c.overrides[tab] !== "" && (
                       <button onClick={() => c.clearOverride(tab)} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "var(--font-body)" }}>Reset to main</button>
                     )}
@@ -1113,6 +1185,78 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   </div>
                 )}
 
+                {activeOptTab === "pinterest" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {pinterestAccounts.map((a) => {
+                      const entry = pinBoards[a.id!];
+                      const value = c.pinterest.board_ids[String(a.id)] ?? "";
+                      const missing = !value;
+                      return (
+                        <label key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
+                            Board{pinterestAccounts.length > 1 ? ` for ${a.name ?? "this account"}` : ""} <span style={{ color: "var(--vm-red)" }}>*</span>
+                          </span>
+                          <select
+                            aria-label={`Pinterest board${a.name ? ` for ${a.name}` : ""}`}
+                            value={value}
+                            onChange={(e) => c.patchPinterest({ board_ids: { ...c.pinterest.board_ids, [String(a.id)]: e.target.value } })}
+                            disabled={entry?.state === "loading"}
+                            style={{ ...fieldBase, width: 300, maxWidth: "100%", borderColor: missing ? "var(--vm-red)" : undefined }}
+                          >
+                            <option value="" disabled>{entry?.state === "loading" ? "Loading boards…" : "Choose a board"}</option>
+                            {(entry?.boards ?? []).map((b) => (
+                              <option key={b.id} value={b.id}>{b.name}{b.privacy === "SECRET" ? " (secret)" : ""}</option>
+                            ))}
+                          </select>
+                          <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+                            A board is a folder on your Pinterest profile. The Pin is saved into the one you pick.
+                          </span>
+                          {entry?.state === "error" && (
+                            <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>
+                              Couldn't load the boards.{" "}
+                              <button onClick={() => loadPinBoards(a.id!)} style={{ background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 11.5, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>Try again</button>
+                            </span>
+                          )}
+                          {entry?.state === "idle" && entry.boards.length === 0 && (
+                            <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>
+                              This account has no boards yet. Create one on Pinterest first.
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                    {([
+                      ["link", "Link", 2048, "The page people open when they tap the Pin. Leave empty for a Pin without a link.", "url"],
+                      ["alt_text", "Alt text", 500, "Describes the image for people using screen readers. Leave empty to skip.", "text"],
+                    ] as const).map(([key, label, max, help, type]) => (
+                      <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span style={{ display: "flex", justifyContent: "space-between", maxWidth: 480, fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
+                          <span>{label} (optional)</span>
+                          {key !== "link" && <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{c.pinterest[key].length}/{max}</span>}
+                        </span>
+                        <input
+                          type={type}
+                          aria-label={`Pinterest ${label.toLowerCase()}`}
+                          value={c.pinterest[key]}
+                          maxLength={max}
+                          onChange={(e) => c.patchPinterest({ [key]: e.target.value })}
+                          style={{ ...fieldBase, maxWidth: 480 }}
+                        />
+                        <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{help}</span>
+                      </label>
+                    ))}
+                    <div style={{ fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
+                      The Pin's title and description are written above, in Title / Description → Pinterest.
+                    </div>
+                    {mediaVideoPost && coverUploaderBlock("Pinterest")}
+                    {pinterestNeedsCover && (
+                      <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--vm-red)", lineHeight: 1.5 }}>
+                        A video Pin needs a cover image. Add one above.
+                      </span>
+                    )}
+                  </div>
+                )}
+
               </Card>
             )}
 
@@ -1241,15 +1385,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {YOUTUBE_TITLE_MSG}
                     </div>
                   )}
-                  {tiktokBlockReason && (
+                  {blockReason && (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--vm-red)" }}>
-                      <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {tiktokBlockReason}
+                      <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {blockReason}
                     </div>
                   )}
                   <div className="cp-actions" style={{ display: "flex", gap: 10 }}>
                     <Btn kind="ghost" onClick={saving ? undefined : () => persist("draft")}>Save draft</Btn>
-                    <div title={tiktokBlockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || c.youtubeTitleMissing || tiktokBlockReason ? 0.55 : 1 }}>
-                      <Btn kind={c.issues.length || c.youtubeTitleMissing || uploadingMedia || failedMedia.length || tiktokBlockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || tiktokBlockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>
+                    <div title={blockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || c.youtubeTitleMissing || blockReason ? 0.55 : 1 }}>
+                      <Btn kind={c.issues.length || c.youtubeTitleMissing || uploadingMedia || failedMedia.length || blockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || blockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>
                         {saving ? "Saving…" : uploadingMedia ? `Uploading… ${uploadingMedia.progress ?? 0}%` : c.mode === "now" ? "Post now" : isEditing ? "Save changes" : "Schedule post"}
                       </Btn>
                     </div>

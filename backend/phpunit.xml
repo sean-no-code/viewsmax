@@ -38,5 +38,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- A local mock of the Pinterest API (PINTEREST_API_BASE in .env) must
+             never leak into tests; the contract test sets its own. -->
+        <env name="PINTEREST_API_BASE" value="" force="true"/>
     </php>
 </phpunit>
