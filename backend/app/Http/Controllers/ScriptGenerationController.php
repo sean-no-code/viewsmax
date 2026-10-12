@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Support\AnthropicRateLimit;
 
 class ScriptGenerationController extends Controller
 {
@@ -18,6 +19,10 @@ class ScriptGenerationController extends Controller
     public function store(Request $request, $scriptId)
     {
         $script = Script::where('user_id', Auth::id())->findOrFail($scriptId);
+
+        if ($limited = AnthropicRateLimit::hit($request->user(), 'script_generate')) {
+            return $limited;
+        }
 
         // Ensure status is processing
         $script->update(['status' => 'processing']);

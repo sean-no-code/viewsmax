@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
+use App\Support\AnthropicRateLimit;
 
 class VideoController extends Controller
 {
@@ -307,6 +308,15 @@ class VideoController extends Controller
                 'has_title' => !empty($video->title),
                 'has_youtube_id' => !empty($video->youtube_video_id)
             ]);
+
+            // Spend AI budget only when this call will queue a new analysis;
+            // completed or in-progress scores are just reported back.
+            $settled = ['completed', 'processing', 'pending'];
+            $willAnalyze = (! empty($video->title) && ! in_array(TitleScore::where('video_id', $video->id)->value('status'), $settled, true))
+                || (! empty($video->youtube_video_id) && ! in_array(ThumbnailScore::where('video_id', $video->id)->value('status'), $settled, true));
+            if ($willAnalyze && ($limited = AnthropicRateLimit::hit($request->user(), 'video_review'))) {
+                return $limited;
+            }
 
             $titleAnalyzer = null;
             $thumbnailAnalyzer = null;

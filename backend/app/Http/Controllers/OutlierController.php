@@ -15,6 +15,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Support\AnthropicRateLimit;
 
 /**
  * @group Outliers
@@ -123,11 +124,19 @@ class OutlierController extends Controller
                 $failed = OutlierBreakdown::where('platform', $platform)->where('video_id', $videoId)
                     ->where('status', OutlierBreakdown::STATUS_FAILED)->first();
                 if ($failed) {
+                    if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_breakdown_retry')) {
+                        return $limited;
+                    }
                     $failed->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
                     GenerateOutlierBreakdownJob::dispatch($platform, $videoId);
                 }
 
                 return response()->json(['data' => $existing, 'queued' => false, 'video_id' => $videoId, 'platform' => $platform]);
+            }
+
+            // Ingest ends in a breakdown (IngestOutlierByUrlJob queues it).
+            if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_fetch')) {
+                return $limited;
             }
 
             // Fresh attempt — a stale failed row would read as "download failed" on the page.

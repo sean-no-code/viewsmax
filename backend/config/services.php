@@ -75,6 +75,9 @@ return [
         'api_url' => env('ANTHROPIC_API_URL', 'https://api.anthropic.com/v1/messages'),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-4-5'),
         'max_output_tokens' => env('ANTHROPIC_MAX_OUTPUT_TOKENS', 16384),
+        // Per-user hourly budget shared by every action that calls Anthropic
+        // (App\Support\AnthropicRateLimit). 0 = no limit.
+        'user_calls_per_hour' => (int) env('ANTHROPIC_USER_CALLS_PER_HOUR', 30),
         'timeout' => env('ANTHROPIC_TIMEOUT', 600),
     ],
 

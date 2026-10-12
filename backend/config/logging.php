@@ -82,6 +82,23 @@ return [
         // "Follow us" on the connect page (App\Services\Social\FollowUs): one
         // line per follow attempt in storage/logs/follow-us.log.
         // FOLLOW_US_LOG_ENABLED=false silences it.
+        // Anthropic usage per user (App\Support\AnthropicRateLimit): one line
+        // per allowed or limited AI action in storage/logs/ai-usage.log.
+        // AI_USAGE_LOG_ENABLED=false silences it.
+        'ai_usage' => [
+            'driver' => 'stack',
+            'channels' => env('AI_USAGE_LOG_ENABLED', true) ? ['ai_usage_file'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+        'ai_usage_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai-usage.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'follow_us' => [
             'driver' => 'stack',
             'channels' => env('FOLLOW_US_LOG_ENABLED', true) ? ['follow_us_file'] : ['null'],

@@ -7,6 +7,7 @@ use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
 use App\Models\User;
 use App\Models\UserEvent;
+use App\Support\AnthropicRateLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -93,6 +94,14 @@ class OutlierBreakdownController extends Controller
             && $breakdown->updated_at?->lt(now()->subMinutes(self::STALE_MINUTES));
 
         if ($breakdown->wasRecentlyCreated || $breakdown->status === OutlierBreakdown::STATUS_FAILED || $isStale) {
+            if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_breakdown')) {
+                if ($breakdown->wasRecentlyCreated) {
+                    $breakdown->delete(); // don't leave a pending row no job will ever pick up
+                }
+
+                return $limited;
+            }
+
             if (! $breakdown->wasRecentlyCreated) {
                 $breakdown->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
             }

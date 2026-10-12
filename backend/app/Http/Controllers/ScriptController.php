@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Support\AnthropicRateLimit;
 
 class ScriptController extends Controller
 {
@@ -404,6 +405,10 @@ public function store(Request $request)
             
             // If refine is requested, dispatch a job to refine the script (preserves context)
             if ($request->has('refine') && $request->refine) {
+                if ($limited = AnthropicRateLimit::hit($request->user(), 'script_refine')) {
+                    return $limited;
+                }
+
                 $startTime = microtime(true);
                 $userId = Auth::id();
                 
@@ -444,6 +449,10 @@ public function store(Request $request)
 
             // If regenerate is requested, dispatch a job to regenerate the script (from scratch)
             if ($request->has('regenerate') && $request->regenerate) {
+                if ($limited = AnthropicRateLimit::hit($request->user(), 'script_regenerate')) {
+                    return $limited;
+                }
+
                 $startTime = microtime(true);
                 $userId = Auth::id();
                 
