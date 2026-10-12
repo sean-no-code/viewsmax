@@ -6,7 +6,7 @@
 // text. In the browser React renders the same page over it on load.
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { StaticRouter } from "react-router-dom/server";
+import { StaticRouter } from "react-router-dom";
 import Index from "@/pages/Index";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
