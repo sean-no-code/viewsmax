@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Channel;
 use App\Services\YouTubeChannelService;
+use App\Support\YouTubeChannelToken;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -41,7 +42,7 @@ class SyncChannelVideos extends Command
 
         foreach ($channels as $channel) {
             try {
-                $accessToken = $this->accessTokenFor($channel, $youtube);
+                $accessToken = YouTubeChannelToken::for($channel, $youtube);
 
                 if ($accessToken === null) {
                     $skipped++;
@@ -66,36 +67,5 @@ class SyncChannelVideos extends Command
         // Loudly diagnosable: only a total wipeout is a failure. Partial
         // failures are logged per-channel and don't fail the scheduled run.
         return ($failed > 0 && $synced === 0 && $skipped === 0) ? self::FAILURE : self::SUCCESS;
-    }
-
-    /**
-     * A usable access token for the channel, refreshing an expired one when a
-     * refresh token exists. Returns null when the channel can't be refreshed
-     * (expired with no refresh token) so the caller skips it.
-     */
-    private function accessTokenFor(Channel $channel, YouTubeChannelService $youtube): ?string
-    {
-        $expired = $channel->youtube_token_expires_at && $channel->youtube_token_expires_at->isPast();
-
-        if (! $expired) {
-            return $channel->youtube_access_token ?: null;
-        }
-
-        if (! $channel->youtube_refresh_token) {
-            Log::warning('Skipping channel video sync: token expired, no refresh token', [
-                'channel_id' => $channel->id,
-            ]);
-
-            return null;
-        }
-
-        $tokenData = $youtube->refreshAccessToken($channel->youtube_refresh_token);
-
-        $channel->update([
-            'youtube_access_token' => $tokenData['access_token'],
-            'youtube_token_expires_at' => now()->addSeconds($tokenData['expires_in'] ?? 3600),
-        ]);
-
-        return $tokenData['access_token'];
     }
 }

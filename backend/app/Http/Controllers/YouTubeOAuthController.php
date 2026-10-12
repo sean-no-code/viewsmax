@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ImportChannelVideosJob;
 use App\Models\Channel;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -136,19 +137,9 @@ class YouTubeOAuthController extends Controller
                     $this->mirrorIntoSocialAccounts($user, $channel, $tokenData);
                 }
 
-                // Fetch and import videos after channel creation
-                try {
-                    $channelService->fetchAndImportChannelVideos(
-                        $channel,
-                        $tokenData['access_token']
-                    );
-                } catch (\Exception $videoError) {
-                    // Log but don't fail the OAuth exchange if video fetching fails
-                    Log::warning('Failed to fetch videos during OAuth exchange', [
-                        'channel_id' => $channel->id,
-                        'error' => $videoError->getMessage(),
-                    ]);
-                }
+                // Off the request: the import waits on the YouTube API, and a
+                // failure there must not fail the connect.
+                ImportChannelVideosJob::dispatch($channel->id);
 
             } catch (\Exception $e) {
                 Log::error('Failed to fetch/store channel data', [
