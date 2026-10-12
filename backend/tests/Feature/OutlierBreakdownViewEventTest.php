@@ -70,4 +70,27 @@ class OutlierBreakdownViewEventTest extends TestCase
 
         $this->assertSame(0, UserEvent::count());
     }
+
+    public function test_agent_fetches_record_nothing(): void
+    {
+        $user = User::factory()->create();
+        $this->makeBreakdown(OutlierBreakdown::STATUS_COMPLETED);
+        $login = $user->createToken('mobile-app')->plainTextToken;
+        $key = $this->withHeaders(['Authorization' => 'Bearer '.$login])->postJson('/api/user/api-key/rotate')->json('data.key');
+        $this->assertNotEmpty($key);
+
+        // MCP tool call.
+        $this->withHeaders(['Authorization' => 'Bearer '.$key, 'Accept' => 'application/json, text/event-stream'])
+            ->postJson('/api/mcp', [
+                'jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call',
+                'params' => ['name' => 'get_outlier_breakdown', 'arguments' => ['platform' => 'youtube', 'video_id' => 'abc123xyz']],
+            ])
+            ->assertOk()
+            ->assertJsonPath('result.isError', false);
+
+        // The same key on the REST endpoint.
+        $this->withHeaders(['Authorization' => 'Bearer '.$key])->getJson('/api/outliers/youtube/abc123xyz/breakdown')->assertOk();
+
+        $this->assertSame(0, UserEvent::count());
+    }
 }

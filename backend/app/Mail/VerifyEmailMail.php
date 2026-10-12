@@ -14,14 +14,18 @@ class VerifyEmailMail extends Mailable
 
     public string $token;
     public string $email;
-    /** Where the link lands; defaults to the SPA's verify page. */
-    public ?string $verifyUrl;
+    /**
+     * Where the link lands; defaults to the SPA's verify page. Resolved here,
+     * not in content(): public properties override `with` view data, so a
+     * null here would blank the link in the email.
+     */
+    public string $verifyUrl;
 
     public function __construct(string $token, string $email, ?string $verifyUrl = null)
     {
         $this->token = $token;
         $this->email = $email;
-        $this->verifyUrl = $verifyUrl;
+        $this->verifyUrl = $verifyUrl ?? rtrim(config('app.frontend_url'), '/') . '/verify-email?token=' . $token;
     }
 
     public function envelope(): Envelope
@@ -33,13 +37,8 @@ class VerifyEmailMail extends Mailable
 
     public function content(): Content
     {
-        $verifyUrl = $this->verifyUrl ?? rtrim(config('app.frontend_url'), '/') . '/verify-email?token=' . $this->token;
-
         return new Content(
             view: 'emails.verify-email',
-            with: [
-                'verifyUrl' => $verifyUrl,
-            ]
         );
     }
 

@@ -115,6 +115,24 @@ return [
             'permission' => 0777,
         ],
 
+        // Free-trial-ending reminders (config/free_trial.php,
+        // subscriptions:send-free-trial-reminders): one line per run and per
+        // email sent or failed, in storage/logs/free-trial.log.
+        // FREE_TRIAL_LOG_ENABLED=false silences it.
+        'free_trial' => [
+            'driver' => 'stack',
+            'channels' => env('FREE_TRIAL_LOG_ENABLED', true) ? ['free_trial_file'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+        'free_trial_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/free-trial.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         // Queue heartbeat (config/monitoring.php, queue:heartbeat +
         // App\Jobs\QueueHeartbeatJob): one line per dispatch, per processed
         // heartbeat (with its lag) and per stuck/recovered email,

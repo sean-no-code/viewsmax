@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Methods;
 
+use App\Support\UserAccess;
 use App\Support\UserSafeError;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -35,6 +36,14 @@ class SafeCallTool extends CallTool
 {
     public function handle(JsonRpcRequest $request, ServerContext $context)
     {
+        // A user who can't use ViewsMax right now (unverified email, trial
+        // over — see UserAccess) gets that answer from every tools/call as an
+        // HTTP 200 tool result the AI can relay; initialize and tools/list
+        // still work so the connector stays attached.
+        if (($user = request()->user()) && ($denial = UserAccess::denial($user))) {
+            return JsonRpcResponse::create($request->id, ToolResult::error($denial->message));
+        }
+
         try {
             return parent::handle($request, $context);
         } catch (Throwable $e) {

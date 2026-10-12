@@ -63,6 +63,12 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   this host via `App\Services\Social\SocialConnect` + `/connect/{platform}/callback`) and then back
   to the Passport consent screen; every provider app must allow that callback URL.
 
+- **Access gating.** `App\Support\UserAccess::denial($user)` is the single rule set for "may this user use
+  ViewsMax right now" (unverified email, then expired free window). Add new rules there, not in a
+  middleware. Delivery differs per entry point: `EnsureAccessActive` (REST 403 with `code`), `SafeCallTool`
+  (MCP `isError` tool result at HTTP 200 — never an HTTP error, which counts against directory ranking),
+  `EnsureWebAccess` (web redirect). Console code calls `denial()` directly.
+
 ## Conventions
 
 - API responses use a `{ success, message, data }` shape (see existing controllers).

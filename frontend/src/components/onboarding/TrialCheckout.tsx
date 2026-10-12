@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import type { Appearance } from "@stripe/stripe-js";
 import { Check, Loader2, Lock } from "lucide-react";
@@ -9,9 +9,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { activateSubscription, stripePromise } from "@/components/StripeTrialStep";
 import { toast } from "sonner";
 
-// Keep in sync with backend STRIPE_TRIAL_PERIOD_DAYS (default 7). The reminder
-// email fires ~48h before the charge (see SendTrialEndingReminders).
-const TRIAL_DAYS = 7;
+// Only accounts with no free window reach this step (users inside their
+// card-free window skip it, see Onboarding). Subscribing here charges the
+// card today: the backend creates the subscription with no Stripe trial
+// (User::subscriptionTrialTerms).
 
 type SubscribedResult = { stripe_subscription_id: string; status: string; current_period_end: string };
 
@@ -34,7 +35,6 @@ function featuresFor(plan: PlanTier): string[] {
   return [...limits, ...PLAN_INCLUDES];
 }
 
-const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 /**
  * Onboarding Step 2 — "Choose plan & start trial". Plan selector + what's-included
@@ -66,15 +66,6 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
 
   const selected = plans.find((p) => p.id === selectedId) ?? null;
 
-  const { chargeDate, reminderDate } = useMemo(() => {
-    const now = new Date();
-    const charge = new Date(now);
-    charge.setDate(now.getDate() + TRIAL_DAYS);
-    const remind = new Date(now);
-    remind.setDate(now.getDate() + TRIAL_DAYS - 2);
-    return { chargeDate: fmtDate(charge), reminderDate: fmtDate(remind) };
-  }, []);
-
   const selPrice = selected ? Math.round(Number(selected.price)) : 0;
 
   return (
@@ -97,7 +88,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
         }
       `}</style>
 
-      {/* No-risk trial banner */}
+      {/* Billing terms banner */}
       <div
         className="tc-banner"
         style={{
@@ -108,16 +99,16 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
         }}
       >
         <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15, letterSpacing: "-.01em", color: "var(--ink-on-paper-1)" }}>
-          100% no-risk free trial
+          Simple monthly billing
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
-          Pay <strong style={{ color: "var(--ink-on-paper-1)" }}>nothing</strong> for the first {TRIAL_DAYS} days
+          Charged <strong style={{ color: "var(--ink-on-paper-1)" }}>today</strong>, then monthly
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
           Cancel anytime from <strong style={{ color: "var(--ink-on-paper-1)" }}>Settings</strong>
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
-          Email reminder <strong style={{ color: "var(--ink-on-paper-1)" }}>before you're charged</strong>
+          Change plans <strong style={{ color: "var(--ink-on-paper-1)" }}>anytime</strong>
         </span>
       </div>
 
@@ -248,21 +239,17 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
           <div style={{ borderTop: "1px solid var(--line-1)", marginTop: 24, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
               <span style={{ color: "var(--ink-on-paper-2)" }}>Due today</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>$0.00</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>${selPrice}.00</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
-              <span>Reminder email · {reminderDate}</span>
-              <span>1–2 days before</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
-              <span>First charge · {chargeDate}</span>
+              <span>Renews monthly</span>
               <span style={{ fontFamily: "var(--font-mono)" }}>${selPrice}/mo</span>
             </div>
           </div>
         </div>
 
         {/* RIGHT — payment */}
-        <PaymentColumn priceId={selected?.stripe_price_id ?? undefined} chargeDate={chargeDate} onSubscribed={onSubscribed} />
+        <PaymentColumn priceId={selected?.stripe_price_id ?? undefined} price={selPrice} onSubscribed={onSubscribed} />
       </div>
     </div>
   );
@@ -301,11 +288,11 @@ const paymentCardStyle: React.CSSProperties = {
 
 interface PaymentColumnProps {
   priceId?: string;
-  chargeDate: string;
+  price: number;
   onSubscribed: (result: SubscribedResult) => void;
 }
 
-function PaymentColumn({ priceId, chargeDate, onSubscribed }: PaymentColumnProps) {
+function PaymentColumn({ priceId, price, onSubscribed }: PaymentColumnProps) {
   const { user } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -335,7 +322,7 @@ function PaymentColumn({ priceId, chargeDate, onSubscribed }: PaymentColumnProps
       </div>
 
       {isMockApi() ? (
-        <MockPaymentForm priceId={priceId} chargeDate={chargeDate} onSubscribed={onSubscribed} />
+        <MockPaymentForm priceId={priceId} price={price} onSubscribed={onSubscribed} />
       ) : error ? (
         <p style={{ padding: "24px 0", textAlign: "center", fontSize: 14, color: "var(--vm-red-deep)" }}>{error}</p>
       ) : !clientSecret || !stripePromise ? (
@@ -344,7 +331,7 @@ function PaymentColumn({ priceId, chargeDate, onSubscribed }: PaymentColumnProps
         </div>
       ) : (
         <Elements stripe={stripePromise} options={{ clientSecret, appearance: stripeAppearance }}>
-          <CardForm priceId={priceId} chargeDate={chargeDate} onSubscribed={onSubscribed} email={user?.email} />
+          <CardForm priceId={priceId} price={price} onSubscribed={onSubscribed} email={user?.email} />
         </Elements>
       )}
     </div>
@@ -364,13 +351,13 @@ const ctaStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const reassurance = (chargeDate: string) => (
+const reassurance = (price: number) => (
   <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)", textAlign: "center", lineHeight: 1.5 }}>
-    You won't be charged until {chargeDate}. Cancel in one click from Settings — no calls, no forms.
+    Your card is charged ${price} today, then monthly. Cancel in one click from Settings — no calls, no forms.
   </div>
 );
 
-function CardForm({ priceId, chargeDate, onSubscribed, email }: PaymentColumnProps & { email?: string }) {
+function CardForm({ priceId, price, onSubscribed, email }: PaymentColumnProps & { email?: string }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -409,18 +396,18 @@ function CardForm({ priceId, chargeDate, onSubscribed, email }: PaymentColumnPro
       <button type="submit" className="tc-cta" style={ctaStyle} disabled={!stripe || submitting}>
         {submitting ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <Loader2 className="animate-spin" size={16} /> Starting trial…
+            <Loader2 className="animate-spin" size={16} /> Subscribing…
           </span>
         ) : (
-          "Start my free trial — $0 today"
+          `Subscribe — $${price} today`
         )}
       </button>
-      {reassurance(chargeDate)}
+      {reassurance(price)}
     </form>
   );
 }
 
-function MockPaymentForm({ priceId, chargeDate, onSubscribed }: PaymentColumnProps) {
+function MockPaymentForm({ priceId, price, onSubscribed }: PaymentColumnProps) {
   const [submitting, setSubmitting] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -431,18 +418,18 @@ function MockPaymentForm({ priceId, chargeDate, onSubscribed }: PaymentColumnPro
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ background: "var(--paper-1)", border: "1px solid var(--line-1)", borderRadius: "var(--r-md)", padding: 14, fontSize: 13, color: "var(--ink-on-paper-3)" }}>
-        Demo mode — no real card is collected. Click below to simulate adding a card and starting the trial.
+        Demo mode — no real card is collected. Click below to simulate adding a card and subscribing.
       </div>
       <button type="submit" className="tc-cta" style={ctaStyle} disabled={submitting}>
         {submitting ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <Loader2 className="animate-spin" size={16} /> Starting trial…
+            <Loader2 className="animate-spin" size={16} /> Subscribing…
           </span>
         ) : (
-          "Start my free trial — $0 today (mock)"
+          `Subscribe — $${price} today (mock)`
         )}
       </button>
-      {reassurance(chargeDate)}
+      {reassurance(price)}
     </form>
   );
 }

@@ -47,6 +47,7 @@ class OutlierBreakdownController extends Controller
 
     /**
      * Breakdowns carry no user_id, so this is the only record of who viewed one.
+     * UserEvent skips MCP and API key fetches: only web app views count.
      */
     private function recordView(User $user, string $platform, string $videoId): void
     {

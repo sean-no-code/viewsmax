@@ -29,9 +29,9 @@ describe("isAccessExpired", () => {
 });
 
 describe("checkoutTerms", () => {
-  it("keeps the card-backed trial for users with no free window", () => {
-    expect(checkoutTerms(null, NOW)).toEqual({ kind: "card-trial" });
-    expect(checkoutTerms({ promo_expires_at: null }, NOW)).toEqual({ kind: "card-trial" });
+  it("charges users with no free window today (no Stripe trial period)", () => {
+    expect(checkoutTerms(null, NOW)).toEqual({ kind: "charge-now" });
+    expect(checkoutTerms({ promo_expires_at: null }, NOW)).toEqual({ kind: "charge-now" });
   });
 
   it("defers the charge to the end of an open window", () => {

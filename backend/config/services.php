@@ -208,7 +208,6 @@ return [
         'portal_return_url' => env('STRIPE_PORTAL_RETURN_URL'),
         // Fallback recurring price (the Starter tier) when checkout is started without a price_id.
         'trial_price_id' => env('STRIPE_TRIAL_PRICE_ID'),
-        'trial_period_days' => env('STRIPE_TRIAL_PERIOD_DAYS', 7),
         // How many hours before a trial ends to send the "card about to be charged"
         // reminder. Guarded like subscription_grace_period_hours: a set-but-empty env
         // arrives as '' and would TypeError in the command's date math.
