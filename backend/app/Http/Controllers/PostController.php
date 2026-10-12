@@ -128,6 +128,15 @@ class PostController extends Controller
 
         if (array_key_exists('platforms', $data) || array_key_exists('targets', $data)) {
             $this->upsertTargets($post, $data);
+        } elseif (array_key_exists('options', $data)) {
+            // Options alone (e.g. the AI adding a Pinterest board to a saved
+            // draft): store them on the post's existing targets, or they'd
+            // pass validation and then never reach the publish job.
+            foreach ($post->targets()->get() as $target) {
+                if (array_key_exists($target->platform, $data['options'] ?? [])) {
+                    $target->update(['options' => $data['options'][$target->platform]]);
+                }
+            }
         }
 
         if (array_key_exists('comments', $data)) {

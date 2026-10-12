@@ -452,6 +452,30 @@ class PinterestPublishTest extends TestCase
         $this->withHeaders($this->auth($this->user))->postJson('/api/posts', $payload)->assertCreated();
     }
 
+    public function test_editing_only_the_options_saves_them_on_the_existing_targets(): void
+    {
+        // The AI's update_post may send just { options } to add the board to
+        // a saved draft. The board must be stored, not only checked.
+        Queue::fake();
+        $account = $this->account();
+        $id = $this->withHeaders($this->auth($this->user))->postJson('/api/posts', [
+            'caption' => 'Draft',
+            'media' => [['type' => 'image', 'url' => 'https://cdn.example/a.jpg']],
+            'targets' => [['platform' => 'pinterest', 'social_account_id' => $account->id]],
+            'status' => Post::STATUS_DRAFT,
+        ])->assertCreated()->json('id');
+
+        $this->withHeaders($this->auth($this->user))->putJson("/api/posts/{$id}", [
+            'status' => Post::STATUS_POSTED,
+            'options' => ['pinterest' => ['board_ids' => [(string) $account->id => 'board-2'], 'title' => 'T']],
+        ])->assertOk();
+
+        $target = PostTarget::where('post_id', $id)->firstOrFail();
+        $this->assertSame('board-2', $target->options['board_ids'][(string) $account->id]);
+        $this->assertSame('T', $target->options['title']);
+        Queue::assertPushed(PublishToPinterestJob::class);
+    }
+
     public function test_a_draft_may_be_saved_before_a_board_is_chosen(): void
     {
         $this->account();
