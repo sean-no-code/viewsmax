@@ -40,6 +40,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Passport enables the OAuth device flow (and its routes) by default.
+        // MCP clients use authorization code + PKCE only, and the device
+        // approval screen would sit outside the consent-screen access gate.
+        // Set here, before Passport boots and registers its routes.
+        \Laravel\Passport\Passport::$deviceCodeGrantEnabled = false;
+
         // Resolve Passport's OAuth approve route to our subclass so the MCP
         // consent screen can downgrade a connection to read-only. Laravel
         // resolves route controllers through the container, so this binding

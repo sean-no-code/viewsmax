@@ -97,18 +97,6 @@ Route::get('/health', function () {
 Route::get('/queue-monitor', \App\Http\Controllers\QueueMonitorController::class)
     ->middleware('allowed-ips');
 
-// Test thumbnail generation endpoint (public for testing)
-Route::post('/test/thumbnails', function (Illuminate\Http\Request $request) {
-    $request->validate([
-        'description' => 'required|string|max:1000',
-    ]);
-
-    $thumbnailHelper = app(\App\Services\ThumbnailHelper::class);
-    $result = $thumbnailHelper->generateThumbnailsWithFallbackJson($request->description);
-
-    return response()->json($result);
-});
-
 // Stripe webhooks (public - no authentication required)
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handleWebhook']);
 

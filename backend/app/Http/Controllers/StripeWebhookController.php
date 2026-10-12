@@ -23,7 +23,9 @@ class StripeWebhookController extends Controller
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
 
-        $skipSignatureCheck = config('services.stripe.signature_check') === false;
+        // STRIPE_SIGNATURE_CHECK=false is a local/testing convenience only: in
+        // production an unsigned webhook could grant anyone a subscription.
+        $skipSignatureCheck = config('services.stripe.signature_check') === false && ! app()->isProduction();
 
         try {
             if ($skipSignatureCheck) {

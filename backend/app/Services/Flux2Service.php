@@ -256,6 +256,9 @@ class Flux2Service
             return;
         }
 
+        // The endpoint authenticates ComfyUI by a per-image signature on this URL.
+        $webhookUrl = \App\Http\Controllers\ComfyUIWebhookController::signedUrl($webhookUrl, $imageId);
+
         // Prepare the payload
         // For Node 185, we inject it into the json_format string
         // The user template is: {"prompt_id": "<notification_text>", "image_id":"123123"}
