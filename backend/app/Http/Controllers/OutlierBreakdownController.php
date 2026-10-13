@@ -20,9 +20,6 @@ use Illuminate\Http\Request;
  */
 class OutlierBreakdownController extends Controller
 {
-    /** Minutes after which a pending/processing row is assumed crashed and re-queued. */
-    private const STALE_MINUTES = 10;
-
     /** The page polls show() every few seconds: one "viewed" event per user, video and this many minutes. */
     private const VIEW_DEDUPE_MINUTES = 10;
 
@@ -89,11 +86,7 @@ class OutlierBreakdownController extends Controller
             ['status' => OutlierBreakdown::STATUS_PENDING],
         );
 
-        $isStale = in_array($breakdown->status, [OutlierBreakdown::STATUS_PENDING, OutlierBreakdown::STATUS_PROCESSING], true)
-            && ! $breakdown->wasRecentlyCreated
-            && $breakdown->updated_at?->lt(now()->subMinutes(self::STALE_MINUTES));
-
-        if ($breakdown->wasRecentlyCreated || $breakdown->status === OutlierBreakdown::STATUS_FAILED || $isStale) {
+        if ($breakdown->wasRecentlyCreated || $breakdown->needsRequeue()) {
             if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_breakdown')) {
                 if ($breakdown->wasRecentlyCreated) {
                     $breakdown->delete(); // don't leave a pending row no job will ever pick up

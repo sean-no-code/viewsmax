@@ -95,6 +95,28 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
     }
 
     /**
+     * Failures handle() never sees — a dependency that can't be built (e.g. a
+     * missing API key), a timeout, a killed worker — would otherwise leave the
+     * row pending and the page spinning. Mark it failed so a retry requeues it.
+     */
+    public function failed(\Throwable $e): void
+    {
+        Log::error('GenerateOutlierBreakdownJob crashed', [
+            'platform' => $this->platform,
+            'video_id' => $this->videoId,
+            'error' => $e->getMessage(),
+        ]);
+
+        OutlierBreakdown::where('platform', $this->platform)
+            ->where('video_id', $this->videoId)
+            ->where('status', '!=', OutlierBreakdown::STATUS_COMPLETED)
+            ->update([
+                'status' => OutlierBreakdown::STATUS_FAILED,
+                'error' => 'Breakdown generation failed. Try again in a few minutes.',
+            ]);
+    }
+
+    /**
      * The URL CaptAPI gets for the transcript. TikTok links need the creator's
      * real @handle in the path — CaptAPI parses it, and a display name ("Tunde
      * Alao") makes it read the link as a profile. Channels ingested before we

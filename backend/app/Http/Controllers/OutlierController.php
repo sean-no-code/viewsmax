@@ -119,15 +119,15 @@ class OutlierController extends Controller
             $existing = OutlierVideo::with('channel')
                 ->where('platform', $platform)->where('youtube_video_id', $videoId)->first();
             if ($existing) {
-                // Re-pasting a link whose breakdown failed is a retry: requeue it so the
-                // page polls a fresh run instead of showing the stale error.
-                $failed = OutlierBreakdown::where('platform', $platform)->where('video_id', $videoId)
-                    ->where('status', OutlierBreakdown::STATUS_FAILED)->first();
-                if ($failed) {
+                // Re-pasting a link whose breakdown failed (or whose job was lost to a
+                // cleared queue or killed worker) is a retry: requeue it so the page
+                // polls a fresh run instead of a stale error or an endless spinner.
+                $breakdown = OutlierBreakdown::where('platform', $platform)->where('video_id', $videoId)->first();
+                if ($breakdown?->needsRequeue()) {
                     if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_breakdown_retry')) {
                         return $limited;
                     }
-                    $failed->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
+                    $breakdown->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
                     GenerateOutlierBreakdownJob::dispatch($platform, $videoId);
                 }
 
