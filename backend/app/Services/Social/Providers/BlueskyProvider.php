@@ -46,7 +46,11 @@ class BlueskyProvider extends AbstractSocialProvider implements SupportsFollowin
      */
     public function connectWithCredentials(User $user, array $credentials): Collection
     {
-        $identifier = trim($credentials['identifier'] ?? $credentials['handle'] ?? '');
+        // People type their handle the way Bluesky displays it, "@you.bsky.social".
+        // Bluesky treats any identifier containing "@" as an email address, so a
+        // leading "@" fails login with "InvalidEmail: local part cannot be empty".
+        // A real email ("you@example.com") never starts with "@" and is unaffected.
+        $identifier = ltrim(trim($credentials['identifier'] ?? $credentials['handle'] ?? ''), '@');
         $password = $credentials['password'] ?? $credentials['app_password'] ?? '';
 
         if ($identifier === '' || $password === '') {
