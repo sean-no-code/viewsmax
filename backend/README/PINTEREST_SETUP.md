@@ -22,9 +22,9 @@ From Pinterest's guide (developers.pinterest.com/docs/getting-started/connect-ap
 In **My apps → your app → Configure**:
 
 - **Redirect URIs** — add all that apply:
-  - `https://viewsmax.com/social/callback` (website connect flow)
+  - `https://viewsmax.com/oauth/callback` (website connect flow; the frontend sends `{origin}/oauth/callback`)
   - `https://api.viewsmax.com/connect/pinterest/callback` (sign-up flow from Claude/ChatGPT)
-  - `http://localhost:8080/social/callback` (local testing, optional)
+  - `http://localhost:8080/oauth/callback` (local testing, optional)
 - Copy the **App ID** and **App secret** into `.env`:
 
 ```
