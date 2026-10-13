@@ -361,6 +361,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::get('/accounts', [SocialAccountController::class, 'index']);
         Route::delete('/accounts/{id}', [SocialAccountController::class, 'destroy']);
         Route::get('/accounts/{id}/boards', [SocialAccountController::class, 'boards']);
+        Route::post('/accounts/{id}/boards', [SocialAccountController::class, 'createBoard']);
 
         // OAuth connect flow (frontend opens the URL, then posts back the code).
         Route::get('/{platform}/auth-url', [SocialAccountController::class, 'authUrl']);

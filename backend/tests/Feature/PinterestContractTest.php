@@ -122,6 +122,13 @@ class PinterestContractTest extends TestCase
         $this->assertNotEmpty($result->remotePostId);
     }
 
+    public function test_create_board_request_matches_the_spec(): void
+    {
+        $board = (new PinterestProvider)->createBoard($this->account(User::factory()->create()), 'Weeknight dinners', 'Quick meals');
+
+        $this->assertNotEmpty($board['id']);
+    }
+
     public function test_video_steps_match_the_spec(): void
     {
         // The upload itself goes to Amazon S3, not Pinterest, so it can't be

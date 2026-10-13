@@ -5,6 +5,7 @@ namespace App\Mcp;
 use App\Mcp\Methods\SafeCallTool;
 // use App\Mcp\Tools\AddOutlierChannel; // TEMP: tool hidden, see $tools
 // use App\Mcp\Tools\CreateOffer; // TEMP: tool hidden, see $tools
+use App\Mcp\Tools\CreatePinterestBoard;
 use App\Mcp\Tools\CreatePost;
 // use App\Mcp\Tools\CreateTrackingLink; // TEMP: tool hidden, see $tools
 use App\Mcp\Tools\DeleteOffer;
@@ -89,6 +90,7 @@ class ViewsMaxServer extends Server
         ListBrands::class,
         UploadMedia::class,
         CreatePost::class,
+        CreatePinterestBoard::class,
         ListPosts::class,
         GetPost::class,
         UpdatePost::class,

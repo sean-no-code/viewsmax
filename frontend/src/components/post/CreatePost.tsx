@@ -528,6 +528,24 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     if (pinterestSelected) pinterestAccounts.forEach((a) => loadPinBoards(a.id!));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinterestSelected, pinAccountKey]);
+  // Inline "New board" form per Pinterest account.
+  const [newBoard, setNewBoard] = useState<Record<number, { open: boolean; name: string; saving: boolean; error: string | null }>>({});
+  const patchNewBoard = (id: number, p: Partial<{ open: boolean; name: string; saving: boolean; error: string | null }>) =>
+    setNewBoard((m) => ({ ...m, [id]: { open: false, name: "", saving: false, error: null, ...m[id], ...p } }));
+  const createPinBoard = async (accountId: number) => {
+    const name = (newBoard[accountId]?.name ?? "").trim();
+    if (!name) return;
+    patchNewBoard(accountId, { saving: true, error: null });
+    const res = await viewsMaxApi.createPinterestBoard(accountId, name);
+    if (!res.success || !res.data) {
+      patchNewBoard(accountId, { saving: false, error: res.error ?? "Couldn't create the board." });
+      return;
+    }
+    const board = res.data;
+    setPinBoards((m) => ({ ...m, [accountId]: { state: "idle", boards: [...(m[accountId]?.boards ?? []), board] } }));
+    c.patchPinterest({ board_ids: { ...c.pinterest.board_ids, [String(accountId)]: board.id } });
+    patchNewBoard(accountId, { open: false, name: "", saving: false, error: null });
+  };
   const pinterestMissingBoard = pinterestSelected && pinterestAccounts.some((a) => !c.pinterest.board_ids[String(a.id)]);
   // A video Pin needs a cover image, chosen on purpose in the Pinterest tab.
   const pinterestNeedsCover = pinterestSelected && mediaVideoPost && !c.cover?.url;
@@ -1190,8 +1208,10 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     {pinterestAccounts.map((a) => {
                       const entry = pinBoards[a.id!];
                       const value = c.pinterest.board_ids[String(a.id)] ?? "";
+                      const nb = newBoard[a.id!];
+                      const linkBtn: CSSProperties = { background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 11.5, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" };
                       return (
-                        <label key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
                             Board{pinterestAccounts.length > 1 ? ` for ${a.name ?? "this account"}` : ""}
                           </span>
@@ -1207,21 +1227,43 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                               <option key={b.id} value={b.id}>{b.name}{b.privacy === "SECRET" ? " (secret)" : ""}</option>
                             ))}
                           </select>
+                          {nb?.open ? (
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                              <input
+                                aria-label={`New Pinterest board name${a.name ? ` for ${a.name}` : ""}`}
+                                value={nb.name}
+                                autoFocus
+                                placeholder="Board name"
+                                onChange={(e) => patchNewBoard(a.id!, { name: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); createPinBoard(a.id!); } }}
+                                style={{ ...fieldBase, width: 260, maxWidth: "100%" }}
+                              />
+                              <button onClick={() => createPinBoard(a.id!)} disabled={nb.saving || !nb.name.trim()} style={linkBtn}>
+                                {nb.saving ? "Creating…" : "Create board"}
+                              </button>
+                              <button onClick={() => patchNewBoard(a.id!, { open: false, name: "", error: null })} style={{ ...linkBtn, color: "var(--ink-on-paper-3)" }}>Cancel</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => patchNewBoard(a.id!, { open: true })} style={{ ...linkBtn, alignSelf: "flex-start" }}>+ New board</button>
+                          )}
+                          {nb?.error && (
+                            <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>{nb.error}</span>
+                          )}
                           <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                            A board is a folder on your Pinterest profile. The Pin is saved into the one you pick.
+                            A board is a folder on your Pinterest profile. The Pin is saved into the one you pick. New boards are public.
                           </span>
                           {entry?.state === "error" && (
                             <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>
                               Couldn't load the boards.{" "}
-                              <button onClick={() => loadPinBoards(a.id!)} style={{ background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 11.5, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>Try again</button>
+                              <button onClick={() => loadPinBoards(a.id!)} style={linkBtn}>Try again</button>
                             </span>
                           )}
-                          {entry?.state === "idle" && entry.boards.length === 0 && (
+                          {entry?.state === "idle" && entry.boards.length === 0 && !nb?.open && (
                             <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>
-                              This account has no boards yet. Create one on Pinterest first.
+                              This account has no boards yet. Create one with "+ New board".
                             </span>
                           )}
-                        </label>
+                        </div>
                       );
                     })}
                     {([

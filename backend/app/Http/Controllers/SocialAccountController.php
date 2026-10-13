@@ -188,6 +188,34 @@ class SocialAccountController extends Controller
         ]);
     }
 
+    /**
+     * Create a public board on a Pinterest account, so a user whose account
+     * has none can still post. Returns the new board.
+     */
+    public function createBoard(Request $request, int $id)
+    {
+        $account = Auth::user()->socialAccounts()->where('platform', 'pinterest')->findOrFail($id);
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
+        ]);
+        $provider = $this->manager->for('pinterest');
+
+        try {
+            $board = $provider->createBoard($provider->ensureFreshToken($account), trim($data['name']), $data['description'] ?? null);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pinterest refused the board: '.$e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $board,
+        ], 201);
+    }
+
     protected function ensureConfigured(string $platform, &$response): bool
     {
         if (! $this->manager->supports($platform)) {

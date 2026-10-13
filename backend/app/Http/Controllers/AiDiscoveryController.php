@@ -37,6 +37,7 @@ class AiDiscoveryController extends Controller
     {
         $tools = collect((new ViewsMaxServer)->tools)
             ->map(fn (string $class) => app($class))
+            ->filter(fn ($tool) => $tool->isAvailable())
             ->map(fn ($tool) => [
                 'name' => $tool->name(),
                 'description' => $tool->description(),

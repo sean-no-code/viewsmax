@@ -185,6 +185,37 @@ class PinterestProvider extends AbstractSocialProvider
         return array_values($boards);
     }
 
+    /**
+     * Create a public board on the account and return it as {id, name,
+     * privacy}. Secret boards would need the extra *_secret permissions.
+     * Throws with Pinterest's own message when it refuses (e.g. a duplicate
+     * name).
+     *
+     * @return array{id:string, name:string, privacy:?string}
+     */
+    public function createBoard(SocialAccount $account, string $name, ?string $description = null): array
+    {
+        $response = $this->api($account)->post($this->apiBase().'/boards', array_filter([
+            'name' => $name,
+            'description' => $description,
+            'privacy' => 'PUBLIC',
+        ], fn ($v) => $v !== null && $v !== ''));
+
+        if (! $response->successful()) {
+            Log::warning('[Pinterest] create board failed', [
+                'account_id' => $account->id, 'status' => $response->status(), 'body' => $response->body(),
+            ]);
+
+            throw new \RuntimeException((string) ($response->json('message') ?: 'HTTP '.$response->status()));
+        }
+
+        return [
+            'id' => (string) $response->json('id'),
+            'name' => (string) $response->json('name', $name),
+            'privacy' => $response->json('privacy'),
+        ];
+    }
+
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
     {
         $image = $this->firstImageUrl($post);

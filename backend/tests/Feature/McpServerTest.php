@@ -185,6 +185,8 @@ class McpServerTest extends TestCase
         'list_brands' => [true, false, false],
         'upload_media' => [false, false, true],
         'create_post' => [false, true, true],
+        // Only listed once Pinterest has app keys (set in the test below).
+        'create_pinterest_board' => [false, false, true],
         'list_posts' => [true, false, false],
         'get_post' => [true, false, false],
         'update_post' => [false, true, true],
@@ -219,6 +221,9 @@ class McpServerTest extends TestCase
 
     public function test_every_tool_declares_a_title_and_all_three_safety_hints(): void
     {
+        // Pinterest-only tools appear once Pinterest has app keys.
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+
         // Both directories reject tools without annotations: Anthropic wants a
         // title plus readOnlyHint/destructiveHint, OpenAI wants explicit
         // readOnlyHint, destructiveHint, and openWorldHint on every tool.
@@ -652,10 +657,14 @@ class McpServerTest extends TestCase
 
     public function test_tool_schemas_mark_the_inputs_each_tool_cannot_work_without_as_required(): void
     {
+        // Pinterest-only tools appear once Pinterest has app keys.
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+
         // Without "required" in the schema, clients show every input as
         // optional and the AI can call e.g. update_post with no id.
         $expected = [
             // TEMP: add_outlier_channel, create_offer and create_tracking_link are hidden from the MCP for now
+            'create_pinterest_board' => ['name', 'social_account_id'],
             'delete_offer' => ['id'],
             'delete_post' => ['id'],
             'disconnect_account' => ['platform'],

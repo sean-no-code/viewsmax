@@ -33,7 +33,7 @@ PINTEREST_CLIENT_SECRET=
 PINTEREST_SANDBOX=true
 ```
 
-Scopes requested on connect: `user_accounts:read, boards:read, pins:read, pins:write`
+Scopes requested on connect: `user_accounts:read, boards:read, boards:write, pins:read, pins:write` (`boards:write` lets users create a board from the composer or the AI)
 (`config/social.php`).
 
 ## 3. Testing on Trial

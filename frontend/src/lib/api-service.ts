@@ -5327,6 +5327,25 @@ class ViewsMaxApiService {
     }
   }
 
+  // Create a public board on a Pinterest account; returns the new board.
+  async createPinterestBoard(accountId: number, name: string): Promise<ApiResponse<PinterestBoard>> {
+    if (isMockApi()) return { success: true, data: { id: String(Date.now()), name, privacy: "PUBLIC" } };
+    try {
+      const response = await fetch(`${this.baseUrl}/api/social/accounts/${accountId}/boards`, {
+        method: 'POST',
+        headers: { ...this.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { success: false, error: result.message || `Couldn't create the board: ${response.status}` };
+      }
+      return { success: true, data: result.data };
+    } catch (error) {
+      return { success: false, error: `Network error: ${error.message}` };
+    }
+  }
+
   async disconnectSocialAccount(id: number): Promise<ApiResponse<void>> {
     if (isMockApi()) return { success: true };
     try {

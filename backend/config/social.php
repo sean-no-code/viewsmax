@@ -118,6 +118,7 @@ return [
             'scopes' => [
                 'user_accounts:read',
                 'boards:read',
+                'boards:write',
                 'pins:read',
                 'pins:write',
             ],

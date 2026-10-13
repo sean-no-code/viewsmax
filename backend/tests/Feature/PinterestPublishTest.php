@@ -551,6 +551,66 @@ class PinterestPublishTest extends TestCase
             ->assertJsonPath('data.1.name', 'Travel');
     }
 
+    public function test_connect_asks_for_permission_to_create_boards(): void
+    {
+        $this->assertContains('boards:write', config('social.platforms.pinterest.scopes'));
+    }
+
+    public function test_create_board_sends_a_public_board_and_returns_it(): void
+    {
+        Http::fake(['api.pinterest.com/v5/boards' => Http::response(['id' => '777', 'name' => 'Weeknight dinners', 'privacy' => 'PUBLIC'], 201)]);
+
+        $board = (new PinterestProvider)->createBoard($this->account(), 'Weeknight dinners', 'Quick meals');
+
+        $this->assertSame(['id' => '777', 'name' => 'Weeknight dinners', 'privacy' => 'PUBLIC'], $board);
+        Http::assertSent(fn (Request $req) => $req->method() === 'POST'
+            && $req->url() === 'https://api.pinterest.com/v5/boards'
+            && $req['name'] === 'Weeknight dinners'
+            && $req['description'] === 'Quick meals'
+            && $req['privacy'] === 'PUBLIC');
+    }
+
+    public function test_board_endpoint_creates_a_board_on_the_users_pinterest_account(): void
+    {
+        $account = $this->account();
+        Http::fake(['api.pinterest.com/v5/boards' => Http::response(['id' => '777', 'name' => 'Weeknight dinners', 'privacy' => 'PUBLIC'], 201)]);
+
+        $this->withHeaders($this->auth($this->user))->postJson("/api/social/accounts/{$account->id}/boards", ['name' => 'Weeknight dinners'])
+            ->assertCreated()
+            ->assertJsonPath('data.id', '777')
+            ->assertJsonPath('data.name', 'Weeknight dinners');
+    }
+
+    public function test_board_endpoint_passes_pinterests_refusal_back_to_the_user(): void
+    {
+        $account = $this->account();
+        Http::fake(['api.pinterest.com/v5/boards' => Http::response(['code' => 58, 'message' => 'You already have a board with this name.'], 409)]);
+
+        $this->withHeaders($this->auth($this->user))->postJson("/api/social/accounts/{$account->id}/boards", ['name' => 'Recipes'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Pinterest refused the board: You already have a board with this name.');
+    }
+
+    public function test_board_endpoint_needs_a_name(): void
+    {
+        $account = $this->account();
+        Http::fake();
+
+        $this->withHeaders($this->auth($this->user))->postJson("/api/social/accounts/{$account->id}/boards", ['name' => ''])
+            ->assertStatus(422);
+        Http::assertNothingSent();
+    }
+
+    public function test_board_endpoint_refuses_someone_elses_account(): void
+    {
+        $account = $this->account();
+        Http::fake();
+
+        $this->withHeaders($this->auth(User::factory()->create()))->postJson("/api/social/accounts/{$account->id}/boards", ['name' => 'X'])
+            ->assertNotFound();
+        Http::assertNothingSent();
+    }
+
     public function test_boards_endpoint_refuses_someone_elses_account(): void
     {
         $other = User::factory()->create();
