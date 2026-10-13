@@ -89,7 +89,8 @@ class SocialProviderManager
         $platform = strtolower($platform);
         $config = config("social.platforms.{$platform}");
 
-        if (! $config || ($config['enabled'] ?? true) === false) {
+        // An env flag set to "false" or left empty reaches here as '' — off too.
+        if (! $config || ! filter_var($config['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN)) {
             return false;
         }
 

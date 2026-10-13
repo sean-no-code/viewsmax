@@ -15,6 +15,7 @@ const PLACEMENT_TO_PLATFORM: Record<string, string> = {
   linkedin: "linkedin",
   facebook: "facebook",
   threads: "threads",
+  google_business: "google_business",
 };
 
 export function PlacementIcon({ placement, size = 22 }: { placement: string; size?: number }) {

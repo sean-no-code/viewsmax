@@ -1,7 +1,7 @@
 # Social Publishing — Architecture & API
 
 Connect and post to Facebook, Instagram, Threads, LinkedIn, Bluesky, X, TikTok,
-YouTube and Google My Business from one set of endpoints.
+YouTube and Google Business Profile from one set of endpoints.
 
 > **Setup (API keys / OAuth apps):** see `tasks/todo.md`.
 > **Frontend integration contract:** see `tasks/frontend-todo.md`.

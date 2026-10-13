@@ -41,6 +41,7 @@ class CreatePost extends ViewsMaxTool
         'instagram' => 2200,
         'facebook' => 5000,
         'bluesky' => 300,
+        'google_business' => 1500,
     ];
 
     /**
@@ -59,6 +60,31 @@ class CreatePost extends ViewsMaxTool
     public const YOUTUBE_PRIVACY_RULE = 'Ask the user which YouTube privacy_status to use (public, '
         . 'unlisted, or private) and wait for their answer; without it the video is public.';
 
+    /** Google Business Profile's post rules, only while it is set up. */
+    public static function googleBusinessRule(): string
+    {
+        return in_array('google_business', self::availablePlatforms(), true)
+            ? 'Google Business Profile posts go to one business location per connected '
+                . 'account; text alone is fine and only the first image is sent (no video). '
+                . 'Set options.google_business.topic_type to STANDARD (an update, default), '
+                . 'EVENT or OFFER. An event or offer needs event_title, event_start and '
+                . 'event_end (YYYY-MM-DDTHH:MM in the business\'s local time). Never invent '
+                . 'dates, links, coupon codes or terms: ask the user. '
+            : '';
+    }
+
+    /** The options.google_business keys, only while it is set up. */
+    public static function googleBusinessOptions(): string
+    {
+        return in_array('google_business', self::availablePlatforms(), true)
+            ? '; google_business: { topic_type: STANDARD|EVENT|OFFER, cta_type: '
+                . 'BOOK|ORDER|SHOP|LEARN_MORE|SIGN_UP|CALL (optional button, ignored on '
+                . 'offers), cta_url (required for every button except CALL), event_title, '
+                . 'event_start, event_end (required for EVENT and OFFER), coupon_code, '
+                . 'redeem_url, terms (OFFER only) }'
+            : '';
+    }
+
     public static function privacyRules(): string
     {
         return self::TIKTOK_PRIVACY_RULE . ' ' . self::YOUTUBE_PRIVACY_RULE;
@@ -74,8 +100,10 @@ class CreatePost extends ViewsMaxTool
         $platforms = implode(', ', self::availablePlatforms());
 
         return "Compose a social post for one or more platforms ({$platforms}). "
-            . 'Target either platforms[] or brand_id (from list_brands, posts to '
-            . 'every connected account in the brand) — not both. '
+            . 'Target one of: platforms[], brand_id (from list_brands, posts to '
+            . 'every connected account in the brand), or social_account_ids[] (exact '
+            . 'accounts from list_connected_accounts — use it to pick one account when a '
+            . 'platform has several, e.g. one Google Business location). '
             . 'status "draft" (default) saves without publishing, "posted" publishes '
             . 'immediately, "scheduled" publishes at scheduled_at. TikTok takes a '
             . 'video (with a url) or a photo slideshow (one or more image urls); '
@@ -83,6 +111,7 @@ class CreatePost extends ViewsMaxTool
             . 'YouTube also requires a title: the caption (or overrides.youtube) is the '
             . 'video title, so it must not be empty when publishing or scheduling. '
             . 'Instagram needs an image or video url. '
+            . self::googleBusinessRule()
             . 'TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, '
             . 'default false) to let TikTok auto-add its recommended background music; '
             . 'there is no music option for video posts or for Instagram. '
@@ -114,6 +143,12 @@ class CreatePost extends ViewsMaxTool
                     . '. Omit when brand_id is given.',
             ])
             ->integer('brand_id')->description('Post to every connected account in this brand (see list_brands) instead of platforms.')->optional()
+            ->raw('social_account_ids', [
+                'type' => 'array',
+                'items' => ['type' => 'integer'],
+                'description' => 'Post to exactly these connected accounts (social_account_id from '
+                    . 'list_connected_accounts) instead of platforms or brand_id.',
+            ])
             ->string('caption')->description('Post text / caption. For YouTube it is the video title (required to publish).')->optional()
             ->string('status')->description('draft (default), scheduled, or posted.')->optional()
             ->string('scheduled_at')->description('ISO-8601 datetime; required when status is scheduled.')->optional()
@@ -140,7 +175,8 @@ class CreatePost extends ViewsMaxTool
                     . 'disable_stitch, auto_add_music (boolean, default false — auto-adds '
                     . "TikTok's recommended music to photo slideshows; ignored for video) }; "
                     . 'youtube: { privacy_status: public|unlisted|private }; '
-                    . 'instagram: { cover_url }; linkedin: { first_comment }.',
+                    . 'instagram: { cover_url }; linkedin: { first_comment }'
+                    . self::googleBusinessOptions() . '.',
             ])
             ->raw('comments', [
                 'type' => 'array',
@@ -169,9 +205,11 @@ class CreatePost extends ViewsMaxTool
 
         // AI pre-guards only; PostController::store owns the payload rules.
         Validator::validate($arguments, [
-            'platforms' => 'required_without:brand_id|array|min:1',
+            'platforms' => 'required_without_all:brand_id,social_account_ids|array|min:1',
             'platforms.*' => 'string|max:40',
             'brand_id' => 'nullable|integer',
+            'social_account_ids' => 'nullable|array|min:1',
+            'social_account_ids.*' => 'integer',
             'scheduled_at' => 'nullable|date|required_if:status,' . Post::STATUS_SCHEDULED,
         ]);
 
@@ -188,10 +226,28 @@ class CreatePost extends ViewsMaxTool
             'caption', 'status', 'scheduled_at', 'media', 'overrides', 'options', 'comments', 'shorten_links',
         ])));
 
-        if (! empty($arguments['brand_id'])) {
-            if (! empty($arguments['platforms'])) {
-                return ToolResult::error('Provide platforms or brand_id, not both.');
+        $targetings = count(array_filter([
+            ! empty($arguments['platforms']), ! empty($arguments['brand_id']), ! empty($arguments['social_account_ids']),
+        ]));
+        if ($targetings > 1) {
+            return ToolResult::error('Provide only one of platforms, brand_id or social_account_ids.');
+        }
+
+        if (! empty($arguments['social_account_ids'])) {
+            $accounts = $this->user()->socialAccounts()->whereIn('id', $arguments['social_account_ids'])->get();
+            if ($accounts->count() !== count(array_unique($arguments['social_account_ids']))) {
+                return ToolResult::error('One of the social_account_ids is not a connected account of yours. Use list_connected_accounts.');
             }
+            $platforms = $accounts->pluck('platform')->unique()->values()->all();
+            if ($error = self::unsupportedPlatformError($platforms)) {
+                return ToolResult::error($error);
+            }
+            if ($error = self::videoRuleError($status, $platforms, $media)) {
+                return ToolResult::error($error);
+            }
+
+            $params['targets'] = $accounts->map(fn ($a) => ['platform' => $a->platform, 'social_account_id' => $a->id])->values()->all();
+        } elseif (! empty($arguments['brand_id'])) {
 
             [$targets, $platforms, $error] = $this->expandBrand((int) $arguments['brand_id']);
             if ($error !== null) {
@@ -207,6 +263,16 @@ class CreatePost extends ViewsMaxTool
             $platforms = self::normalizePlatforms($arguments['platforms']);
             if ($error = self::unsupportedPlatformError($platforms)) {
                 return ToolResult::error($error);
+            }
+            // Each Google Business location is a separate storefront: with
+            // several, posting to "the newest" could hit the wrong shop.
+            if (in_array('google_business', $platforms, true)) {
+                $locations = $this->user()->socialAccounts()->where('platform', 'google_business')->get(['id', 'name']);
+                if ($locations->count() > 1) {
+                    return ToolResult::error('Several Google Business locations are connected: '
+                        . $locations->map(fn ($l) => "{$l->name} (social_account_id {$l->id})")->implode(', ')
+                        . '. Ask the user which to post to and pass them as social_account_ids instead of platforms.');
+                }
             }
             if ($error = self::videoRuleError($status, $platforms, $media)) {
                 return ToolResult::error($error);

@@ -163,10 +163,16 @@ return [
         ],
 
         'google_business' => [
-            'label' => 'Google My Business',
-            'enabled' => env('GOOGLE_BUSINESS_ENABLED', true),
+            'label' => 'Google Business Profile',
+            // Shares the YouTube Google app, so its keys are always set. Off
+            // until Google approves the project for the Business Profile APIs
+            // (quota is 0 until then and every call fails).
+            'enabled' => env('GOOGLE_BUSINESS_ENABLED', false),
             'client_id' => env('GOOGLE_CLIENT_ID'),
             'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+            // Points all three Business Profile hosts at one local mock of
+            // Google's API (see README/GOOGLE_BUSINESS_SETUP.md). Empty = Google.
+            'api_base' => env('GOOGLE_BUSINESS_API_BASE'),
             'scopes' => [
                 'https://www.googleapis.com/auth/business.manage',
             ],

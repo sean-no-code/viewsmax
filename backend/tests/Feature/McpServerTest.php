@@ -1157,7 +1157,7 @@ class McpServerTest extends TestCase
                 'brand_id' => $brand->id,
                 'platforms' => ['x'],
             ]),
-            'not both'
+            'only one of platforms, brand_id or social_account_ids'
         );
     }
 

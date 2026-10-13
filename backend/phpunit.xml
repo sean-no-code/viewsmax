@@ -38,5 +38,9 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- A local Google Business mock (GOOGLE_BUSINESS_* in .env) must never
+             leak into tests; tests that need the platform switch it on. -->
+        <env name="GOOGLE_BUSINESS_API_BASE" value="" force="true"/>
+        <env name="GOOGLE_BUSINESS_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>

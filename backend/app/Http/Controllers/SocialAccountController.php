@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  * @group Connections
  *
  * Connected social accounts (YouTube, TikTok, X, LinkedIn, Threads,
- * Instagram, Bluesky, Facebook). List what's connected, start an OAuth
+ * Instagram, Bluesky, Facebook, Google Business Profile). List what's connected, start an OAuth
  * connect flow, or disconnect an account.
  */
 class SocialAccountController extends Controller

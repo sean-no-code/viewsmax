@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Models\PostTarget;
 use App\Services\Social\PostPublishDispatcher;
+use App\Services\Social\Providers\GoogleBusinessProvider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
@@ -71,6 +73,15 @@ class PostController extends Controller
      * @bodyParam options.youtube.privacy_status string public, unlisted, or private. Example: public
      * @bodyParam options.instagram.cover_url string Public cover image URL for an Instagram Reel.
      * @bodyParam options.linkedin.first_comment string A comment auto-posted right after publishing.
+     * @bodyParam options.google_business.topic_type string STANDARD (an update), EVENT or OFFER. Example: STANDARD
+     * @bodyParam options.google_business.cta_type string Button: BOOK, ORDER, SHOP, LEARN_MORE, SIGN_UP or CALL. Empty = no button. Ignored on offers.
+     * @bodyParam options.google_business.cta_url string Where the button goes; required for every button except CALL.
+     * @bodyParam options.google_business.event_title string Event or offer title; required for EVENT and OFFER.
+     * @bodyParam options.google_business.event_start string Start, business local time (YYYY-MM-DDTHH:MM); required for EVENT and OFFER. Example: 2026-11-01T18:00
+     * @bodyParam options.google_business.event_end string End, business local time; required for EVENT and OFFER. Example: 2026-11-01T21:00
+     * @bodyParam options.google_business.coupon_code string Offer code (OFFER only).
+     * @bodyParam options.google_business.redeem_url string Link to redeem the offer online (OFFER only).
+     * @bodyParam options.google_business.terms string Offer terms and conditions (OFFER only).
      */
     public function store(Request $request)
     {
@@ -121,6 +132,15 @@ class PostController extends Controller
 
         if (array_key_exists('platforms', $data) || array_key_exists('targets', $data)) {
             $this->upsertTargets($post, $data);
+        } elseif (array_key_exists('options', $data)) {
+            // Options alone (e.g. the AI adding event dates to a saved draft):
+            // store them on the post's existing targets, or they'd pass
+            // validation and then never reach the publish job.
+            foreach ($post->targets()->get() as $target) {
+                if (array_key_exists($target->platform, $data['options'] ?? [])) {
+                    $target->update(['options' => $data['options'][$target->platform]]);
+                }
+            }
         }
 
         if (array_key_exists('comments', $data)) {
@@ -211,6 +231,38 @@ class PostController extends Controller
             'overrides' => 'nullable|array',
             'options' => 'nullable|array',
         ]);
+
+        // Google Business Profile fields are checked even on drafts. A
+        // separate validator: nested rules in the one above would strip every
+        // other platform's options from the validated data.
+        // Event times are stored as YYYY-MM-DDTHH:MM; AI clients often add
+        // seconds or use a space, so those are trimmed to that form first.
+        $gbpInput = (array) ($request->input('options.google_business') ?? []);
+        foreach (['event_start', 'event_end'] as $key) {
+            if (is_string($gbpInput[$key] ?? null) && preg_match('/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(:\d{2})?$/', trim($gbpInput[$key]), $m)) {
+                $gbpInput[$key] = "{$m[1]}T{$m[2]}";
+                $data['options']['google_business'][$key] = $gbpInput[$key];
+            }
+        }
+        Validator::make($gbpInput, [
+            'topic_type' => ['nullable', 'string', Rule::in(GoogleBusinessProvider::TOPIC_TYPES)],
+            'cta_type' => ['nullable', 'string', Rule::in(GoogleBusinessProvider::CTA_TYPES)],
+            'cta_url' => 'nullable|url|max:2048',
+            'event_title' => 'nullable|string',
+            'event_start' => 'nullable|date_format:Y-m-d\TH:i',
+            'event_end' => 'nullable|date_format:Y-m-d\TH:i'.(blank($gbpInput['event_start'] ?? null) ? '' : '|after:event_start'),
+            'coupon_code' => 'nullable|string',
+            'redeem_url' => 'nullable|url|max:2048',
+            'terms' => 'nullable|string',
+        ], [
+            'event_end.after' => 'The Google event or offer must end after it starts.',
+            'cta_url.url' => 'The Google button link must be a full web address, starting with https://.',
+            'redeem_url.url' => "The Google offer's redeem link must be a full web address, starting with https://.",
+            'event_start.date_format' => 'Google event and offer times look like 2026-11-06T18:00.',
+            'event_end.date_format' => 'Google event and offer times look like 2026-11-06T18:00.',
+            'topic_type.in' => 'The Google post type is STANDARD, EVENT or OFFER.',
+            'cta_type.in' => 'The Google button is BOOK, ORDER, SHOP, LEARN_MORE, SIGN_UP or CALL.',
+        ])->validate();
 
         // Back-compat: the old LinkedIn-only first_comment option becomes the
         // first composed comment (the generic system posts it now).
@@ -344,7 +396,41 @@ class PostController extends Controller
             }
         }
 
+        if ($publishing && in_array('google_business', $platformList, true)) {
+            $gbp = $data['options']['google_business']
+                ?? $post?->targets()->where('platform', 'google_business')->value('options')
+                ?? [];
+            if ($error = self::googleBusinessError($gbp)) {
+                abort(response()->json(['message' => $error], 422));
+            }
+        }
+
         return $data;
+    }
+
+    /**
+     * What a Google Business Profile post still needs before it can go out,
+     * or null. Events and offers need a title, start and end; a button other
+     * than Call needs its link.
+     */
+    public static function googleBusinessError(array $options): ?string
+    {
+        $topic = strtoupper((string) ($options['topic_type'] ?? '')) ?: 'STANDARD';
+        if (in_array($topic, ['EVENT', 'OFFER'], true)) {
+            $kind = $topic === 'EVENT' ? 'event' : 'offer';
+            foreach (['event_title' => 'a title', 'event_start' => 'a start', 'event_end' => 'an end'] as $key => $what) {
+                if (blank($options[$key] ?? null)) {
+                    return "The Google {$kind} needs {$what} before publishing or scheduling.";
+                }
+            }
+        }
+
+        $cta = strtoupper((string) ($options['cta_type'] ?? ''));
+        if ($topic !== 'OFFER' && $cta !== '' && $cta !== 'CALL' && blank($options['cta_url'] ?? null)) {
+            return 'The Google button needs a link before publishing or scheduling.';
+        }
+
+        return null;
     }
 
     /**

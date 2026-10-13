@@ -4,7 +4,7 @@
 import { useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { Icon } from "@/components/analytics/primitives";
 import { BrandIcon, hasBrandIcon } from "@/components/post/brand-icons";
-import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type Post, type PostMediaItem } from "@/lib/api-service";
+import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type GoogleBusinessOptions, type Post, type PostMediaItem } from "@/lib/api-service";
 import { platformLength, splitXThread, xThreadStatus, xWeightedLength, X_LIMIT, X_MAX_IMAGES, type XThreadStatus } from "@/lib/text-metrics";
 
 export interface Platform {
@@ -27,6 +27,8 @@ export const PLATFORMS: Platform[] = [
   { id: "facebook", name: "Facebook", glyph: "f", handle: "Creator Lab", accent: "#1877F2", limit: 5000, followers: "38.0K", kind: "Post" },
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
+  // Google's docs give no limit; 1,500 is what third-party API docs report.
+  { id: "google_business", name: "Google Business", glyph: "G", handle: "Corner Bakery", accent: "#4285F4", limit: 1500, followers: "", kind: "Update" },
 ];
 export const PMAP: Record<string, Platform> = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
 
@@ -45,6 +47,8 @@ export const PLATFORM_CAPS: Record<string, { text: boolean; image: boolean; vide
   threads: { text: true, image: true, video: true },
   // Bluesky embeds up to 4 images; the API has no video path yet.
   bluesky: { text: true, image: true, video: false },
+  // A Business Profile post takes text and one photo; videos aren't sent.
+  google_business: { text: true, image: true, video: false },
 };
 export type PostType = "media" | "text";
 export function platformAllowedForType(id: string, postType: PostType): boolean {
@@ -145,6 +149,14 @@ export function usePostComposer() {
   // links, which get reach-penalized in the post body).
   const [linkedin, setLinkedin] = useState<LinkedInOptions>({ first_comment: "" });
   const patchLinkedin = (p: Partial<LinkedInOptions>) => setLinkedin((l) => ({ ...l, ...p }));
+
+  // Google Business Profile: an update by default, no button until one is picked.
+  const [googleBusiness, setGoogleBusiness] = useState<GoogleBusinessOptions>({
+    topic_type: "STANDARD", cta_type: "", cta_url: "",
+    event_title: "", event_start: "", event_end: "",
+    coupon_code: "", redeem_url: "", terms: "",
+  });
+  const patchGoogleBusiness = (p: Partial<GoogleBusinessOptions>) => setGoogleBusiness((g) => ({ ...g, ...p }));
 
   // Custom cover: one uploaded image drives the YouTube thumbnail + Instagram
   // Reel cover; TikTok only supports a cover-frame time (seconds into the video).
@@ -389,6 +401,9 @@ export function usePostComposer() {
     const yt = targets.find((t) => t.platform === "youtube");
     if (yt?.options) setYoutube((cur) => ({ ...cur, ...(yt.options as Partial<YouTubeOptions>) }));
 
+    const gbp = targets.find((t) => t.platform === "google_business");
+    if (gbp?.options) setGoogleBusiness((cur) => ({ ...cur, ...(gbp.options as Partial<GoogleBusinessOptions>) }));
+
     const li = targets.find((t) => t.platform === "linkedin");
     if (li?.options) setLinkedin((cur) => ({ ...cur, ...(li.options as Partial<LinkedInOptions>) }));
     // Drafts saved before the generic comments system stored a LinkedIn-only
@@ -422,6 +437,7 @@ export function usePostComposer() {
     tiktok, patchTiktok, setPrivacyLevel, creatorInfo, creatorInfoError, creatorInfoLoading, creatorCannotPost, loadCreatorInfo,
     youtube, patchYoutube,
     linkedin, patchLinkedin,
+    googleBusiness, patchGoogleBusiness,
     cover, uploadCover, removeCover, coverUploading, coverError, tiktokCoverSec, setTiktokCoverSec,
     status, issues, youtubeTitleMissing, hydrate,
   };

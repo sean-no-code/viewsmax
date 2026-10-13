@@ -131,6 +131,7 @@ class SocialConnect
         return match ($platform) {
             'instagram' => 'Could not connect Instagram. Make sure you are logging in with an Instagram Business or Creator account.',
             'facebook' => 'No Facebook Page was found. You need to manage at least one Facebook Page and grant access to it.',
+            'google_business' => 'No Business Profile location that can take posts was found. Sign in with a Google account that owns or manages a verified Business Profile.',
             default => 'No '.ucfirst($platform).' account could be connected. Check that you granted the requested permissions.',
         };
     }

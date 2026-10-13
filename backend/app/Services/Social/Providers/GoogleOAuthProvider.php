@@ -7,7 +7,7 @@ use App\Services\Social\Data\OAuthResult;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Shared Google OAuth 2.0 behaviour for YouTube and Google My Business.
+ * Shared Google OAuth 2.0 behaviour for YouTube and Google Business Profile.
  */
 abstract class GoogleOAuthProvider extends AbstractSocialProvider
 {
@@ -32,24 +32,32 @@ abstract class GoogleOAuthProvider extends AbstractSocialProvider
 
     public function ensureFreshToken(SocialAccount $account): SocialAccount
     {
-        if ($account->hasValidToken() || empty($account->refresh_token)) {
+        // Refresh a few minutes early so a token can't expire mid-request.
+        $fresh = fn (SocialAccount $a) => $a->hasValidToken()
+            && ($a->token_expires_at === null || $a->token_expires_at->isAfter(now()->addMinutes(5)));
+        if ($fresh($account) || empty($account->refresh_token)) {
             return $account;
         }
 
-        $response = Http::asForm()->post(self::TOKEN_URL, [
-            'client_id' => $this->clientId(),
-            'client_secret' => $this->clientSecret(),
-            'refresh_token' => $account->refresh_token,
-            'grant_type' => 'refresh_token',
-        ]);
+        return $this->refreshingSafely($account, function (SocialAccount $account) {
+            $response = Http::asForm()->post(self::TOKEN_URL, [
+                'client_id' => $this->clientId(),
+                'client_secret' => $this->clientSecret(),
+                'refresh_token' => $account->refresh_token,
+                'grant_type' => 'refresh_token',
+            ]);
 
-        if (! $response->successful()) {
-            $account->markNeedsReauth('Google token refresh failed.');
+            if (! $response->successful()) {
+                // Only a dead grant needs a reconnect; an outage is retried.
+                if ($this->isDefinitiveAuthFailure($response->status())) {
+                    $account->markNeedsReauth('Google token refresh failed.');
+                }
 
-            return $account;
-        }
+                return $account;
+            }
 
-        return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+        }, $fresh);
     }
 
     protected function exchangeGoogleCode(string $code, string $redirectUri): OAuthResult

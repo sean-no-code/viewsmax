@@ -390,8 +390,8 @@ class McpOfferConnectionToolsTest extends TestCase
 
     public function test_get_connect_url_only_offers_platforms_you_can_post_to(): void
     {
-        // Google Business can be connected in the backend, but the Connections
-        // page doesn't show it and nothing can post to it, so it's not offered.
+        // Google Business shares YouTube's Google keys, so they are always set,
+        // but it stays off until GOOGLE_BUSINESS_ENABLED and isn't offered.
         foreach (['google_business', 'tiktok'] as $platform) {
             config([
                 "social.platforms.{$platform}.client_id" => "{$platform}-client",
@@ -410,6 +410,11 @@ class McpOfferConnectionToolsTest extends TestCase
         $unknown = $this->callTool($key, 'get_connect_url', ['platform' => 'snapchat']);
         $this->assertToolError($unknown);
         $this->assertStringNotContainsString('google_business', $unknown->json('result.content.0.text'));
+
+        // Switched on, it is offered like any other platform.
+        config(['social.platforms.google_business.enabled' => true]);
+        $enabled = $this->callTool($key, 'get_connect_url', ['platform' => 'google_business']);
+        $this->assertFalse((bool) $enabled->json('result.isError'), (string) $enabled->json('result.content.0.text'));
     }
 
     public function test_connected_accounts_say_which_platforms_are_supported(): void

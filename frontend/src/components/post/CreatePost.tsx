@@ -56,6 +56,25 @@ const PRIVACY_LABELS: Record<string, string> = {
 // Platforms surfaced in the "Publishing to" picker — the ones the connections
 // screen can actually connect today. Order follows the PLATFORMS catalog.
 const SUPPORTED_PLATFORM_IDS = ["youtube", "tiktok", "instagram", "x", "linkedin", "facebook", "threads", "bluesky"];
+// Platforms still waiting on their API approval: shown only once connected.
+const SHOWN_WHEN_CONNECTED_IDS = ["google_business"];
+
+// Google Business Profile post types and buttons, as Google names them.
+const GBP_TOPICS: Array<{ id: "STANDARD" | "EVENT" | "OFFER"; label: string; help: string }> = [
+  { id: "STANDARD", label: "Update", help: "News, a new product, anything you want customers to see." },
+  { id: "EVENT", label: "Event", help: "Something happening at a set time, with a title, start and end." },
+  { id: "OFFER", label: "Offer", help: "A deal for a set time. Google adds a \"View offer\" button itself." },
+];
+const isWebLink = (s: string) => /^https?:\/\/\S+\.\S+/i.test(s.trim());
+const GBP_BUTTONS: Array<{ id: string; label: string }> = [
+  { id: "", label: "No button" },
+  { id: "BOOK", label: "Book" },
+  { id: "ORDER", label: "Order online" },
+  { id: "SHOP", label: "Buy" },
+  { id: "LEARN_MORE", label: "Learn more" },
+  { id: "SIGN_UP", label: "Sign up" },
+  { id: "CALL", label: "Call now" },
+];
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -316,13 +335,6 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const navigate = useNavigate();
   const c = usePostComposer();
   const [tab, setTab] = useState("all"); // 'all' or platform id
-  // The picker always shows these; connected ones are selectable, the rest get
-  // a red "connect" badge linking to the connections screen.
-  const supportedPlatforms = PLATFORMS.filter((p) => SUPPORTED_PLATFORM_IDS.includes(p.id));
-  // Narrow the picker to platforms that can carry the chosen post type. A "text"
-  // post hides media-only platforms (YouTube/TikTok/Instagram); a "media" post
-  // hides text-only ones (X).
-  const visiblePlatforms = supportedPlatforms.filter((p) => platformAllowedForType(p.id, c.postType));
   // Connected accounts, merged from both backends: the legacy Connection store
   // (YouTube/TikTok/Instagram — drives posting) and the newer SocialAccount
   // store (X, LinkedIn, Threads, …). The directory also carries each account's
@@ -330,6 +342,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   // reconnectIds: platforms whose account exists but can't publish until the
   // user re-runs OAuth (expired/revoked token) — shown as "Reconnect".
   const { directory: accountDirectory, accountsByPlatform, connectedIds, reconnectIds, loading: connLoading } = useAccountDirectory();
+  // The picker always shows these; connected ones are selectable, the rest get
+  // a red "connect" badge linking to the connections screen. Platforms still
+  // waiting on their API approval only show once an account is connected.
+  const supportedPlatforms = PLATFORMS.filter((p) => SUPPORTED_PLATFORM_IDS.includes(p.id)
+    || (SHOWN_WHEN_CONNECTED_IDS.includes(p.id) && connectedIds.includes(p.id)));
+  // Narrow the picker to platforms that can carry the chosen post type. A "text"
+  // post hides media-only platforms (YouTube/TikTok/Instagram); a "media" post
+  // hides text-only ones (X).
+  const visiblePlatforms = supportedPlatforms.filter((p) => platformAllowedForType(p.id, c.postType));
   const connectedCount = visiblePlatforms.filter((p) => connectedIds.includes(p.id) && !reconnectIds.includes(p.id)).length;
   const { brands } = useBrands();
 
@@ -503,7 +524,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   // (LinkedIn's old first-comment moved to the generic Comments card).
   const mediaVideoPost = c.postType === "media" && hasVideo;
   const optionTabs = c.selected.filter((id) =>
-    id === "tiktok" || id === "youtube" || (id === "instagram" && mediaVideoPost)
+    id === "tiktok" || id === "youtube" || id === "google_business" || (id === "instagram" && mediaVideoPost)
   );
   const activeOptTab = optionTabs.includes(optTab) ? optTab : (optionTabs[0] ?? "");
 
@@ -529,6 +550,24 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     : tiktokBrandedPrivate ? "Branded content can't be set to private on TikTok."
     : tiktokDurationOver ? `Your TikTok video is ${Math.round(tiktokVideoDuration)}s — this account allows up to ${tiktokMaxDur}s.`
     : null;
+
+  // Google Business Profile: events and offers need a title, start and end;
+  // a button other than Call needs its link. The backend checks the same.
+  const gbpSelected = c.selected.includes("google_business");
+  const gbp = c.googleBusiness;
+  const gbpDated = gbp.topic_type === "EVENT" || gbp.topic_type === "OFFER";
+  const gbpKind = gbp.topic_type === "EVENT" ? "event" : "offer";
+  const gbpBlockReason: string | null = !gbpSelected ? null
+    : gbpDated && !gbp.event_title.trim() ? `Give the Google ${gbpKind} a title.`
+    : gbpDated && (!gbp.event_start || !gbp.event_end) ? `Set when the Google ${gbpKind} starts and ends.`
+    : gbpDated && gbp.event_end <= gbp.event_start ? `The Google ${gbpKind} must end after it starts.`
+    : gbp.topic_type !== "OFFER" && gbp.cta_type && gbp.cta_type !== "CALL" && !gbp.cta_url.trim() ? "Add the link for the Google button."
+    : gbp.topic_type !== "OFFER" && gbp.cta_type && gbp.cta_type !== "CALL" && !isWebLink(gbp.cta_url) ? "The Google button link must start with https://."
+    : gbp.topic_type === "OFFER" && gbp.redeem_url.trim() && !isWebLink(gbp.redeem_url) ? "The offer's redeem link must start with https://."
+    : null;
+  const blockReason = tiktokBlockReason ?? gbpBlockReason;
+  // Google gets the first photo only; a video-only post goes out as text.
+  const gbpVideoOnly = gbpSelected && c.postType === "media" && hasVideo && !c.media.some((m) => m.type === "image");
 
   // Shared cover uploader — one uploaded image drives both the YouTube thumbnail
   // and the Instagram Reel cover, so the same control renders in either tab.
@@ -574,6 +613,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     // TikTok audit compliance — mirror the composer gating (also enforced with a
     // 422 by the backend) so a non-compliant TikTok post can never be sent.
     if (status !== "draft" && tiktokBlockReason) { toast.error(tiktokBlockReason); return; }
+    if (status !== "draft" && gbpBlockReason) { toast.error(gbpBlockReason); return; }
     // YouTube uploads the stored video file directly.
     if (status !== "draft" && c.selected.includes("youtube") && !c.media.some((m) => m.type === "video" && m.url)) {
       toast.error("YouTube needs an uploaded video."); return;
@@ -606,6 +646,17 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
       // Instagram Reels take a public cover image URL.
       if (mediaPost && c.selected.includes("instagram") && c.cover?.url) {
         o.instagram = { cover_url: c.cover.url };
+      }
+      // Google Business Profile: only what applies to the chosen post type,
+      // and empty fields left out.
+      if (c.selected.includes("google_business")) {
+        const keys: Array<keyof typeof gbp> = ["topic_type"];
+        if (gbp.topic_type !== "OFFER") keys.push("cta_type", ...(gbp.cta_type && gbp.cta_type !== "CALL" ? ["cta_url" as const] : []));
+        if (gbpDated) keys.push("event_title", "event_start", "event_end");
+        if (gbp.topic_type === "OFFER") keys.push("coupon_code", "redeem_url", "terms");
+        const g: Record<string, string> = {};
+        for (const k of keys) if (String(gbp[k]).trim() !== "") g[k] = String(gbp[k]).trim();
+        o.google_business = g;
       }
       return Object.keys(o).length ? o : undefined;
     };
@@ -802,6 +853,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--vm-red-deep)", lineHeight: 1.45 }}>
                       <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
                       <span>X can't post video — its target will be marked failed. Use images for X, or remove it from this post.</span>
+                    </div>
+                  )}
+                  {gbpVideoOnly && (
+                    <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
+                      <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
+                      <span>Google Business gets photos only — without one, its post goes out as text.</span>
                     </div>
                   )}
                   {xImageOverflow && (
@@ -1113,6 +1170,80 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   </div>
                 )}
 
+                {activeOptTab === "google_business" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Post type</span>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {GBP_TOPICS.map((t) => (
+                          <button key={t.id} onClick={() => c.patchGoogleBusiness({ topic_type: t.id })} style={tabStyle(gbp.topic_type === t.id)}>{t.label}</button>
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+                        {GBP_TOPICS.find((t) => t.id === gbp.topic_type)?.help} The caption is the post's text.
+                      </span>
+                    </div>
+
+                    {gbpDated && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{gbp.topic_type === "EVENT" ? "Event title" : "Offer title"}</span>
+                          <input aria-label={`Google ${gbpKind} title`} value={gbp.event_title} onChange={(e) => c.patchGoogleBusiness({ event_title: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
+                        </label>
+                        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                          {([["event_start", "Starts"], ["event_end", "Ends"]] as const).map(([key, label]) => (
+                            <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{label}</span>
+                              <input type="datetime-local" aria-label={`Google ${gbpKind} ${label.toLowerCase()}`} value={gbp[key]} onChange={(e) => c.patchGoogleBusiness({ [key]: e.target.value })} style={{ ...fieldBase, width: 230 }} />
+                            </label>
+                          ))}
+                        </div>
+                        <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>In the business's own time zone.</span>
+                      </div>
+                    )}
+
+                    {gbp.topic_type === "OFFER" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
+                        {([
+                          ["coupon_code", "Coupon code", "text", "Optional. Customers show or enter it to get the deal."],
+                          ["redeem_url", "Link to redeem online", "url", "Optional."],
+                          ["terms", "Terms and conditions", "text", "Optional."],
+                        ] as const).map(([key, label, type, help]) => (
+                          <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{label}</span>
+                            <input type={type} aria-label={`Google offer ${label.toLowerCase()}`} value={gbp[key]} onChange={(e) => c.patchGoogleBusiness({ [key]: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
+                            <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{help}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {gbp.topic_type !== "OFFER" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Button</span>
+                          <select aria-label="Google button" value={gbp.cta_type} onChange={(e) => c.patchGoogleBusiness({ cta_type: e.target.value as typeof gbp.cta_type })} style={{ ...fieldBase, width: 260, maxWidth: "100%" }}>
+                            {GBP_BUTTONS.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+                          </select>
+                          {gbp.cta_type === "CALL" && (
+                            <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>Calls the phone number on the Business Profile.</span>
+                          )}
+                        </label>
+                        {gbp.cta_type && gbp.cta_type !== "CALL" && (
+                          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Button link</span>
+                            <input type="url" aria-label="Google button link" placeholder="https://" value={gbp.cta_url} onChange={(e) => c.patchGoogleBusiness({ cta_url: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
+                          </label>
+                        )}
+                      </div>
+                    )}
+
+                    {gbpBlockReason && (
+                      <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--vm-red)", lineHeight: 1.5 }}>{gbpBlockReason}</span>
+                    )}
+                  </div>
+                )}
+
               </Card>
             )}
 
@@ -1241,15 +1372,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {YOUTUBE_TITLE_MSG}
                     </div>
                   )}
-                  {tiktokBlockReason && (
+                  {blockReason && (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--vm-red)" }}>
-                      <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {tiktokBlockReason}
+                      <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {blockReason}
                     </div>
                   )}
                   <div className="cp-actions" style={{ display: "flex", gap: 10 }}>
                     <Btn kind="ghost" onClick={saving ? undefined : () => persist("draft")}>Save draft</Btn>
-                    <div title={tiktokBlockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || c.youtubeTitleMissing || tiktokBlockReason ? 0.55 : 1 }}>
-                      <Btn kind={c.issues.length || c.youtubeTitleMissing || uploadingMedia || failedMedia.length || tiktokBlockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || tiktokBlockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>
+                    <div title={blockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || c.youtubeTitleMissing || blockReason ? 0.55 : 1 }}>
+                      <Btn kind={c.issues.length || c.youtubeTitleMissing || uploadingMedia || failedMedia.length || blockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || blockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>
                         {saving ? "Saving…" : uploadingMedia ? `Uploading… ${uploadingMedia.progress ?? 0}%` : c.mode === "now" ? "Post now" : isEditing ? "Save changes" : "Schedule post"}
                       </Btn>
                     </div>

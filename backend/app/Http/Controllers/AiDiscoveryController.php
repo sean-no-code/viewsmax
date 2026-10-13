@@ -53,7 +53,10 @@ class AiDiscoveryController extends Controller
                 . "agents act on a user's behalf: research outlier videos (content that "
                 . 'massively over-performed its channel) and get AI breakdowns of why they '
                 . 'worked — this works with nothing connected; compose and schedule posts to '
-                . 'YouTube, TikTok, X, LinkedIn, Threads, Instagram, and Bluesky; create '
+                . 'YouTube, TikTok, X, LinkedIn, Threads, Instagram, '
+                // Google Business Profile is named only once it is switched on.
+                . (in_array('google_business', \App\Mcp\Tools\CreatePost::availablePlatforms(), true)
+                    ? 'Bluesky, and Google Business Profile; create ' : 'and Bluesky; create ')
                 . 'offers and tracked links; read click, conversion, and revenue stats. '
                 . 'User data is private — all access is authenticated.',
             'site' => $site,

@@ -352,7 +352,7 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     Route::patch('/feature-requests/{id}/status', [FeatureRequestController::class, 'updateStatus'])->middleware('role:admin');
 
     // Social media accounts: connect & manage (Facebook, Instagram, Threads,
-    // LinkedIn, Bluesky, X, TikTok, YouTube, Google My Business).
+    // LinkedIn, Bluesky, X, TikTok, YouTube, Google Business Profile).
     Route::prefix('social')->group(function () {
         // Supported platforms + whether each is configured.
         Route::get('/platforms', [SocialAccountController::class, 'platforms']);

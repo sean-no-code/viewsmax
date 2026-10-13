@@ -60,6 +60,7 @@ const PROVIDERS: ProviderEntry[] = [
   { key: "threads", system: "social" },
   { key: "facebook", system: "social" },
   { key: "bluesky", system: "social" },
+  { key: "google_business", system: "social" },
   { key: "youtube", system: "social", connectVia: "legacy" },
 ];
 

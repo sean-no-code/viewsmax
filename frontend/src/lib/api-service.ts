@@ -589,6 +589,25 @@ export interface LinkedInOptions {
   first_comment?: string;
 }
 
+// Google Business Profile post. Empty strings are left out when saving.
+export interface GoogleBusinessOptions {
+  // An update, an event or an offer.
+  topic_type: "STANDARD" | "EVENT" | "OFFER";
+  // Button: "" = none. Google ignores it on offers.
+  cta_type: "" | "BOOK" | "ORDER" | "SHOP" | "LEARN_MORE" | "SIGN_UP" | "CALL";
+  // Where the button goes; every button but CALL needs one.
+  cta_url: string;
+  // Events and offers: title, start and end in the business's local time
+  // ("YYYY-MM-DDTHH:MM", sent as typed).
+  event_title: string;
+  event_start: string;
+  event_end: string;
+  // Offers only.
+  coupon_code: string;
+  redeem_url: string;
+  terms: string;
+}
+
 // An X post published through the app — pickable as a tracking-link source.
 export interface XPublishedPost {
   id: string;         // tweet id

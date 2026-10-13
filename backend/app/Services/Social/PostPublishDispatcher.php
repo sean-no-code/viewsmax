@@ -4,6 +4,7 @@ namespace App\Services\Social;
 
 use App\Jobs\PublishToBlueskyJob;
 use App\Jobs\PublishToFacebookJob;
+use App\Jobs\PublishToGoogleBusinessJob;
 use App\Jobs\PublishToInstagramJob;
 use App\Jobs\PublishToLinkedInJob;
 use App\Jobs\PublishToThreadsJob;
@@ -33,6 +34,7 @@ class PostPublishDispatcher
         'instagram' => PublishToInstagramJob::class,
         'facebook' => PublishToFacebookJob::class,
         'bluesky' => PublishToBlueskyJob::class,
+        'google_business' => PublishToGoogleBusinessJob::class,
     ];
 
     /**
