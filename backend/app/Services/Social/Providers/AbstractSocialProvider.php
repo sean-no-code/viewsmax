@@ -7,6 +7,8 @@ use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Contracts\SocialProviderInterface;
 use App\Services\Social\Data\OAuthResult;
+use App\Support\SafeHttp;
+use App\Support\UnsafeUrlException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -257,6 +259,28 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
     protected function firstVideoUrl(SocialPost $post): ?string
     {
         return $this->mediaItems($post, 'video')[0]['url'] ?? null;
+    }
+
+    /**
+     * Download one of a post's media files to re-upload it to the platform.
+     * Media URLs come from users (create_post accepts any URL), so this goes
+     * through SafeHttp: public addresses only, capped size. Null when refused
+     * or unreachable; the reason is logged.
+     *
+     * @return array{body: string, content_type: ?string, url: string}|null
+     */
+    protected function fetchMedia(string $url, string $type = 'image'): ?array
+    {
+        // Caps match direct uploads (PostMediaDirectUploadController), with room for upload_media images.
+        $maxBytes = $type === 'video' ? 512 * 1024 * 1024 : 20 * 1024 * 1024;
+
+        try {
+            return SafeHttp::get($url, $maxBytes, $type === 'video' ? 600 : 60);
+        } catch (UnsafeUrlException $e) {
+            Log::warning("[{$this->platform}] media fetch refused", ['url' => $url, 'reason' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /**

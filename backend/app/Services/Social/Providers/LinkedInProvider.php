@@ -237,19 +237,18 @@ class LinkedInProvider extends AbstractSocialProvider implements SupportsComment
         $uploadUrl = $init->json('value.uploadUrl');
         $imageUrn = $init->json('value.image');
 
-        $binary = Http::get($imageUrl);
-        if (! $binary->successful()) {
+        $binary = $this->fetchMedia($imageUrl);
+        if ($binary === null) {
             Log::error('[LinkedIn] failed to fetch source image', [
                 'account_id' => $account->id,
                 'image_url' => $imageUrl,
-                'http_status' => $binary->status(),
             ]);
 
             return null;
         }
 
         $upload = Http::withToken($account->access_token)
-            ->withBody($binary->body(), $binary->header('Content-Type') ?: 'image/jpeg')
+            ->withBody($binary['body'], $binary['content_type'] ?: 'image/jpeg')
             ->put($uploadUrl);
 
         if (! $upload->successful()) {

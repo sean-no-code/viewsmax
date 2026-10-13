@@ -227,13 +227,13 @@ class BlueskyProvider extends AbstractSocialProvider implements SupportsFollowin
      */
     protected function uploadBlob(SocialAccount $account, string $url): ?array
     {
-        $binary = Http::get($url);
-        if (! $binary->successful()) {
+        $binary = $this->fetchMedia($url);
+        if ($binary === null) {
             return null;
         }
 
         $response = Http::withToken($account->access_token)
-            ->withBody($binary->body(), $binary->header('Content-Type') ?: 'image/jpeg')
+            ->withBody($binary['body'], $binary['content_type'] ?: 'image/jpeg')
             ->post($this->serviceUrl().'/xrpc/com.atproto.repo.uploadBlob');
 
         return $response->successful() ? $response->json('blob') : null;

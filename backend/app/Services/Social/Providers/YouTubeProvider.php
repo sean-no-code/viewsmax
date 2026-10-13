@@ -155,14 +155,14 @@ class YouTubeProvider extends GoogleOAuthProvider
         }
 
         // 2. Stream the source video into the upload session.
-        $binary = Http::timeout(600)->get($video);
-        if (! $binary->successful()) {
+        $binary = $this->fetchMedia($video, 'video');
+        if ($binary === null) {
             return PublishResult::failure('Could not download source video for YouTube upload.');
         }
 
         $upload = Http::withToken($account->access_token)
             ->timeout(600)
-            ->withBody($binary->body(), 'video/*')
+            ->withBody($binary['body'], 'video/*')
             ->put($uploadUrl);
 
         if (! $upload->successful()) {
