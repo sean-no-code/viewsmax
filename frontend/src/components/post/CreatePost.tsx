@@ -523,6 +523,8 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     setPinBoards((m) => ({ ...m, [accountId]: { state: "loading", boards: m[accountId]?.boards ?? [] } }));
     const res = await viewsMaxApi.getPinterestBoards(accountId);
     setPinBoards((m) => ({ ...m, [accountId]: res.success ? { state: "idle", boards: res.data ?? [] } : { state: "error", boards: [] } }));
+    // One board: nothing to choose between, so it's selected (and shown).
+    if (res.success && res.data?.length === 1) c.selectOnlyPinterestBoard(accountId, res.data[0].id);
   };
   useEffect(() => {
     if (pinterestSelected) pinterestAccounts.forEach((a) => loadPinBoards(a.id!));

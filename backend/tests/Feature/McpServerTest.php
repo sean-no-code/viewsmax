@@ -631,8 +631,10 @@ class McpServerTest extends TestCase
         config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
         $tool = $describe();
         $this->assertStringContainsString('options.pinterest.board_id', $tool['description']);
+        // One board: say which board will be used. Several: ask and wait.
+        $this->assertStringContainsString('only one board', $tool['description']);
         $this->assertStringContainsString('ask which one', $tool['description']);
-        $this->assertStringContainsString('never choose it for them', $tool['description']);
+        $this->assertStringContainsString('never choose between boards for them', $tool['description']);
         $this->assertStringContainsString('pinterest: { board_id', json_encode($tool['inputSchema']));
     }
 

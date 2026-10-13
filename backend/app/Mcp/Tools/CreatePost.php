@@ -64,9 +64,11 @@ class CreatePost extends ViewsMaxTool
     public static function pinterestRule(): string
     {
         return in_array('pinterest', self::availablePlatforms(), true)
-            ? 'Pinterest needs an image or video url and every Pin goes on a board: '
-                . 'show the user the boards from list_connected_accounts, ask which one '
-                . 'to use and wait for their answer; never choose it for them. Pass it as '
+            ? 'Pinterest needs an image or video url and every Pin goes on a board '
+                . '(list_connected_accounts lists them). If the account has only one board, '
+                . 'tell the user the Pin goes on that board. If it has several, show them, '
+                . 'ask which one to use and wait for their answer; never choose between '
+                . 'boards for them. No boards: offer create_pinterest_board. Pass it as '
                 . 'options.pinterest.board_id (one Pinterest account) or '
                 . 'options.pinterest.board_ids {social_account_id: board_id} (several). '
                 . 'Send title, link and alt_text only when the user gives them; empty means '

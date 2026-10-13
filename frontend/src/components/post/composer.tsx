@@ -153,6 +153,10 @@ export function usePostComposer() {
   // for the user and an empty title/link/alt text means the Pin has none.
   const [pinterest, setPinterest] = useState<PinterestOptions>({ board_ids: {}, title: "", link: "", alt_text: "" });
   const patchPinterest = (p: Partial<PinterestOptions>) => setPinterest((o) => ({ ...o, ...p }));
+  // An account with exactly one board: use it, unless a board is already set
+  // (e.g. from a saved draft). Read from current state, not a stale closure.
+  const selectOnlyPinterestBoard = (accountId: number, boardId: string) =>
+    setPinterest((o) => (o.board_ids[String(accountId)] ? o : { ...o, board_ids: { ...o.board_ids, [String(accountId)]: boardId } }));
 
   // Custom cover: one uploaded image drives the YouTube thumbnail + Instagram
   // Reel cover; TikTok only supports a cover-frame time (seconds into the video).
@@ -439,7 +443,7 @@ export function usePostComposer() {
     tiktok, patchTiktok, setPrivacyLevel, creatorInfo, creatorInfoError, creatorInfoLoading, creatorCannotPost, loadCreatorInfo,
     youtube, patchYoutube,
     linkedin, patchLinkedin,
-    pinterest, patchPinterest,
+    pinterest, patchPinterest, selectOnlyPinterestBoard,
     cover, uploadCover, removeCover, coverUploading, coverError, tiktokCoverSec, setTiktokCoverSec,
     status, issues, youtubeTitleMissing, hydrate,
   };
