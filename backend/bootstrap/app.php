@@ -163,6 +163,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         Integration::handles($exceptions);
         // Ensure API routes always return JSON responses
+        // Nothing in here may throw. A fatal error during boot reaches this
+        // renderer before the auth service exists, and a second exception
+        // here hides the real one and returns a header-less 500 that the
+        // browser reports as CORS. Hence rescue() around auth()->id().
         $exceptions->render(function (Throwable $e, $request) {
             if ($request->is('api/*')) {
                 // Handle validation exceptions properly
@@ -173,7 +177,7 @@ return Application::configure(basePath: dirname(__DIR__))
                         'method' => $request->method(),
                         'ip' => $request->ip(),
                         'user_agent' => $request->userAgent(),
-                        'user_id' => auth()->id(),
+                        'user_id' => rescue(fn () => auth()->id(), null, false),
                         'validation_errors' => $e->errors(),
                         'input_data' => $request->except(['password', 'password_confirmation', 'token']),
                         'exception_message' => $e->getMessage(),
@@ -194,7 +198,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'method' => $request->method(),
                     'ip' => $request->ip(),
                     'user_agent' => $request->userAgent(),
-                    'user_id' => auth()->id(),
+                    'user_id' => rescue(fn () => auth()->id(), null, false),
                     'exception_message' => $e->getMessage(),
                     'exception_code' => $e->getCode(),
                     'exception_file' => $e->getFile(),

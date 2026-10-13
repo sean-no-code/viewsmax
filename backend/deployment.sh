@@ -51,6 +51,21 @@ if [ "$STORAGE_OWNER" != "$(id -un)" ]; then
   exit 1
 fi
 
+# An unreadable .env is not an error to Laravel: it silently falls back to the
+# defaults in config/*.php (sqlite, localhost, sync queue, log mail), and the
+# config:cache below would then freeze those defaults in for every request.
+# That showed up as a migrate prompt to create a SQLite file and as API 500s
+# the browser reported as CORS. Stop here instead.
+if [ ! -r .env ]; then
+  printf '\033[1;31m  ! .env is missing or not readable by %s. Laravel would cache its defaults (sqlite, localhost).\033[0m\n' "$(id -un)"
+  printf '\033[1;31m    Fix: chown %s .env && chmod 640 .env (from the backend root), then rerun.\033[0m\n' "$(id -un)"
+  exit 1
+fi
+if ! grep -qE '^DB_CONNECTION=' .env; then
+  printf '\033[1;31m  ! .env has no DB_CONNECTION= line (check the spelling). Laravel would default to sqlite.\033[0m\n'
+  exit 1
+fi
+
 # ---- config (override via env vars) ---------------------------------------
 PULL="${PULL:-0}"
 MAINTENANCE="${MAINTENANCE:-0}"
