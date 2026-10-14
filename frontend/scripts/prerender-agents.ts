@@ -32,6 +32,7 @@ const cleanHead = (html: string) =>
     .replace(/\s*<meta property="og:[^"]*"[^>]*>/gi, "")
     .replace(/\s*<meta name="twitter:[^"]*"[^>]*>/gi, "")
     .replace(/\s*<link rel="canonical"[^>]*>/gi, "")
+    .replace(/\s*<link rel="alternate" hreflang[^>]*>/gi, "") // homepage-only, added by prerender-seo.ts
     .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/gi, "");
 
 const shell = cleanHead(readFileSync(join(distDir, "index.html"), "utf8"));

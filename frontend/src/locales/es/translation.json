@@ -1,42 +1,45 @@
 {
   "nav": {
-    "post": "Publicar",
-    "newPost": "Nueva publicación",
-    "drafts": "Borradores",
-    "scheduled": "Programadas",
-    "history": "Historial",
-    "calendar": "Calendario",
-    "monetization": "Monetización",
-    "offers": "Ofertas",
+    "aiApps": "Usar ViewsMax en apps de IA",
     "analytics": "Analítica",
     "analyticsOverview": "Resumen",
     "analyticsSources": "Fuentes",
-    "revenueGrowth": "Crecimiento de ingresos",
-    "profilePerformance": "Rendimiento del perfil",
-    "postPerformance": "Rendimiento de publicaciones",
     "boosts": "Boosts",
+    "calendar": "Calendario",
     "connections": "Conexiones",
-    "aiApps": "Usar ViewsMax en apps de IA",
-    "settings": "Ajustes",
+    "drafts": "Borradores",
+    "history": "Historial",
+    "monetization": "Monetización",
+    "newPost": "Nueva publicación",
+    "offers": "Ofertas",
+    "outliers": "Outliers",
+    "outliersBrowse": "Explorar",
+    "outliersLibrary": "Biblioteca",
+    "post": "Publicar",
+    "postPerformance": "Rendimiento de publicaciones",
+    "profilePerformance": "Rendimiento del perfil",
     "requestFeature": "Pedir una función",
+    "revenueGrowth": "Crecimiento de ingresos",
+    "scheduled": "Programadas",
     "scripts": "Guiones",
     "scriptsCreate": "Crear",
-    "scriptsLibrary": "Biblioteca"
+    "scriptsLibrary": "Biblioteca",
+    "settings": "Ajustes"
   },
   "settings": {
     "language": {
-      "title": "Idioma",
       "description": "Elige el idioma que usa ViewsMax.",
-      "label": "Idioma de la interfaz"
+      "label": "Idioma de la interfaz",
+      "title": "Idioma"
     },
     "notifications": {
-      "title": "Notificaciones",
       "description": "Elige cuándo te escribe ViewsMax por correo.",
+      "disabled": "Correos de fallo de publicación desactivados.",
+      "enabled": "Te avisaremos por correo si una publicación falla.",
       "postFailures": "Avisarme por correo si una publicación falla",
       "postFailuresHint": "Un correo por publicación fallida con cada plataforma afectada y un enlace para reintentar.",
       "saveFailed": "No se pudo guardar el ajuste. Inténtalo de nuevo.",
-      "enabled": "Te avisaremos por correo si una publicación falla.",
-      "disabled": "Correos de fallo de publicación desactivados."
+      "title": "Notificaciones"
     }
   }
 }

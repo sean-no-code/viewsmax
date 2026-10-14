@@ -1,42 +1,45 @@
 {
   "nav": {
-    "post": "Publier",
-    "newPost": "Nouvelle publication",
-    "drafts": "Brouillons",
-    "scheduled": "Programmées",
-    "history": "Historique",
-    "calendar": "Calendrier",
-    "monetization": "Monétisation",
-    "offers": "Offres",
+    "aiApps": "Utiliser ViewsMax dans les apps IA",
     "analytics": "Analytique",
     "analyticsOverview": "Aperçu",
     "analyticsSources": "Sources",
-    "revenueGrowth": "Croissance des revenus",
-    "profilePerformance": "Performance du profil",
-    "postPerformance": "Performance des publications",
     "boosts": "Boosts",
+    "calendar": "Calendrier",
     "connections": "Connexions",
-    "aiApps": "Utiliser ViewsMax dans les apps IA",
-    "settings": "Paramètres",
+    "drafts": "Brouillons",
+    "history": "Historique",
+    "monetization": "Monétisation",
+    "newPost": "Nouvelle publication",
+    "offers": "Offres",
+    "outliers": "Outliers",
+    "outliersBrowse": "Explorer",
+    "outliersLibrary": "Bibliothèque",
+    "post": "Publier",
+    "postPerformance": "Performance des publications",
+    "profilePerformance": "Performance du profil",
     "requestFeature": "Suggérer une fonctionnalité",
+    "revenueGrowth": "Croissance des revenus",
+    "scheduled": "Programmées",
     "scripts": "Scripts",
     "scriptsCreate": "Créer",
-    "scriptsLibrary": "Bibliothèque"
+    "scriptsLibrary": "Bibliothèque",
+    "settings": "Paramètres"
   },
   "settings": {
     "language": {
-      "title": "Langue",
       "description": "Choisissez la langue de ViewsMax.",
-      "label": "Langue de l'interface"
+      "label": "Langue de l'interface",
+      "title": "Langue"
     },
     "notifications": {
-      "title": "Notifications",
       "description": "Choisissez quand ViewsMax vous envoie des e-mails.",
+      "disabled": "E-mails d'échec de publication désactivés.",
+      "enabled": "Vous recevrez un e-mail si une publication échoue.",
       "postFailures": "M'envoyer un e-mail si une publication échoue",
       "postFailuresHint": "Un e-mail par publication échouée listant chaque plateforme concernée, avec un lien pour réessayer.",
       "saveFailed": "Impossible d'enregistrer le réglage. Veuillez réessayer.",
-      "enabled": "Vous recevrez un e-mail si une publication échoue.",
-      "disabled": "E-mails d'échec de publication désactivés."
+      "title": "Notifications"
     }
   }
 }

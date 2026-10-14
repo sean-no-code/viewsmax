@@ -1,0 +1,45 @@
+{
+  "nav": {
+    "aiApps": "ViewsMax в ИИ-приложениях",
+    "analytics": "Аналитика",
+    "analyticsOverview": "Обзор",
+    "analyticsSources": "Источники",
+    "boosts": "Бусты",
+    "calendar": "Календарь",
+    "connections": "Подключения",
+    "drafts": "Черновики",
+    "history": "История",
+    "monetization": "Монетизация",
+    "newPost": "Новая публикация",
+    "offers": "Офферы",
+    "outliers": "Аутлайеры",
+    "outliersBrowse": "Обзор",
+    "outliersLibrary": "Библиотека",
+    "post": "Публикации",
+    "postPerformance": "Эффективность публикаций",
+    "profilePerformance": "Эффективность профиля",
+    "requestFeature": "Предложить функцию",
+    "revenueGrowth": "Рост выручки",
+    "scheduled": "Запланированные",
+    "scripts": "Сценарии",
+    "scriptsCreate": "Создать",
+    "scriptsLibrary": "Библиотека",
+    "settings": "Настройки"
+  },
+  "settings": {
+    "language": {
+      "description": "Выберите язык интерфейса ViewsMax.",
+      "label": "Язык интерфейса",
+      "title": "Язык"
+    },
+    "notifications": {
+      "description": "Выберите, когда ViewsMax будет отправлять вам письма.",
+      "disabled": "Письма о неудавшихся публикациях отключены.",
+      "enabled": "Мы сообщим вам по почте, если публикация не выйдет.",
+      "postFailures": "Сообщать по почте, если публикация не вышла",
+      "postFailuresHint": "Одно письмо на каждую неудавшуюся публикацию со списком всех платформ, где она не вышла, и ссылкой для повтора.",
+      "saveFailed": "Не удалось сохранить настройку уведомлений. Попробуйте ещё раз.",
+      "title": "Уведомления"
+    }
+  }
+}

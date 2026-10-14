@@ -1,0 +1,240 @@
+{
+  "seo": {
+    "title": "ViewsMax — Dapatkan Lebih Banyak Prospek dari Konten Anda",
+    "description": "ViewsMax membantu kreator dan marketer mendapatkan lebih banyak prospek dari konten mereka. Jadwalkan postingan ke semua platform dan lihat konten mana yang menghasilkan penjualan."
+  },
+  "nav": {
+    "features": "Fitur",
+    "channels": "Kanal",
+    "pricing": "Harga",
+    "freeTools": "Alat Gratis",
+    "aiAgents": "Agen AI",
+    "resources": "Sumber Daya",
+    "logIn": "Masuk",
+    "start": "Mulai dengan $0",
+    "language": "Bahasa"
+  },
+  "resources": {
+    "api": {
+      "label": "Dokumentasi API",
+      "desc": "Referensi REST API & spesifikasi OpenAPI"
+    },
+    "mcp": {
+      "label": "Pasang MCP",
+      "desc": "Server MCP ViewsMax: alamat, autentikasi & 26 alat"
+    },
+    "cli": {
+      "label": "Pengaturan CLI",
+      "desc": "Gunakan ViewsMax dari Claude Code"
+    },
+    "blog": {
+      "label": "Blog",
+      "desc": "Taktik pertumbuhan & kabar produk"
+    },
+    "support": {
+      "label": "Dukungan",
+      "desc": "Gabung Discord kami untuk bantuan & kabar terbaru"
+    },
+    "github": {
+      "label": "GitHub",
+      "desc": "Contoh, SDK & issue ViewsMax"
+    }
+  },
+  "freeTools": {
+    "youtube": {
+      "label": "Transkrip YouTube",
+      "desc": "Unduh & salin transkrip video YouTube apa pun"
+    },
+    "tiktok": {
+      "label": "Transkrip TikTok",
+      "desc": "Ubah video TikTok apa pun menjadi teks"
+    },
+    "instagram": {
+      "label": "Transkrip Instagram",
+      "desc": "Ubah Reels & video menjadi teks"
+    },
+    "thumbnail": {
+      "label": "Pratinjau Thumbnail",
+      "desc": "Lihat thumbnail Anda di beranda YouTube"
+    },
+    "revenue": {
+      "label": "Kalkulator Pendapatan",
+      "desc": "Perkirakan penghasilan YouTube Anda"
+    }
+  },
+  "agentCards": {
+    "claude": "Satu konektor untuk semua aplikasi Claude",
+    "claude-cowork": "Konektor yang sama dengan Claude, dipakai oleh agen desktop",
+    "claude-code": "Satu perintah terminal, masuk lewat OAuth",
+    "chatgpt": "Konektor kustom di mode Developer",
+    "codex": "Dua perintah di Codex CLI",
+    "cursor": "Konfigurasi MCP dengan API key",
+    "openclaw": "Skill ViewsMax dengan API key",
+    "hermes": "Server MCP di config.yaml, masuk lewat OAuth"
+  },
+  "footer": {
+    "tagline": "Buat konten yang menghasilkan penjualan.",
+    "product": "Produk",
+    "scheduler": "Penjadwal",
+    "salesTracking": "Pelacakan penjualan",
+    "analytics": "Analitik",
+    "company": "Perusahaan",
+    "about": "Tentang",
+    "careers": "Karier",
+    "contact": "Kontak",
+    "affiliates": "Afiliasi",
+    "copyright": "© 2026 ViewsMax. Tidak berafiliasi dengan platform sosial yang ditampilkan.",
+    "privacy": "Privasi",
+    "terms": "Ketentuan"
+  },
+  "hero": {
+    "headline": [
+      "Bangun mesin konten",
+      "yang menghasilkan pendapatan."
+    ],
+    "sub": "Temukan konten yang sukses, posting ke semua platform, dan lacak apa yang menghasilkan konversi (dengan dukungan langsung dari Sean).",
+    "connectPlaceholder": "Hubungkan akun media sosial Anda",
+    "connect": "Hubungkan",
+    "noCard": "Tanpa kartu kredit"
+  },
+  "demos": {
+    "tabsLabel": "Demo fitur",
+    "demoAlt": "demo",
+    "play": "Putar demo",
+    "comingSoon": "Video demo segera hadir",
+    "tryFree": "Coba gratis",
+    "outliers": {
+      "label": "Outlier",
+      "title": "Temukan outlier yang layak ditiru",
+      "desc": "Cari di antara jutaan video YouTube, TikTok, dan Instagram untuk menemukan postingan yang jauh mengungguli rata-rata kanalnya — lalu pelajari alasannya dan buat ulang untuk niche Anda."
+    },
+    "tracking": {
+      "label": "Pelacakan",
+      "title": "Lihat postingan mana yang menghasilkan penjualan",
+      "desc": "Setiap klik dan konversi ditautkan ke postingan dan platform asalnya, jadi Anda tahu konten mana yang benar-benar menghasilkan pendapatan — bukan sekadar views."
+    },
+    "scheduling": {
+      "label": "Penjadwalan",
+      "title": "Posting ke mana saja dari satu kalender",
+      "desc": "Tulis sekali lalu terbitkan ke YouTube, TikTok, Instagram, X, LinkedIn, dan Threads sesuai jadwal Anda — ViewsMax memposting untuk Anda pada waktu yang Anda pilih."
+    }
+  },
+  "features": {
+    "eyebrow": "SIKLUS AUTOPILOT",
+    "title": "Posting di mana saja. Lacak setiap penjualan.",
+    "sub": "Satu kalender untuk menjadwalkan semuanya, dan satu dasbor yang menunjukkan apa yang benar-benar menghasilkan uang.",
+    "items": [
+      {
+        "t": "Jadwalkan di semua kanal",
+        "d": "Rencanakan dan posting otomatis ke Instagram, TikTok, X, YouTube, LinkedIn, dan lainnya dari satu kalender. Atur sekali dan ViewsMax menerbitkan pada waktu yang tepat — tanpa perlu Anda sentuh."
+      },
+      {
+        "t": "Lacak apa yang benar-benar laku",
+        "d": "Setiap postingan ditautkan ke pendapatan nyata, bukan likes. Lihat konten dan kanal mana yang memasukkan uang ke rekening Anda — tanpa metrik semu."
+      },
+      {
+        "t": "Perbanyak yang berhasil",
+        "d": "ViewsMax menemukan postingan dengan penghasilan tertinggi dan memberi tahu apa yang perlu dijadwalkan berikutnya, sehingga setiap minggu menjual lebih banyak dari minggu sebelumnya — secara otomatis."
+      }
+    ]
+  },
+  "channels": {
+    "eyebrow": "SEMUA KANAL YANG PENTING BAGI ANDA",
+    "title": "Posting ke kanal yang kami dukung.",
+    "sub": "Hubungkan sekali, lalu jadwalkan, posting otomatis, dan lacak penjualan di semuanya dari satu tempat."
+  },
+  "monetize": {
+    "eyebrow": "ATRIBUSI, BUKAN METRIK SEMU",
+    "title": [
+      "Ketahui persis postingan mana yang menghasilkan",
+      "penjualan."
+    ],
+    "body": "ViewsMax menghubungkan setiap kanal ke pendapatan Anda, jadi Anda tidak perlu menebak lagi. Lihat platform, postingan, dan jam berapa yang benar-benar menghasilkan penjualan — lalu biarkan yang terbaik berjalan otomatis.",
+    "rows": [
+      "Jadwalkan konten sebulan dalam hitungan menit",
+      "Tautkan setiap postingan ke penjualan yang dihasilkannya",
+      "Posting ulang otomatis konten terlaris Anda"
+    ],
+    "topSellers": "Lihat postingan terlaris saya",
+    "example": "Lihat contoh"
+  },
+  "mock": {
+    "pill": "{{post}} menghasilkan {{amount}} penjualan",
+    "pillPost": "Reel hari Selasa Anda",
+    "topPost": "POSTINGAN TERATAS",
+    "thumbAlt": "Thumbnail postingan teratas",
+    "play": "Putar video",
+    "postTitle": "Reel di balik layar",
+    "postMeta": "Diposting otomatis Sel 18.00 · jangkauan 128 rb",
+    "salesLabel": "Penjualan dari postingan ini",
+    "orders": "312 pesanan",
+    "conv": "Konversi 4,1%",
+    "scheduleMore": "Jadwalkan yang serupa"
+  },
+  "pricing": {
+    "eyebrow": "HARGA",
+    "title": "Gratis untuk memulai. Murah untuk berkembang.",
+    "sub": "Jadwalkan di semua kanal, lacak setiap penjualan, dan pilih paket yang tumbuh bersama Anda.",
+    "popular": "POPULER",
+    "perMonth": "/bln",
+    "talkToUs": "Hubungi kami",
+    "tiers": {
+      "Starter": {
+        "blurb": "Luncurkan penawaran pertama Anda.",
+        "feats": [
+          "5 kanal",
+          "1 penawaran",
+          "400 postingan/bln"
+        ]
+      },
+      "Creator": {
+        "blurb": "Untuk brand yang berjualan.",
+        "feats": [
+          "30 kanal",
+          "5 penawaran",
+          "Postingan tanpa batas/bln"
+        ]
+      },
+      "Pro": {
+        "blurb": "Kembangkan setiap kanal.",
+        "feats": [
+          "Kanal tanpa batas",
+          "10 penawaran",
+          "Postingan tanpa batas/bln"
+        ]
+      },
+      "Agency": {
+        "blurb": "Untuk tim & agensi.",
+        "feats": [
+          "Kanal tanpa batas",
+          "Penawaran tanpa batas",
+          "Postingan tanpa batas/bln"
+        ]
+      }
+    },
+    "includes": [
+      "Beberapa akun per platform",
+      "Brand (grup akun)",
+      "Tautan terlacak & atribusi pendapatan",
+      "Riset outlier dengan analisis AI",
+      "Boosts: repost & promosi otomatis",
+      "Server MCP & API untuk agen AI",
+      "Rantai komentar & thread X",
+      "Pelacakan jangkauan Beehiiv",
+      "Dukungan langsung dari manusia"
+    ]
+  },
+  "cta": {
+    "title": [
+      "Buat konten",
+      "yang menghasilkan penjualan."
+    ],
+    "body": "Jadwalkan di mana saja, lacak apa yang laku, dan tingkatkan pendapatan tanpa repot. Gratis untuk memulai — tanpa kartu kredit."
+  },
+  "cookie": {
+    "message": "Kami menggunakan cookie untuk meningkatkan pengalaman menjelajah Anda dan menganalisis lalu lintas kami. Dengan mengklik \"Terima\", Anda menyetujui penggunaan cookie.",
+    "learnMore": "Selengkapnya",
+    "decline": "Tolak",
+    "accept": "Terima"
+  }
+}

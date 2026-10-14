@@ -1,42 +1,45 @@
 {
   "nav": {
-    "post": "Publicar",
-    "newPost": "Nova publicação",
-    "drafts": "Rascunhos",
-    "scheduled": "Agendadas",
-    "history": "Histórico",
-    "calendar": "Calendário",
-    "monetization": "Monetização",
-    "offers": "Ofertas",
+    "aiApps": "Usar o ViewsMax em apps de IA",
     "analytics": "Análises",
     "analyticsOverview": "Visão geral",
     "analyticsSources": "Fontes",
-    "revenueGrowth": "Crescimento da receita",
-    "profilePerformance": "Desempenho do perfil",
-    "postPerformance": "Desempenho das publicações",
     "boosts": "Boosts",
+    "calendar": "Calendário",
     "connections": "Conexões",
-    "aiApps": "Usar o ViewsMax em apps de IA",
-    "settings": "Configurações",
+    "drafts": "Rascunhos",
+    "history": "Histórico",
+    "monetization": "Monetização",
+    "newPost": "Nova publicação",
+    "offers": "Ofertas",
+    "outliers": "Outliers",
+    "outliersBrowse": "Explorar",
+    "outliersLibrary": "Biblioteca",
+    "post": "Publicar",
+    "postPerformance": "Desempenho das publicações",
+    "profilePerformance": "Desempenho do perfil",
     "requestFeature": "Sugerir um recurso",
+    "revenueGrowth": "Crescimento da receita",
+    "scheduled": "Agendadas",
     "scripts": "Roteiros",
     "scriptsCreate": "Criar",
-    "scriptsLibrary": "Biblioteca"
+    "scriptsLibrary": "Biblioteca",
+    "settings": "Configurações"
   },
   "settings": {
     "language": {
-      "title": "Idioma",
       "description": "Escolha o idioma do ViewsMax.",
-      "label": "Idioma da interface"
+      "label": "Idioma da interface",
+      "title": "Idioma"
     },
     "notifications": {
-      "title": "Notificações",
       "description": "Escolha quando o ViewsMax envia e-mails.",
+      "disabled": "E-mails de falha de publicação desativados.",
+      "enabled": "Você receberá um e-mail se uma publicação falhar.",
       "postFailures": "Enviar e-mail quando uma publicação falhar",
       "postFailuresHint": "Um e-mail por publicação com falha, listando cada plataforma afetada e um link para tentar novamente.",
       "saveFailed": "Não foi possível salvar a configuração. Tente novamente.",
-      "enabled": "Você receberá um e-mail se uma publicação falhar.",
-      "disabled": "E-mails de falha de publicação desativados."
+      "title": "Notificações"
     }
   }
 }

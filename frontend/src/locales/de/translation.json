@@ -1,42 +1,45 @@
 {
   "nav": {
-    "post": "Posten",
-    "newPost": "Neuer Post",
-    "drafts": "Entwürfe",
-    "scheduled": "Geplant",
-    "history": "Verlauf",
-    "calendar": "Kalender",
-    "monetization": "Monetarisierung",
-    "offers": "Angebote",
+    "aiApps": "ViewsMax in KI-Apps nutzen",
     "analytics": "Analytics",
     "analyticsOverview": "Übersicht",
     "analyticsSources": "Quellen",
-    "revenueGrowth": "Umsatzwachstum",
-    "profilePerformance": "Profil-Performance",
-    "postPerformance": "Beitrags-Performance",
     "boosts": "Boosts",
+    "calendar": "Kalender",
     "connections": "Verbindungen",
-    "aiApps": "ViewsMax in KI-Apps nutzen",
-    "settings": "Einstellungen",
+    "drafts": "Entwürfe",
+    "history": "Verlauf",
+    "monetization": "Monetarisierung",
+    "newPost": "Neuer Post",
+    "offers": "Angebote",
+    "outliers": "Outliers",
+    "outliersBrowse": "Entdecken",
+    "outliersLibrary": "Bibliothek",
+    "post": "Posten",
+    "postPerformance": "Beitrags-Performance",
+    "profilePerformance": "Profil-Performance",
     "requestFeature": "Funktion vorschlagen",
+    "revenueGrowth": "Umsatzwachstum",
+    "scheduled": "Geplant",
     "scripts": "Skripte",
     "scriptsCreate": "Erstellen",
-    "scriptsLibrary": "Bibliothek"
+    "scriptsLibrary": "Bibliothek",
+    "settings": "Einstellungen"
   },
   "settings": {
     "language": {
-      "title": "Sprache",
       "description": "Wähle die Sprache von ViewsMax.",
-      "label": "Oberflächensprache"
+      "label": "Oberflächensprache",
+      "title": "Sprache"
     },
     "notifications": {
-      "title": "Benachrichtigungen",
       "description": "Lege fest, wann ViewsMax dir E-Mails schickt.",
+      "disabled": "Fehlschlag-E-Mails deaktiviert.",
+      "enabled": "Du bekommst eine E-Mail, wenn ein Post fehlschlägt.",
       "postFailures": "E-Mail senden, wenn ein Post fehlschlägt",
       "postFailuresHint": "Eine E-Mail pro fehlgeschlagenem Post mit allen betroffenen Plattformen und einem Link zum erneuten Versuch.",
       "saveFailed": "Einstellung konnte nicht gespeichert werden. Bitte erneut versuchen.",
-      "enabled": "Du bekommst eine E-Mail, wenn ein Post fehlschlägt.",
-      "disabled": "Fehlschlag-E-Mails deaktiviert."
+      "title": "Benachrichtigungen"
     }
   }
 }

@@ -2,9 +2,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Crown, Coins, HelpCircle, MessageCircle, Settings, Globe, Lightbulb } from "lucide-react";
+import { LogOut, User, Crown, Coins, HelpCircle, MessageCircle, Settings, Lightbulb } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES } from "@/i18n";
+import LocaleFlag from "@/components/LocaleFlag";
 import { viewsMaxApi } from "@/lib/api-service";
 import { useAuth } from "@/hooks/useAuth";
 import { isAccessExpired } from "@/lib/access";
@@ -28,6 +29,7 @@ export default function DashboardLayout() {
     await i18n.changeLanguage(code); // persists to localStorage via the detector
     void viewsMaxApi.updateUserSettings({ locale: code }); // best-effort server sync
   };
+  const currentLocale = SUPPORTED_LOCALES.find((l) => l.code === i18n.resolvedLanguage) ?? SUPPORTED_LOCALES[0];
   const { credits, isAnimating } = useUserCredits();
   // Expired promotional customer: nav is reduced to Billing + sign out.
   const locked = isAccessExpired(user);
@@ -100,8 +102,8 @@ export default function DashboardLayout() {
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-1.5" title="Language">
-                    <Globe className="w-4 h-4" />
-                    <span className="uppercase text-xs font-semibold">{i18n.resolvedLanguage ?? "en"}</span>
+                    <LocaleFlag code={currentLocale.code} />
+                    <span className="uppercase text-xs font-semibold">{currentLocale.code}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -109,8 +111,9 @@ export default function DashboardLayout() {
                     <DropdownMenuItem
                       key={locale.code}
                       onClick={() => void changeLocale(locale.code)}
-                      className={locale.code === i18n.resolvedLanguage ? "font-semibold" : undefined}
+                      className={`gap-2.5${locale.code === currentLocale.code ? " font-semibold" : ""}`}
                     >
+                      <LocaleFlag code={locale.code} />
                       {locale.label}
                     </DropdownMenuItem>
                   ))}
