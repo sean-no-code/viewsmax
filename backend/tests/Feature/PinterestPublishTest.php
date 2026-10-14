@@ -234,6 +234,82 @@ class PinterestPublishTest extends TestCase
         $this->assertCount(1, Http::recorded(fn (Request $req) => str_contains($req->url(), 's3.amazonaws.com')));
     }
 
+    private function images(int $n): array
+    {
+        return array_map(fn ($i) => ['type' => 'image', 'url' => "https://cdn.example/{$i}.png"], range(1, $n));
+    }
+
+    public function test_several_images_become_one_carousel_pin(): void
+    {
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/pins' => Http::response(['id' => 'pin-carousel'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'Three looks', 'media' => $this->images(3)]);
+        $post->board_id = 'board-1';
+
+        $this->assertTrue((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')
+            && $req['media_source'] === ['source_type' => 'multiple_image_urls', 'items' => [
+                ['url' => 'https://cdn.example/1.png'], ['url' => 'https://cdn.example/2.png'], ['url' => 'https://cdn.example/3.png'],
+            ]]);
+        $this->assertCount(1, Http::recorded(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')));
+    }
+
+    public function test_a_carousel_takes_the_first_five_images(): void
+    {
+        // Pinterest's limit is 2-5 images per carousel (API spec), like X's 4.
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/pins' => Http::response(['id' => 'pin-carousel'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'Seven', 'media' => $this->images(7)]);
+        $post->board_id = 'board-1';
+
+        $this->assertTrue((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')
+            && count($req['media_source']['items']) === 5
+            && $req['media_source']['items'][4]['url'] === 'https://cdn.example/5.png');
+    }
+
+    public function test_carousel_images_of_different_shapes_get_a_clear_error(): void
+    {
+        // Seen on the real API; not in Pinterest's API description.
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/pins' => Http::response(['code' => 1, 'message' => 'Images must have the same width/height ratios.'], 400),
+        ]);
+
+        $post = new SocialPost(['content' => 'Mixed', 'media' => $this->images(2)]);
+        $post->board_id = 'board-1';
+        $result = (new PinterestProvider)->publish($this->account(), $post);
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image.', $result->error);
+    }
+
+    public function test_a_refused_carousel_is_retried_with_the_images_themselves(): void
+    {
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'cdn.example/*' => Http::response(base64_decode(self::PNG)),
+            'api.pinterest.com/v5/pins' => Http::sequence()
+                ->push(['code' => 235, 'message' => 'Sorry, this image is broken.'], 403)
+                ->push(['id' => 'pin-carousel'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'Two', 'media' => $this->images(2)]);
+        $post->board_id = 'board-1';
+
+        $this->assertTrue((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')
+            && $req['media_source'] === ['source_type' => 'multiple_image_base64', 'items' => [
+                ['content_type' => 'image/png', 'data' => self::PNG], ['content_type' => 'image/png', 'data' => self::PNG],
+            ]]);
+    }
+
     public function test_pin_without_media_fails_without_calling_pinterest(): void
     {
         Http::fake();

@@ -30,6 +30,9 @@ class PinterestProvider extends AbstractSocialProvider
 
     public const ALT_TEXT_LIMIT = 500;
 
+    /** Images per carousel Pin (Pinterest API: 2-5); extra images are left out, like X's 4. */
+    public const CAROUSEL_MAX_IMAGES = 5;
+
     protected function apiBase(): string
     {
         // Local testing only: a mock server built from Pinterest's official
@@ -279,7 +282,10 @@ class PinterestProvider extends AbstractSocialProvider
                 'cover_image_url' => $cover,
             ];
         } else {
-            $payload['media_source'] = ['source_type' => 'image_url', 'url' => $image];
+            $images = array_slice(array_column($this->mediaItems($post, 'image'), 'url'), 0, self::CAROUSEL_MAX_IMAGES);
+            $payload['media_source'] = count($images) > 1
+                ? ['source_type' => 'multiple_image_urls', 'items' => array_map(fn ($url) => ['url' => $url], $images)]
+                : ['source_type' => 'image_url', 'url' => $image];
         }
 
         Log::info('[Pinterest] create pin', $log + ['board_id' => $boardId]);
@@ -291,6 +297,10 @@ class PinterestProvider extends AbstractSocialProvider
             && ($inline = $this->inlineImage($payload['media_source']))) {
             Log::info('[Pinterest] image link refused; retrying with the image data', $log + ['status' => $response->status()]);
             $response = $this->api($account)->post($this->apiBase().'/pins', ['media_source' => $inline] + $payload);
+        }
+
+        if (! $response->successful() && str_contains((string) $response->json('message'), 'same width/height ratio')) {
+            return PublishResult::failure('Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image.', $response->json() ?? []);
         }
 
         if (! $response->successful()) {
@@ -324,22 +334,24 @@ class PinterestProvider extends AbstractSocialProvider
      */
     protected function inlineImage(array $source): ?array
     {
+        if (($source['source_type'] ?? null) === 'multiple_image_urls') {
+            $items = [];
+            foreach ($source['items'] as $item) {
+                if (! $image = $this->imageData($item['url'])) {
+                    return null;
+                }
+                $items[] = ['content_type' => $image[0], 'data' => $image[1]];
+            }
+
+            return ['source_type' => 'multiple_image_base64', 'items' => $items];
+        }
+
         $isVideo = ($source['source_type'] ?? null) === 'video_id';
         $url = $isVideo ? ($source['cover_image_url'] ?? null) : ($source['url'] ?? null);
-        if (! $url) {
+        if (! $url || ! $image = $this->imageData($url)) {
             return null;
         }
-
-        $download = Http::timeout(60)->get($url);
-        if (! $download->successful()) {
-            return null;
-        }
-
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($download->body());
-        if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
-            return null;
-        }
-        $data = base64_encode($download->body());
+        [$mime, $data] = $image;
 
         if ($isVideo) {
             unset($source['cover_image_url']);
@@ -348,6 +360,24 @@ class PinterestProvider extends AbstractSocialProvider
         }
 
         return ['source_type' => 'image_base64', 'content_type' => $mime, 'data' => $data];
+    }
+
+    /**
+     * [content type, base64 data] for a JPEG or PNG at $url, or null when it
+     * can't be downloaded or is another type (Pinterest takes only those two).
+     *
+     * @return array{0:string, 1:string}|null
+     */
+    protected function imageData(string $url): ?array
+    {
+        $download = Http::timeout(60)->get($url);
+        if (! $download->successful()) {
+            return null;
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($download->body());
+
+        return in_array($mime, ['image/jpeg', 'image/png'], true) ? [$mime, base64_encode($download->body())] : null;
     }
 
     /**

@@ -487,6 +487,9 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const xVideoConflict = c.postType === "media" && hasVideo && c.selected.includes("x");
   const imageCount = c.media.filter((m) => m.type === "image").length;
   const xImageOverflow = c.postType === "media" && imageCount > X_MAX_IMAGES && c.selected.includes("x");
+  // Pinterest posts 2-5 images as one carousel Pin; extra images are left out.
+  const PINTEREST_MAX_IMAGES = 5;
+  const pinterestImageOverflow = c.postType === "media" && !hasVideo && imageCount > PINTEREST_MAX_IMAGES && c.selected.includes("pinterest");
   // X thread state for the caption panel (shared caption or the X override).
   const [xActive, setXActive] = useState(0); // tweet selected in the X editor
   const xThread = c.status.x.thread;
@@ -551,6 +554,25 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const pinterestMissingBoard = pinterestSelected && pinterestAccounts.some((a) => !c.pinterest.board_ids[String(a.id)]);
   // A video Pin needs a cover image, chosen on purpose in the Pinterest tab.
   const pinterestNeedsCover = pinterestSelected && mediaVideoPost && !c.cover?.url;
+  // Pinterest refuses a carousel whose images have different width-to-height
+  // ratios (seen on the real API). Measure the images that would be posted.
+  const carouselImages = pinterestSelected && c.postType === "media" && !hasVideo
+    ? c.media.filter((m) => m.type === "image" && (m.preview || m.url)).slice(0, PINTEREST_MAX_IMAGES)
+    : [];
+  const carouselKey = carouselImages.map((m) => m.id).join(",");
+  const [imageRatios, setImageRatios] = useState<Record<number, number>>({});
+  useEffect(() => {
+    carouselImages.forEach((m) => {
+      if (imageRatios[m.id]) return;
+      const img = new Image();
+      img.onload = () => setImageRatios((r) => ({ ...r, [m.id]: img.naturalWidth / img.naturalHeight }));
+      img.src = m.preview || resolveMediaUrl(m.url!);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carouselKey]);
+  const measured = carouselImages.map((m) => imageRatios[m.id]).filter((r): r is number => !!r);
+  const pinterestMixedShapes = carouselImages.length > 1 && measured.length === carouselImages.length
+    && Math.max(...measured) - Math.min(...measured) > 0.01;
 
   // TikTok audit compliance — gating shared by the options tab, the pre-publish
   // declaration, and persist(). Publishing is blocked until the user has made
@@ -577,6 +599,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const pinterestBlockReason: string | null = !pinterestSelected ? null
     : pinterestMissingBoard ? "Choose a Pinterest board before publishing."
     : pinterestNeedsCover ? "Add a cover image for the Pinterest video Pin."
+    : pinterestMixedShapes ? "Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image."
     : null;
   const blockReason = tiktokBlockReason ?? pinterestBlockReason;
 
@@ -878,6 +901,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
                       <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
                       <span>X takes up to {X_MAX_IMAGES} images — only the first {X_MAX_IMAGES} will be posted there.</span>
+                    </div>
+                  )}
+                  {pinterestImageOverflow && (
+                    <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
+                      <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
+                      <span>Pinterest takes up to {PINTEREST_MAX_IMAGES} images (as one carousel Pin) — only the first {PINTEREST_MAX_IMAGES} will be posted there.</span>
                     </div>
                   )}
                 </>

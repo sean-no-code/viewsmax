@@ -64,7 +64,9 @@ class CreatePost extends ViewsMaxTool
     public static function pinterestRule(): string
     {
         return in_array('pinterest', self::availablePlatforms(), true)
-            ? 'Pinterest needs an image or video url and every Pin goes on a board '
+            ? 'Pinterest needs an image or video url (2-5 images become one carousel Pin; '
+                . 'only the first 5 are used, and they must all have the same width-to-height '
+                . 'ratio) and every Pin goes on a board '
                 . '(list_connected_accounts lists them). If the account has only one board, '
                 . 'tell the user the Pin goes on that board. If it has several, show them, '
                 . 'ask which one to use and wait for their answer; never choose between '

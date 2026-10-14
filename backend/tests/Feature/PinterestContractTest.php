@@ -129,6 +129,26 @@ class PinterestContractTest extends TestCase
         $this->assertNotEmpty($board['id']);
     }
 
+    public function test_carousel_requests_match_the_spec(): void
+    {
+        $account = $this->account(User::factory()->create());
+        $api = Http::withToken($account->access_token)->acceptJson();
+        $boardId = (new PinterestProvider)->boards($account)[0]['id'];
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+        $urls = $api->post($this->base.'/pins', ['board_id' => $boardId, 'media_source' => [
+            'source_type' => 'multiple_image_urls',
+            'items' => [['url' => 'https://i.pinimg.com/1.jpg'], ['url' => 'https://i.pinimg.com/2.jpg']],
+        ]]);
+        $this->assertTrue($urls->successful(), $urls->body());
+
+        $data = $api->post($this->base.'/pins', ['board_id' => $boardId, 'media_source' => [
+            'source_type' => 'multiple_image_base64',
+            'items' => [['content_type' => 'image/png', 'data' => $png], ['content_type' => 'image/png', 'data' => $png]],
+        ]]);
+        $this->assertTrue($data->successful(), $data->body());
+    }
+
     public function test_image_and_cover_sent_as_data_match_the_spec(): void
     {
         // The fallback when Pinterest refuses an image link: the image itself.
