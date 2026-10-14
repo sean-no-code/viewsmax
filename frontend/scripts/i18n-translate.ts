@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod/v4";
-import { CATALOGS, PLURAL_KEY, forLocale, leaves, mapStrings, placeholders, type Catalog, type Leaf } from "../src/i18n/catalog";
+import { CATALOGS, PLURAL_KEY, forLocale, leaves, mapStrings, samePlaceholders, type Catalog, type Leaf } from "../src/i18n/catalog";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const LOCK_FILE = join(root, "scripts/i18n-translate.lock.json");
@@ -100,7 +100,7 @@ async function translate(catalog: Catalog, locale: string, items: Leaf[], refere
   for (const { id, text } of response.parsed_output.translations) {
     const english = asked.get(id);
     if (english === undefined || !text.trim()) continue;
-    if (placeholders(text).join() !== placeholders(english).join()) {
+    if (!samePlaceholders(id, text, english)) {
       console.warn(`  ! ${id}: placeholders changed ("${text}"), will retry`);
       continue;
     }
@@ -174,13 +174,27 @@ async function translateLocale(catalog: Catalog, locale: string, en: unknown, lo
 
 async function main() {
   const lock: Lock = readJson(LOCK_FILE) as Lock;
+  // One language failing doesn't stop the others: each keeps going (and saving),
+  // then the run fails with every error.
+  const failures: unknown[] = [];
   const jobs = CATALOGS.flatMap((catalog) => {
     const en = readJson(join(root, catalog.file("en")));
-    return catalog.locales.map((locale) => () => translateLocale(catalog, locale, en, lock));
+    return catalog.locales.map((locale) => async () => {
+      try {
+        return await translateLocale(catalog, locale, en, lock);
+      } catch (err) {
+        failures.push(err);
+        return 0;
+      }
+    });
   });
   const total = (await pool(LOCALES_AT_ONCE, jobs)).reduce((a, b) => a + b, 0);
 
   if (!DRY_RUN) writeJson(LOCK_FILE, Object.fromEntries(Object.entries(lock).sort(([a], [b]) => a.localeCompare(b))));
+  if (failures.length) {
+    for (const err of failures.slice(1)) console.error(err instanceof Error ? err.message : err);
+    throw failures[0];
+  }
   console.log(total ? `${DRY_RUN ? "would translate" : "translated"} ${total} string(s)` : "all strings translated");
 }
 

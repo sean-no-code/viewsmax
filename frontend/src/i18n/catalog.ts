@@ -96,3 +96,11 @@ export function forLocale(source: unknown, locale: string): unknown {
 
 // i18next / template placeholders, sorted: "Hi {{name}}" -> ["name"].
 export const placeholders = (s: string) => [...s.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]).sort();
+
+// A translation must keep the English placeholders. Plural forms may add or drop
+// {{count}}: English "one" says "A file", but Russian "one" also covers 21, 31…
+// and needs the number. i18next always passes count to plural keys.
+export function samePlaceholders(key: string, translated: string, english: string): boolean {
+  const names = (s: string) => placeholders(s).filter((p) => !(PLURAL_KEY.test(key) && p === "count")).join();
+  return names(translated) === names(english);
+}

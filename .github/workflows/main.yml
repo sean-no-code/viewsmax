@@ -42,7 +42,11 @@ jobs:
     # Commit them back so they are reviewable and never paid for twice. A push
     # made with GITHUB_TOKEN does not start another run. If the push is refused
     # (e.g. branch protection) this deploy still ships the translations.
+    # Runs even when translating failed partway: the script saves after every
+    # batch, so the next run only pays for what's left. Tests and build still
+    # don't run after a failure, so nothing half-translated ships.
     - name: Commit translations
+      if: ${{ !cancelled() }}
       run: |
         git add src/locales src/pages/landing/copy scripts/i18n-translate.lock.json
         if git diff --cached --quiet; then echo "No translation changes"; exit 0; fi
