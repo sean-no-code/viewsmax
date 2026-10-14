@@ -634,8 +634,10 @@ class McpServerTest extends TestCase
         // One board: say which board will be used. Several: ask and wait.
         $this->assertStringContainsString('only one board', $tool['description']);
         $this->assertStringContainsString('carousel', $tool['description']);
-        $this->assertStringContainsString('ask which one', $tool['description']);
-        $this->assertStringContainsString('never choose between boards for them', $tool['description']);
+        $this->assertStringContainsString('list them by name and ask which board the Pin should go on', $tool['description']);
+        // Phrased as what to do: prohibitions ("never choose for them") were
+        // echoed back to users as if they had asked about it.
+        $this->assertStringNotContainsString('never', strtolower($tool['description'] === '' ? '' : \App\Mcp\Tools\CreatePost::pinterestRule()));
         $this->assertStringContainsString('pinterest: { board_id', json_encode($tool['inputSchema']));
     }
 

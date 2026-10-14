@@ -26,8 +26,8 @@ class CreatePinterestBoard extends ViewsMaxTool
     {
         return 'Create a public board on one of the user\'s connected Pinterest accounts '
             . '(social_account_id from list_connected_accounts). Every Pin goes on a board, '
-            . 'so use this when the user asks for a new board or has none. Only create a '
-            . 'board the user named; never invent one. Returns the board to pass as '
+            . 'so use this when the user asks for a new board or has none. Create it with '
+            . 'the name the user gives. Returns the board to pass as '
             . 'options.pinterest.board_id.';
     }
 
