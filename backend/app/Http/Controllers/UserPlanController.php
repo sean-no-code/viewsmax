@@ -52,7 +52,7 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch current plan',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -105,7 +105,7 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create checkout session',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -129,7 +129,7 @@ class UserPlanController extends Controller
             ], 422);
         }
 
-        Log::info('Subscribe request', ['request' => $request->all()]);
+        Log::info('Subscribe request', ['user_id' => $request->user()?->id, 'stripe_subscription_id' => $request->input('stripe_subscription_id')]);
 
         try {
             $user = $request->user();
@@ -153,6 +153,29 @@ class UserPlanController extends Controller
             }
 
             $subDetails = $stripeService->getSubscription($subscriptionId);
+
+            // Only the subscription's own Stripe customer may activate it, and
+            // only once across all accounts — otherwise one payment unlocks
+            // any number of accounts, and attaching someone else's id would
+            // let you cancel their subscription.
+            $customerId = $subDetails['customer'] ?? null;
+            $customerId = is_array($customerId) ? ($customerId['id'] ?? null) : $customerId;
+            $claimedElsewhere = \Illuminate\Support\Facades\DB::table('user_plans')
+                ->where('stripe_subscription_id', $subscriptionId)
+                ->where('user_id', '!=', $user->id)
+                ->exists();
+            if (! $customerId || $customerId !== $user->stripe_customer_id || $claimedElsewhere) {
+                Log::warning('Subscribe refused: subscription belongs to another customer', [
+                    'user_id' => $user->id,
+                    'stripe_subscription_id' => $subscriptionId,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This subscription does not belong to your account.',
+                ], 403);
+            }
+
             $status = $subDetails['status'] ?? null;
 
             if (! in_array($status, ['active', 'trialing'])) {
@@ -233,7 +256,7 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to subscribe to plan',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -322,7 +345,7 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to change plan',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -360,7 +383,7 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to cancel plan',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -370,7 +393,7 @@ class UserPlanController extends Controller
      */
     public function cancelSubscriptionViaStripe(Request $request, string $subscriptionId)
     {
-        Log::info('Cancel subscription via Stripe request', ['request' => $request->all()]);
+        Log::info('Cancel subscription via Stripe request', ['user_id' => $request->user()?->id, 'subscription_id' => $request->route('subscriptionId')]);
 
         $validator = Validator::make($request->all(), [
             'reason' => 'nullable|string|max:255',
@@ -425,7 +448,7 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to cancel subscription',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -444,7 +467,7 @@ class UserPlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plan history',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }

@@ -15,6 +15,8 @@ import { useAuth } from "@/hooks/useAuth";
 import TrialBanner from "@/components/TrialBanner";
 import { checkoutTerms, type CheckoutTerms } from "@/lib/access";
 import { toast } from "sonner";
+import i18n, { type TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 // Created once at module scope. Null if the key is missing (guarded below).
@@ -37,22 +39,25 @@ const fmtDate = (at: number) => new Date(at).toLocaleDateString([], { day: "nume
 // Payment-step copy for each case of checkoutTerms: a card added during the
 // free window ($0 until it closes), or one added at any other time (charged
 // today). There is no card-backed Stripe trial.
-function checkoutCopy(terms: CheckoutTerms) {
+function checkoutCopy(terms: CheckoutTerms, t: TFunction) {
   if (terms.kind === "window") {
     const until = fmtDate(terms.chargeAt);
     return {
-      cta: "Add card — $0 today",
-      busy: "Saving card…",
-      lead: "$0 today.",
-      note: `Your free trial runs until ${until} — you won't be charged before then. Cancel anytime.`,
-      banner: { title: `$0 today · free until ${until}`, text: `You won't be charged before ${until}. Cancel anytime.` },
+      cta: t("checkout.payment.window.cta", "Add card — $0 today"),
+      busy: t("checkout.payment.window.busy", "Saving card…"),
+      lead: t("checkout.payment.window.lead", "$0 today."),
+      note: t("checkout.payment.window.note", "Your free trial runs until {{date}} — you won't be charged before then. Cancel anytime.", { date: until }),
+      banner: {
+        title: t("trial.banner.title", "$0 today · free until {{date}}", { date: until }),
+        text: t("trial.banner.text", "You won't be charged before {{date}}. Cancel anytime.", { date: until }),
+      },
     };
   }
   return {
-    cta: "Subscribe now",
-    busy: "Subscribing…",
-    lead: "Charged today.",
-    note: "Your card is charged now and then monthly. Cancel anytime.",
+    cta: t("checkout.payment.chargeNow.cta", "Subscribe now"),
+    busy: t("checkout.payment.chargeNow.busy", "Subscribing…"),
+    lead: t("checkout.payment.chargeNow.lead", "Charged today."),
+    note: t("checkout.payment.chargeNow.note", "Your card is charged now and then monthly. Cancel anytime."),
     banner: null,
   };
 }
@@ -69,7 +74,7 @@ export const activateSubscription = async (
 ): Promise<boolean> => {
   const result = await viewsMaxApi.createStripeSubscription(paymentMethodId, priceId);
   if (!result.success || !result.data) {
-    toast.error(result.error || "Couldn't start your subscription. Please try again.");
+    toast.error(result.error || i18n.t("checkout.payment.errors.subscribeFailed", "Couldn't start your subscription. Please try again."));
     return false;
   }
 
@@ -85,7 +90,11 @@ export const activateSubscription = async (
     })
   );
   window.dispatchEvent(new CustomEvent("subscriptionUpdated"));
-  toast.success(sub.status === "trialing" ? "You're all set — your free trial has started!" : "You're all set — your subscription is active!");
+  toast.success(
+    sub.status === "trialing"
+      ? i18n.t("checkout.payment.toast.trialStarted", "You're all set — your free trial has started!")
+      : i18n.t("checkout.payment.toast.subscriptionActive", "You're all set — your subscription is active!")
+  );
   onSubscribed(sub);
   return true;
 };
@@ -93,6 +102,7 @@ export const activateSubscription = async (
 // Demo-mode card form: skips Stripe Elements entirely (no publishable key
 // needed) and activates a mock subscription.
 const MockCardForm = ({ onSubscribed, priceId, copy }: StripeTrialStepProps & { copy: CheckoutCopy }) => {
+  const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,8 +115,7 @@ const MockCardForm = ({ onSubscribed, priceId, copy }: StripeTrialStepProps & { 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
-        Demo mode — no real card is collected. Click below to simulate adding a
-        card and starting the trial.
+        {t("checkout.payment.mock.notice", "Demo mode — no real card is collected. Click below to simulate adding a card and starting the trial.")}
       </div>
       <Button type="submit" className="w-full" disabled={submitting}>
         {submitting ? (
@@ -114,7 +123,7 @@ const MockCardForm = ({ onSubscribed, priceId, copy }: StripeTrialStepProps & { 
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {copy.busy}
           </>
         ) : (
-          `${copy.cta} (mock)`
+          t("checkout.payment.mock.cta", "{{cta}} (mock)", { cta: copy.cta })
         )}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
@@ -126,6 +135,7 @@ const MockCardForm = ({ onSubscribed, priceId, copy }: StripeTrialStepProps & { 
 
 // Inner form — must be rendered inside <Elements> so the Stripe hooks resolve.
 const CardForm = ({ onSubscribed, priceId, email, copy }: StripeTrialStepProps & { email?: string; copy: CheckoutCopy }) => {
+  const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -143,7 +153,7 @@ const CardForm = ({ onSubscribed, priceId, email, copy }: StripeTrialStepProps &
       });
 
       if (error) {
-        toast.error(error.message || "Card couldn't be saved. Please try again.");
+        toast.error(error.message || t("checkout.payment.errors.cardNotSaved", "Card couldn't be saved. Please try again."));
         setSubmitting(false);
         return;
       }
@@ -154,7 +164,7 @@ const CardForm = ({ onSubscribed, priceId, email, copy }: StripeTrialStepProps &
           : setupIntent?.payment_method?.id;
 
       if (!paymentMethodId) {
-        toast.error("Couldn't read your payment method. Please try again.");
+        toast.error(t("checkout.payment.errors.noPaymentMethod", "Couldn't read your payment method. Please try again."));
         setSubmitting(false);
         return;
       }
@@ -163,7 +173,7 @@ const CardForm = ({ onSubscribed, priceId, email, copy }: StripeTrialStepProps &
       const ok = await activateSubscription(paymentMethodId, onSubscribed, priceId);
       if (!ok) setSubmitting(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+      toast.error(err instanceof Error ? err.message : t("checkout.payment.errors.generic", "Something went wrong."));
       setSubmitting(false);
     }
   };
@@ -199,15 +209,16 @@ const CardForm = ({ onSubscribed, priceId, email, copy }: StripeTrialStepProps &
 };
 
 const StripeTrialStep = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const copy = checkoutCopy(checkoutTerms(user));
+  const copy = checkoutCopy(checkoutTerms(user), t);
 
   useEffect(() => {
     if (isMockApi()) return; // mock path doesn't need a SetupIntent
     if (!stripePromise) {
-      setError("Payments are not configured. Please contact support.");
+      setError(i18n.t("checkout.payment.errors.notConfigured", "Payments are not configured. Please contact support."));
       return;
     }
     (async () => {
@@ -215,7 +226,7 @@ const StripeTrialStep = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
       if (result.success && result.data?.client_secret) {
         setClientSecret(result.data.client_secret);
       } else {
-        setError(result.error || "Couldn't load the payment form. Please try again.");
+        setError(result.error || i18n.t("checkout.payment.errors.loadFailed", "Couldn't load the payment form. Please try again."));
       }
     })();
   }, []);
@@ -223,7 +234,7 @@ const StripeTrialStep = ({ onSubscribed, priceId }: StripeTrialStepProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add your payment details</CardTitle>
+        <CardTitle>{t("checkout.payment.title", "Add your payment details")}</CardTitle>
         <CardDescription>
           {copy.lead} {copy.note}
         </CardDescription>

@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Support\AnthropicRateLimit;
 
 class ScriptController extends Controller
 {
@@ -85,7 +86,7 @@ class ScriptController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve scripts',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -336,7 +337,7 @@ public function store(Request $request)
                 try {
                     $script->update([
                         'status' => 'failed',
-                        'error_message' => $e->getMessage()
+                        'error_message' => \App\Support\UserSafeError::detail($e) ?? 'Script generation failed. Please try again.',
                     ]);
                     
                     Log::info('Script status updated to failed', [
@@ -353,7 +354,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to create script: ', $e)
             ], 500);
         }
     }
@@ -381,7 +382,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to retrieve script: ', $e)
             ], 500);
         }
     }
@@ -404,6 +405,10 @@ public function store(Request $request)
             
             // If refine is requested, dispatch a job to refine the script (preserves context)
             if ($request->has('refine') && $request->refine) {
+                if ($limited = AnthropicRateLimit::hit($request->user(), 'script_refine')) {
+                    return $limited;
+                }
+
                 $startTime = microtime(true);
                 $userId = Auth::id();
                 
@@ -444,6 +449,10 @@ public function store(Request $request)
 
             // If regenerate is requested, dispatch a job to regenerate the script (from scratch)
             if ($request->has('regenerate') && $request->regenerate) {
+                if ($limited = AnthropicRateLimit::hit($request->user(), 'script_regenerate')) {
+                    return $limited;
+                }
+
                 $startTime = microtime(true);
                 $userId = Auth::id();
                 
@@ -505,7 +514,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to update script: ', $e)
             ], 500);
         }
     }
@@ -639,7 +648,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete script: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to delete script: ', $e)
             ], 500);
         }
     }
@@ -672,7 +681,7 @@ public function store(Request $request)
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve script status: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to retrieve script status: ', $e)
             ], 500);
         }
     }

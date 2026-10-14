@@ -13,7 +13,7 @@ class AnthropicService
 
     public function __construct()
     {
-        $this->apiKey = config('services.anthropic.api_key');
+        $this->apiKey = (string) config('services.anthropic.api_key');
         $this->apiUrl = config('services.anthropic.api_url', 'https://api.anthropic.com/v1/messages');
         $this->model = config('services.anthropic.model', 'claude-3-5-sonnet-20241022');
     }

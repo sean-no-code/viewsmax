@@ -141,6 +141,24 @@ class PublishToXThreadTest extends TestCase
         $this->assertArrayNotHasKey('media', $requests[1]);
     }
 
+    public function test_media_on_an_internal_address_is_never_fetched(): void
+    {
+        // create_post accepts any media URL; publishing must not let it reach the EC2 metadata service.
+        $this->fakeTweetSequence([
+            'api.twitter.com/2/media/upload*' => Http::response(['data' => ['id' => 'm1']]),
+        ]);
+        $user = User::factory()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, 'one', [
+            ['type' => 'image', 'url' => 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'],
+        ]);
+
+        $this->runJob($target);
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '169.254.169.254'));
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+    }
+
     public function test_resume_skips_already_published_segments(): void
     {
         $this->fakeTweetSequence([

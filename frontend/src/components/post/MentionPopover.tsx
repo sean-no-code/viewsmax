@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import type { XUserSuggestion } from "@/lib/api-service";
 
 /**
@@ -30,6 +31,7 @@ export default function MentionPopover({
   onPick: (u: XUserSuggestion) => void;
   onHover: (i: number) => void;
 }) {
+  const { t } = useTranslation();
   if (!open || (!loading && suggestions.length === 0 && query.length < 2)) return null;
 
   return (
@@ -63,14 +65,14 @@ export default function MentionPopover({
         </button>
       ))}
       {loading && (
-        <div style={mutedStyle}>{degraded ? `Looking up @${query}…` : "Searching X…"}</div>
+        <div style={mutedStyle}>{degraded ? t("post.mentions.lookingUp", "Looking up @{{query}}…", { query }) : t("post.mentions.searching", "Searching X…")}</div>
       )}
       {!loading && suggestions.length === 0 && query.length >= 2 && (
-        <div style={mutedStyle}>{degraded ? `No X account named @${query}.` : "No matches."}</div>
+        <div style={mutedStyle}>{degraded ? t("post.mentions.noAccount", "No X account named @{{query}}.", { query }) : t("post.mentions.noMatches", "No matches.")}</div>
       )}
       {degraded && (
         <div style={{ ...mutedStyle, borderTop: "1px solid var(--line-1)", marginTop: 2, fontSize: 11 }}>
-          Your X plan allows exact-handle lookup only — type the full handle.
+          {t("post.mentions.exactHandleOnly", "Your X plan allows exact-handle lookup only — type the full handle.")}
         </div>
       )}
     </div>

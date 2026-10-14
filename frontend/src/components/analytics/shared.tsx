@@ -1,4 +1,5 @@
 // Shared analytics views: platform leaderboard + top-content table.
+import { useTranslation } from "react-i18next";
 import { Icon, PlatformGlyph, RankBar } from "@/components/analytics/primitives";
 import { fmtMoney, fmtFull, fmtPct, platformMeta, type PlatformMetric, type LinkMetric } from "@/lib/analytics-model";
 
@@ -7,8 +8,9 @@ type LeaderMetric = "rev" | "clicks" | "conv";
 export function PlatformLeaderboard({ platforms, metric = "rev", onOpen, dense, max = 7 }: {
   platforms: PlatformMetric[]; metric?: LeaderMetric; onOpen?: (id: string) => void; dense?: boolean; max?: number;
 }) {
+  const { t } = useTranslation();
   const rows = [...platforms].sort((a, b) => b[metric] - a[metric]).slice(0, max);
-  if (!rows.length) return <Empty label="No source data yet." />;
+  if (!rows.length) return <Empty label={t("analytics.leaderboard.empty", "No source data yet.")} />;
   const top = rows[0][metric] || 1;
   const valOf = (r: PlatformMetric) => (metric === "rev" ? fmtMoney(r.rev) : metric === "clicks" ? fmtFull(r.clicks) : fmtFull(r.conv));
   return (
@@ -37,10 +39,11 @@ type SortKey = "rev" | "conv" | "clicks";
 export function TopContentTable({ links, limit, onOpen, dense, sort = "rev" }: {
   links: LinkMetric[]; limit?: number; onOpen?: (id: string) => void; dense?: boolean; sort?: SortKey;
 }) {
+  const { t } = useTranslation();
   const rows = [...links].sort((a, b) => b[sort] - a[sort]).slice(0, limit || links.length);
   const pad = dense ? "9px 18px" : "13px 20px";
-  const cols: [string, "left" | "right"][] = [["Content", "left"], ["Source", "left"], ["Clicks", "right"], ["Sales", "right"], ["Revenue", "right"], ["Conv %", "right"]];
-  if (!rows.length) return <Empty label="No tracked links yet." />;
+  const cols: [string, "left" | "right"][] = [[t("analytics.topContent.colContent", "Content"), "left"], [t("analytics.topContent.colSource", "Source"), "left"], [t("analytics.topContent.colClicks", "Clicks"), "right"], [t("analytics.topContent.colSales", "Sales"), "right"], [t("analytics.topContent.colRevenue", "Revenue"), "right"], [t("analytics.topContent.colConvPct", "Conv %"), "right"]];
+  if (!rows.length) return <Empty label={t("analytics.topContent.empty", "No tracked links yet.")} />;
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead><tr>{cols.map(([h, a]) => (

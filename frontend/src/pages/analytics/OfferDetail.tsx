@@ -5,6 +5,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import i18n, { type TFunction } from "i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { CARD, Icon, Segmented, CodeBlock, Btn, SearchSelect } from "@/components/analytics/primitives";
 import { Modal, Field, TextInput } from "@/components/analytics/Modal";
@@ -32,10 +34,10 @@ function timeAgo(iso: string | null): string {
   const t = parseUtcMs(iso);
   if (!Number.isFinite(t)) return "—";
   const s = Math.max(0, (Date.now() - t) / 1000);
-  if (s < 60) return "just now";
-  const m = s / 60; if (m < 60) return `${Math.floor(m)}m ago`;
-  const h = m / 60; if (h < 24) return `${Math.floor(h)}h ago`;
-  const d = h / 24; if (d < 7) return `${Math.floor(d)}d ago`;
+  if (s < 60) return i18n.t("offers.detail.timeAgo.justNow", "just now");
+  const m = s / 60; if (m < 60) return i18n.t("offers.detail.timeAgo.minutes", "{{n}}m ago", { n: Math.floor(m) });
+  const h = m / 60; if (h < 24) return i18n.t("offers.detail.timeAgo.hours", "{{n}}h ago", { n: Math.floor(h) });
+  const d = h / 24; if (d < 7) return i18n.t("offers.detail.timeAgo.days", "{{n}}d ago", { n: Math.floor(d) });
   return new Date(t).toLocaleDateString();
 }
 
@@ -51,11 +53,12 @@ function placementUrl(desc?: string | null): string | null {
 
 // Copyable tracking link (stops row navigation on click).
 function CopyLink({ url }: { url: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <button
       onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText("https://" + url).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1400); }}
-      title="Copy link"
+      title={t("offers.detail.table.copyLink", "Copy link")}
       style={{ display: "inline-flex", alignItems: "center", gap: 7, maxWidth: 260, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-on-paper-3)" }}>
       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>
       <Icon name={copied ? "check" : "copy"} size={13} stroke={copied ? "var(--vm-volt-deep)" : "var(--ink-on-paper-3)"} />
@@ -72,20 +75,22 @@ type SortKey = "label" | "views" | "clicks" | "viewCr" | "rev" | "created";
 
 /* ---------- install-tracking modal ---------- */
 function InstallModal({ page, snippet, onClose }: { page: PageMetric; snippet: string; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
-    <Modal title="Install tracking" sub={`Paste this snippet inside <head> on ${page.url}.`} onClose={onClose} width={680}>
+    <Modal title={t("offers.detail.install.title", "Install tracking")} sub={t("offers.detail.install.sub", "Paste this snippet inside <head> on {{url}}.", { url: page.url })} onClose={onClose} width={680}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: "var(--ink-on-paper-2)", marginBottom: 14 }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: page.live ? "var(--up)" : "var(--warn)", flexShrink: 0 }} />
-        {page.live ? "Receiving events." : "Awaiting first event — paste the snippet, then publish to start tracking."}
+        {page.live ? t("offers.detail.install.receiving", "Receiving events.") : t("offers.detail.install.awaiting", "Awaiting first event — paste the snippet, then publish to start tracking.")}
       </div>
-      <CodeBlock label="ViewsMax tracking" code={snippet} />
-      {!page.live && <div style={{ marginTop: 14, fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>No events received yet. They'll appear here within seconds of your first tracked visit.</div>}
+      <CodeBlock label={t("offers.detail.install.codeLabel", "ViewsMax tracking")} code={snippet} />
+      {!page.live && <div style={{ marginTop: 14, fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>{t("offers.detail.install.noEvents", "No events received yet. They'll appear here within seconds of your first tracked visit.")}</div>}
     </Modal>
   );
 }
 
 /* ---------- conversion-events CRUD modal ---------- */
 export function ConversionEventsModal({ page, goalTypes, onClose, onSaved }: { page: PageMetric; goalTypes: GoalType[]; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation();
   const [goals, setGoals] = useState<GoalItem[]>(page.goals);
   const [editingId, setEditingId] = useState<number | "new" | null>(null);
   const [form, setForm] = useState<{ path: string; type: string; value: string }>({ path: "", type: "conversion", value: "" });
@@ -114,7 +119,7 @@ export function ConversionEventsModal({ page, goalTypes, onClose, onSaved }: { p
       onSaved();
       return true;
     }
-    toast.error(res.error || "Couldn't save the conversion event.");
+    toast.error(res.error || t("offers.detail.conversions.saveFailed", "Couldn't save the conversion event."));
     return false;
   };
 
@@ -124,9 +129,9 @@ export function ConversionEventsModal({ page, goalTypes, onClose, onSaved }: { p
 
   const save = async () => {
     const path = form.path.trim();
-    if (!path) { toast.error("Add the page path or URL."); return; }
+    if (!path) { toast.error(t("offers.detail.conversions.pathRequired", "Add the page path or URL.")); return; }
     const type = form.type.trim();
-    if (!type) { toast.error("Pick or name an event type."); return; }
+    if (!type) { toast.error(t("offers.detail.conversions.typeRequired", "Pick or name an event type.")); return; }
     const item: GoalItem = { id: editingId === "new" ? null : editingId, path, type, value: Number(form.value) || 0 };
     const next = editingId === "new" ? [...goals, item] : goals.map((g) => (g.id === editingId ? item : g));
     if (await persist(next)) cancelEdit();
@@ -135,58 +140,63 @@ export function ConversionEventsModal({ page, goalTypes, onClose, onSaved }: { p
   const remove = async (g: GoalItem) => { await persist(goals.filter((x) => x !== g)); };
 
   return (
-    <Modal title="Conversion events" sub={`${goals.length} event(s) tracked on this offer`} onClose={onClose} width={600}>
+    <Modal title={t("offers.detail.conversions.title", "Conversion events")} sub={t("offers.detail.conversions.sub", { count: goals.length, defaultValue_one: "{{count}} event(s) tracked on this offer", defaultValue_other: "{{count}} event(s) tracked on this offer" })} onClose={onClose} width={600}>
       {goals.map((g, i) => (
         <div key={g.id ?? `new-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 16px", border: "1px solid var(--line-1)", borderRadius: 12, marginBottom: 10 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 14, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.path}</div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)", marginTop: 3 }}>{goalLabel(g.type, labels)} · fires once per visitor session</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)", marginTop: 3 }}>{t("offers.detail.conversions.goalMeta", "{{label}} · fires once per visitor session", { label: goalLabel(g.type, labels) })}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             {g.value > 0 && <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 13, color: "var(--vm-volt-deep)", background: "var(--vm-volt-tint-l)", borderRadius: 999, padding: "4px 11px" }}>{fmtMoney(g.value)}</span>}
-            <button onClick={() => startEdit(g)} style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-2)" }}>Edit</button>
-            <button onClick={() => remove(g)} style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-2)" }}>Delete</button>
+            <button onClick={() => startEdit(g)} style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-2)" }}>{t("offers.detail.conversions.edit", "Edit")}</button>
+            <button onClick={() => remove(g)} style={{ height: 32, padding: "0 12px", borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-2)" }}>{t("offers.detail.conversions.delete", "Delete")}</button>
           </div>
         </div>
       ))}
 
       {goals.length === 0 && editingId === null && (
-        <div style={{ padding: 22, textAlign: "center", border: "1px dashed var(--line-2)", borderRadius: 12, color: "var(--ink-on-paper-3)", fontSize: 13.5, marginBottom: 10 }}>No conversion events yet. Add one to start measuring what converts.</div>
+        <div style={{ padding: 22, textAlign: "center", border: "1px dashed var(--line-2)", borderRadius: 12, color: "var(--ink-on-paper-3)", fontSize: 13.5, marginBottom: 10 }}>{t("offers.detail.conversions.empty", "No conversion events yet. Add one to start measuring what converts.")}</div>
       )}
 
       {editingId !== null ? (
         <div style={{ border: "1px solid var(--line-1)", borderRadius: 12, padding: 18, background: "var(--paper-1)" }}>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--ink-on-paper-3)", fontWeight: 600, marginBottom: 14 }}>{editingId === "new" ? "New conversion event" : "Edit conversion event"}</div>
-          <Field label="Page path"><TextInput placeholder="/thank-you" value={form.path} onChange={(e) => setForm((f) => ({ ...f, path: e.target.value }))} style={{ fontFamily: "var(--font-mono)" }} /></Field>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--ink-on-paper-3)", fontWeight: 600, marginBottom: 14 }}>{editingId === "new" ? t("offers.detail.conversions.newHeading", "New conversion event") : t("offers.detail.conversions.editHeading", "Edit conversion event")}</div>
+          <Field label={t("offers.detail.conversions.pathLabel", "Page path")}><TextInput placeholder="/thank-you" value={form.path} onChange={(e) => setForm((f) => ({ ...f, path: e.target.value }))} style={{ fontFamily: "var(--font-mono)" }} /></Field>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <Field label="Event type">
+              <Field label={t("offers.detail.conversions.typeLabel", "Event type")}>
                 <select value={builtinValues.has(form.type) ? form.type : CUSTOM_GOAL_VALUE} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value === CUSTOM_GOAL_VALUE ? "" : e.target.value }))} style={{ width: "100%", boxSizing: "border-box", background: "var(--paper-1)", border: "1px solid var(--line-1)", borderRadius: 12, padding: "11px 14px", fontFamily: "var(--font-body)", fontSize: 14, color: "var(--ink-on-paper-1)", outline: "none", cursor: "pointer" }}>
                   {goalTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  <option value={CUSTOM_GOAL_VALUE}>Custom…</option>
+                  <option value={CUSTOM_GOAL_VALUE}>{t("offers.detail.conversions.customOption", "Custom…")}</option>
                 </select>
               </Field>
             </div>
             <div style={{ width: 140 }}>
-              <Field label="Value" hint="USD"><TextInput inputMode="numeric" placeholder="49" value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value.replace(/[^0-9.]/g, "") }))} style={{ fontFamily: "var(--font-mono)" }} /></Field>
+              <Field label={t("offers.detail.conversions.valueLabel", "Value")} hint="USD"><TextInput inputMode="numeric" placeholder="49" value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value.replace(/[^0-9.]/g, "") }))} style={{ fontFamily: "var(--font-mono)" }} /></Field>
             </div>
           </div>
           {!builtinValues.has(form.type) && (
-            <Field label="Custom event name" hint="your own label">
-              <TextInput placeholder="e.g. demo-requested" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} />
+            <Field label={t("offers.detail.conversions.customNameLabel", "Custom event name")} hint={t("offers.detail.conversions.customNameHint", "your own label")}>
+              <TextInput placeholder={t("offers.detail.conversions.customNamePlaceholder", "e.g. demo-requested")} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} />
             </Field>
           )}
           <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ink-on-paper-2)", lineHeight: 1.5, marginBottom: 16 }}>
-            When a tracked visitor lands and later hits <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink-on-paper-1)" }}>{form.path.trim() || "/thank-you"}</span>, we record a <b>{fmtMoney(Number(form.value) || 49)}</b> conversion against the link that sent them.
+            <Trans
+              i18nKey="offers.detail.conversions.explainer"
+              defaults="When a tracked visitor lands and later hits <0>{{path}}</0>, we record a <1>{{amount}}</1> conversion against the link that sent them."
+              values={{ path: form.path.trim() || "/thank-you", amount: fmtMoney(Number(form.value) || 49) }}
+              components={[<span style={{ fontFamily: "var(--font-mono)", color: "var(--ink-on-paper-1)" }} />, <b />]}
+            />
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-            <Btn onClick={saving ? undefined : save}>{saving ? "Saving…" : editingId === "new" ? "Add event" : "Save changes"}</Btn>
-            <Btn kind="ghost" onClick={cancelEdit}>Cancel</Btn>
+            <Btn onClick={saving ? undefined : save}>{saving ? t("offers.detail.conversions.saving", "Saving…") : editingId === "new" ? t("offers.detail.conversions.addEvent", "Add event") : t("offers.detail.conversions.saveChanges", "Save changes")}</Btn>
+            <Btn kind="ghost" onClick={cancelEdit}>{t("offers.detail.conversions.cancel", "Cancel")}</Btn>
           </div>
         </div>
       ) : (
         <button onClick={startAdd} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--paper-0)", border: "1px dashed var(--line-2)", borderRadius: 12, padding: 14, cursor: "pointer", fontWeight: 600, fontSize: 13.5, color: "var(--ink-on-paper-1)" }}>
-          <Icon name="plus" size={16} stroke="var(--ink-on-paper-1)" />Add conversion event
+          <Icon name="plus" size={16} stroke="var(--ink-on-paper-1)" />{t("offers.detail.conversions.addConversionEvent", "Add conversion event")}
         </button>
       )}
     </Modal>
@@ -196,19 +206,19 @@ export function ConversionEventsModal({ page, goalTypes, onClose, onSaved }: { p
 /* ---------- new-link modal (source picker removed per design) ---------- */
 // Platforms a tracked link can be placed on (maps to the link's placement).
 // YouTube (video) + Beehiiv expose a content source we can pull reach from.
-const LINK_PLATFORMS: { value: string; label: string }[] = [
+const linkPlatforms = (t: TFunction): { value: string; label: string }[] => [
   { value: "video", label: "YouTube" },
   { value: "beehiiv", label: "Beehiiv" },
   { value: "instagram", label: "Instagram" },
   { value: "tiktok", label: "TikTok" },
   { value: "x", label: "X / Twitter" },
   { value: "linkedin", label: "LinkedIn" },
-  { value: "website", label: "Website" },
-  { value: "blog", label: "Blog" },
-  { value: "podcast", label: "Podcast" },
-  { value: "email", label: "Email" },
-  { value: "ad", label: "Ad" },
-  { value: "other", label: "Other" },
+  { value: "website", label: t("offers.links.source.platformWebsite", "Website") },
+  { value: "blog", label: t("offers.links.source.platformBlog", "Blog") },
+  { value: "podcast", label: t("offers.links.source.platformPodcast", "Podcast") },
+  { value: "email", label: t("offers.links.source.platformEmail", "Email") },
+  { value: "ad", label: t("offers.links.source.platformAd", "Ad") },
+  { value: "other", label: t("offers.links.source.platformOther", "Other") },
 ];
 const linkSelectStyle = { width: "100%", padding: "11px 13px", borderRadius: 12, border: "1px solid var(--line-1)", background: "var(--paper-0)", color: "var(--ink-on-paper-1)", fontFamily: "var(--font-body)", fontSize: 14, outline: "none" } as const;
 
@@ -221,6 +231,7 @@ const linkSelectStyle = { width: "100%", padding: "11px 13px", borderRadius: 12,
 export type LinkSource = { platforms: string[]; ytVideoId: string; beehiivPostId: string; xPostId: string; location: string };
 
 export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (patch: Partial<LinkSource>) => void }) {
+  const { t } = useTranslation();
   const { session } = useAuth();
   const [beehiivPosts, setBeehiivPosts] = useState<{ id: string; title: string | null }[] | null>(null);
   const [ytVideos, setYtVideos] = useState<{ id: string; title: string; views?: number }[] | null>(null);
@@ -283,9 +294,9 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
       await Promise.all(ch.data.map((c) => viewsMaxApi.fetchChannelVideosFromYouTube(token, c.id)));
       const lists = await Promise.all(ch.data.map((c) => viewsMaxApi.getChannelVideos(token, c.id, 100)));
       setYtVideos(lists.flatMap((l) => (l.success && l.data ? l.data.videos : [])).map((v) => ({ id: v.youtube_video_id, title: v.title, views: v.view_count })));
-      toast.success("Pulled your latest videos from YouTube.");
+      toast.success(t("offers.links.source.refreshed", "Pulled your latest videos from YouTube."));
     } catch {
-      toast.error("Couldn't refresh videos from YouTube.");
+      toast.error(t("offers.links.source.refreshFailed", "Couldn't refresh videos from YouTube."));
     } finally {
       setRefreshingYt(false);
     }
@@ -308,7 +319,7 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
     });
   };
 
-  const fmtViews = (n?: number) => (n == null ? null : n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K views` : `${n} views`);
+  const fmtViews = (n?: number) => (n == null ? null : t("offers.links.source.views", "{{views}} views", { views: n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : String(n) }));
 
   return (
     <>
@@ -316,11 +327,11 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
           chip button's accessible name. */}
       <div style={{ display: "block", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 7 }}>
-          <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap" }}>Platforms</span>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>everywhere this link is placed — one link, tracked across all of them</span>
+          <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap" }}>{t("offers.links.source.platforms", "Platforms")}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{t("offers.links.source.platformsHint", "everywhere this link is placed — one link, tracked across all of them")}</span>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }} role="group" aria-label="Platforms">
-          {LINK_PLATFORMS.map((p) => {
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }} role="group" aria-label={t("offers.links.source.platforms", "Platforms")}>
+          {linkPlatforms(t).map((p) => {
             const on = value.platforms.includes(p.value);
             return (
               <button
@@ -346,16 +357,16 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
            click and accessible name (same reason the Platforms block avoids it). */
         <div style={{ display: "block", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 7 }}>
-            <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap" }}>YouTube video</span>
+            <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 12.5, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap" }}>{t("offers.links.source.youtubeVideo", "YouTube video")}</span>
             <button
               type="button"
               onClick={refreshYtVideos}
               disabled={refreshingYt}
-              title="Fetch your newest uploads from YouTube"
+              title={t("offers.links.source.refreshTitle", "Fetch your newest uploads from YouTube")}
               style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", padding: 0, cursor: refreshingYt ? "default" : "pointer", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--vm-red-deep)", opacity: refreshingYt ? 0.6 : 1, whiteSpace: "nowrap" }}
             >
               <Icon name="rotate-cw" size={12} stroke="var(--vm-red-deep)" />
-              {refreshingYt ? "Refreshing…" : "Refresh from YouTube"}
+              {refreshingYt ? t("offers.links.source.refreshing", "Refreshing…") : t("offers.links.source.refresh", "Refresh from YouTube")}
             </button>
           </div>
           <SearchSelect
@@ -363,50 +374,50 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
             value={value.ytVideoId}
             onChange={(id) => set({ ytVideoId: id })}
             loading={loadingContent || refreshingYt}
-            placeholder={ytVideos && ytVideos.length ? "Search your videos…" : "No videos found"}
-            emptyLabel="No videos found"
-            clearLabel="— No video —"
+            placeholder={ytVideos && ytVideos.length ? t("offers.links.source.searchVideos", "Search your videos…") : t("offers.links.source.noVideos", "No videos found")}
+            emptyLabel={t("offers.links.source.noVideos", "No videos found")}
+            clearLabel={t("offers.links.source.clearVideo", "— No video —")}
           />
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", marginTop: 6 }}>type to search your videos — pulls in views as reach</div>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", marginTop: 6 }}>{t("offers.links.source.videoHint", "type to search your videos — pulls in views as reach")}</div>
         </div>
       )}
       {hasBeehiiv && (
-        <Field label="Beehiiv post" hint="type to search your posts — pulls in views as reach">
+        <Field label={t("offers.links.source.beehiivPost", "Beehiiv post")} hint={t("offers.links.source.beehiivHint", "type to search your posts — pulls in views as reach")}>
           <SearchSelect
             options={(beehiivPosts || []).map((p) => ({ id: p.id, label: p.title || p.id }))}
             value={value.beehiivPostId}
             onChange={(id) => set({ beehiivPostId: id })}
             loading={loadingContent}
-            placeholder={beehiivPosts && beehiivPosts.length ? "Search your posts…" : "No posts found (connect Beehiiv)"}
-            emptyLabel="No posts found (connect Beehiiv)"
-            clearLabel="— No post —"
+            placeholder={beehiivPosts && beehiivPosts.length ? t("offers.links.source.searchPosts", "Search your posts…") : t("offers.links.source.noBeehiivPosts", "No posts found (connect Beehiiv)")}
+            emptyLabel={t("offers.links.source.noBeehiivPosts", "No posts found (connect Beehiiv)")}
+            clearLabel={t("offers.links.source.clearPost", "— No post —")}
           />
         </Field>
       )}
       {hasX && (
         <>
-          <Field label="X post" hint="type to search posts you published via ViewsMax">
+          <Field label={t("offers.links.source.xPost", "X post")} hint={t("offers.links.source.xHint", "type to search posts you published via ViewsMax")}>
             <SearchSelect
               options={(xPosts || []).map((p) => ({ id: p.id, label: xPostLabel(p) }))}
               value={value.xPostId}
               onChange={(id) => set({ xPostId: id })}
               loading={loadingContent}
-              placeholder={xPosts && xPosts.length ? "Search your posts…" : "No posts published via ViewsMax yet"}
-              emptyLabel="No posts published via ViewsMax yet"
-              clearLabel="— No post —"
+              placeholder={xPosts && xPosts.length ? t("offers.links.source.searchPosts", "Search your posts…") : t("offers.links.source.noXPosts", "No posts published via ViewsMax yet")}
+              emptyLabel={t("offers.links.source.noXPosts", "No posts published via ViewsMax yet")}
+              clearLabel={t("offers.links.source.clearPost", "— No post —")}
             />
           </Field>
           {xPosts !== null && xPosts.length === 0 && !loadingContent && (
             <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ink-on-paper-3)", lineHeight: 1.5, margin: "-6px 0 14px" }}>
-              Only posts published through ViewsMax can be picked (the X plan doesn't allow reading your timeline). You can still describe the placement below.
+              {t("offers.links.source.xOnlyViewsMax", "Only posts published through ViewsMax can be picked (the X plan doesn't allow reading your timeline). You can still describe the placement below.")}
             </div>
           )}
         </>
       )}
       {value.platforms.length > 0 && (
         <>
-          <Field label="Where is this link placed?" hint="optional"><TextInput placeholder="e.g. bio link, pinned comment, or a URL" value={value.location} onChange={(e) => set({ location: e.target.value })} /></Field>
-          <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ink-on-paper-3)", lineHeight: 1.5, margin: "-6px 0 14px" }}>The page or post this link lives on — so you can find where each link is published later.</div>
+          <Field label={t("offers.links.source.locationLabel", "Where is this link placed?")} hint={t("offers.links.source.locationHint", "optional")}><TextInput placeholder={t("offers.links.source.locationPlaceholder", "e.g. bio link, pinned comment, or a URL")} value={value.location} onChange={(e) => set({ location: e.target.value })} /></Field>
+          <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--ink-on-paper-3)", lineHeight: 1.5, margin: "-6px 0 14px" }}>{t("offers.links.source.locationHelp", "The page or post this link lives on — so you can find where each link is published later.")}</div>
         </>
       )}
     </>
@@ -414,6 +425,7 @@ export function PlatformSourceFields({ value, set }: { value: LinkSource; set: (
 }
 
 function NewLinkModal({ page, onClose, onCreated }: { page: PageMetric; onClose: () => void; onCreated: () => void }) {
+  const { t } = useTranslation();
   const [label, setLabel] = useState("");
   const [src, setSrc] = useState<LinkSource>({ platforms: [], ytVideoId: "", beehiivPostId: "", xPostId: "", location: "" });
   const set = (patch: Partial<LinkSource>) => setSrc((s) => ({ ...s, ...patch }));
@@ -421,7 +433,7 @@ function NewLinkModal({ page, onClose, onCreated }: { page: PageMetric; onClose:
 
   const create = async () => {
     const name = label.trim();
-    if (!name) { toast.error("Give the link a name."); return; }
+    if (!name) { toast.error(t("offers.links.create.nameRequired", "Give the link a name.")); return; }
     setSaving(true);
     const res = await viewsMaxApi.generateTrackingLink({
       tracking_event_id: Number(page.id),
@@ -434,15 +446,15 @@ function NewLinkModal({ page, onClose, onCreated }: { page: PageMetric; onClose:
       description: src.location.trim() || undefined,
     });
     setSaving(false);
-    if (res.success) { toast.success("Tracking link created."); onCreated(); }
-    else toast.error(res.error || "Couldn't create the link.");
+    if (res.success) { toast.success(t("offers.links.create.created", "Tracking link created.")); onCreated(); }
+    else toast.error(res.error || t("offers.links.create.failed", "Couldn't create the link."));
   };
 
   return (
-    <Modal title="Add a tracked link" sub="Each link maps a piece of content to this offer so we can attribute the sale." onClose={onClose}>
-      <Field label="What is this link?" hint="content name"><TextInput placeholder="e.g. YouTube — my launch video" value={label} onChange={(e) => setLabel(e.target.value)} /></Field>
+    <Modal title={t("offers.links.create.title", "Add a tracked link")} sub={t("offers.links.create.sub", "Each link maps a piece of content to this offer so we can attribute the sale.")} onClose={onClose}>
+      <Field label={t("offers.links.create.nameLabel", "What is this link?")} hint={t("offers.links.create.nameHint", "content name")}><TextInput placeholder={t("offers.links.create.namePlaceholder", "e.g. YouTube — my launch video")} value={label} onChange={(e) => setLabel(e.target.value)} /></Field>
       <PlatformSourceFields value={src} set={set} />
-      <div style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)", margin: "8px 0 10px" }}>Destination offer</div>
+      <div style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)", margin: "8px 0 10px" }}>{t("offers.links.create.destination", "Destination offer")}</div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 18px", border: "1.5px solid var(--vm-red)", background: "var(--vm-red-tint-l)", borderRadius: 12 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap" }}>{page.name}</span>
@@ -451,8 +463,8 @@ function NewLinkModal({ page, onClose, onCreated }: { page: PageMetric; onClose:
         <Icon name="check" size={18} stroke="var(--vm-red)" />
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 24 }}>
-        <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn kind="aqua" icon="check" onClick={saving ? undefined : create}>{saving ? "Creating…" : "Create link"}</Btn>
+        <Btn kind="ghost" onClick={onClose}>{t("offers.links.create.cancel", "Cancel")}</Btn>
+        <Btn kind="aqua" icon="check" onClick={saving ? undefined : create}>{saving ? t("offers.links.create.creating", "Creating…") : t("offers.links.create.submit", "Create link")}</Btn>
       </div>
     </Modal>
   );
@@ -460,6 +472,7 @@ function NewLinkModal({ page, onClose, onCreated }: { page: PageMetric; onClose:
 
 /* ---------- edit-link modal ---------- */
 function EditLinkModal({ link, onClose, onSaved }: { link: LinkMetric; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation();
   const [label, setLabel] = useState(link.raw.name || link.label || "");
   const [src, setSrc] = useState<LinkSource>({
     platforms: link.placements.length ? link.placements : (link.raw.placement ? [link.raw.placement] : []),
@@ -473,7 +486,7 @@ function EditLinkModal({ link, onClose, onSaved }: { link: LinkMetric; onClose: 
 
   const save = async () => {
     const name = label.trim();
-    if (!name) { toast.error("Give the link a name."); return; }
+    if (!name) { toast.error(t("offers.links.edit.nameRequired", "Give the link a name.")); return; }
     setSaving(true);
     // Always send all source ids so the backend can re-baseline when the source
     // changes and clear it when switching to a platform without a content source.
@@ -487,21 +500,21 @@ function EditLinkModal({ link, onClose, onSaved }: { link: LinkMetric; onClose: 
       description: src.location.trim(),
     });
     setSaving(false);
-    if (res.success) { toast.success("Link updated."); onSaved(); }
-    else toast.error(res.error || "Couldn't update the link.");
+    if (res.success) { toast.success(t("offers.links.edit.updated", "Link updated.")); onSaved(); }
+    else toast.error(res.error || t("offers.links.edit.failed", "Couldn't update the link."));
   };
 
   return (
-    <Modal title="Edit link" sub="Update this link's name, platform, or where it's placed." onClose={onClose}>
-      <Field label="What is this link?" hint="content name"><TextInput placeholder="e.g. YouTube — my launch video" value={label} onChange={(e) => setLabel(e.target.value)} /></Field>
+    <Modal title={t("offers.links.edit.title", "Edit link")} sub={t("offers.links.edit.sub", "Update this link's name, platform, or where it's placed.")} onClose={onClose}>
+      <Field label={t("offers.links.edit.nameLabel", "What is this link?")} hint={t("offers.links.edit.nameHint", "content name")}><TextInput placeholder={t("offers.links.edit.namePlaceholder", "e.g. YouTube — my launch video")} value={label} onChange={(e) => setLabel(e.target.value)} /></Field>
       <PlatformSourceFields value={src} set={set} />
       <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "12px 14px", border: "1px solid var(--line-1)", borderRadius: 12, background: "var(--paper-1)" }}>
         <Icon name="link" size={15} stroke="var(--ink-on-paper-3)" />
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{link.short}</span>
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 24 }}>
-        <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn kind="aqua" icon="check" onClick={saving ? undefined : save}>{saving ? "Saving…" : "Save changes"}</Btn>
+        <Btn kind="ghost" onClick={onClose}>{t("offers.links.edit.cancel", "Cancel")}</Btn>
+        <Btn kind="aqua" icon="check" onClick={saving ? undefined : save}>{saving ? t("offers.links.edit.saving", "Saving…") : t("offers.links.edit.saveChanges", "Save changes")}</Btn>
       </div>
     </Modal>
   );
@@ -509,6 +522,7 @@ function EditLinkModal({ link, onClose, onSaved }: { link: LinkMetric; onClose: 
 
 /* ---------- body ---------- */
 function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: LinkMetric[]; goalTypes: GoalType[]; reload: () => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [range, setRange] = useState<Range>("28d");
@@ -533,12 +547,12 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
   const filterFields = useMemo<FilterField[]>(() => {
     const present = [...new Set(pageLinks.map((l) => l.platform))];
     return [
-      { kind: "text", key: "q", label: "Search", placeholder: "Name, content, URL…", suggestions: pageLinks.flatMap((l) => [l.label, l.contentTitle ?? ""]).filter(Boolean) },
-      { kind: "multi", key: "platforms", label: "Platform", options: present.map((p) => ({ value: p, label: platformMeta(p).name, icon: <PlacementIcon placement={p} size={18} /> })) },
-      { kind: "daterange", key: "created", label: "Created" },
-      { kind: "minmax", key: "revenue", label: "Revenue ($)" },
+      { kind: "text", key: "q", label: t("offers.detail.filters.search", "Search"), placeholder: t("offers.detail.filters.searchPlaceholder", "Name, content, URL…"), suggestions: pageLinks.flatMap((l) => [l.label, l.contentTitle ?? ""]).filter(Boolean) },
+      { kind: "multi", key: "platforms", label: t("offers.detail.filters.platform", "Platform"), options: present.map((p) => ({ value: p, label: platformMeta(p).name, icon: <PlacementIcon placement={p} size={18} /> })) },
+      { kind: "daterange", key: "created", label: t("offers.detail.filters.created", "Created") },
+      { kind: "minmax", key: "revenue", label: t("offers.detail.filters.revenue", "Revenue ($)") },
     ];
-  }, [pageLinks]);
+  }, [pageLinks, t]);
   const filters = useUrlFilters(filterFields);
 
   const rows = useMemo(() => {
@@ -563,14 +577,14 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
   }, [pageLinks, filters.values, sortKey, sortDir]);
 
   const columns: { key: SortKey | null; head: string; align: "left" | "right" }[] = [
-    { key: "label", head: "Name", align: "left" },
-    { key: null, head: "Link", align: "left" },
-    { key: "views", head: "Views", align: "right" },
-    { key: "clicks", head: "Clicks", align: "right" },
-    { key: "viewCr", head: "Conv. rate", align: "right" },
-    { key: "rev", head: "Revenue", align: "right" },
-    { key: "created", head: "Created", align: "right" },
-    { key: null, head: "Last click", align: "right" },
+    { key: "label", head: t("offers.detail.table.name", "Name"), align: "left" },
+    { key: null, head: t("offers.detail.table.link", "Link"), align: "left" },
+    { key: "views", head: t("offers.detail.table.views", "Views"), align: "right" },
+    { key: "clicks", head: t("offers.detail.table.clicks", "Clicks"), align: "right" },
+    { key: "viewCr", head: t("offers.detail.table.convRate", "Conv. rate"), align: "right" },
+    { key: "rev", head: t("offers.detail.table.revenue", "Revenue"), align: "right" },
+    { key: "created", head: t("offers.detail.table.created", "Created"), align: "right" },
+    { key: null, head: t("offers.detail.table.lastClick", "Last click"), align: "right" },
     { key: null, head: "", align: "right" },
   ];
 
@@ -579,14 +593,14 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
       {/* toolbar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => setModal("install")} style={{ display: "inline-flex", alignItems: "center", gap: 9, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13.5, color: "var(--ink-on-paper-1)" }}>Install tracking</button>
+          <button onClick={() => setModal("install")} style={{ display: "inline-flex", alignItems: "center", gap: 9, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13.5, color: "var(--ink-on-paper-1)" }}>{t("offers.detail.toolbar.installTracking", "Install tracking")}</button>
           {page.goals.length === 0 ? (
             <button onClick={() => setModal("conversions")} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid var(--vm-red)", borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13.5, color: "var(--vm-red)" }}>
-              <Icon name="alert-circle" size={16} stroke="var(--vm-red)" />No Conversion Events added
+              <Icon name="alert-circle" size={16} stroke="var(--vm-red)" />{t("offers.detail.toolbar.noConversionEvents", "No Conversion Events added")}
             </button>
           ) : (
             <button onClick={() => setModal("conversions")} style={{ display: "inline-flex", alignItems: "center", gap: 9, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13.5, color: "var(--ink-on-paper-1)" }}>
-              Conversion events
+              {t("offers.detail.toolbar.conversionEvents", "Conversion events")}
               <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 12, background: "var(--vm-red)", color: "#fff", borderRadius: 999, minWidth: 20, height: 20, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>{page.goals.length}</span>
             </button>
           )}
@@ -598,7 +612,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
       <div style={{ ...CARD, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "18px 22px", borderBottom: "1px solid var(--line-1)", flexWrap: "wrap" }}>
           <div style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 16, color: "var(--ink-on-paper-1)" }}>{page.url}</div>
-          <Btn icon="plus" onClick={() => setModal("newlink")}>New link</Btn>
+          <Btn icon="plus" onClick={() => setModal("newlink")}>{t("offers.detail.newLink", "New link")}</Btn>
         </div>
         <div style={{ padding: "14px 22px", borderBottom: "1px solid var(--line-1)" }}>
           <FiltersPanel fields={filterFields} filters={filters} />
@@ -639,7 +653,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                           <div style={{ minWidth: 0 }}>
                             {href ? (
                               <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                                title={`Open where this link is placed — ${l.raw.description}`}
+                                title={t("offers.detail.table.openPlacement", "Open where this link is placed — {{placement}}", { placement: l.raw.description })}
                                 style={{ ...base, display: "block", color: "var(--vm-volt-deep)", textDecoration: "none" }}>{primary}</a>
                             ) : (
                               <div style={{ ...base, color: "var(--ink-on-paper-1)" }}>{primary}</div>
@@ -653,24 +667,24 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                     })()}
                   </td>
                   <td style={{ padding: "14px 10px" }}><CopyLink url={l.short} /></td>
-                  <td title={l.viewsSince > 0 ? `${fmtFull(l.viewsSince)} views since this link was created (${fmtFull(l.totalViews)} total on the linked content)` : l.platform === "x" ? "View tracking isn't available for X posts (the X API plan doesn't allow reads)." : "No content-view data for this link (views show for YouTube and Beehiiv-backed links)."} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 15, color: l.viewsSince > 0 ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>{l.viewsSince > 0 ? fmtNum(l.viewsSince) : "—"}</td>
+                  <td title={l.viewsSince > 0 ? t("offers.detail.table.viewsTitle", "{{since}} views since this link was created ({{total}} total on the linked content)", { since: fmtFull(l.viewsSince), total: fmtFull(l.totalViews) }) : l.platform === "x" ? t("offers.detail.table.viewsTitleX", "View tracking isn't available for X posts (the X API plan doesn't allow reads).") : t("offers.detail.table.viewsTitleNone", "No content-view data for this link (views show for YouTube and Beehiiv-backed links).")} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 15, color: l.viewsSince > 0 ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}>{l.viewsSince > 0 ? fmtNum(l.viewsSince) : "—"}</td>
                   <td style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 15, color: "var(--ink-on-paper-1)" }}>{fmtFull(l.clicks)}</td>
-                  <td title={l.viewCr == null ? "No view data for this link's content — reach-based rate needs views since the link was created." : undefined} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, color: l.viewCr == null ? "var(--ink-on-paper-3)" : "var(--vm-volt-deep)" }}>{l.viewCr == null ? "—" : fmtPct(l.viewCr)}</td>
+                  <td title={l.viewCr == null ? t("offers.detail.table.convRateTitleNone", "No view data for this link's content — reach-based rate needs views since the link was created.") : undefined} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 13, color: l.viewCr == null ? "var(--ink-on-paper-3)" : "var(--vm-volt-deep)" }}>{l.viewCr == null ? "—" : fmtPct(l.viewCr)}</td>
                   <td style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 14, color: "var(--ink-on-paper-3)" }}>{fmtMoney(l.rev)}</td>
                   <td title={l.createdAt ? new Date(l.createdAt).toLocaleString() : undefined} style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—"}</td>
                   <td style={{ padding: "14px 10px", textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12.5, color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{timeAgo(l.lastClickAt)}</td>
                   <td style={{ padding: "12px 12px", textAlign: "right" }}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                      <button onClick={(e) => { e.stopPropagation(); setEditLink(l); }} title="Edit link"
+                      <button onClick={(e) => { e.stopPropagation(); setEditLink(l); }} title={t("offers.detail.table.editLink", "Edit link")}
                         style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center" }}>
                         <Icon name="edit" size={15} stroke="var(--ink-on-paper-2)" />
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => { const n = new Set(s); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; }); }}
-                        title={expanded.has(l.id) ? "Hide platform breakdown" : "Show platform breakdown"}
+                        title={expanded.has(l.id) ? t("offers.detail.table.hideBreakdown", "Hide platform breakdown") : t("offers.detail.table.showBreakdown", "Show platform breakdown")}
                         style={{ width: 32, height: 32, borderRadius: 8, border: expanded.has(l.id) ? "1.5px solid var(--vm-red)" : "1px solid var(--line-1)", background: expanded.has(l.id) ? "var(--vm-red-tint-l)" : "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center" }}>
                         <Icon name="eye" size={15} stroke={expanded.has(l.id) ? "var(--vm-red)" : "var(--ink-on-paper-2)"} />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/monetization/links/${l.id}`); }} title="Open link analytics"
+                      <button onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/monetization/links/${l.id}`); }} title={t("offers.detail.table.openAnalytics", "Open link analytics")}
                         style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center" }}>
                         <Icon name="bar-chart" size={15} stroke="var(--ink-on-paper-2)" />
                       </button>
@@ -683,9 +697,9 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                       <div style={{ display: "flex", gap: 32, flexWrap: "wrap", padding: "14px 4px 2px" }}>
                         {/* Clicks by platform (from each click's referrer classification) */}
                         <div style={{ minWidth: 240 }}>
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--ink-on-paper-3)", marginBottom: 8 }}>CLICKS BY PLATFORM</div>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--ink-on-paper-3)", marginBottom: 8 }}>{t("offers.detail.breakdown.clicksByPlatform", "CLICKS BY PLATFORM")}</div>
                           {Object.keys(l.platformBreakdown).length === 0 ? (
-                            <div style={{ fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>No clicks yet.</div>
+                            <div style={{ fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>{t("offers.detail.breakdown.noClicks", "No clicks yet.")}</div>
                           ) : (() => {
                             const entries = Object.entries(l.platformBreakdown).sort((a, b) => b[1] - a[1]);
                             const max = entries[0][1] || 1;
@@ -702,7 +716,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                         </div>
                         {/* Declared placements */}
                         <div>
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--ink-on-paper-3)", marginBottom: 8 }}>PLACED ON</div>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--ink-on-paper-3)", marginBottom: 8 }}>{t("offers.detail.breakdown.placedOn", "PLACED ON")}</div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxWidth: 260 }}>
                             {l.placements.map((p) => (
                               <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, border: "1px solid var(--line-1)", background: "var(--paper-0)", fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600, color: "var(--ink-on-paper-2)" }}>
@@ -713,9 +727,9 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
                         </div>
                         {/* Top referrers */}
                         <div style={{ minWidth: 200 }}>
-                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--ink-on-paper-3)", marginBottom: 8 }}>TOP REFERRERS</div>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--ink-on-paper-3)", marginBottom: 8 }}>{t("offers.detail.breakdown.topReferrers", "TOP REFERRERS")}</div>
                           {l.topReferrers.length === 0 ? (
-                            <div style={{ fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>No referrer data yet.</div>
+                            <div style={{ fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>{t("offers.detail.breakdown.noReferrers", "No referrer data yet.")}</div>
                           ) : l.topReferrers.map((r) => (
                             <div key={r.host} title={r.url} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, fontFamily: "var(--font-mono)", fontSize: 12 }}>
                               <span style={{ color: "var(--ink-on-paper-2)" }}>{r.host}</span>
@@ -733,7 +747,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
           </table>
           {rows.length === 0 && (
             <div style={{ padding: 36, textAlign: "center", color: "var(--ink-on-paper-3)", fontSize: 13.5 }}>
-              {filters.activeCount > 0 ? "No links match your filters." : "No links yet — add your first to start attributing traffic."}
+              {filters.activeCount > 0 ? t("offers.detail.noMatches", "No links match your filters.") : t("offers.detail.empty", "No links yet — add your first to start attributing traffic.")}
             </div>
           )}
         </div>
@@ -748,6 +762,7 @@ function Body({ page, links, goalTypes, reload }: { page: PageMetric; links: Lin
 }
 
 export default function OfferDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { model, loading, reload } = useFunnlModel();
@@ -758,9 +773,9 @@ export default function OfferDetail() {
       {page ? <Body page={page} links={model.links} goalTypes={model.goalTypes} reload={reload} /> : (
         <>
           <button onClick={() => navigate("/dashboard/monetization/offers")} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 13, color: "var(--ink-on-paper-2)", alignSelf: "flex-start" }}>
-            <Icon name="arrow-left" size={15} stroke="var(--ink-on-paper-2)" />Offers
+            <Icon name="arrow-left" size={15} stroke="var(--ink-on-paper-2)" />{t("offers.detail.backToOffers", "Offers")}
           </button>
-          <div style={{ ...CARD, padding: 48, textAlign: "center", color: "var(--ink-on-paper-3)" }}>Offer not found.</div>
+          <div style={{ ...CARD, padding: 48, textAlign: "center", color: "var(--ink-on-paper-3)" }}>{t("offers.detail.notFound", "Offer not found.")}</div>
         </>
       )}
     </AnalyticsShell>

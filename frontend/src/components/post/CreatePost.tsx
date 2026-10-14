@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Icon, Btn } from "@/components/analytics/primitives";
 import { PLATFORMS, PMAP, PAvatar, MediaTile, PostPreview, CountChip, usePostComposer, platformAllowedForType, type Composer } from "@/components/post/composer";
 import { viewsMaxApi, resolveMediaUrl, type Brand, type PinterestBoard } from "@/lib/api-service";
@@ -46,12 +48,13 @@ function tabStyle(active: boolean): CSSProperties {
 // https://developers.tiktok.com/doc/content-sharing-guidelines/
 const policyLink: React.CSSProperties = { color: "inherit", textDecoration: "underline" };
 
-const PRIVACY_LABELS: Record<string, string> = {
-  PUBLIC_TO_EVERYONE: "Everyone",
-  MUTUAL_FOLLOW_FRIENDS: "Friends",
-  FOLLOWER_OF_CREATOR: "Followers",
-  SELF_ONLY: "Only me (private)",
-};
+// Keys are TikTok's privacy_level values (sent to the API); only labels are translated.
+const privacyLabels = (t: TFunction): Record<string, string> => ({
+  PUBLIC_TO_EVERYONE: t("post.composer.privacyEveryone", "Everyone"),
+  MUTUAL_FOLLOW_FRIENDS: t("post.composer.privacyFriends", "Friends"),
+  FOLLOWER_OF_CREATOR: t("post.composer.privacyFollowers", "Followers"),
+  SELF_ONLY: t("post.composer.privacySelfOnly", "Only me (private)"),
+});
 
 // Platforms surfaced in the "Publishing to" picker — the ones the connections
 // screen can actually connect today. Order follows the PLATFORMS catalog.
@@ -81,19 +84,21 @@ const todayStr = () => {
 // Extra messages posted after the post goes live: X reply threads, LinkedIn /
 // Instagram comments, Threads replies. Each comment can wait a delay after the
 // previous message in the chain (Postiz-style presets + custom minutes).
-const YOUTUBE_TITLE_MSG = "YouTube needs a title — add a caption, it's used as the video title.";
+const youtubeTitleMsg = (t: TFunction) =>
+  t("post.composer.youtubeTitleMissing", "YouTube needs a title — add a caption, it's used as the video title.");
 
 const COMMENT_PLATFORMS = ["x", "linkedin", "threads", "instagram"];
-const DELAY_PRESETS: Array<{ label: string; seconds: number }> = [
-  { label: "Immediately", seconds: 0 },
-  { label: "1m", seconds: 60 },
-  { label: "2m", seconds: 120 },
-  { label: "5m", seconds: 300 },
-  { label: "10m", seconds: 600 },
-  { label: "15m", seconds: 900 },
-  { label: "30m", seconds: 1800 },
-  { label: "1h", seconds: 3600 },
-  { label: "2h", seconds: 7200 },
+const DELAY_SECONDS = [0, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+const delayPresets = (t: TFunction): Array<{ label: string; seconds: number }> => [
+  { label: t("post.composer.delayImmediately", "Immediately"), seconds: 0 },
+  { label: t("post.composer.delay1m", "1m"), seconds: 60 },
+  { label: t("post.composer.delay2m", "2m"), seconds: 120 },
+  { label: t("post.composer.delay5m", "5m"), seconds: 300 },
+  { label: t("post.composer.delay10m", "10m"), seconds: 600 },
+  { label: t("post.composer.delay15m", "15m"), seconds: 900 },
+  { label: t("post.composer.delay30m", "30m"), seconds: 1800 },
+  { label: t("post.composer.delay1h", "1h"), seconds: 3600 },
+  { label: t("post.composer.delay2h", "2h"), seconds: 7200 },
 ];
 
 type ComposerComment = { body: string; delaySeconds: number };
@@ -105,6 +110,7 @@ function CommentsCard({ comments, setComments, selected, xAccountId }: {
   /** Connected X account backing the @mention typeahead (comments post as X replies). */
   xAccountId?: number | null;
 }) {
+  const { t } = useTranslation();
   const supported = selected.filter((id) => COMMENT_PLATFORMS.includes(id));
   const unsupported = selected.filter((id) => !COMMENT_PLATFORMS.includes(id));
   const patch = (i: number, p: Partial<ComposerComment>) =>
@@ -115,13 +121,13 @@ function CommentsCard({ comments, setComments, selected, xAccountId }: {
     <div style={{ borderTop: "1px solid var(--line-1)", marginTop: 18, paddingTop: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
         <span className="vm-eyebrow" style={{ color: "var(--ink-on-paper-3)" }}>
-          Comments{comments.length ? ` · ${comments.length}` : ""}
+          {t("post.composer.comments", "Comments")}{comments.length ? ` · ${comments.length}` : ""}
         </span>
         <button
           onClick={() => setComments((list) => [...list, { body: "", delaySeconds: 0 }])}
           style={{ background: "var(--vm-red)", color: "#fff", border: "none", borderRadius: 999, padding: "7px 13px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", flexShrink: 0 }}
         >
-          + Add comment
+          {t("post.composer.addComment", "+ Add comment")}
         </button>
       </div>
       {comments.map((cm, i) => {
@@ -136,28 +142,28 @@ function CommentsCard({ comments, setComments, selected, xAccountId }: {
                   mentions={selected.includes("x")}
                   accountId={xAccountId}
                   rows={2}
-                  placeholder={i === 0 ? "e.g. Register to my newsletter → link" : "Another follow-up…"}
+                  placeholder={i === 0 ? t("post.composer.commentPlaceholderFirst", "e.g. Register to my newsletter → link") : t("post.composer.commentPlaceholderNext", "Another follow-up…")}
                   style={{ width: "100%", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontFamily: "var(--font-body)", fontSize: 13.5, lineHeight: 1.55, resize: "vertical", background: "var(--paper-0)", color: "var(--ink-on-paper-1)" }}
                 />
               </div>
-              <button onClick={() => remove(i)} title="Remove comment" style={{ width: 30, height: 30, borderRadius: 999, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              <button onClick={() => remove(i)} title={t("post.composer.removeComment", "Remove comment")} style={{ width: 30, height: 30, borderRadius: 999, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}>
                 <Icon name="trash-2" size={13} stroke="var(--ink-on-paper-3)" />
               </button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Delay</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.delay", "Delay")}</span>
               <select
-                value={DELAY_PRESETS.some((p) => p.seconds === cm.delaySeconds) ? String(cm.delaySeconds) : "custom"}
+                value={DELAY_SECONDS.includes(cm.delaySeconds) ? String(cm.delaySeconds) : "custom"}
                 onChange={(e) => {
                   // "Custom…" flips to a non-preset value so the minutes input appears.
                   patch(i, { delaySeconds: e.target.value === "custom" ? 180 : Number(e.target.value) });
                 }}
                 style={{ border: "1px solid var(--line-1)", borderRadius: 8, padding: "5px 8px", fontFamily: "var(--font-body)", fontSize: 12, background: "var(--paper-0)", color: "var(--ink-on-paper-1)" }}
               >
-                {DELAY_PRESETS.map((p) => <option key={p.seconds} value={p.seconds}>{p.label}</option>)}
-                <option value="custom">Custom…</option>
+                {delayPresets(t).map((p) => <option key={p.seconds} value={p.seconds}>{p.label}</option>)}
+                <option value="custom">{t("post.composer.delayCustom", "Custom…")}</option>
               </select>
-              {!DELAY_PRESETS.some((p) => p.seconds === cm.delaySeconds) ? (
+              {!DELAY_SECONDS.includes(cm.delaySeconds) ? (
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--ink-on-paper-2)" }}>
                   <input
                     type="number"
@@ -166,13 +172,13 @@ function CommentsCard({ comments, setComments, selected, xAccountId }: {
                     value={Math.round(cm.delaySeconds / 60)}
                     onChange={(e) => patch(i, { delaySeconds: Math.max(0, Math.min(120, Number(e.target.value) || 0)) * 60 })}
                     style={{ width: 60, border: "1px solid var(--line-1)", borderRadius: 8, padding: "5px 8px", fontFamily: "var(--font-mono)", fontSize: 12, background: "var(--paper-0)", color: "var(--ink-on-paper-1)" }}
-                  /> min
+                  /> {t("post.composer.minutesShort", "min")}
                 </label>
               ) : null}
-              {i > 0 && <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)" }}>after the previous comment</span>}
+              {i > 0 && <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)" }}>{t("post.composer.afterPreviousComment", "after the previous comment")}</span>}
               {selected.includes("x") && (
                 <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 11, color: xOver ? "var(--vm-red)" : "var(--ink-on-paper-3)" }}>
-                  {xRemaining(cm.body)} left on X
+                  {t("post.composer.leftOnX", "{{n}} left on X", { n: xRemaining(cm.body) })}
                 </span>
               )}
             </div>
@@ -181,8 +187,8 @@ function CommentsCard({ comments, setComments, selected, xAccountId }: {
       })}
       {comments.length > 0 && (
         <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-          {supported.length > 0 && <>Will post to: {supported.map((id) => PMAP[id]?.name ?? id).join(", ")}.</>}
-          {unsupported.length > 0 && <> {unsupported.map((id) => PMAP[id]?.name ?? id).join(", ")} {unsupported.length === 1 ? "doesn't" : "don't"} support comments and will skip them.</>}
+          {supported.length > 0 && <>{t("post.composer.commentsWillPostTo", "Will post to: {{platforms}}.", { platforms: supported.map((id) => PMAP[id]?.name ?? id).join(", ") })}</>}
+          {unsupported.length > 0 && <> {t("post.composer.commentsUnsupported", { count: unsupported.length, platforms: unsupported.map((id) => PMAP[id]?.name ?? id).join(", "), defaultValue_one: "{{platforms}} doesn't support comments and will skip them.", defaultValue_other: "{{platforms}} don't support comments and will skip them." })}</>}
         </div>
       )}
     </div>
@@ -202,6 +208,7 @@ function XThreadPanel({ thread, activeIdx, onSelect, onAdd, onAutoSplit }: {
   onAdd: () => void;
   onAutoSplit: () => void;
 }) {
+  const { t } = useTranslation();
   const anyOver = thread.segments.some((s) => s.over) || thread.tooMany;
   const count = Math.max(1, thread.segments.length);
   const segments = thread.segments.length ? thread.segments : [{ text: "", len: 0, over: false, empty: true }];
@@ -209,13 +216,13 @@ function XThreadPanel({ thread, activeIdx, onSelect, onAdd, onAutoSplit }: {
     <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--ink-on-paper-3)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-          <PAvatar id="x" size={16} /> {count <= 1 ? "X post" : `X thread · ${count} posts`}
+          <PAvatar id="x" size={16} /> {count <= 1 ? t("post.composer.xPost", "X post") : t("post.composer.xThreadCount", { count, defaultValue_one: "X thread · {{count}} post", defaultValue_other: "X thread · {{count}} posts" })}
         </span>
         {segments.map((s, i) => {
           const active = i === activeIdx;
           const bad = s.over || (s.empty && count > 1);
           return (
-            <button key={i} onClick={() => onSelect(i)} title={`Edit tweet ${i + 1}`}
+            <button key={i} onClick={() => onSelect(i)} title={t("post.composer.editTweet", "Edit tweet {{n}}", { n: i + 1 })}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer",
                 background: bad ? "var(--vm-red-tint-l)" : active ? "var(--ink-on-paper-1)" : "var(--paper-2)",
@@ -223,22 +230,22 @@ function XThreadPanel({ thread, activeIdx, onSelect, onAdd, onAutoSplit }: {
                 borderRadius: 999, padding: "3px 9px", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700,
                 color: bad ? "var(--vm-red)" : active ? "#fff" : "var(--ink-on-paper-3)",
               }}>
-              {i + 1} · {s.empty ? "empty" : s.over ? `−${s.len - X_LIMIT}` : X_LIMIT - s.len}
+              {i + 1} · {s.empty ? t("post.composer.tweetEmpty", "empty") : s.over ? `−${s.len - X_LIMIT}` : X_LIMIT - s.len}
             </button>
           );
         })}
-        <button onClick={onAdd} title="Add a tweet to the thread"
+        <button onClick={onAdd} title={t("post.composer.addTweetToThread", "Add a tweet to the thread")}
           style={{ display: "inline-flex", alignItems: "center", cursor: "pointer", background: "var(--paper-0)", border: "1px dashed var(--line-2)", borderRadius: 999, padding: "3px 10px", fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--ink-on-paper-2)" }}>
           +
         </button>
         {anyOver && (
           <button onClick={onAutoSplit} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--ink-on-paper-1)", color: "#fff", border: "none", borderRadius: 999, padding: "5px 12px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-            <Icon name="zap" size={12} stroke="#fff" /> Auto-split into a thread
+            <Icon name="zap" size={12} stroke="#fff" /> {t("post.composer.autoSplit", "Auto-split into a thread")}
           </button>
         )}
       </div>
       {thread.tooMany && (
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--vm-red)" }}>Threads are limited to 25 tweets.</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--vm-red)" }}>{t("post.composer.threadLimit", "Threads are limited to 25 tweets.")}</span>
       )}
     </div>
   );
@@ -249,6 +256,7 @@ function XThreadPanel({ thread, activeIdx, onSelect, onAdd, onAutoSplit }: {
 // Users never see or type the raw `---` separator here — the serialization
 // into the X override happens in the composer hook.
 function XTweetEditor({ c, active, onSelect }: { c: Composer; active: number; onSelect: (i: number) => void }) {
+  const { t } = useTranslation();
   const thread = c.status.x.thread;
   const segments = thread && thread.segments.length ? thread.segments : [{ text: c.textFor("x"), len: 0, over: false, empty: true }];
   const idx = Math.min(active, segments.length - 1);
@@ -274,7 +282,7 @@ function XTweetEditor({ c, active, onSelect }: { c: Composer; active: number; on
       {/* chain: one line per tweet */}
       <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
         {segments.map((s, i) => (
-          <button key={i} onClick={() => onSelect(i)} title={`Tweet ${i + 1}${s.over ? " — over limit" : ""}`}
+          <button key={i} onClick={() => onSelect(i)} title={s.over ? t("post.composer.tweetNOverLimit", "Tweet {{n}} — over limit", { n: i + 1 }) : t("post.composer.tweetN", "Tweet {{n}}", { n: i + 1 })}
             style={{
               flex: 1, height: 5, borderRadius: 999, border: "none", cursor: "pointer", padding: 0,
               background: s.over || (s.empty && segments.length > 1) ? "var(--vm-red)" : i === idx ? "var(--ink-on-paper-1)" : "var(--line-2)",
@@ -289,23 +297,23 @@ function XTweetEditor({ c, active, onSelect }: { c: Composer; active: number; on
         accountId={c.accountSel["x"]?.[0]}
         rows={5}
         style={{ ...fieldBase, resize: "vertical", lineHeight: 1.55, minHeight: 110 }}
-        placeholder={idx === 0 ? "Write the first tweet…" : "Write this tweet…"}
+        placeholder={idx === 0 ? t("post.composer.firstTweetPlaceholder", "Write the first tweet…") : t("post.composer.tweetPlaceholder", "Write this tweet…")}
       />
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-2)" }}>
-          Tweet {idx + 1} of {segments.length}
+          {t("post.composer.tweetNOfTotal", "Tweet {{n}} of {{total}}", { n: idx + 1, total: segments.length })}
         </span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, fontWeight: 700, color: current.over ? "var(--vm-red)" : remaining < X_LIMIT * 0.15 ? "var(--warn)" : "var(--ink-on-paper-3)" }}>
           {current.over ? `−${current.len - X_LIMIT}` : remaining}
         </span>
         <button onClick={() => { c.addXSegment(idx); onSelect(idx + 1); }}
           style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 999, padding: "5px 12px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12, color: "var(--ink-on-paper-1)", cursor: "pointer" }}>
-          <Icon name="plus" size={12} stroke="var(--ink-on-paper-1)" /> Add tweet
+          <Icon name="plus" size={12} stroke="var(--ink-on-paper-1)" /> {t("post.composer.addTweet", "Add tweet")}
         </button>
         {segments.length > 1 && (
           <button onClick={() => { c.removeXSegment(idx); onSelect(Math.min(idx, segments.length - 2)); }}
             style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "var(--font-body)" }}>
-            <Icon name="trash-2" size={12} stroke="var(--vm-red)" /> Delete tweet
+            <Icon name="trash-2" size={12} stroke="var(--vm-red)" /> {t("post.composer.deleteTweet", "Delete tweet")}
           </button>
         )}
       </div>
@@ -314,6 +322,7 @@ function XTweetEditor({ c, active, onSelect }: { c: Composer; active: number; on
 }
 
 export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; editId?: number }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const c = usePostComposer();
   const [tab, setTab] = useState("all"); // 'all' or platform id
@@ -360,7 +369,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const applyBrand = (b: Brand) => {
     const { sel, acctSel } = expandBrand(b);
     if (sel.length === 0) {
-      toast.error(`None of ${b.name}'s accounts can post right now — reconnect them on the Connections page.`);
+      toast.error(t("post.composer.brandNoAccounts", "None of {{brand}}'s accounts can post right now — reconnect them on the Connections page.", { brand: b.name }));
       return;
     }
     c.setSelected(sel);
@@ -406,7 +415,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     viewsMaxApi.getPost(editId).then((res) => {
       if (cancelled) return;
       if (res.success && res.data) c.hydrate(res.data);
-      else setLoadError(res.error || "Couldn't load this post.");
+      else setLoadError(res.error || t("post.composer.loadFailed", "Couldn't load this post."));
       setLoadingPost(false);
     });
     return () => { cancelled = true; };
@@ -419,7 +428,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     if (!file) return;
     const type: "image" | "video" = file.type.startsWith("video") ? "video" : "image";
     const res = await c.uploadMedia(file, type);
-    if (!res.success) toast.error(res.error || "Upload failed.");
+    if (!res.success) toast.error(res.error || t("post.composer.uploadFailed", "Upload failed."));
   };
 
   const onPickCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -427,7 +436,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     e.target.value = "";
     if (!file) return;
     const res = await c.uploadCover(file);
-    if (!res.success) toast.error(res.error || "Cover upload failed.");
+    if (!res.success) toast.error(res.error || t("post.composer.coverUploadFailed", "Cover upload failed."));
   };
 
   // Default the date for a fresh composer; when editing, hydrate sets it instead.
@@ -591,10 +600,10 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     // this the button would blame the user for not choosing one. Show TikTok's
     // own reason — being throttled and being offline need different responses.
     : c.creatorInfoError ? c.creatorInfoError
-    : tiktokNeedsPrivacy ? "Choose who can view your TikTok post before publishing."
-    : tiktokNeedsBrand ? "You need to indicate if your content promotes yourself, a third party, or both."
-    : tiktokBrandedPrivate ? "Branded content can't be set to private on TikTok."
-    : tiktokDurationOver ? `Your TikTok video is ${Math.round(tiktokVideoDuration)}s — this account allows up to ${tiktokMaxDur}s.`
+    : tiktokNeedsPrivacy ? t("post.composer.tiktokNeedsPrivacy", "Choose who can view your TikTok post before publishing.")
+    : tiktokNeedsBrand ? t("post.composer.tiktokNeedsBrand", "You need to indicate if your content promotes yourself, a third party, or both.")
+    : tiktokBrandedPrivate ? t("post.composer.tiktokBrandedPrivate", "Branded content can't be set to private on TikTok.")
+    : tiktokDurationOver ? t("post.composer.tiktokDurationBlock", "Your TikTok video is {{duration}}s — this account allows up to {{max}}s.", { duration: Math.round(tiktokVideoDuration), max: tiktokMaxDur })
     : null;
   const pinterestBlockReason: string | null = !pinterestSelected ? null
     : pinterestMissingBoard ? "Choose a Pinterest board before publishing."
@@ -607,21 +616,21 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   // and the Instagram Reel cover, so the same control renders in either tab.
   const coverUploaderBlock = (label: string) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <span style={{ fontSize: 12, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>Custom cover image for {label}.</span>
+      <span style={{ fontSize: 12, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{t("post.composer.customCoverFor", "Custom cover image for {{platform}}.", { platform: label })}</span>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <input ref={coverInput} type="file" accept="image/*" hidden onChange={onPickCover} />
         {c.cover?.url ? (
           <div style={{ position: "relative", width: 96, height: 96, borderRadius: 12, overflow: "hidden", background: `center/cover no-repeat url(${resolveMediaUrl(c.cover.url)})`, boxShadow: "inset 0 0 0 1px rgba(0,0,0,.06)" }}>
-            <button onClick={c.removeCover} title="Remove cover" style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.62)", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: 1, display: "grid", placeItems: "center" }}>✕</button>
+            <button onClick={c.removeCover} title={t("post.composer.removeCover", "Remove cover")} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.62)", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: 1, display: "grid", placeItems: "center" }}>✕</button>
           </div>
         ) : (
           <button onClick={() => coverInput.current?.click()} disabled={c.coverUploading} style={{ width: 96, height: 96, borderRadius: 12, border: "1.5px dashed var(--line-2)", background: "var(--paper-1)", cursor: c.coverUploading ? "default" : "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", color: "var(--ink-on-paper-3)" }}>
             <Icon name="image-plus" size={20} stroke="var(--ink-on-paper-3)" />
-            <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)" }}>{c.coverUploading ? "Uploading…" : "Add cover"}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)" }}>{c.coverUploading ? t("post.composer.uploading", "Uploading…") : t("post.composer.addCover", "Add cover")}</span>
           </button>
         )}
         {c.cover?.url && (
-          <button onClick={() => coverInput.current?.click()} style={{ background: "none", border: "none", color: "var(--vm-volt-deep)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "var(--font-body)" }}>Replace</button>
+          <button onClick={() => coverInput.current?.click()} style={{ background: "none", border: "none", color: "var(--vm-volt-deep)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "var(--font-body)" }}>{t("post.composer.replace", "Replace")}</button>
         )}
       </div>
       {c.coverError && <span style={{ fontSize: 12, color: "var(--vm-red)" }}>{c.coverError}</span>}
@@ -629,27 +638,27 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   );
 
   const persist = async (status: "draft" | "scheduled" | "posted") => {
-    if (c.selected.length === 0) { toast.error("Pick at least one platform."); return; }
-    if (status === "scheduled" && !c.date) { toast.error("Choose a date to schedule."); return; }
+    if (c.selected.length === 0) { toast.error(t("post.composer.pickPlatform", "Pick at least one platform.")); return; }
+    if (status === "scheduled" && !c.date) { toast.error(t("post.composer.chooseDate", "Choose a date to schedule.")); return; }
     // Over-limit captions are a hard stop for publishing/scheduling — the
     // backend enforces the same rule with a 422, so don't send a doomed post.
     if (status !== "draft" && c.issues.length > 0) {
-      toast.error("Fix the over-limit captions before posting — drafts can still be saved.");
+      toast.error(t("post.composer.fixOverLimit", "Fix the over-limit captions before posting — drafts can still be saved."));
       return;
     }
-    if (status !== "draft" && c.youtubeTitleMissing) { toast.error(YOUTUBE_TITLE_MSG); return; }
-    if (c.mediaUploading) { toast.error("Wait for media to finish uploading."); return; }
-    if (c.mediaFailed) { toast.error("Remove or re-upload the failed media."); return; }
+    if (status !== "draft" && c.youtubeTitleMissing) { toast.error(youtubeTitleMsg(t)); return; }
+    if (c.mediaUploading) { toast.error(t("post.composer.waitForUpload", "Wait for media to finish uploading.")); return; }
+    if (c.mediaFailed) { toast.error(t("post.composer.removeFailedMedia", "Remove or re-upload the failed media.")); return; }
     // TikTok accepts a video or a photo slideshow (one or more images).
     if (status !== "draft" && c.selected.includes("tiktok") && !c.media.some((m) => (m.type === "video" || m.type === "image") && m.url)) {
-      toast.error("TikTok needs an uploaded video or image."); return;
+      toast.error(t("post.composer.tiktokNeedsMedia", "TikTok needs an uploaded video or image.")); return;
     }
     // TikTok audit compliance — mirror the composer gating (also enforced with a
     // 422 by the backend) so a non-compliant TikTok post can never be sent.
     if (status !== "draft" && tiktokBlockReason) { toast.error(tiktokBlockReason); return; }
     // YouTube uploads the stored video file directly.
     if (status !== "draft" && c.selected.includes("youtube") && !c.media.some((m) => m.type === "video" && m.url)) {
-      toast.error("YouTube needs an uploaded video."); return;
+      toast.error(t("post.composer.youtubeNeedsVideo", "YouTube needs an uploaded video.")); return;
     }
     // Every Pin is an image or a video, and a video Pin needs a cover image.
     if (status !== "draft" && c.selected.includes("pinterest") && !c.media.some((m) => m.url)) {
@@ -733,7 +742,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     if (res.success) {
       onSaved?.();
       if (status === "draft") {
-        toast.success(isEditing ? "Changes saved." : "Draft saved.");
+        toast.success(isEditing ? t("post.composer.changesSavedToast", "Changes saved.") : t("post.composer.draftSaved", "Draft saved."));
       } else if (status === "posted") {
         // Publishing runs asynchronously on the queue — the post is NOT live
         // yet, so don't claim "Posted". Send the user to History to watch it.
@@ -745,22 +754,22 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
         // has always had — a TikTok rule should not change how posting to X or
         // LinkedIn behaves.
         if (c.selected.includes("tiktok")) {
-          toast("Publishing — it may take a few minutes for your post to finish processing and appear on your profile. Track it in History.", { duration: Infinity, closeButton: true });
+          toast(t("post.composer.publishingTiktok", "Publishing — it may take a few minutes for your post to finish processing and appear on your profile. Track it in History."), { duration: Infinity, closeButton: true });
         } else {
-          toast("Processing — we're publishing your post. Track it in History.");
+          toast(t("post.composer.processing", "Processing — we're publishing your post. Track it in History."));
         }
         navigate("/dashboard/post/history");
       } else {
         setDone("schedule");
-        toast.success(isEditing ? "Changes saved." : "Scheduled!");
+        toast.success(isEditing ? t("post.composer.changesSavedToast", "Changes saved.") : t("post.composer.scheduledToast", "Scheduled!"));
       }
     } else {
-      toast.error(res.error || "Couldn't save the post.");
+      toast.error(res.error || t("post.composer.saveFailed", "Couldn't save the post."));
     }
   };
 
   if (loadingPost) {
-    return <div style={{ padding: 48, textAlign: "center", color: "var(--ink-on-paper-3)", fontFamily: "var(--font-body)", fontSize: 14 }}>Loading post…</div>;
+    return <div style={{ padding: 48, textAlign: "center", color: "var(--ink-on-paper-3)", fontFamily: "var(--font-body)", fontSize: 14 }}>{t("post.composer.loadingPost", "Loading post…")}</div>;
   }
   if (loadError) {
     return (
@@ -790,32 +799,32 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
           {/* ============ EDITOR ============ */}
           <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
             <Card>
-              <SectionLabel>Post type</SectionLabel>
+              <SectionLabel>{t("post.composer.postType", "Post type")}</SectionLabel>
               <div style={{ display: "inline-flex", background: "var(--paper-2)", borderRadius: 999, padding: 4, gap: 4 }}>
-                {([["media", "Media post", "image"], ["text", "Text post", "type"]] as const).map(([t, l, ic]) => (
-                  <button key={t} onClick={() => c.setPostType(t)} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer", padding: "8px 16px", borderRadius: 999, fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, background: c.postType === t ? "var(--paper-0)" : "transparent", color: c.postType === t ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", boxShadow: c.postType === t ? "0 1px 3px rgba(10,10,12,.12)" : "none" }}>
-                    <Icon name={ic} size={14} stroke={c.postType === t ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)"} /> {l}
+                {([["media", t("post.composer.mediaPost", "Media post"), "image"], ["text", t("post.composer.textPost", "Text post"), "type"]] as const).map(([pt, l, ic]) => (
+                  <button key={pt} onClick={() => c.setPostType(pt)} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer", padding: "8px 16px", borderRadius: 999, fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, background: c.postType === pt ? "var(--paper-0)" : "transparent", color: c.postType === pt ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", boxShadow: c.postType === pt ? "0 1px 3px rgba(10,10,12,.12)" : "none" }}>
+                    <Icon name={ic} size={14} stroke={c.postType === pt ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)"} /> {l}
                   </button>
                 ))}
               </div>
               <div style={{ marginTop: 10, fontSize: 12, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
                 {c.postType === "media"
-                  ? "Photo or video. Platforms that only take media are shown."
-                  : "Text-only. Only platforms that can post without media are shown."}
+                  ? t("post.composer.mediaPostHint", "Photo or video. Platforms that only take media are shown.")
+                  : t("post.composer.textPostHint", "Text-only. Only platforms that can post without media are shown.")}
               </div>
             </Card>
 
             <Card>
-              <SectionLabel hint={connectedCount ? `${c.selected.length} of ${connectedCount} selected` : undefined}>Publishing to</SectionLabel>
+              <SectionLabel hint={connectedCount ? t("post.composer.selectedOfConnected", "{{selected}} of {{total}} selected", { selected: c.selected.length, total: connectedCount }) : undefined}>{t("post.composer.publishingTo", "Publishing to")}</SectionLabel>
               {connLoading ? (
-                <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>Loading your connected accounts…</div>
+                <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>{t("post.composer.loadingAccounts", "Loading your connected accounts…")}</div>
               ) : (
                 <>
                   {brands.length > 0 && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-                      <span className="vm-eyebrow" style={{ color: "var(--ink-on-paper-3)" }}>Brands</span>
+                      <span className="vm-eyebrow" style={{ color: "var(--ink-on-paper-3)" }}>{t("post.composer.brands", "Brands")}</span>
                       {brands.map((b) => (
-                        <button key={b.id} onClick={() => applyBrand(b)} title={`Select all of ${b.name}'s accounts`} style={tabStyle(activeBrandId === b.id)}>
+                        <button key={b.id} onClick={() => applyBrand(b)} title={t("post.composer.selectBrandAccounts", "Select all of {{brand}}'s accounts", { brand: b.name })} style={tabStyle(activeBrandId === b.id)}>
                           {b.name}
                         </button>
                       ))}
@@ -831,12 +840,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         return accounts.map((a) => {
                           const broken = a.needsReconnect || a.id == null;
                           const on = !broken && (c.accountSel[p.id] ?? []).includes(a.id!);
-                          const label = broken ? "Reconnect" : (a.name || p.name);
+                          const label = broken ? t("post.composer.reconnect", "Reconnect") : (a.name || p.name);
                           return (
                             <button
                               key={`${p.id}-${a.id}`}
                               onClick={() => (broken ? navigate("/dashboard/connections") : c.toggleAccount(p.id, a.id!))}
-                              title={broken ? `${p.name} authorization expired — reconnect the account` : `${p.name} — ${a.name ?? "connected account"}`}
+                              title={broken ? t("post.composer.authExpired", "{{platform}} authorization expired — reconnect the account", { platform: p.name }) : `${p.name} — ${a.name ?? t("post.composer.connectedAccount", "connected account")}`}
                               style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", padding: 2 }}
                             >
                               <PAvatar id={p.id} size={44} ring={on} dim={!broken && !on} badge={on && c.status[p.id].over ? "!" : null} avatarUrl={a.avatarUrl} />
@@ -853,11 +862,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         <button
                           key={p.id}
                           onClick={() => (connected ? c.toggle(p.id) : navigate("/dashboard/connections"))}
-                          title={connected ? p.name : needsReconnect ? `${p.name} authorization expired — reconnect the account` : `Connect ${p.name}`}
+                          title={connected ? p.name : needsReconnect ? t("post.composer.authExpired", "{{platform}} authorization expired — reconnect the account", { platform: p.name }) : t("post.composer.connectPlatform", "Connect {{platform}}", { platform: p.name })}
                           style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", padding: 2 }}
                         >
                           <PAvatar id={p.id} size={44} ring={on} dim={connected && !on} connect={!connected} badge={on && c.status[p.id].over ? "!" : null} avatarUrl={accountDirectory[p.id]?.avatarUrl} />
-                          <span style={{ fontSize: 10.5, fontWeight: 600, maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: !connected ? "var(--vm-red)" : on ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", fontFamily: "var(--font-body)" }}>{connected ? (accountDirectory[p.id]?.name ?? p.name) : needsReconnect ? "Reconnect" : "Connect"}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 600, maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: !connected ? "var(--vm-red)" : on ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", fontFamily: "var(--font-body)" }}>{connected ? (accountDirectory[p.id]?.name ?? p.name) : needsReconnect ? t("post.composer.reconnect", "Reconnect") : t("post.composer.connect", "Connect")}</span>
                         </button>
                       )];
                     })}
@@ -876,31 +885,34 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         }
                         c.setSelected(sel);
                         c.setAccountSel(acctSel);
-                      }} style={{ marginLeft: 4, alignSelf: "flex-start", marginTop: 2, background: "var(--paper-2)", border: "1px dashed var(--line-2)", borderRadius: 999, padding: "7px 13px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12, color: "var(--ink-on-paper-2)", cursor: "pointer" }}>All</button>
+                      }} style={{ marginLeft: 4, alignSelf: "flex-start", marginTop: 2, background: "var(--paper-2)", border: "1px dashed var(--line-2)", borderRadius: 999, padding: "7px 13px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12, color: "var(--ink-on-paper-2)", cursor: "pointer" }}>{t("post.composer.selectAll", "All")}</button>
                     )}
                   </div>
                   {connectedCount === 0 && (
                     <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                      Tap a platform to connect it, or{" "}
-                      <button onClick={() => navigate("/dashboard/connections")} style={{ background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, cursor: "pointer", font: "inherit" }}>open the connections screen</button>.
+                      <Trans
+                        i18nKey="post.composer.noConnectedHint"
+                        defaults="Tap a platform to connect it, or <0>open the connections screen</0>."
+                        components={[<button key="open" onClick={() => navigate("/dashboard/connections")} style={{ background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, cursor: "pointer", font: "inherit" }} />]}
+                      />
                     </div>
                   )}
                   {linkedInVideoConflict && (
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--vm-red-deep)", lineHeight: 1.45 }}>
                       <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
-                      <span>LinkedIn can't post video — its target will be marked failed. Use an image for LinkedIn, or remove it from this post.</span>
+                      <span>{t("post.composer.linkedinVideoConflict", "LinkedIn can't post video — its target will be marked failed. Use an image for LinkedIn, or remove it from this post.")}</span>
                     </div>
                   )}
                   {xVideoConflict && (
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--vm-red-deep)", lineHeight: 1.45 }}>
                       <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
-                      <span>X can't post video — its target will be marked failed. Use images for X, or remove it from this post.</span>
+                      <span>{t("post.composer.xVideoConflict", "X can't post video — its target will be marked failed. Use images for X, or remove it from this post.")}</span>
                     </div>
                   )}
                   {xImageOverflow && (
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
                       <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
-                      <span>X takes up to {X_MAX_IMAGES} images — only the first {X_MAX_IMAGES} will be posted there.</span>
+                      <span>{t("post.composer.xImageOverflow", "X takes up to {{max}} images — only the first {{max}} will be posted there.", { max: X_MAX_IMAGES })}</span>
                     </div>
                   )}
                   {pinterestImageOverflow && (
@@ -915,7 +927,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
 
             {c.postType === "media" && (
             <Card>
-              <SectionLabel hint={`${c.media.length} item${c.media.length !== 1 ? "s" : ""}`}>Media</SectionLabel>
+              <SectionLabel hint={t("post.composer.mediaCount", { count: c.media.length, defaultValue_one: "{{count}} item", defaultValue_other: "{{count}} items" })}>{t("post.composer.media", "Media")}</SectionLabel>
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 {c.media.map((m, i) => (
                   <MediaTile
@@ -936,14 +948,14 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 ))}
                 {/* One uploader for any content type — images or video. */}
                 <input ref={mediaInput} type="file" accept="image/*,video/mp4,video/quicktime" hidden onChange={onPickFile} />
-                <button onClick={() => mediaInput.current?.click()} title="Add photo or video" style={{ width: 72, height: 72, borderRadius: 12, border: "1.5px dashed var(--line-2)", background: "var(--paper-1)", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", color: "var(--ink-on-paper-3)" }}>
+                <button onClick={() => mediaInput.current?.click()} title={t("post.composer.addPhotoOrVideo", "Add photo or video")} style={{ width: 72, height: 72, borderRadius: 12, border: "1.5px dashed var(--line-2)", background: "var(--paper-1)", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", color: "var(--ink-on-paper-3)" }}>
                   <Icon name="image-plus" size={20} stroke="var(--ink-on-paper-3)" />
-                  <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)" }}>Add media</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "var(--font-body)" }}>{t("post.composer.addMedia", "Add media")}</span>
                 </button>
               </div>
               {c.media.length > 1 && (
                 <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                  Drag to reorder — the order here is the slideshow order.
+                  {t("post.composer.dragToReorder", "Drag to reorder — the order here is the slideshow order.")}
                 </div>
               )}
 
@@ -952,7 +964,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 <div style={{ marginTop: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)" }}>
-                      <Icon name="rotate-cw" size={13} stroke="var(--ink-on-paper-3)" /> Uploading {uploadingMedia.type}…
+                      <Icon name="rotate-cw" size={13} stroke="var(--ink-on-paper-3)" /> {uploadingMedia.type === "video" ? t("post.composer.uploadingVideo", "Uploading video…") : t("post.composer.uploadingImage", "Uploading image…")}
                     </span>
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: "var(--ink-on-paper-2)" }}>{uploadingMedia.progress ?? 0}%</span>
                   </div>
@@ -967,10 +979,10 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", borderRadius: 10, padding: "9px 11px" }}>
                   <Icon name="alert-circle" size={16} stroke="var(--vm-red)" />
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--vm-red-deep)" }}>
-                    {failedMedia.length === 1 ? "A file didn't upload." : `${failedMedia.length} files didn't upload.`} Retry or remove before posting.
+                    {t("post.composer.filesFailed", { count: failedMedia.length, defaultValue_one: "A file didn't upload. Retry or remove before posting.", defaultValue_other: "{{count}} files didn't upload. Retry or remove before posting." })}
                   </span>
                   <button onClick={() => failedMedia.forEach((m) => c.retryMedia(m.id))} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "var(--font-body)" }}>
-                    <Icon name="rotate-cw" size={13} stroke="var(--vm-red)" /> Retry all
+                    <Icon name="rotate-cw" size={13} stroke="var(--vm-red)" /> {t("post.composer.retryAll", "Retry all")}
                   </button>
                 </div>
               )}
@@ -980,10 +992,10 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
             <Card>
               {/* TikTok audit 2a: the post text is the platform "Title/Description"
                   metadata (TikTok title, YouTube title+description, etc.). */}
-              <SectionLabel>Title / Description</SectionLabel>
+              <SectionLabel>{t("post.composer.titleDescription", "Title / Description")}</SectionLabel>
               <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
                 <button onClick={() => setTab("all")} style={tabStyle(tab === "all")}>
-                  <Icon name="layers" size={13} stroke={tab === "all" ? "#fff" : "var(--ink-on-paper-3)"} /> All platforms
+                  <Icon name="layers" size={13} stroke={tab === "all" ? "#fff" : "var(--ink-on-paper-3)"} /> {t("post.composer.allPlatforms", "All platforms")}
                 </button>
                 {c.selected.map((id) => (
                   <button key={id} onClick={() => setTab(id)} style={tabStyle(tab === id)}>
@@ -996,7 +1008,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
 
               {!editingOverride ? (
                 <>
-                  <MentionTextarea value={c.caption} onChangeText={c.setCaption} mentions={c.selected.includes("x")} accountId={c.accountSel["x"]?.[0]} rows={6} style={{ ...fieldBase, resize: "vertical", lineHeight: 1.55, minHeight: 130 }} placeholder="Write your title / description…" />
+                  <MentionTextarea value={c.caption} onChangeText={c.setCaption} mentions={c.selected.includes("x")} accountId={c.accountSel["x"]?.[0]} rows={6} style={{ ...fieldBase, resize: "vertical", lineHeight: 1.55, minHeight: 130 }} placeholder={t("post.composer.captionPlaceholder", "Write your title / description…")} />
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 12, flexWrap: "wrap" }}>
                     {c.selected.map((id) => <CountChip key={id} id={id} status={c.status} />)}
                   </div>
@@ -1008,16 +1020,20 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   )}
                   {captionHasDelimiter && c.selected.some((id) => id !== "x") && (
                     <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                      <code style={{ fontFamily: "var(--font-mono)", background: "var(--paper-2)", padding: "1px 5px", borderRadius: 4 }}>---</code> starts a new tweet on X only — other platforms post it as plain text.
+                      <Trans
+                        i18nKey="post.composer.delimiterHint"
+                        defaults="<0>---</0> starts a new tweet on X only — other platforms post it as plain text."
+                        components={[<code key="delim" style={{ fontFamily: "var(--font-mono)", background: "var(--paper-2)", padding: "1px 5px", borderRadius: 4 }} />]}
+                      />
                     </div>
                   )}
                 </>
               ) : tab === "x" ? (
                 <>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>Tweets for X</span>
+                    <span style={{ fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>{t("post.composer.tweetsForX", "Tweets for X")}</span>
                     {c.overrides.x != null && c.overrides.x !== "" && (
-                      <button onClick={() => { c.clearOverride("x"); setXActive(0); }} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "var(--font-body)" }}>Reset to main</button>
+                      <button onClick={() => { c.clearOverride("x"); setXActive(0); }} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "var(--font-body)" }}>{t("post.composer.resetToMain", "Reset to main")}</button>
                     )}
                   </div>
                   <XTweetEditor c={c} active={xActive} onSelect={setXActive} />
@@ -1041,12 +1057,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     </label>
                   )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>{tab === "pinterest" ? "Pinterest description" : `Custom text for ${PMAP[tab].name}`}</span>
+                    <span style={{ fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>{tab === "pinterest" ? t("post.composer.pinterestDescription", "Pinterest description") : t("post.composer.customTextFor", "Custom text for {{platform}}", { platform: PMAP[tab].name })}</span>
                     {c.overrides[tab] != null && c.overrides[tab] !== "" && (
-                      <button onClick={() => c.clearOverride(tab)} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "var(--font-body)" }}>Reset to main</button>
+                      <button onClick={() => c.clearOverride(tab)} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "var(--font-body)" }}>{t("post.composer.resetToMain", "Reset to main")}</button>
                     )}
                   </div>
-                  <textarea value={overrideVal} onChange={(e) => c.setOverride(tab, e.target.value)} rows={6} style={{ ...fieldBase, resize: "vertical", lineHeight: 1.55, minHeight: 130 }} placeholder="Leave blank to use the main caption…" />
+                  <textarea value={overrideVal} onChange={(e) => c.setOverride(tab, e.target.value)} rows={6} style={{ ...fieldBase, resize: "vertical", lineHeight: 1.55, minHeight: 130 }} placeholder={t("post.composer.overridePlaceholder", "Leave blank to use the main caption…")} />
                   <div style={{ marginTop: 12 }}><CountChip id={tab} status={c.status} /></div>
                 </>
               )}
@@ -1064,7 +1080,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
 
             {optionTabs.length > 0 && (
               <Card>
-                <SectionLabel>Platform options</SectionLabel>
+                <SectionLabel>{t("post.composer.platformOptions", "Platform options")}</SectionLabel>
                 <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
                   {optionTabs.map((id) => (
                     <button key={id} onClick={() => setOptTab(id)} style={tabStyle(activeOptTab === id)}>
@@ -1075,7 +1091,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
 
                 {activeOptTab === "tiktok" && (
                   c.creatorInfoLoading ? (
-                    <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>Loading TikTok options…</div>
+                    <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)" }}>{t("post.composer.loadingTiktokOptions", "Loading TikTok options…")}</div>
                   ) : c.creatorCannotPost ? (
                     // Content Sharing Guidelines, Required UX 1(b): the creator cannot post
                     // right now, so stop here rather than showing an options panel
@@ -1085,15 +1101,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--vm-red-deep)", lineHeight: 1.45 }}>{c.creatorCannotPost}</span>
                         <span style={{ fontSize: 11.5, color: "var(--ink-on-paper-2)", lineHeight: 1.5 }}>
-                          You can still save this as a draft. TikTok publishing is unavailable for this account until the limit clears.
+                          {t("post.composer.tiktokCannotPostHint", "You can still save this as a draft. TikTok publishing is unavailable for this account until the limit clears.")}
                         </span>
-                        <button onClick={() => c.loadCreatorInfo()} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>Check again</button>
+                        <button onClick={() => c.loadCreatorInfo()} style={{ alignSelf: "flex-start", background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 12, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>{t("post.composer.checkAgain", "Check again")}</button>
                       </div>
                     </div>
                   ) : c.creatorInfoError ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--vm-red)" }}>
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {c.creatorInfoError}
-                      <button onClick={() => c.loadCreatorInfo()} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Retry</button>
+                      <button onClick={() => c.loadCreatorInfo()} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>{t("post.composer.retry", "Retry")}</button>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1103,53 +1119,60 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                           {c.creatorInfo?.creator_avatar_url && (
                             <img src={c.creatorInfo.creator_avatar_url} alt="" width={22} height={22} style={{ borderRadius: "50%", flexShrink: 0 }} />
                           )}
-                          <span>Uploading to <strong>{c.creatorInfo?.creator_nickname || `@${c.creatorInfo?.creator_username}`}</strong></span>
+                          <span>
+                            <Trans
+                              i18nKey="post.composer.uploadingTo"
+                              defaults="Uploading to <0>{{account}}</0>"
+                              values={{ account: c.creatorInfo?.creator_nickname || `@${c.creatorInfo?.creator_username}` }}
+                              components={[<strong key="acct" />]}
+                            />
+                          </span>
                         </div>
                       )}
 
                       {/* Privacy — no default; the user must choose. "Only me" is
                           disabled while Branded content is on. */}
                       <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Who can view this</span>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.whoCanView", "Who can view this")}</span>
                         <select
                           value={c.tiktok.privacy_level}
                           onChange={(e) => c.setPrivacyLevel(e.target.value)}
                           style={{ ...fieldBase, width: 260, maxWidth: "100%", color: c.tiktok.privacy_level ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}
                         >
-                          <option value="" disabled>Select who can view…</option>
+                          <option value="" disabled>{t("post.composer.selectWhoCanView", "Select who can view…")}</option>
                           {(c.creatorInfo?.privacy_level_options ?? []).map((opt) => (
                             <option
                               key={opt}
                               value={opt}
                               disabled={opt === "SELF_ONLY" && !!c.tiktok.branded_content}
-                              title={opt === "SELF_ONLY" && c.tiktok.branded_content ? "Branded content visibility cannot be set to private." : undefined}
-                            >{PRIVACY_LABELS[opt] ?? opt}</option>
+                              title={opt === "SELF_ONLY" && c.tiktok.branded_content ? t("post.composer.brandedNotPrivate", "Branded content visibility cannot be set to private.") : undefined}
+                            >{privacyLabels(t)[opt] ?? opt}</option>
                           ))}
                         </select>
                         {c.tiktok.branded_content && (
-                          <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>Branded content visibility cannot be set to private.</span>
+                          <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{t("post.composer.brandedNotPrivate", "Branded content visibility cannot be set to private.")}</span>
                         )}
                       </label>
 
                       {/* Interactions — none enabled by default. Duet/Stitch don't
                           apply to photo posts, so they only show for video. */}
                       <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-                        <Toggle label="Allow comments" checked={!c.tiktok.disable_comment} disabled={c.creatorInfo?.comment_disabled} onChange={(v) => c.patchTiktok({ disable_comment: !v })} />
-                        {mediaVideoPost && <Toggle label="Allow Duet" checked={!c.tiktok.disable_duet} disabled={c.creatorInfo?.duet_disabled} onChange={(v) => c.patchTiktok({ disable_duet: !v })} />}
-                        {mediaVideoPost && <Toggle label="Allow Stitch" checked={!c.tiktok.disable_stitch} disabled={c.creatorInfo?.stitch_disabled} onChange={(v) => c.patchTiktok({ disable_stitch: !v })} />}
+                        <Toggle label={t("post.composer.allowComments", "Allow comments")} checked={!c.tiktok.disable_comment} disabled={c.creatorInfo?.comment_disabled} onChange={(v) => c.patchTiktok({ disable_comment: !v })} />
+                        {mediaVideoPost && <Toggle label={t("post.composer.allowDuet", "Allow Duet")} checked={!c.tiktok.disable_duet} disabled={c.creatorInfo?.duet_disabled} onChange={(v) => c.patchTiktok({ disable_duet: !v })} />}
+                        {mediaVideoPost && <Toggle label={t("post.composer.allowStitch", "Allow Stitch")} checked={!c.tiktok.disable_stitch} disabled={c.creatorInfo?.stitch_disabled} onChange={(v) => c.patchTiktok({ disable_stitch: !v })} />}
                       </div>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <Toggle label="Auto-add music" checked={!!c.tiktok.auto_add_music} onChange={(v) => c.patchTiktok({ auto_add_music: v })} />
+                        <Toggle label={t("post.composer.autoAddMusic", "Auto-add music")} checked={!!c.tiktok.auto_add_music} onChange={(v) => c.patchTiktok({ auto_add_music: v })} />
                         <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                          TikTok adds its recommended background music to photo / slideshow posts. Slideshows only — no effect on video.
+                          {t("post.composer.autoAddMusicHint", "TikTok adds its recommended background music to photo / slideshow posts. Slideshows only — no effect on video.")}
                         </span>
                       </div>
 
                       {/* Commercial content disclosure — off by default; when on,
                           at least one of the two must be chosen. */}
                       <div style={{ borderTop: "1px solid var(--line-1)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                        <Toggle label="Disclose that this content promotes yourself, a brand, product or service" checked={!!c.tiktok.disclose_commercial} onChange={(v) => c.patchTiktok({ disclose_commercial: v, your_brand: v ? c.tiktok.your_brand : false, branded_content: v ? c.tiktok.branded_content : false })} />
+                        <Toggle label={t("post.composer.discloseCommercial", "Disclose that this content promotes yourself, a brand, product or service")} checked={!!c.tiktok.disclose_commercial} onChange={(v) => c.patchTiktok({ disclose_commercial: v, your_brand: v ? c.tiktok.your_brand : false, branded_content: v ? c.tiktok.branded_content : false })} />
                         {c.tiktok.disclose_commercial && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 6 }}>
                             {/* Content Sharing Guidelines, Required UX 3(b): when the visibility is
@@ -1157,18 +1180,18 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                                 only greying the control out. */}
                             {c.tiktok.privacy_level === "SELF_ONLY" && (
                               <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.5 }}>
-                                Branded content visibility cannot be set to private — choose a different audience above to use it.
+                                {t("post.composer.brandedPrivateHint", "Branded content visibility cannot be set to private — choose a different audience above to use it.")}
                               </span>
                             )}
                             <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-                              <Toggle label="Your brand" checked={!!c.tiktok.your_brand} onChange={(v) => c.patchTiktok({ your_brand: v })} />
+                              <Toggle label={t("post.composer.yourBrand", "Your brand")} checked={!!c.tiktok.your_brand} onChange={(v) => c.patchTiktok({ your_brand: v })} />
                               {/* Content Sharing Guidelines, Required UX 3(b): branded content only
                                   works with public/friends visibility, so it is disabled —
                                   with the required explanation on hover — while "only me"
                                   is chosen. */}
-                              <span title={c.tiktok.privacy_level === "SELF_ONLY" ? "Branded content visibility cannot be set to private." : undefined}>
+                              <span title={c.tiktok.privacy_level === "SELF_ONLY" ? t("post.composer.brandedNotPrivate", "Branded content visibility cannot be set to private.") : undefined}>
                                 <Toggle
-                                  label="Branded content"
+                                  label={t("post.composer.brandedContent", "Branded content")}
                                   checked={!!c.tiktok.branded_content}
                                   disabled={c.tiktok.privacy_level === "SELF_ONLY"}
                                   onChange={(v) => c.patchTiktok({ branded_content: v })}
@@ -1177,12 +1200,14 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                             </div>
                             {(c.tiktok.your_brand || c.tiktok.branded_content) && (
                               <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.5 }}>
-                                Your photo/video will be labeled as ‘{c.tiktok.branded_content ? "Paid partnership" : "Promotional content"}’.
+                                {c.tiktok.branded_content
+                                  ? t("post.composer.labeledPaidPartnership", "Your photo/video will be labeled as ‘Paid partnership’.")
+                                  : t("post.composer.labeledPromotional", "Your photo/video will be labeled as ‘Promotional content’.")}
                               </span>
                             )}
                             {tiktokNeedsBrand && (
                               <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--vm-red)", lineHeight: 1.5 }}>
-                                You need to indicate if your content promotes yourself, a third party, or both.
+                                {t("post.composer.tiktokNeedsBrand", "You need to indicate if your content promotes yourself, a third party, or both.")}
                               </span>
                             )}
                           </div>
@@ -1192,15 +1217,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       {tiktokDurationOver && (
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", borderRadius: 10, padding: "9px 11px", fontSize: 12, fontWeight: 600, color: "var(--vm-red-deep)", lineHeight: 1.45 }}>
                           <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
-                          <span>This video is {Math.round(tiktokVideoDuration)}s — TikTok allows up to {tiktokMaxDur}s on this account. Trim it before posting.</span>
+                          <span>{t("post.composer.tiktokDurationOver", "This video is {{duration}}s — TikTok allows up to {{max}}s on this account. Trim it before posting.", { duration: Math.round(tiktokVideoDuration), max: tiktokMaxDur })}</span>
                         </div>
                       )}
 
                       {mediaVideoPost && (
                         <label style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Cover frame (seconds into the video)</span>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.coverFrame", "Cover frame (seconds into the video)")}</span>
                           <input type="number" min={0} step={0.5} value={c.tiktokCoverSec} onChange={(e) => c.setTiktokCoverSec(Math.max(0, Number(e.target.value) || 0))} style={{ ...fieldBase, width: 160, fontFamily: "var(--font-mono)", fontSize: 13 }} />
-                          <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>TikTok only supports picking a frame time as the cover, not a custom image.</span>
+                          <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{t("post.composer.coverFrameHint", "TikTok only supports picking a frame time as the cover, not a custom image.")}</span>
                         </label>
                       )}
                     </div>
@@ -1210,19 +1235,19 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 {activeOptTab === "youtube" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Visibility</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.visibility", "Visibility")}</span>
                       <select
                         value={c.youtube.privacy_status}
                         onChange={(e) => c.patchYoutube({ privacy_status: e.target.value as "public" | "unlisted" | "private" })}
                         style={{ ...fieldBase, width: 260, maxWidth: "100%" }}
                       >
-                        <option value="public">Public</option>
-                        <option value="unlisted">Unlisted (anyone with the link)</option>
-                        <option value="private">Private (only you)</option>
+                        <option value="public">{t("post.composer.youtubePublic", "Public")}</option>
+                        <option value="unlisted">{t("post.composer.youtubeUnlisted", "Unlisted (anyone with the link)")}</option>
+                        <option value="private">{t("post.composer.youtubePrivate", "Private (only you)")}</option>
                       </select>
                     </label>
                     <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                      The caption becomes the video title (first 95 chars) and description.
+                      {t("post.composer.youtubeCaptionHint", "The caption becomes the video title (first 95 chars) and description.")}
                     </span>
                     {mediaVideoPost && coverUploaderBlock("YouTube")}
                   </div>
@@ -1330,36 +1355,36 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
             )}
 
             <Card>
-              <SectionLabel>Links</SectionLabel>
+              <SectionLabel>{t("post.composer.links", "Links")}</SectionLabel>
               <Toggle
-                label="Shorten & track links"
+                label={t("post.composer.shortenLinks", "Shorten & track links")}
                 checked={c.shortenLinks}
                 onChange={c.setShortenLinks}
               />
               <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                URLs in your caption and comments are replaced with short ViewsMax links when the post is saved, so every click gets counted.
+                {t("post.composer.shortenLinksHint", "URLs in your caption and comments are replaced with short ViewsMax links when the post is saved, so every click gets counted.")}
               </div>
             </Card>
 
             <Card>
-              <SectionLabel>When to publish</SectionLabel>
+              <SectionLabel>{t("post.composer.whenToPublish", "When to publish")}</SectionLabel>
               <div style={{ display: "inline-flex", background: "var(--paper-2)", borderRadius: 999, padding: 4, gap: 4, marginBottom: c.mode === "schedule" ? 14 : 0 }}>
-                {([["now", "Post now"], ["schedule", "Schedule"]] as const).map(([m, l]) => (
+                {([["now", t("post.composer.postNow", "Post now")], ["schedule", t("post.composer.schedule", "Schedule")]] as const).map(([m, l]) => (
                   <button key={m} onClick={() => c.setMode(m)} style={{ border: "none", cursor: "pointer", padding: "8px 18px", borderRadius: 999, fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, background: c.mode === m ? "var(--paper-0)" : "transparent", color: c.mode === m ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", boxShadow: c.mode === m ? "0 1px 3px rgba(10,10,12,.12)" : "none" }}>{l}</button>
                 ))}
               </div>
               {c.mode === "schedule" && (
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Date</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.date", "Date")}</span>
                     <input type="date" value={c.date} onChange={(e) => c.setDate(e.target.value)} style={{ ...fieldBase, width: 170, maxWidth: "100%", fontFamily: "var(--font-mono)", fontSize: 13 }} />
                   </label>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Time</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.time", "Time")}</span>
                     <input type="time" value={c.time} onChange={(e) => c.setTime(e.target.value)} style={{ ...fieldBase, width: 130, maxWidth: "100%", fontFamily: "var(--font-mono)", fontSize: 13 }} />
                   </label>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "var(--vm-volt-tint-l)", borderRadius: 10, fontSize: 12, fontWeight: 600, color: "var(--vm-volt-deep)" }}>
-                    <Icon name="trending-up" size={14} stroke="var(--vm-volt-deep)" /> Peak audience 6–8pm
+                    <Icon name="trending-up" size={14} stroke="var(--vm-volt-deep)" /> {t("post.composer.peakAudience", "Peak audience 6–8pm")}
                   </span>
                 </div>
               )}
@@ -1388,15 +1413,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   {previewId === "youtube" && c.youtubeTitleMissing && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", color: "var(--vm-red-deep)", borderRadius: 12, padding: "9px 11px", marginBottom: 10, fontSize: 12, fontWeight: 600 }}>
                       <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
-                      {YOUTUBE_TITLE_MSG}
+                      {youtubeTitleMsg(t)}
                     </div>
                   )}
                   {c.selected.includes(previewId) && c.status[previewId].over && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--vm-red-tint-l)", border: "1px solid rgba(255,31,61,.35)", color: "var(--vm-red-deep)", borderRadius: 12, padding: "9px 11px", marginBottom: 10, fontSize: 12, fontWeight: 600 }}>
                       <Icon name="alert-triangle" size={15} stroke="var(--vm-red)" />
                       {c.status[previewId].len > PMAP[previewId].limit
-                        ? `Caption is ${c.status[previewId].len - PMAP[previewId].limit} over ${PMAP[previewId].name}'s ${PMAP[previewId].limit} limit`
-                        : "Fix the X thread — a tweet is empty or the thread is too long"}
+                        ? t("post.composer.captionOverLimit", "Caption is {{over}} over {{platform}}'s {{limit}} limit", { over: c.status[previewId].len - PMAP[previewId].limit, platform: PMAP[previewId].name, limit: PMAP[previewId].limit })
+                        : t("post.composer.fixXThread", "Fix the X thread — a tweet is empty or the thread is too long")}
                     </div>
                   )}
                   <PostPreview
@@ -1415,43 +1440,59 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
             <Card style={{ padding: 16 }}>
               {done ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--up)", fontWeight: 700, fontSize: 14, justifyContent: "center", padding: 4 }}>
-                  <Icon name="check-circle-2" size={20} stroke="var(--up)" /> {isEditing ? "Changes saved" : done === "now" ? "Posted to" : "Scheduled for"} {isEditing ? "" : `${c.selected.length} platform${c.selected.length === 1 ? "" : "s"}`}
+                  <Icon name="check-circle-2" size={20} stroke="var(--up)" /> {isEditing
+                    ? t("post.composer.changesSaved", "Changes saved")
+                    : done === "now"
+                      ? t("post.composer.postedToCount", { count: c.selected.length, defaultValue_one: "Posted to {{count}} platform", defaultValue_other: "Posted to {{count}} platforms" })
+                      : t("post.composer.scheduledForCount", { count: c.selected.length, defaultValue_one: "Scheduled for {{count}} platform", defaultValue_other: "Scheduled for {{count}} platforms" })}
                 </div>
               ) : (
                 <>
                   {uploadingMedia ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)" }}>
                       <Icon name="rotate-cw" size={15} stroke="var(--ink-on-paper-3)" />
-                      Uploading {uploadingMedia.type}… {uploadingMedia.progress ?? 0}%
+                      {uploadingMedia.type === "video"
+                        ? t("post.composer.uploadingVideoProgress", "Uploading video… {{progress}}%", { progress: uploadingMedia.progress ?? 0 })
+                        : t("post.composer.uploadingImageProgress", "Uploading image… {{progress}}%", { progress: uploadingMedia.progress ?? 0 })}
                     </div>
                   ) : failedMedia.length > 0 ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--vm-red)" }}>
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" />
-                      Media upload failed — retry or remove it above before posting
+                      {t("post.composer.mediaUploadFailed", "Media upload failed — retry or remove it above before posting")}
                     </div>
                   ) : c.issues.length > 0 && (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--vm-red)" }}>
                       <Icon name="alert-circle" size={15} stroke="var(--vm-red)" />
-                      {c.issues.length} platform{c.issues.length > 1 ? "s" : ""} need{c.issues.length > 1 ? "" : "s"} attention
+                      {t("post.composer.platformsNeedAttention", { count: c.issues.length, defaultValue_one: "{{count}} platform needs attention", defaultValue_other: "{{count}} platforms need attention" })}
                     </div>
                   )}
                   {/* TikTok requires this declaration immediately before the
                       publish button; the wording changes for branded content. */}
                   {tiktokSelected && (
                     <div style={{ marginBottom: 12, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                      By posting, you agree to TikTok's{" "}
-                      {c.tiktok.branded_content && (
-                        <>
-                          <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener noreferrer" style={policyLink}>Branded Content Policy</a>
-                          {" and "}
-                        </>
+                      {c.tiktok.branded_content ? (
+                        <Trans
+                          i18nKey="post.composer.tiktokDeclarationBranded"
+                          defaults="By posting, you agree to TikTok's <0>Branded Content Policy</0> and <1>Music Usage Confirmation</1>."
+                          components={[
+                            <a key="bc" href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noopener noreferrer" style={policyLink} />,
+                            <a key="music" href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" style={policyLink} />,
+                          ]}
+                        />
+                      ) : (
+                        <Trans
+                          i18nKey="post.composer.tiktokDeclaration"
+                          defaults="By posting, you agree to TikTok's <0>Music Usage Confirmation</0>."
+                          components={[
+                            <a key="music" href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" style={policyLink} />,
+                          ]}
+                        />
                       )}
-                      <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer" style={policyLink}>Music Usage Confirmation</a>.
                     </div>
                   )}
                   {c.youtubeTitleMissing && (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--vm-red)" }}>
-                      <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {YOUTUBE_TITLE_MSG}
+                      <Icon name="alert-circle" size={15} stroke="var(--vm-red)" /> {youtubeTitleMsg(t)}
                     </div>
                   )}
                   {blockReason && (
@@ -1460,10 +1501,10 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     </div>
                   )}
                   <div className="cp-actions" style={{ display: "flex", gap: 10 }}>
-                    <Btn kind="ghost" onClick={saving ? undefined : () => persist("draft")}>Save draft</Btn>
+                    <Btn kind="ghost" onClick={saving ? undefined : () => persist("draft")}>{t("post.composer.saveDraft", "Save draft")}</Btn>
                     <div title={blockReason ?? undefined} style={{ flex: 1, opacity: uploadingMedia || failedMedia.length > 0 || c.issues.length > 0 || c.youtubeTitleMissing || blockReason ? 0.55 : 1 }}>
                       <Btn kind={c.issues.length || c.youtubeTitleMissing || uploadingMedia || failedMedia.length || blockReason ? "dark" : "primary"} full icon={uploadingMedia ? "rotate-cw" : c.mode === "now" ? "send" : "calendar-clock"} onClick={saving || blockReason ? undefined : () => persist(c.mode === "now" ? "posted" : "scheduled")}>
-                        {saving ? "Saving…" : uploadingMedia ? `Uploading… ${uploadingMedia.progress ?? 0}%` : c.mode === "now" ? "Post now" : isEditing ? "Save changes" : "Schedule post"}
+                        {saving ? t("post.composer.saving", "Saving…") : uploadingMedia ? t("post.composer.uploadingProgress", "Uploading… {{progress}}%", { progress: uploadingMedia.progress ?? 0 }) : c.mode === "now" ? t("post.composer.postNow", "Post now") : isEditing ? t("post.composer.saveChanges", "Save changes") : t("post.composer.schedulePost", "Schedule post")}
                       </Btn>
                     </div>
                   </div>

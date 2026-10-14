@@ -21,7 +21,7 @@ class UserSettingsController extends Controller
     {
         $data = $request->validate([
             'notify_post_failures' => 'sometimes|boolean',
-            'locale' => 'sometimes|nullable|string|in:en,es,de,fr,pt',
+            'locale' => 'sometimes|nullable|string|in:en,es,de,fr,pt,ru',
         ]);
 
         $user = Auth::user();

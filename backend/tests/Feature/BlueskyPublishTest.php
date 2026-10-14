@@ -155,6 +155,27 @@ class BlueskyPublishTest extends TestCase
         $this->assertTrue($refreshExp->equalTo($account->fresh()->token_expires_at));
     }
 
+    public function test_leading_at_sign_is_stripped_from_the_handle_at_login(): void
+    {
+        // Bluesky reads any identifier containing "@" as an email address, so
+        // "@new.bsky.social" failed with "InvalidEmail: local part cannot be empty".
+        Http::fake([
+            'bsky.social/xrpc/com.atproto.server.createSession' => Http::response([
+                'did' => 'did:plc:new',
+                'handle' => 'new.bsky.social',
+                'accessJwt' => $this->jwt(now()->addHours(2)->timestamp),
+                'refreshJwt' => 'refresh-jwt',
+            ]),
+        ]);
+        $provider = app(SocialProviderManager::class)->for('bluesky');
+
+        $provider->connectWithCredentials($this->user, ['identifier' => '  @new.bsky.social ', 'password' => 'app-pass']);
+        $provider->connectWithCredentials($this->user, ['identifier' => 'me@example.com', 'password' => 'app-pass']);
+
+        $sent = Http::recorded()->map(fn ($pair) => $pair[0]['identifier'])->all();
+        $this->assertSame(['new.bsky.social', 'me@example.com'], $sent);
+    }
+
     private function jwt(int $exp): string
     {
         $part = fn (array $data) => rtrim(strtr(base64_encode(json_encode($data)), '+/', '-_'), '=');

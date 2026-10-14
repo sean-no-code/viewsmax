@@ -34,7 +34,7 @@ class StripeService
         $price = Price::retrieve($priceId);
 
         return [
-            'amount' => ((int) $price->unit_amount) / 100,
+            'amount' => (float) (((int) $price->unit_amount) / 100),
             'currency' => strtoupper((string) $price->currency),
         ];
     }

@@ -109,7 +109,7 @@ class SocialAccountController extends Controller
         try {
             $accounts = $this->connect->complete(Auth::user(), $platform, $validated['code'], $validated['state'] ?? null, $validated['redirect_uri'] ?? null);
         } catch (SocialConnectException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 422);
         }
 
         return response()->json([
@@ -138,7 +138,7 @@ class SocialAccountController extends Controller
         try {
             $accounts = $this->connect->connectWithCredentials(Auth::user(), $platform, $request->all(), $request->boolean('follow_us'));
         } catch (SocialConnectException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 422);
         }
 
         return response()->json([

@@ -21,6 +21,7 @@ import {
 import { PAvatar, PMAP } from "@/components/post/composer";
 import { useBrands, refreshBrands } from "@/components/post/useBrands";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 /**
  * Brands — named groups of connected accounts. A brand can mix accounts from
@@ -43,6 +44,7 @@ interface MemberRow {
 }
 
 const BrandManager = () => {
+  const { t } = useTranslation();
   const { loading: brandsLoading, brands } = useBrands();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -71,7 +73,7 @@ const BrandManager = () => {
     const social = accounts.map((a) => ({
       key: socialKey(a.id),
       platform: a.platform,
-      name: a.name || (a.username ? `@${a.username}` : `Account ${a.id}`),
+      name: a.name || (a.username ? `@${a.username}` : t("brands.manager.accountFallback", "Account {{id}}", { id: a.id })),
       avatarUrl: a.avatar_url || null,
       disabled: accountNeedsReconnect(a),
     }));
@@ -83,7 +85,7 @@ const BrandManager = () => {
       disabled: false, // the legacy store has no token status
     }));
     return [...social, ...legacy].sort((a, b) => a.platform.localeCompare(b.platform));
-  }, [accounts, connections]);
+  }, [accounts, connections, t]);
 
   const openCreate = () => {
     setEditing(null);
@@ -114,7 +116,7 @@ const BrandManager = () => {
   const handleSave = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error("Give the brand a name.");
+      toast.error(t("brands.manager.nameRequired", "Give the brand a name."));
       return;
     }
     setSaving(true);
@@ -128,25 +130,25 @@ const BrandManager = () => {
       : await viewsMaxApi.createBrand(payload);
     setSaving(false);
     if (!result.success) {
-      toast.error(result.error || "Failed to save brand.");
+      toast.error(result.error || t("brands.manager.saveFailed", "Failed to save brand."));
       return;
     }
     refreshBrands();
     setDialogOpen(false);
-    toast.success(editing ? "Brand updated." : "Brand created.");
+    toast.success(editing ? t("brands.manager.updated", "Brand updated.") : t("brands.manager.created", "Brand created."));
   };
 
   const handleDelete = async (brand: Brand) => {
-    if (!window.confirm(`Delete the brand "${brand.name}"? Its accounts stay connected.`)) return;
+    if (!window.confirm(t("brands.manager.deleteConfirm", "Delete the brand \"{{name}}\"? Its accounts stay connected.", { name: brand.name }))) return;
     setDeletingId(brand.id);
     const result = await viewsMaxApi.deleteBrand(brand.id);
     setDeletingId(null);
     if (!result.success) {
-      toast.error(result.error || "Failed to delete brand.");
+      toast.error(result.error || t("brands.manager.deleteFailed", "Failed to delete brand."));
       return;
     }
     refreshBrands();
-    toast.success("Brand deleted.");
+    toast.success(t("brands.manager.deleted", "Brand deleted."));
   };
 
   /** Resolve a brand member's display identity from the live account lists. */
@@ -179,11 +181,11 @@ const BrandManager = () => {
     <div>
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Group accounts into brands, then pick a brand in Create Post to select all of its accounts at once.
+          {t("brands.manager.intro", "Group accounts into brands, then pick a brand in Create Post to select all of its accounts at once.")}
         </p>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4" />
-          <span className="ml-1">New brand</span>
+          <span className="ml-1">{t("brands.manager.newBrand", "New brand")}</span>
         </Button>
       </div>
 
@@ -197,7 +199,9 @@ const BrandManager = () => {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{brand.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {members.length === 0 ? "No accounts yet" : `${members.length} account${members.length === 1 ? "" : "s"}`}
+                      {members.length === 0
+                        ? t("brands.manager.noAccounts", "No accounts yet")
+                        : t("brands.manager.accountCount", { count: members.length, defaultValue_one: "{{count}} account", defaultValue_other: "{{count}} accounts" })}
                     </p>
                   </div>
                   <div className="flex items-center -space-x-2">
@@ -233,14 +237,14 @@ const BrandManager = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit brand" : "New brand"}</DialogTitle>
+            <DialogTitle>{editing ? t("brands.manager.editBrand", "Edit brand") : t("brands.manager.newBrand", "New brand")}</DialogTitle>
             <DialogDescription>
-              Name the brand and choose which connected accounts belong to it.
+              {t("brands.manager.dialogDescription", "Name the brand and choose which connected accounts belong to it.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Input
-              placeholder="Brand name"
+              placeholder={t("brands.manager.namePlaceholder", "Brand name")}
               value={name}
               maxLength={80}
               onChange={(e) => setName(e.target.value)}
@@ -252,7 +256,7 @@ const BrandManager = () => {
               </div>
             ) : memberRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No connected accounts yet — connect some platforms above first.
+                {t("brands.manager.noConnectedAccounts", "No connected accounts yet — connect some platforms above first.")}
               </p>
             ) : (
               <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
@@ -275,7 +279,7 @@ const BrandManager = () => {
                     <span className="text-xs text-muted-foreground">{PMAP[row.platform]?.name ?? row.platform}</span>
                     {row.disabled && (
                       <span className="flex items-center gap-1 text-xs text-amber-600">
-                        <AlertTriangle className="h-3 w-3" /> expired
+                        <AlertTriangle className="h-3 w-3" /> {t("brands.manager.expired", "expired")}
                       </span>
                     )}
                   </label>
@@ -285,9 +289,9 @@ const BrandManager = () => {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("brands.manager.cancel", "Cancel")}</Button>
             <Button disabled={saving} onClick={handleSave}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? "Save" : "Create"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? t("brands.manager.save", "Save") : t("brands.manager.create", "Create")}
             </Button>
           </DialogFooter>
         </DialogContent>

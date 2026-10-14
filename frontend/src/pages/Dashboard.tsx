@@ -5,8 +5,10 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { User, Crown, Calendar, Mail, Shield } from "lucide-react";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { userRole, isPaidUser, isProUser, isFreeUser } = useUserRole();
 
@@ -14,9 +16,9 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t("dashboard.welcome", "Welcome back!")}</h1>
           <p className="text-muted-foreground mt-1">
-            Here's an overview of your account and current plan.
+            {t("dashboard.subtitle", "Here's an overview of your account and current plan.")}
           </p>
         </div>
       </div>
@@ -27,35 +29,37 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Crown className="w-5 h-5" />
-              Subscription & Role
+              {t("dashboard.subscription.title", "Subscription & Role")}
             </CardTitle>
             <CardDescription>
-              Your current plan and account privileges
+              {t("dashboard.subscription.description", "Your current plan and account privileges")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Current Plan:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("dashboard.subscription.currentPlan", "Current Plan:")}</span>
               <RoleBadge role={userRole.role} />
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Subscription Status:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("dashboard.subscription.subscriptionStatus", "Subscription Status:")}</span>
               <Badge variant={userRole.hasActiveSubscription ? "default" : "secondary"}>
-                {userRole.hasActiveSubscription ? "Active" : "Inactive"}
+                {userRole.hasActiveSubscription
+                  ? t("dashboard.subscription.active", "Active")
+                  : t("dashboard.subscription.inactive", "Inactive")}
               </Badge>
             </div>
 
             {userRole.subscriptionStatus && (
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                <span className="text-sm font-medium text-muted-foreground">{t("dashboard.subscription.status", "Status:")}</span>
                 <span className="text-sm">{userRole.subscriptionStatus}</span>
               </div>
             )}
 
             {userRole.subscriptionId && (
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Subscription ID:</span>
+                <span className="text-sm font-medium text-muted-foreground">{t("dashboard.subscription.subscriptionId", "Subscription ID:")}</span>
                 <span className="text-sm font-mono text-muted-foreground">
                   {userRole.subscriptionId.slice(0, 12)}...
                 </span>
@@ -71,15 +75,15 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              Account Information
+              {t("dashboard.account.title", "Account Information")}
             </CardTitle>
             <CardDescription>
-              Your account details and current status
+              {t("dashboard.account.description", "Your account details and current status")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Email:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("dashboard.account.email", "Email:")}</span>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">{user?.email}</span>
@@ -87,26 +91,26 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">User ID:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("dashboard.account.userId", "User ID:")}</span>
               <span className="text-sm font-mono text-muted-foreground">
                 {user?.id?.toString().slice(0, 8)}...
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Account Created:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("dashboard.account.created", "Account Created:")}</span>
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">
-                  {user?.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : 'N/A'}
+                  {user?.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : t("dashboard.account.notAvailable", "N/A")}
                 </span>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Email Verified:</span>
+              <span className="text-sm font-medium text-muted-foreground">{t("dashboard.account.emailVerified", "Email Verified:")}</span>
               <Badge variant="secondary">
-                Pending
+                {t("dashboard.account.pending", "Pending")}
               </Badge>
             </div>
           </CardContent>

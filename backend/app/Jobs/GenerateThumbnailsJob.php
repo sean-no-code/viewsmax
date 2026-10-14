@@ -347,7 +347,7 @@ class GenerateThumbnailsJob implements ShouldQueue
 
             // Check if the LoRA exists on ComfyUI server
             if ($thumbnail->ai_model_id) {
-                $aiModel = \App\Models\AiModel::find($thumbnail->ai_model_id);
+                $aiModel = \App\Models\AiModel::forUser($thumbnail->user_id)->find($thumbnail->ai_model_id);
                 if ($aiModel) {
                     $loraName = $comfyUIService->getLoraFilename($aiModel);
                     $loraExists = $comfyUIService->loraExists($loraName);

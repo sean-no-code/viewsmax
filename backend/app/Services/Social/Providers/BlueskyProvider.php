@@ -46,7 +46,11 @@ class BlueskyProvider extends AbstractSocialProvider implements SupportsFollowin
      */
     public function connectWithCredentials(User $user, array $credentials): Collection
     {
-        $identifier = trim($credentials['identifier'] ?? $credentials['handle'] ?? '');
+        // People type their handle the way Bluesky displays it, "@you.bsky.social".
+        // Bluesky treats any identifier containing "@" as an email address, so a
+        // leading "@" fails login with "InvalidEmail: local part cannot be empty".
+        // A real email ("you@example.com") never starts with "@" and is unaffected.
+        $identifier = ltrim(trim($credentials['identifier'] ?? $credentials['handle'] ?? ''), '@');
         $password = $credentials['password'] ?? $credentials['app_password'] ?? '';
 
         if ($identifier === '' || $password === '') {
@@ -223,13 +227,13 @@ class BlueskyProvider extends AbstractSocialProvider implements SupportsFollowin
      */
     protected function uploadBlob(SocialAccount $account, string $url): ?array
     {
-        $binary = Http::get($url);
-        if (! $binary->successful()) {
+        $binary = $this->fetchMedia($url);
+        if ($binary === null) {
             return null;
         }
 
         $response = Http::withToken($account->access_token)
-            ->withBody($binary->body(), $binary->header('Content-Type') ?: 'image/jpeg')
+            ->withBody($binary['body'], $binary['content_type'] ?: 'image/jpeg')
             ->post($this->serviceUrl().'/xrpc/com.atproto.repo.uploadBlob');
 
         return $response->successful() ? $response->json('blob') : null;

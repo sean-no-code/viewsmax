@@ -3,6 +3,7 @@
 // sources, date range, chart view, sort and layout live in the URL query string.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AnalyticsShell, AnalyticsLoading } from "@/components/analytics/useAnalytics";
 import { CARD } from "@/components/analytics/primitives";
@@ -29,6 +30,7 @@ const SORT_IDS = new Set<string>(POST_SORTS.map((s) => s.id));
 const HISTORY_DAYS = 365 * 2;
 
 export default function Performance({ tab }: { tab: PerformanceTab }) {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const today = useMemo(() => startOfDay(new Date()), []);
   const earliest = useMemo(() => addDays(today, -HISTORY_DAYS), [today]);
@@ -65,7 +67,7 @@ export default function Performance({ tab }: { tab: PerformanceTab }) {
     viewsMaxApi.getAnalyticsPerformance({ from: range.from, to: range.to }).then((res) => {
       if (!active) return;
       if (res.success && Array.isArray(res.data?.days) && Array.isArray(res.data?.accounts)) { setData(res.data); setError(null); }
-      else setError(res.error || "Couldn't load analytics.");
+      else setError(res.error || t("analytics.performance.loadFailed", "Couldn't load analytics."));
       setLoading(false);
     });
     return () => { active = false; };
@@ -89,7 +91,12 @@ export default function Performance({ tab }: { tab: PerformanceTab }) {
     const stamp = `${toISODate(range.from)}_${toISODate(range.to)}`;
     if (isProfile) {
       downloadCsv(`profile-performance-${stamp}.csv`, [
-        ["Account", "Network", "Followers", "Net growth", "Follower change", "Engagements", "Engagement rate", "Engagement change"],
+        [
+          t("analytics.performance.csv.account", "Account"), t("analytics.performance.csv.network", "Network"),
+          t("analytics.performance.csv.followers", "Followers"), t("analytics.performance.csv.netGrowth", "Net growth"),
+          t("analytics.performance.csv.followerChange", "Follower change"), t("analytics.performance.csv.engagements", "Engagements"),
+          t("analytics.performance.csv.engagementRate", "Engagement rate"), t("analytics.performance.csv.engagementChange", "Engagement change"),
+        ],
         ...profile.followerRows.map((f, i) => {
           const e = profile.engagementRows[i];
           return [f.account.handle, f.net.name, f.followers, f.growth, f.delta.label, e.engagements, e.rate, e.delta.label];
@@ -97,7 +104,14 @@ export default function Performance({ tab }: { tab: PerformanceTab }) {
       ]);
     } else {
       downloadCsv(`post-performance-${stamp}.csv`, [
-        ["Published", "Network", "Account", "Caption", "URL", "Views", "Engagements", "Engagement rate", "Likes", "Comments", "Shares"],
+        [
+          t("analytics.performance.csv.published", "Published"), t("analytics.performance.csv.network", "Network"),
+          t("analytics.performance.csv.account", "Account"), t("analytics.performance.csv.caption", "Caption"),
+          t("analytics.performance.csv.url", "URL"), t("analytics.performance.csv.views", "Views"),
+          t("analytics.performance.csv.engagements", "Engagements"), t("analytics.performance.csv.engagementRate", "Engagement rate"),
+          t("analytics.performance.csv.likes", "Likes"), t("analytics.performance.csv.comments", "Comments"),
+          t("analytics.performance.csv.shares", "Shares"),
+        ],
         ...posts.map((p) => [toISODate(p.date), p.net.name, p.account.handle, p.caption, p.url ?? "", p.views, p.eng, p.rate === null ? "" : (p.rate * 100).toFixed(2) + "%", p.likes, p.comments, p.shares]),
       ]);
     }
@@ -107,7 +121,7 @@ export default function Performance({ tab }: { tab: PerformanceTab }) {
     <AnalyticsShell>
       <header style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 32, letterSpacing: "-0.02em", color: "var(--ink-on-paper-1)" }}>
-          {isProfile ? "Profile performance" : "Post performance"}
+          {isProfile ? t("analytics.performance.titleProfile", "Profile performance") : t("analytics.performance.titlePosts", "Post performance")}
         </h1>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {accounts.length > 0 && (
@@ -119,7 +133,7 @@ export default function Performance({ tab }: { tab: PerformanceTab }) {
             max={today}
             onChange={(r, preset) => update(preset ? { range: preset, from: null, to: null } : { range: null, from: toISODate(r.from), to: toISODate(r.to) })}
           />
-          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!perf}>Export CSV</Button>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!perf}>{t("analytics.performance.exportCsv", "Export CSV")}</Button>
         </div>
       </header>
 
@@ -129,7 +143,11 @@ export default function Performance({ tab }: { tab: PerformanceTab }) {
         <div role="alert" style={{ ...CARD, padding: 28, textAlign: "center", fontSize: 13, color: "var(--down)" }}>{error}</div>
       ) : perf && accounts.length === 0 ? (
         <div style={{ ...CARD, padding: 28, textAlign: "center", fontSize: 13.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-          No connected accounts yet. <Link to="/dashboard/connections" style={{ fontWeight: 600, color: "var(--vm-red-deep)" }}>Connect a platform</Link> to start tracking followers and post engagement.
+          <Trans
+            i18nKey="analytics.performance.noAccounts"
+            defaults="No connected accounts yet. <0>Connect a platform</0> to start tracking followers and post engagement."
+            components={[<Link to="/dashboard/connections" style={{ fontWeight: 600, color: "var(--vm-red-deep)" }} />]}
+          />
         </div>
       ) : perf && profile ? (
         <>

@@ -54,7 +54,11 @@ return [
 
         'instagram' => [
             'label' => 'Instagram',
-            'enabled' => env('INSTAGRAM_ENABLED', true),
+            // Pending Meta App Review: off in production by default, so the
+            // Connections page shows "Coming soon" and create_post omits it,
+            // while local/staging keep testing. Set INSTAGRAM_ENABLED=true
+            // once approved.
+            'enabled' => env('INSTAGRAM_ENABLED', env('APP_ENV') !== 'production'),
             // "Instagram API with Instagram Login" — connects directly to an
             // Instagram professional account (no Facebook Page). Uses the
             // Instagram app id/secret from the Instagram product settings,

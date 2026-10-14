@@ -2,6 +2,7 @@
 // with filter chips at the top to narrow by platform.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SectionHead } from "@/components/analytics/primitives";
 import { AnalyticsLoading } from "@/components/analytics/useAnalytics";
 import { PostShell } from "@/components/post/PostList";
@@ -18,6 +19,7 @@ const chipStyle = (active: boolean) => ({
 } as const);
 
 export default function CalendarPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export default function CalendarPage() {
   }, []);
 
   const platformsPresent = useMemo(
-    () => [...new Set(posts.flatMap((p) => (p.targets || []).map((t) => t.platform)))].filter((id) => PMAP[id]),
+    () => [...new Set(posts.flatMap((p) => (p.targets || []).map((tg) => tg.platform)))].filter((id) => PMAP[id]),
     [posts],
   );
 
@@ -46,7 +48,7 @@ export default function CalendarPage() {
 
   const visiblePosts = useMemo(() => {
     if (platformSel.size === 0) return posts;
-    return posts.filter((p) => (p.targets || []).some((t) => platformSel.has(t.platform)));
+    return posts.filter((p) => (p.targets || []).some((tg) => platformSel.has(tg.platform)));
   }, [posts, platformSel]);
 
   const onSelect = (p: Post) => {
@@ -55,19 +57,19 @@ export default function CalendarPage() {
 
   return (
     <PostShell max={1280}>
-      <SectionHead eyebrow="CONTENT" title="Calendar." />
+      <SectionHead eyebrow={t("post.calendar.eyebrow", "CONTENT")} title={t("post.calendar.title", "Calendar.")} />
 
       {/* Filters: which platforms show on the grid. */}
       {platformsPresent.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {platformsPresent.map((id) => (
-            <button key={id} style={{ ...chipStyle(platformSel.has(id)), paddingLeft: 6 }} onClick={() => togglePlatform(id)} title={`Only show posts going to ${PMAP[id].name}`}>
+            <button key={id} style={{ ...chipStyle(platformSel.has(id)), paddingLeft: 6 }} onClick={() => togglePlatform(id)} title={t("post.calendar.filterOnlyPlatform", "Only show posts going to {{platform}}", { platform: PMAP[id].name })}>
               <PAvatar id={id} size={18} /> {PMAP[id].name}
             </button>
           ))}
           {platformSel.size > 0 && (
             <button style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 12, color: "var(--vm-red)" }} onClick={() => setPlatformSel(new Set())}>
-              Clear platforms
+              {t("post.calendar.clearPlatforms", "Clear platforms")}
             </button>
           )}
         </div>

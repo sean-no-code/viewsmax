@@ -13,9 +13,9 @@ class PlanSeeder extends Seeder
      */
     public function run(): void
     {
-        // Per-tier limits and credits are read from env (with sensible defaults),
-        // same as stripe_price_id — so a tier is tuned by setting env vars and
-        // re-running this seeder. `price` is only a default for a brand-new
+        // Per-tier limits and credits are read from env (with sensible defaults)
+        // and stripe_price_id from config services.stripe.prices — so a tier is
+        // tuned by setting env vars and re-running this seeder. `price` is only a default for a brand-new
         // row: once a plan is linked to a Stripe price, plans:sync-stripe-prices
         // owns price + currency and re-seeding leaves them alone. NULL means "unlimited" for a limit. Returns
         // null when an env var is unset *and* the default is null (= unlimited).
@@ -56,7 +56,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_STARTER_CHANNELS', 5),
                 'max_offers' => $num('LIMIT_STARTER_OFFERS', 1),
                 'max_posts_per_month' => $num('LIMIT_STARTER_POSTS', 400),
-                'stripe_price_id' => env('STRIPE_PRICE_STARTER'),
+                'stripe_price_id' => config('services.stripe.prices.starter'),
                 'is_active' => true,
             ],
             [
@@ -74,7 +74,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_CREATOR_CHANNELS', 30),
                 'max_offers' => $num('LIMIT_CREATOR_OFFERS', 5),
                 'max_posts_per_month' => $num('LIMIT_CREATOR_POSTS'), // null = unlimited
-                'stripe_price_id' => env('STRIPE_PRICE_CREATOR'),
+                'stripe_price_id' => config('services.stripe.prices.creator'),
                 'is_active' => true,
             ],
             [
@@ -92,7 +92,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_PRO_CHANNELS'), // null = unlimited
                 'max_offers' => $num('LIMIT_PRO_OFFERS', 10),
                 'max_posts_per_month' => $num('LIMIT_PRO_POSTS'), // null = unlimited
-                'stripe_price_id' => env('STRIPE_PRICE_PRO'),
+                'stripe_price_id' => config('services.stripe.prices.pro'),
                 'is_active' => true,
             ],
             [
@@ -110,7 +110,7 @@ class PlanSeeder extends Seeder
                 'max_channels' => $num('LIMIT_AGENCY_CHANNELS'), // null = unlimited
                 'max_offers' => $num('LIMIT_AGENCY_OFFERS'),   // null = unlimited
                 'max_posts_per_month' => $num('LIMIT_AGENCY_POSTS'), // null = unlimited
-                'stripe_price_id' => env('STRIPE_PRICE_AGENCY'),
+                'stripe_price_id' => config('services.stripe.prices.agency'),
                 'is_active' => true,
             ],
         ];

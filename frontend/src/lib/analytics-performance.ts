@@ -4,6 +4,7 @@
 // engagement growth for the previous period followed by the current one
 // (`days` has 2×L entries). Everything on the two pages is derived here from
 // that payload plus the posts published in the range.
+import i18n from "i18next";
 import type { PerformanceAccount, PerformanceData, PerformancePost } from "@/lib/api-service";
 
 /* ---------- networks ---------- */
@@ -286,10 +287,10 @@ export function profileData(hist: History, accounts: Account[], sel: string[]): 
   const viewsCur = SA("views", a0, a1), viewsPrev = SA("views", p0, a0 - 1);
   const rateCur = viewsCur ? engCur / viewsCur : null, ratePrev = viewsPrev ? engPrev / viewsPrev : null;
   const kpis: Kpi[] = [
-    { label: "Total followers", value: folEnd === null ? "–" : fmt(folEnd), delta: delta(folEndCmp, folPrevEnd) },
-    { label: "Net follower growth", value: signed(netCur), delta: delta(netCurCmp, netPrev) },
-    { label: "Engagements", value: fmt(engCur), delta: delta(engCur, engPrev) },
-    { label: "Engagement rate (per view)", value: rateLabel(rateCur), delta: delta(rateCur, ratePrev) },
+    { label: i18n.t("analytics.kpi.totalFollowers", "Total followers"), value: folEnd === null ? "–" : fmt(folEnd), delta: delta(folEndCmp, folPrevEnd) },
+    { label: i18n.t("analytics.kpi.netFollowerGrowth", "Net follower growth"), value: signed(netCur), delta: delta(netCurCmp, netPrev) },
+    { label: i18n.t("analytics.kpi.engagements", "Engagements"), value: fmt(engCur), delta: delta(engCur, engPrev) },
+    { label: i18n.t("analytics.kpi.engagementRate", "Engagement rate (per view)"), value: rateLabel(rateCur), delta: delta(rateCur, ratePrev) },
   ];
 
   const followers = { total: idx.map((i) => folAt(i)), net: idx.map((i) => day("net", i)) };
@@ -334,13 +335,13 @@ export function postsData(posts: PostStat[], sel: string[], sort: PostSort): Pos
 
 /** Trigger label for the sources picker. */
 export function sourcesLabel(accounts: Account[], sel: string[]): string {
-  if (sel.length >= accounts.length) return "All sources";
+  if (sel.length >= accounts.length) return i18n.t("analytics.sources.all", "All sources");
   const accs = selectedAccounts(accounts, sel);
   const nets = selectedNetworks(accounts, sel);
   if (accs.length === 1) return `${accs[0].net.name} ${accs[0].handle}`;
   const fullNets = nets.filter((n) => accounts.filter((a) => a.net.id === n.id).every((a) => sel.includes(a.id)));
-  if (nets.length === 1 && fullNets.length === 1) return `All ${nets[0].name} accounts`;
-  return `${accs.length} of ${accounts.length} accounts`;
+  if (nets.length === 1 && fullNets.length === 1) return i18n.t("analytics.sources.allOfNetwork", "All {{network}} accounts", { network: nets[0].name });
+  return i18n.t("analytics.sources.someOf", "{{selected}} of {{total}} accounts", { selected: accs.length, total: accounts.length });
 }
 
 /* ---------- data alerts ---------- */
@@ -349,28 +350,33 @@ export function sourcesLabel(accounts: Account[], sel: string[]): string {
 export interface DataAlert { key: string; tone: "warn" | "info"; text: string; action?: "connections" }
 
 const who = (a: Account) => `${a.handle} (${a.net.name})`;
-const list = (items: string[]) => items.length <= 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+// "a, b and c" in the UI language.
+const list = (items: string[]) => new Intl.ListFormat(i18n.resolvedLanguage || "en", { type: "conjunction" }).format(items);
 
 export function dataAlerts(accounts: Account[]): DataAlert[] {
   const out: DataAlert[] = [];
 
   const reconnect = accounts.filter((a) => a.status !== "connected");
   if (reconnect.length) {
-    out.push({ key: "reconnect", tone: "warn", action: "connections", text: `Reconnect ${list(reconnect.map(who))} to resume collecting stats.` });
+    out.push({ key: "reconnect", tone: "warn", action: "connections", text: i18n.t("analytics.alerts.reconnect", "Reconnect {{accounts}} to resume collecting stats.", { accounts: list(reconnect.map(who)) }) });
   }
 
   const unsupported = accounts.filter((a) => a.status === "connected" && !a.supported);
   const byNet = new Map<string, Account[]>();
   for (const a of unsupported) byNet.set(a.net.id, [...(byNet.get(a.net.id) ?? []), a]);
   for (const [, accs] of byNet) {
-    out.push({ key: `unsupported-${accs[0].net.id}`, tone: "info", text: `${accs[0].net.name} doesn't expose follower or post stats through its API yet, so ${list(accs.map((a) => a.handle))} ${accs.length > 1 ? "are" : "is"} not included.` });
+    out.push({ key: `unsupported-${accs[0].net.id}`, tone: "info", text: i18n.t("analytics.alerts.unsupported", {
+      count: accs.length, network: accs[0].net.name, handles: list(accs.map((a) => a.handle)),
+      defaultValue_one: "{{network}} doesn't expose follower or post stats through its API yet, so {{handles}} is not included.",
+      defaultValue_other: "{{network}} doesn't expose follower or post stats through its API yet, so {{handles}} are not included.",
+    }) });
   }
 
   for (const a of accounts.filter((a) => a.status === "connected" && a.supported)) {
-    if (a.followerError) out.push({ key: `fol-${a.id}`, tone: "warn", text: `Couldn't fetch the follower count for ${who(a)}: ${a.followerError}` });
-    if (a.postError) out.push({ key: `post-${a.id}`, tone: "warn", text: `Couldn't fetch post metrics for ${who(a)}: ${a.postError}` });
+    if (a.followerError) out.push({ key: `fol-${a.id}`, tone: "warn", text: i18n.t("analytics.alerts.followerError", "Couldn't fetch the follower count for {{account}}: {{error}}", { account: who(a), error: a.followerError }) });
+    if (a.postError) out.push({ key: `post-${a.id}`, tone: "warn", text: i18n.t("analytics.alerts.postError", "Couldn't fetch post metrics for {{account}}: {{error}}", { account: who(a), error: a.postError }) });
     if (!a.followerError && !a.postError && !a.hasFollowerData && !a.hasPostData) {
-      out.push({ key: `pending-${a.id}`, tone: "info", text: `No data yet for ${who(a)}. The first daily snapshot is still to run.` });
+      out.push({ key: `pending-${a.id}`, tone: "info", text: i18n.t("analytics.alerts.pending", "No data yet for {{account}}. The first daily snapshot is still to run.", { account: who(a) }) });
     }
   }
 

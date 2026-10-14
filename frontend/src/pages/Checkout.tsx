@@ -6,10 +6,12 @@ import StripeTrialStep from "@/components/StripeTrialStep";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { checkoutTerms } from "@/lib/access";
-import { PLAN_INCLUDES } from "@/lib/plan-helpers";
+import { planIncludes } from "@/lib/plan-helpers";
+import { Trans, useTranslation } from "react-i18next";
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
   const [isComplete, setIsComplete] = useState(false);
@@ -25,7 +27,9 @@ const Checkout = () => {
   const planName = searchParams.get("plan") || "Creator Pro";
   const planPrice = searchParams.get("price") || "29";
   const planPeriod = searchParams.get("period") || "month";
-  const planDescription = searchParams.get("description") || "Monthly Subscription";
+  // Plans always sends "month"; show it in the UI language, pass anything else through.
+  const periodLabel = planPeriod === "month" ? t("checkout.period.month", "month") : planPeriod;
+  const planDescription = searchParams.get("description") || t("checkout.defaultDescription", "Monthly Subscription");
   // Stripe price id of the selected tier — forwarded so the subscription is
   // created on the chosen plan rather than the trial default.
   const planPriceId = searchParams.get("price_id") || undefined;
@@ -33,7 +37,7 @@ const Checkout = () => {
   // The tier's limit lines arrive in the URL (comma-separated, from Plans);
   // everything else is the same on every paid plan.
   const featuresParam = searchParams.get("features");
-  const features = [...(featuresParam ? featuresParam.split(",") : []), ...PLAN_INCLUDES];
+  const features = [...(featuresParam ? featuresParam.split(",") : []), ...planIncludes(t)];
 
   // StripeTrialStep already creates the subscription, writes active_subscription
   // to localStorage, and dispatches "subscriptionUpdated". We just confirm + redirect.
@@ -57,16 +61,20 @@ const Checkout = () => {
           className="mb-6"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          {t("checkout.back", "Back")}
         </Button>
 
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              Complete Your Subscription
+              {t("checkout.title", "Complete Your Subscription")}
             </h1>
             <p className="text-muted-foreground">
-              {chargeNow ? "Your free trial has ended — add your card to keep going" : freeUntil ? `Add your card — nothing to pay until ${freeUntil}` : "Add your card to start your free trial"}
+              {chargeNow
+                ? t("checkout.subtitle.chargeNow", "Your free trial has ended — add your card to keep going")
+                : freeUntil
+                  ? t("checkout.subtitle.window", "Add your card — nothing to pay until {{date}}", { date: freeUntil })
+                  : t("checkout.subtitle.trial", "Add your card to start your free trial")}
             </p>
           </div>
 
@@ -89,19 +97,19 @@ const Checkout = () => {
                   {/* Pricing */}
                   <div className="bg-muted/50 rounded-lg p-4">
                     <div className="flex items-baseline justify-between mb-2">
-                      <span className="text-muted-foreground">Monthly Price</span>
+                      <span className="text-muted-foreground">{t("checkout.summary.monthlyPrice", "Monthly Price")}</span>
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-bold text-foreground">${planPrice}</span>
-                        <span className="text-muted-foreground">/{planPeriod}</span>
+                        <span className="text-muted-foreground">/{periodLabel}</span>
                       </div>
                     </div>
                     <div className="border-t pt-3 mt-3">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Due Today</span>
+                        <span className="text-muted-foreground">{t("checkout.summary.dueToday", "Due Today")}</span>
                         <span className={`text-lg font-semibold ${chargeNow ? "text-foreground" : "text-green-600"}`}>{chargeNow ? `$${planPrice}.00` : "$0.00"}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {chargeNow ? "Your free trial has ended — charged today" : "Free trial — no charge today"}
+                        {chargeNow ? t("checkout.summary.chargedToday", "Your free trial has ended — charged today") : t("checkout.summary.noChargeToday", "Free trial — no charge today")}
                       </p>
                     </div>
                   </div>
@@ -110,19 +118,40 @@ const Checkout = () => {
                   <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                       <Check className="w-5 h-5 text-blue-600" />
-                      {chargeNow ? `$${planPrice}/${planPeriod}, starting today` : `Free trial, then $${planPrice}/${planPeriod}`}
+                      {chargeNow
+                        ? t("checkout.terms.headingChargeNow", "${{price}}/{{period}}, starting today", { price: planPrice, period: periodLabel })
+                        : t("checkout.terms.headingTrial", "Free trial, then ${{price}}/{{period}}", { price: planPrice, period: periodLabel })}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      {chargeNow
-                        ? <>You'll be charged <strong>${planPrice}</strong> today and every {planPeriod} after that.</>
-                        : <>You'll be charged <strong>${planPrice}</strong> {freeUntil ? `on ${freeUntil}` : "after the trial"} unless you cancel.</>}
-                      {" "}Cancel anytime from your billing page.
+                      {chargeNow ? (
+                        <Trans
+                          i18nKey="checkout.terms.chargeNow"
+                          defaults="You'll be charged <0>${{price}}</0> today and every {{period}} after that."
+                          values={{ price: planPrice, period: periodLabel }}
+                          components={[<strong />]}
+                        />
+                      ) : freeUntil ? (
+                        <Trans
+                          i18nKey="checkout.terms.chargeOnDate"
+                          defaults="You'll be charged <0>${{price}}</0> on {{date}} unless you cancel."
+                          values={{ price: planPrice, date: freeUntil }}
+                          components={[<strong />]}
+                        />
+                      ) : (
+                        <Trans
+                          i18nKey="checkout.terms.chargeAfterTrial"
+                          defaults="You'll be charged <0>${{price}}</0> after the trial unless you cancel."
+                          values={{ price: planPrice }}
+                          components={[<strong />]}
+                        />
+                      )}
+                      {" "}{t("checkout.terms.cancelAnytime", "Cancel anytime from your billing page.")}
                     </p>
                   </div>
 
                   {/* Features */}
                   <div>
-                    <h4 className="font-semibold text-foreground mb-3">What's Included:</h4>
+                    <h4 className="font-semibold text-foreground mb-3">{t("checkout.summary.whatsIncluded", "What's Included:")}</h4>
                     <ul className="space-y-2">
                       {features.map((feature, index) => (
                         <li key={index} className="flex items-center gap-3">
@@ -137,7 +166,12 @@ const Checkout = () => {
                   {user && (
                     <div className="border-t pt-4">
                       <p className="text-sm text-muted-foreground">
-                        Subscribing as: <strong className="text-foreground">{user.email}</strong>
+                        <Trans
+                          i18nKey="checkout.summary.subscribingAs"
+                          defaults="Subscribing as: <0>{{email}}</0>"
+                          values={{ email: user.email }}
+                          components={[<strong className="text-foreground" />]}
+                        />
                       </p>
                     </div>
                   )}
@@ -148,15 +182,15 @@ const Checkout = () => {
               <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Secure Payment</span>
+                  <span>{t("checkout.badges.securePayment", "Secure Payment")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Cancel Anytime</span>
+                  <span>{t("checkout.badges.cancelAnytime", "Cancel Anytime")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Money Back Guarantee</span>
+                  <span>{t("checkout.badges.moneyBack", "Money Back Guarantee")}</span>
                 </div>
               </div>
             </div>
@@ -169,8 +203,8 @@ const Checkout = () => {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
                       <Check className="w-8 h-8 text-green-600" />
                     </div>
-                    <p className="text-lg font-semibold text-foreground mb-2">You're all set!</p>
-                    <p className="text-muted-foreground">Redirecting to your billing page...</p>
+                    <p className="text-lg font-semibold text-foreground mb-2">{t("checkout.complete.title", "You're all set!")}</p>
+                    <p className="text-muted-foreground">{t("checkout.complete.redirecting", "Redirecting to your billing page...")}</p>
                   </CardContent>
                 </Card>
               ) : (

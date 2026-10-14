@@ -1,6 +1,15 @@
 // Post — Drafts list.
+import { useTranslation } from "react-i18next";
 import { PostListView } from "@/components/post/PostList";
 
 export default function Drafts() {
-  return <PostListView status="draft" eyebrow="POST" title="Drafts." emptyLabel="No drafts yet — start one from New Post." />;
+  const { t } = useTranslation();
+  return (
+    <PostListView
+      status="draft"
+      eyebrow={t("post.drafts.eyebrow", "POST")}
+      title={t("post.drafts.title", "Drafts.")}
+      emptyLabel={t("post.drafts.empty", "No drafts yet — start one from New Post.")}
+    />
+  );
 }

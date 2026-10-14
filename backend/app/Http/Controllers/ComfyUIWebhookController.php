@@ -23,8 +23,33 @@ class ComfyUIWebhookController extends Controller
      *   "error": "Optional error message"
      * }
      */
+    /**
+     * The webhook URL handed to ComfyUI for one image: the image id plus an
+     * HMAC of it. The endpoint is public (ComfyUI can't sign in), so this
+     * signature is the authentication — without it anyone could mark any
+     * image failed or completed by guessing sequential ids.
+     */
+    public static function signedUrl(string $baseUrl, int $imageId): string
+    {
+        $separator = str_contains($baseUrl, '?') ? '&' : '?';
+
+        return $baseUrl.$separator.http_build_query(['image_id' => $imageId, 'signature' => self::signatureFor($imageId)]);
+    }
+
+    private static function signatureFor(int|string $imageId): string
+    {
+        return hash_hmac('sha256', 'comfyui-webhook:'.$imageId, (string) config('app.key'));
+    }
+
     public function handleCompletion(Request $request): JsonResponse
     {
+        $signedImageId = (string) $request->query('image_id', '');
+        if ($signedImageId === '' || ! hash_equals(self::signatureFor($signedImageId), (string) $request->query('signature', ''))) {
+            Log::warning('ComfyUI webhook rejected: missing or invalid signature', ['ip' => $request->ip()]);
+
+            return response()->json(['success' => false, 'message' => 'Invalid signature'], 403);
+        }
+
         try {
             // Parse quickly - minimal processing
             $promptId = $request->input('prompt_id');
@@ -49,6 +74,9 @@ class ComfyUIWebhookController extends Controller
                     $status = $customData['status'] ?? $status;
                 }
             }
+
+            // Only the signed image may be updated, whatever the body claims.
+            $imageId = $signedImageId;
 
             // Dispatch background job IMMEDIATELY - no blocking operations
             ProcessComfyUIWebhookJob::dispatch(

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { useEffect } from "react";
 import Index from "./pages/Index";
+import { HOME_LOCALES } from "./pages/landing/locales";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -105,6 +106,9 @@ const App = () => (
             <UserRoleProvider>
               <Routes>
                 <Route path="/" element={<Index />} />
+                {HOME_LOCALES.filter((l) => l.path !== "/").map((l) => (
+                  <Route key={l.code} path={l.path} element={<Index locale={l.code} />} />
+                ))}
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />

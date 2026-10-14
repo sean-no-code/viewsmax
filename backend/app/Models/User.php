@@ -395,7 +395,7 @@ class User extends Authenticatable implements Wallet
         }
 
         // Check if token is expired (60 minutes)
-        if (now()->diffInMinutes($record->created_at) > 60) {
+        if (\Illuminate\Support\Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
             $this->deletePasswordResetToken();
 
             return false;

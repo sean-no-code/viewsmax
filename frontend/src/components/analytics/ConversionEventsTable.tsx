@@ -4,6 +4,7 @@
 // about what each piece of CONTENT produced. Ported from the ViewsMax
 // dashboard design board.
 import { useMemo, useState, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import { fmtFull, fmtMoney, type LinkMetric } from "@/lib/analytics-model";
 
 interface Row {
@@ -23,12 +24,14 @@ const numCell: CSSProperties = { textAlign: "right", fontFamily: "var(--font-mon
 const totalNum: CSSProperties = { textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, color: "var(--ink-on-paper-1)" };
 
 export function ConversionEventsTable({
-  links, rangeLabel = "this period", onOpenContent,
+  links, rangeLabel: rangeLabelProp, onOpenContent,
 }: {
   links: LinkMetric[];
   rangeLabel?: string;
   onOpenContent?: (id: string) => void;
 }) {
+  const { t } = useTranslation();
+  const rangeLabel = rangeLabelProp ?? t("analytics.contentTable.thisPeriod", "this period");
   const [asc, setAsc] = useState(false);
 
   const rows = useMemo<Row[]>(() => {
@@ -48,20 +51,20 @@ export function ConversionEventsTable({
     <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, boxShadow: "0 1px 2px rgba(10,10,12,.04)", overflow: "hidden" }}>
       {/* caption */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px 10px" }}>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5, color: "var(--ink-on-paper-1)" }}>Content</div>
-        <div style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 12, color: "var(--ink-on-paper-3)" }}>Conversion events · {rangeLabel}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5, color: "var(--ink-on-paper-1)" }}>{t("analytics.contentTable.title", "Content")}</div>
+        <div style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 12, color: "var(--ink-on-paper-3)" }}>{t("analytics.contentTable.caption", "Conversion events · {{range}}", { range: rangeLabel })}</div>
       </div>
 
       <div style={{ overflowX: "auto" }}>
         <div style={{ minWidth: 840 }}>
           {/* dark header row */}
           <div style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "11px 18px", background: "var(--ink-900)" }}>
-            <div style={{ ...headCell, textAlign: "left" }}>Content</div>
-            <div style={headCell}>Content Views</div>
-            <div style={headCell}>Clicks</div>
-            <div style={headCell}>Call bookings</div>
-            <div style={headCell}>Emails</div>
-            <div style={headCell}>Sales</div>
+            <div style={{ ...headCell, textAlign: "left" }}>{t("analytics.contentTable.colContent", "Content")}</div>
+            <div style={headCell}>{t("analytics.contentTable.colContentViews", "Content Views")}</div>
+            <div style={headCell}>{t("analytics.contentTable.colClicks", "Clicks")}</div>
+            <div style={headCell}>{t("analytics.contentTable.colCallBookings", "Call bookings")}</div>
+            <div style={headCell}>{t("analytics.contentTable.colEmails", "Emails")}</div>
+            <div style={headCell}>{t("analytics.contentTable.colSales", "Sales")}</div>
             <button onClick={() => setAsc((v) => !v)} style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 4, border: "none", background: "none", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".05em", textTransform: "uppercase", color: "#fff", fontWeight: 700 }}>
               ($) <span style={{ fontSize: 11 }}>{asc ? "↑" : "↓"}</span>
             </button>
@@ -69,7 +72,7 @@ export function ConversionEventsTable({
 
           {/* totals row */}
           <div style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "12px 18px", borderBottom: "2px solid var(--line-1)" }}>
-            <div style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, color: "var(--ink-on-paper-1)" }}>All content</div>
+            <div style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13, color: "var(--ink-on-paper-1)" }}>{t("analytics.contentTable.allContent", "All content")}</div>
             <div style={totalNum}>{fmtFull(totals.views)}</div>
             <div style={totalNum}>{fmtFull(totals.clicks)}</div>
             <div style={totalNum}>{fmtFull(totals.calls)}</div>
@@ -80,7 +83,7 @@ export function ConversionEventsTable({
 
           {/* data rows */}
           {rows.length === 0 ? (
-            <div style={{ padding: 28, textAlign: "center", color: "var(--ink-on-paper-3)", fontSize: 13.5, fontFamily: "var(--font-body)" }}>No conversion events yet.</div>
+            <div style={{ padding: 28, textAlign: "center", color: "var(--ink-on-paper-3)", fontSize: 13.5, fontFamily: "var(--font-body)" }}>{t("analytics.contentTable.empty", "No conversion events yet.")}</div>
           ) : rows.map((r, idx) => (
             <div key={r.id} onClick={() => onOpenContent?.(r.id)}
               style={{ display: "grid", gridTemplateColumns: GRID, alignItems: "center", padding: "11px 18px", background: idx % 2 === 1 ? "var(--paper-1)" : "transparent", cursor: onOpenContent ? "pointer" : "default" }}

@@ -7,6 +7,7 @@ use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
 use App\Models\User;
 use App\Models\UserEvent;
+use App\Support\AnthropicRateLimit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,9 +20,6 @@ use Illuminate\Http\Request;
  */
 class OutlierBreakdownController extends Controller
 {
-    /** Minutes after which a pending/processing row is assumed crashed and re-queued. */
-    private const STALE_MINUTES = 10;
-
     /** The page polls show() every few seconds: one "viewed" event per user, video and this many minutes. */
     private const VIEW_DEDUPE_MINUTES = 10;
 
@@ -88,11 +86,15 @@ class OutlierBreakdownController extends Controller
             ['status' => OutlierBreakdown::STATUS_PENDING],
         );
 
-        $isStale = in_array($breakdown->status, [OutlierBreakdown::STATUS_PENDING, OutlierBreakdown::STATUS_PROCESSING], true)
-            && ! $breakdown->wasRecentlyCreated
-            && $breakdown->updated_at?->lt(now()->subMinutes(self::STALE_MINUTES));
+        if ($breakdown->wasRecentlyCreated || $breakdown->needsRequeue()) {
+            if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_breakdown')) {
+                if ($breakdown->wasRecentlyCreated) {
+                    $breakdown->delete(); // don't leave a pending row no job will ever pick up
+                }
 
-        if ($breakdown->wasRecentlyCreated || $breakdown->status === OutlierBreakdown::STATUS_FAILED || $isStale) {
+                return $limited;
+            }
+
             if (! $breakdown->wasRecentlyCreated) {
                 $breakdown->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
             }

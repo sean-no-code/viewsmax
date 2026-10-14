@@ -6,7 +6,7 @@
 // text. In the browser React renders the same page over it on load.
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { StaticRouter } from "react-router-dom/server";
+import { StaticRouter } from "react-router-dom";
 import Index from "@/pages/Index";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
@@ -21,6 +21,7 @@ import InstagramTranscript from "@/pages/free-tools/InstagramTranscript";
 import AgentPage from "@/components/agents/AgentPage";
 import { AGENT_LIST } from "@/lib/agent-pages";
 import { MCP_PATH } from "@/lib/mcp-page";
+import { HOME_LOCALES } from "@/pages/landing/locales";
 
 // Every public content route in App.tsx (not /auth — a login form has nothing
 // to read). Each needs a dist/<path>/index.html written by
@@ -28,6 +29,7 @@ import { MCP_PATH } from "@/lib/mcp-page";
 // build if one is missing.
 const PAGES: Record<string, ReactElement> = {
   "/": <Index />,
+  ...Object.fromEntries(HOME_LOCALES.filter((l) => l.path !== "/").map((l) => [l.path, <Index locale={l.code} />])),
   "/privacy": <Privacy />,
   "/terms": <Terms />,
   "/ai": <ConnectAI />,

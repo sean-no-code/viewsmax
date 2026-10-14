@@ -4,6 +4,8 @@
 // pages and the static pages in src/lib/static-page-seo.ts (privacy, terms, /ai)
 // with the real <title>, meta, canonical, and JSON-LD baked into the served
 // HTML (so crawlers and social scrapers get correct tags without executing JS).
+// It also writes the localized homepages (/es, /ru, ... in
+// src/pages/landing/locales.ts) with their <html lang> and hreflang links.
 // The page body is baked in afterwards by scripts/prerender-bodies.ts. Runs as
 // `postbuild` (see package.json), pure Node + tsx — no Chromium, CI-safe.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -11,6 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PLATFORM_LIST, HUB_SEO, buildJsonLd } from "../src/lib/transcript-tools";
 import { STATIC_PAGE_SEO } from "../src/lib/static-page-seo";
+import { HOME_LOCALES } from "../src/pages/landing/locales";
 
 const distDir = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 const ORIGIN = "https://viewsmax.com";
@@ -35,9 +38,17 @@ interface Route {
   path: string;
   title: string;
   description: string;
-  keywords: string;
+  keywords?: string;
   jsonLd: Record<string, unknown>[];
+  // Localized homepages only.
+  htmlLang?: string;
+  ogLocale?: string;
 }
+
+// Every homepage lists every other one (search engines ignore one-way hreflang).
+const HREFLANG =
+  HOME_LOCALES.map((l) => `\n  <link rel="alternate" hreflang="${l.htmlLang}" href="${ORIGIN}${l.path}" />`).join("") +
+  `\n  <link rel="alternate" hreflang="x-default" href="${ORIGIN}/" />`;
 
 const routes: Route[] = [
   { path: "/free-tools", ...HUB_SEO, jsonLd: [] },
@@ -51,13 +62,20 @@ const routes: Route[] = [
   // Privacy, terms, and AI docs: without a file per route the host serves
   // them with HTTP 404 (see src/lib/static-page-seo.ts).
   ...STATIC_PAGE_SEO.map((p) => ({ ...p, jsonLd: [] })),
+  ...HOME_LOCALES.filter((l) => l.path !== "/").map((l) => ({
+    path: l.path,
+    ...l.copy.seo,
+    jsonLd: [],
+    htmlLang: l.htmlLang,
+    ogLocale: l.ogLocale,
+  })),
 ];
 
 for (const r of routes) {
   const url = `${ORIGIN}${r.path}`;
   const head =
     `\n  <meta name="description" content="${esc(r.description)}" />` +
-    `\n  <meta name="keywords" content="${esc(r.keywords)}" />` +
+    (r.keywords ? `\n  <meta name="keywords" content="${esc(r.keywords)}" />` : "") +
     `\n  <link rel="canonical" href="${url}" />` +
     `\n  <meta property="og:title" content="${esc(r.title)}" />` +
     `\n  <meta property="og:description" content="${esc(r.description)}" />` +
@@ -68,14 +86,23 @@ for (const r of routes) {
     `\n  <meta name="twitter:title" content="${esc(r.title)}" />` +
     `\n  <meta name="twitter:description" content="${esc(r.description)}" />` +
     `\n  <meta name="twitter:image" content="${OG_IMAGE}" />` +
+    (r.ogLocale ? `\n  <meta property="og:locale" content="${r.ogLocale}" />` + HREFLANG : "") +
     r.jsonLd.map((d) => `\n  <script type="application/ld+json">${JSON.stringify(d)}</script>`).join("");
 
-  const html = shell
+  let html = shell
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(r.title)}</title>`)
     .replace("</head>", `${head}\n</head>`);
+  if (r.htmlLang) html = html.replace('<html lang="en">', `<html lang="${r.htmlLang}">`);
 
   const outDir = join(distDir, r.path.replace(/^\//, ""));
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, "index.html"), html);
   console.log(`prerendered ${r.path}`);
 }
+
+// The English homepage is dist/index.html itself: add its hreflang links last,
+// after every route above has copied the shell. prerender-agents.ts strips them
+// from its copies again.
+const indexFile = join(distDir, "index.html");
+writeFileSync(indexFile, readFileSync(indexFile, "utf8").replace("</head>", `${HREFLANG}\n</head>`));
+console.log("prerendered hreflang /");

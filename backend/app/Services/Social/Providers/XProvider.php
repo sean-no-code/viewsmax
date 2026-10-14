@@ -446,13 +446,13 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
         $ids = [];
 
         foreach ($images as $img) {
-            $binary = Http::get($img['url']);
-            if (! $binary->successful()) {
+            $binary = $this->fetchMedia($img['url']);
+            if ($binary === null) {
                 return [[], 'X image upload failed: could not fetch '.$img['url']];
             }
 
             $upload = Http::withToken($account->access_token)
-                ->attach('media', $binary->body(), 'upload')
+                ->attach('media', $binary['body'], 'upload')
                 ->post('https://api.twitter.com/2/media/upload', [
                     'media_category' => 'tweet_image',
                 ]);

@@ -1,11 +1,17 @@
 // Content calendar — month grid of scheduled / posted social content.
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/analytics/primitives";
 import { PAvatar, PMAP } from "@/components/post/composer";
 import type { Post } from "@/lib/api-service";
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Month and weekday names come from the browser in the UI language
+// (English output is unchanged: "October 2026", "Mon".."Sun").
+const monthYear = (d: Date, lang: string) => new Intl.DateTimeFormat(lang, { month: "long", year: "numeric" }).format(d);
+const weekdayNames = (lang: string) => {
+  const fmt = new Intl.DateTimeFormat(lang, { weekday: "short" });
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2024, 0, 1 + i))); // 2024-01-01 is a Monday
+};
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -20,6 +26,8 @@ export default function PostCalendar({ posts, onSelect }: {
   posts: Post[];
   onSelect?: (p: Post) => void;
 }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage || "en";
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -53,7 +61,7 @@ export default function PostCalendar({ posts, onSelect }: {
     <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.04)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--line-1)" }}>
         <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, letterSpacing: "-.02em", color: "var(--ink-on-paper-1)" }}>
-          {MONTHS[cursor.getMonth()]} {cursor.getFullYear()}
+          {monthYear(cursor, lang)}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {([["chevron-left", -1], ["chevron-right", 1]] as const).map(([ic, d]) => (
@@ -64,7 +72,7 @@ export default function PostCalendar({ posts, onSelect }: {
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", borderBottom: "1px solid var(--line-1)" }}>
-        {DOW.map((d) => (
+        {weekdayNames(lang).map((d) => (
           <div key={d} style={{ padding: "10px 12px", fontFamily: "var(--font-mono)", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--ink-on-paper-3)", fontWeight: 600 }}>{d}</div>
         ))}
       </div>
@@ -77,10 +85,10 @@ export default function PostCalendar({ posts, onSelect }: {
             <div key={i} style={{ minHeight: 104, padding: 8, borderRight: (i % 7 !== 6) ? "1px solid var(--paper-2)" : "none", borderBottom: i < 35 ? "1px solid var(--paper-2)" : "none", background: inMonth ? "var(--paper-0)" : "var(--paper-1)", display: "flex", flexDirection: "column", gap: 5 }}>
               <span style={{ alignSelf: "flex-start", fontFamily: "var(--font-mono)", fontSize: 11.5, fontWeight: 700, width: 22, height: 22, borderRadius: "50%", display: "grid", placeItems: "center", color: isToday ? "#fff" : inMonth ? "var(--ink-on-paper-2)" : "var(--ink-on-paper-3)", background: isToday ? "var(--vm-red)" : "transparent" }}>{d.getDate()}</span>
               {dayPosts.map((p) => (
-                <button key={p.id} onClick={() => onSelect?.(p)} title={p.caption || "Post"} style={{ textAlign: "left", border: "none", cursor: "pointer", background: p.status === "posted" ? "var(--vm-volt-tint-l)" : "var(--vm-red-tint-l)", borderRadius: 8, padding: "5px 7px", display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                <button key={p.id} onClick={() => onSelect?.(p)} title={p.caption || t("post.calendar.postFallbackTitle", "Post")} style={{ textAlign: "left", border: "none", cursor: "pointer", background: p.status === "posted" ? "var(--vm-volt-tint-l)" : "var(--vm-red-tint-l)", borderRadius: 8, padding: "5px 7px", display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
                   <span style={{ display: "flex", marginRight: 2 }}>
-                    {(p.targets || []).slice(0, 3).map((t, ti) => (
-                      <span key={t.id} style={{ marginLeft: ti ? -6 : 0, display: "inline-flex" }}>{PMAP[t.platform] ? <PAvatar id={t.platform} size={16} /> : null}</span>
+                    {(p.targets || []).slice(0, 3).map((tg, ti) => (
+                      <span key={tg.id} style={{ marginLeft: ti ? -6 : 0, display: "inline-flex" }}>{PMAP[tg.platform] ? <PAvatar id={tg.platform} size={16} /> : null}</span>
                     ))}
                   </span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, color: p.status === "posted" ? "var(--vm-volt-deep)" : "var(--vm-red-deep)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

@@ -1,5 +1,6 @@
 // Data hooks + page shell for the Analytics feature.
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import i18n from "i18next";
 import { viewsMaxApi, type TrackingEvent, type TrackingTimeseriesPoint, type TrafficSourcesData } from "@/lib/api-service";
 import { toFunnlModel, type FunnlModel } from "@/lib/analytics-model";
 
@@ -36,7 +37,7 @@ export function useFunnlModel() {
       setModel(toFunnlModel(res.data, goalRes.success ? goalRes.data : []));
       setError(null);
     } else {
-      setError(res.error || "Failed to load analytics");
+      setError(res.error || i18n.t("analytics.common.loadFailed", "Failed to load analytics"));
     }
     setLoading(false);
   }, []);

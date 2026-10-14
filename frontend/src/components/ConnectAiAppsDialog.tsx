@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, Copy, ExternalLink, MessageSquareText } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AGENTS, CHECK_PROMPT, MCP_ENDPOINT, agentListingUrl, type AgentConfig } from "@/lib/agent-pages";
 
@@ -53,14 +54,15 @@ const ChatGptMark = () => (
 
 /** Directory listing when ViewsMax is listed there, else that agent's setup guide. */
 function ListingAction({ agent }: { agent: AgentConfig }) {
+  const { t } = useTranslation();
   const url = agentListingUrl(agent, import.meta.env as Record<string, string | undefined>);
   return url ? (
     <a href={url} target="_blank" rel="noreferrer" className={BTN}>
-      Connect <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+      {t("layout.aiApps.connect", "Connect")} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
     </a>
   ) : (
     <Link to={agent.slug} className={BTN}>
-      Setup guide
+      {t("layout.aiApps.setupGuide", "Setup guide")}
     </Link>
   );
 }
@@ -84,15 +86,18 @@ interface ConnectAiAppsDialogProps {
 }
 
 export default function ConnectAiAppsDialog({ open, onOpenChange }: ConnectAiAppsDialogProps) {
+  const { t } = useTranslation();
   const { copied, copy } = useCopy();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md gap-0 rounded-2xl border-line-1 bg-paper-0 p-6 text-ink-on-paper-1">
         <DialogHeader className="text-left">
-          <DialogTitle className="font-display text-[22px] font-extrabold tracking-[-0.02em]">Connect ViewsMax to your AI app</DialogTitle>
+          <DialogTitle className="font-display text-[22px] font-extrabold tracking-[-0.02em]">
+            {t("layout.aiApps.title", "Connect ViewsMax to your AI app")}
+          </DialogTitle>
           <DialogDescription className="text-ink-on-paper-3">
-            Post, find outliers and track sales from Claude, ChatGPT and more.
+            {t("layout.aiApps.description", "Post, find outliers and track sales from Claude, ChatGPT and more.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -101,7 +106,7 @@ export default function ConnectAiAppsDialog({ open, onOpenChange }: ConnectAiApp
           <button
             type="button"
             onClick={() => copy(MCP_ENDPOINT, "url")}
-            aria-label="Copy MCP address"
+            aria-label={t("layout.aiApps.copyMcpAddress", "Copy MCP address")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-on-paper-2 hover:bg-paper-0 hover:text-ink-on-paper-1"
           >
             {copied === "url" ? <Check className="h-4 w-4" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
@@ -109,20 +114,20 @@ export default function ConnectAiAppsDialog({ open, onOpenChange }: ConnectAiApp
         </div>
 
         <ul className="mt-3 divide-y divide-line-1">
-          <Row icon={<ClaudeMark />} name="Claude" blurb="Connect ViewsMax to Claude" action={<ListingAction agent={AGENTS.claude} />} />
-          <Row icon={<ChatGptMark />} name="ChatGPT" blurb="Connect ViewsMax to ChatGPT" action={<ListingAction agent={AGENTS.chatgpt} />} />
+          <Row icon={<ClaudeMark />} name="Claude" blurb={t("layout.aiApps.claudeBlurb", "Connect ViewsMax to Claude")} action={<ListingAction agent={AGENTS.claude} />} />
+          <Row icon={<ChatGptMark />} name="ChatGPT" blurb={t("layout.aiApps.chatgptBlurb", "Connect ViewsMax to ChatGPT")} action={<ListingAction agent={AGENTS.chatgpt} />} />
           <Row
             icon={<MessageSquareText className="h-[18px] w-[18px] text-ink-on-paper-2" aria-hidden />}
-            name="Connect with a prompt"
-            blurb="Send it to your AI agent for setup help."
+            name={t("layout.aiApps.promptName", "Connect with a prompt")}
+            blurb={t("layout.aiApps.promptBlurb", "Send it to your AI agent for setup help.")}
             action={
               <button type="button" onClick={() => copy(SETUP_PROMPT, "prompt")} className={BTN}>
                 {copied === "prompt" ? (
                   <>
-                    Copied <Check className="h-3.5 w-3.5" aria-hidden />
+                    {t("layout.aiApps.copied", "Copied")} <Check className="h-3.5 w-3.5" aria-hidden />
                   </>
                 ) : (
-                  "Copy prompt"
+                  t("layout.aiApps.copyPrompt", "Copy prompt")
                 )}
               </button>
             }
@@ -130,9 +135,9 @@ export default function ConnectAiAppsDialog({ open, onOpenChange }: ConnectAiApp
         </ul>
 
         <p className="mt-4 text-center text-[13px] text-ink-on-paper-3">
-          Need help?{" "}
+          {t("layout.aiApps.needHelp", "Need help?")}{" "}
           <Link to="/ai" className="inline-flex items-center gap-1 font-semibold text-ink-on-paper-1 underline-offset-2 hover:underline">
-            Setup instructions <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            {t("layout.aiApps.setupInstructions", "Setup instructions")} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </p>
       </DialogContent>

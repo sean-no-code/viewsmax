@@ -39,7 +39,7 @@ class ChannelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch channels',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -161,7 +161,7 @@ class ChannelController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch videos: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to fetch videos: ', $e)
             ], 500);
         }
     }
@@ -240,7 +240,7 @@ class ChannelController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get videos: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to get videos: ', $e)
             ], 500);
         }
     }
@@ -276,7 +276,7 @@ class ChannelController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch channel',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -327,7 +327,7 @@ class ChannelController extends Controller
             ]);
             return response()->json([
                 'error' => 'Failed to refresh channel data',
-                'message' => $e->getMessage()
+                'message' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -388,7 +388,7 @@ class ChannelController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get analytics: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to get analytics: ', $e)
             ], 500);
         }
     }
@@ -421,7 +421,7 @@ class ChannelController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to get playlists: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to get playlists: ', $e)
             ], 500);
         }
     }
@@ -462,7 +462,7 @@ class ChannelController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to disconnect channel: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to disconnect channel: ', $e)
             ], 500);
         }
     }

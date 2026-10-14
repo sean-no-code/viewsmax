@@ -64,7 +64,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -117,7 +117,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Login failed',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -252,7 +252,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Logout failed',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -278,7 +278,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get profile',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -310,7 +310,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Token refresh failed',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -399,7 +399,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to send password reset email',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -484,7 +484,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to reset password',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }

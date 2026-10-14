@@ -203,7 +203,7 @@ export interface SocialPlatformInfo {
 // Per-user preference toggles from `/api/user/settings`.
 export interface UserSettings {
   notify_post_failures: boolean;
-  // UI language (en/es/de/fr/pt); null = browser default.
+  // UI language (en/es/de/fr/pt/ru); null = browser default.
   locale?: string | null;
 }
 

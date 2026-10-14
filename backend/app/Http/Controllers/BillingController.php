@@ -210,7 +210,7 @@ class BillingController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Failed to start subscription. '.$e->getMessage()], 422);
+            return response()->json(['message' => \App\Support\UserSafeError::withDetail('Failed to start subscription. ', $e)], 422);
         }
     }
 }

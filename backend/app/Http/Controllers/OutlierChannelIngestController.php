@@ -52,7 +52,7 @@ class OutlierChannelIngestController extends Controller
         try {
             $parsed = OutlierProfileInput::parse($validated['platform'] ?? null, $validated['input']);
         } catch (\InvalidArgumentException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return response()->json(['message' => \App\Support\UserSafeError::detail($e)], 422);
         }
 
         $userId = $request->user()->id;

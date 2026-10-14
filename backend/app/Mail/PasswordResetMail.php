@@ -50,7 +50,6 @@ class PasswordResetMail extends Mailable
         
         Log::info('PasswordResetMail content prepared', [
             'email' => $this->email,
-            'reset_url' => $resetUrl,
             'view_exists' => view()->exists('emails.password-reset')
         ]);
 

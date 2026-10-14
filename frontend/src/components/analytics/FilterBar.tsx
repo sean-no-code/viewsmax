@@ -2,6 +2,7 @@
 // a date-range stepper + granularity, and a refresh control. Mirrors the
 // ViewsMax dashboard design board; styled with the --vm-* / --paper-* tokens.
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Filter, Crosshair, Link2, RotateCw, ChevronDown, ChevronLeft, ChevronRight, Code2 } from "lucide-react";
 
 export interface Opt { id: string; label: string }
@@ -60,6 +61,7 @@ export function FilterBar({
   gran: string; granOptions: Opt[]; onGran: (id: string) => void;
   onRefresh: () => void; refreshing?: boolean;
 }) {
+  const { t } = useTranslation();
   const [menu, setMenu] = useState<string | null>(null);
   const toggle = (k: string) => setMenu((m) => (m === k ? null : k));
   const close = () => setMenu(null);
@@ -67,7 +69,7 @@ export function FilterBar({
 
   return (
     <div style={{ background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--ink-on-paper-3)", fontWeight: 600, padding: "0 6px" }}>Filters</span>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--ink-on-paper-3)", fontWeight: 600, padding: "0 6px" }}>{t("analytics.filters.label", "Filters")}</span>
 
       {/* site / offer selector */}
       <Dropdown open={menu === "site"} onToggle={() => toggle("site")} onClose={close} minWidth={260}

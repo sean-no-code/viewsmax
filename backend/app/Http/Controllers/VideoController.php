@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
+use App\Support\AnthropicRateLimit;
 
 class VideoController extends Controller
 {
@@ -58,7 +59,7 @@ class VideoController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve videos',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -107,7 +108,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create video: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to create video: ', $e)
             ], 500);
         }
     }
@@ -184,7 +185,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update video: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to update video: ', $e)
             ], 500);
         }
     }
@@ -208,7 +209,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete video: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to delete video: ', $e)
             ], 500);
         }
     }
@@ -247,7 +248,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to attach titles: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to attach titles: ', $e)
             ], 500);
         }
     }
@@ -286,7 +287,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to detach titles: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to detach titles: ', $e)
             ], 500);
         }
     }
@@ -307,6 +308,15 @@ class VideoController extends Controller
                 'has_title' => !empty($video->title),
                 'has_youtube_id' => !empty($video->youtube_video_id)
             ]);
+
+            // Spend AI budget only when this call will queue a new analysis;
+            // completed or in-progress scores are just reported back.
+            $settled = ['completed', 'processing', 'pending'];
+            $willAnalyze = (! empty($video->title) && ! in_array(TitleScore::where('video_id', $video->id)->value('status'), $settled, true))
+                || (! empty($video->youtube_video_id) && ! in_array(ThumbnailScore::where('video_id', $video->id)->value('status'), $settled, true));
+            if ($willAnalyze && ($limited = AnthropicRateLimit::hit($request->user(), 'video_review'))) {
+                return $limited;
+            }
 
             $titleAnalyzer = null;
             $thumbnailAnalyzer = null;
@@ -490,7 +500,7 @@ class VideoController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to start video review: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to start video review: ', $e)
             ], 500);
         }
     }

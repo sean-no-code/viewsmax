@@ -4,6 +4,7 @@
 // hides it and rescales the axes to what's still visible. Ported from the
 // ViewsMax dashboard design kit and made dynamic over the tracking series.
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ChartPoint {
   label: string; // x-axis label, e.g. "12 Jun"
@@ -44,6 +45,7 @@ function smooth(ps: [number, number][]): string {
 }
 
 export function RevenueChart({ points, gradId = "vmRevArea" }: { points: ChartPoint[]; gradId?: string }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState<number | null>(null);
   // Click a legend entry to hide/show its series (e.g. leave only Revenue).
   const [hidden, setHidden] = useState<Set<SeriesKey>>(new Set());
@@ -98,10 +100,10 @@ export function RevenueChart({ points, gradId = "vmRevArea" }: { points: ChartPo
   const labelEvery = Math.max(1, Math.ceil(N / 8));
 
   const LEGEND: Array<{ key: SeriesKey; label: string; color: string }> = [
-    { key: "visitors", label: "Visitors", color: PURPLE },
-    { key: "clicks", label: "Clicks", color: RED },
-    { key: "views", label: "Content Views", color: BLUE },
-    { key: "revenue", label: "Revenue", color: GREEN },
+    { key: "visitors", label: t("analytics.chart.visitors", "Visitors"), color: PURPLE },
+    { key: "clicks", label: t("analytics.chart.clicks", "Clicks"), color: RED },
+    { key: "views", label: t("analytics.chart.contentViews", "Content Views"), color: BLUE },
+    { key: "revenue", label: t("analytics.chart.revenue", "Revenue"), color: GREEN },
   ];
 
   return (
@@ -117,9 +119,9 @@ export function RevenueChart({ points, gradId = "vmRevArea" }: { points: ChartPo
           }}>
             <div style={{ fontWeight: 700, marginBottom: 3 }}>{data[hover].label}</div>
             <div style={{ display: "flex", gap: 10 }}>
-              {on("visitors") && <span style={{ color: PURPLE }}>● {visitors[hover].toLocaleString("en-US")} visitors</span>}
-              {on("clicks") && <span style={{ color: "var(--vm-red-hot)" }}>● {clicks[hover].toLocaleString("en-US")} clicks</span>}
-              {on("views") && <span style={{ color: BLUE }}>● {views[hover].toLocaleString("en-US")} content views</span>}
+              {on("visitors") && <span style={{ color: PURPLE }}>● {t("analytics.chart.tooltipVisitors", "{{value}} visitors", { value: visitors[hover].toLocaleString("en-US") })}</span>}
+              {on("clicks") && <span style={{ color: "var(--vm-red-hot)" }}>● {t("analytics.chart.tooltipClicks", "{{value}} clicks", { value: clicks[hover].toLocaleString("en-US") })}</span>}
+              {on("views") && <span style={{ color: BLUE }}>● {t("analytics.chart.tooltipContentViews", "{{value}} content views", { value: views[hover].toLocaleString("en-US") })}</span>}
               {on("revenue") && <span style={{ color: "var(--up)" }}>${revenue[hover].toLocaleString("en-US")}</span>}
             </div>
           </div>
@@ -195,7 +197,7 @@ export function RevenueChart({ points, gradId = "vmRevArea" }: { points: ChartPo
             <button
               key={s.key}
               onClick={() => toggle(s.key)}
-              title={active ? `Hide ${s.label}` : `Show ${s.label}`}
+              title={active ? t("analytics.chart.hideSeries", "Hide {{series}}", { series: s.label }) : t("analytics.chart.showSeries", "Show {{series}}", { series: s.label })}
               style={{
                 display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--font-mono)", fontSize: 11,
                 color: "var(--ink-on-paper-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px",

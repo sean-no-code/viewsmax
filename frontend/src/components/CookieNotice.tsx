@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Cookie } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { LandingCopy } from "@/pages/landing/locales";
 
-const CookieNotice = () => {
+// Text comes from the homepage locale (the notice only shows on homepages).
+const CookieNotice = ({ copy }: { copy: LandingCopy["cookie"] }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -39,9 +41,9 @@ const CookieNotice = () => {
               <Cookie className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm text-foreground">
-                  We use cookies to enhance your browsing experience and analyze our traffic. By clicking "Accept", you consent to our use of cookies.{" "}
+                  {copy.message}{" "}
                   <Link to="/privacy" className="text-primary hover:underline">
-                    Learn more
+                    {copy.learnMore}
                   </Link>
                 </p>
               </div>
@@ -53,7 +55,7 @@ const CookieNotice = () => {
                 onClick={handleDecline}
                 className="flex-1 sm:flex-none"
               >
-                Decline
+                {copy.decline}
               </Button>
               <Button
                 variant="default"
@@ -61,7 +63,7 @@ const CookieNotice = () => {
                 onClick={handleAccept}
                 className="flex-1 sm:flex-none"
               >
-                Accept
+                {copy.accept}
               </Button>
             </div>
           </div>
