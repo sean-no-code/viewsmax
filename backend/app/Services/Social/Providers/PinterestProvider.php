@@ -216,6 +216,24 @@ class PinterestProvider extends AbstractSocialProvider
         ];
     }
 
+    /**
+     * Whether the board belongs to this account. Pinterest's board list takes
+     * a few minutes to include a newly created board (seen on the real API),
+     * so a board missing from it is read directly and accepted when this
+     * account is its owner.
+     */
+    protected function ownsBoard(SocialAccount $account, string $boardId): bool
+    {
+        if (in_array($boardId, array_column($this->boards($account), 'id'), true)) {
+            return true;
+        }
+
+        $board = $this->api($account)->get($this->apiBase().'/boards/'.rawurlencode($boardId));
+        $owner = strtolower((string) $board->json('owner.username'));
+
+        return $board->successful() && $owner !== '' && $owner === strtolower((string) $account->username);
+    }
+
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
     {
         $image = $this->firstImageUrl($post);
@@ -232,7 +250,7 @@ class PinterestProvider extends AbstractSocialProvider
         if ($boardId === '') {
             return PublishResult::failure('Choose a Pinterest board for this account.');
         }
-        if (! in_array($boardId, array_column($this->boards($account), 'id'), true)) {
+        if (! $this->ownsBoard($account, $boardId)) {
             return PublishResult::failure("The chosen Pinterest board isn't on this account anymore. Choose another board.");
         }
 

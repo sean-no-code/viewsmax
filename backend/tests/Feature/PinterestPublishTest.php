@@ -143,6 +143,39 @@ class PinterestPublishTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_a_board_just_created_and_not_yet_listed_is_still_accepted(): void
+    {
+        // Pinterest's board list takes minutes to include a new board (seen on
+        // the real API), so a board missing from the list is read directly and
+        // accepted when this account owns it.
+        Http::fake([
+            'api.pinterest.com/v5/boards/board-new' => Http::response(['id' => 'board-new', 'name' => 'Brand new', 'owner' => ['username' => 'creatorlab']]),
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/pins' => Http::response(['id' => 'pin-new'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'hi', 'media' => [['type' => 'image', 'url' => 'https://cdn.example/a.jpg']]]);
+        $post->board_id = 'board-new';
+
+        $this->assertTrue((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins') && $req['board_id'] === 'board-new');
+    }
+
+    public function test_a_board_owned_by_someone_else_is_refused_even_when_readable(): void
+    {
+        Http::fake([
+            'api.pinterest.com/v5/boards/board-other' => Http::response(['id' => 'board-other', 'owner' => ['username' => 'someoneelse']]),
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/pins' => Http::response(['id' => 'x'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'hi', 'media' => [['type' => 'image', 'url' => 'https://cdn.example/a.jpg']]]);
+        $post->board_id = 'board-other';
+
+        $this->assertFalse((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertNotSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins'));
+    }
+
     public function test_pin_without_a_chosen_board_fails_without_calling_pinterest(): void
     {
         Http::fake();
