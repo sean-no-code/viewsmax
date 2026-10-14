@@ -284,7 +284,12 @@ class PinterestProvider extends AbstractSocialProvider
         } else {
             $images = array_slice(array_column($this->mediaItems($post, 'image'), 'url'), 0, self::CAROUSEL_MAX_IMAGES);
             $payload['media_source'] = count($images) > 1
-                ? ['source_type' => 'multiple_image_urls', 'items' => array_map(fn ($url) => ['url' => $url], $images)]
+                // Each image carries the Pin's link: a carousel's "Visit site"
+                // button reads the image's own link (seen on the real site).
+                ? ['source_type' => 'multiple_image_urls', 'items' => array_map(
+                    fn ($url) => array_filter(['url' => $url, 'link' => $payload['link'] ?? null]),
+                    $images,
+                )]
                 : ['source_type' => 'image_url', 'url' => $image];
         }
 
@@ -340,7 +345,7 @@ class PinterestProvider extends AbstractSocialProvider
                 if (! $image = $this->imageData($item['url'])) {
                     return null;
                 }
-                $items[] = ['content_type' => $image[0], 'data' => $image[1]];
+                $items[] = array_filter(['content_type' => $image[0], 'data' => $image[1], 'link' => $item['link'] ?? null]);
             }
 
             return ['source_type' => 'multiple_image_base64', 'items' => $items];

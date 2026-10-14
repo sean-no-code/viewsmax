@@ -257,6 +257,27 @@ class PinterestPublishTest extends TestCase
         $this->assertCount(1, Http::recorded(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')));
     }
 
+    public function test_each_carousel_image_carries_the_pins_link(): void
+    {
+        // On the real site a carousel's "Visit site" button uses each image's
+        // own link; the Pin-level link alone shows no button.
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/pins' => Http::response(['id' => 'pin-carousel'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'Two', 'media' => $this->images(2), 'link' => 'https://example.com/recipe']);
+        $post->board_id = 'board-1';
+
+        $this->assertTrue((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')
+            && $req['link'] === 'https://example.com/recipe'
+            && $req['media_source']['items'] === [
+                ['url' => 'https://cdn.example/1.png', 'link' => 'https://example.com/recipe'],
+                ['url' => 'https://cdn.example/2.png', 'link' => 'https://example.com/recipe'],
+            ]);
+    }
+
     public function test_a_carousel_takes_the_first_five_images(): void
     {
         // Pinterest's limit is 2-5 images per carousel (API spec), like X's 4.
