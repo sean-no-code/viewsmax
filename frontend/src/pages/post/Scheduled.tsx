@@ -1,6 +1,15 @@
 // Post — Scheduled list.
+import { useTranslation } from "react-i18next";
 import { PostListView } from "@/components/post/PostList";
 
 export default function Scheduled() {
-  return <PostListView status="scheduled" eyebrow="POST" title="Scheduled." emptyLabel="Nothing scheduled — schedule a post from New Post." />;
+  const { t } = useTranslation();
+  return (
+    <PostListView
+      status="scheduled"
+      eyebrow={t("post.scheduled.eyebrow", "POST")}
+      title={t("post.scheduled.title", "Scheduled.")}
+      emptyLabel={t("post.scheduled.empty", "Nothing scheduled — schedule a post from New Post.")}
+    />
+  );
 }

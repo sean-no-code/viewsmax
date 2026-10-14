@@ -1,5 +1,6 @@
 import { CSSProperties, MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { TrendingUp, Eye, Heart, Bookmark, MessageCircle, BarChart3, Star } from 'lucide-react';
 import type { OutlierVideo } from '@/lib/outlier-service';
 import { BrandIcon, hasBrandIcon } from '@/components/post/brand-icons';
@@ -28,6 +29,7 @@ const mono = 'var(--font-mono)';
 
 export default function OutlierCard({ video, variant, saved, onToggleSave, emojiTiers = true, onToggleFeature }: Props) {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     // Instagram used to ship without views/score; newer rows have them. Gate on the
     // data, not the platform, so every platform renders the same card.
     const isIG = video.views == null;
@@ -84,7 +86,7 @@ export default function OutlierCard({ video, variant, saved, onToggleSave, emoji
                 )}
                 <button
                     onClick={handleSave}
-                    aria-label={saved ? 'Remove from library' : 'Save to library'}
+                    aria-label={saved ? t('outliers.card.removeFromLibrary', 'Remove from library') : t('outliers.card.saveToLibrary', 'Save to library')}
                     style={{ position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(6,6,8,.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(6,6,8,.9)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(6,6,8,.65)')}
@@ -94,8 +96,8 @@ export default function OutlierCard({ video, variant, saved, onToggleSave, emoji
                 {onToggleFeature && (
                     <button
                         onClick={(e) => { e.stopPropagation(); onToggleFeature(video); }}
-                        aria-label={video.featured ? 'Remove from default feed' : 'Feature on default feed'}
-                        title={video.featured ? 'Remove from default feed' : 'Feature on default feed'}
+                        aria-label={video.featured ? t('outliers.card.unfeature', 'Remove from default feed') : t('outliers.card.feature', 'Feature on default feed')}
+                        title={video.featured ? t('outliers.card.unfeature', 'Remove from default feed') : t('outliers.card.feature', 'Feature on default feed')}
                         style={{ position: 'absolute', top: 46, right: 8, width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(6,6,8,.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(6,6,8,.9)')}
                         onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(6,6,8,.65)')}
@@ -118,30 +120,31 @@ export default function OutlierCard({ video, variant, saved, onToggleSave, emoji
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--paper-1)'; e.currentTarget.style.color = 'var(--vm-red)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-on-paper-3)'; }}
             >
-                <BarChart3 size={12} />Breakdown
+                <BarChart3 size={12} />{t('outliers.card.breakdown', 'Breakdown')}
             </button>
         </div>
     );
 }
 
 function ShortsBody({ video, isIG, tier, handle }: { video: OutlierVideo; isIG: boolean; tier: ReturnType<typeof scoreTier>; handle: string }) {
+    const { t } = useTranslation();
     return (
         <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--ink-on-paper-1)', flexWrap: 'wrap' }}>
                 {isIG ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Comments">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={t('outliers.card.comments', 'Comments')}>
                         <MessageCircle size={13} stroke="#76767F" />{formatCompact(video.comment_count)}
                     </span>
                 ) : (
                     <>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: tier.scoreColor }} title="Outlier score">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: tier.scoreColor }} title={t('outliers.card.outlierScore', 'Outlier score')}>
                             <TrendingUp size={13} />{formatScore(video.outlier_score)}
                         </span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Views">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={t('outliers.card.views', 'Views')}>
                             <Eye size={13} stroke="#76767F" />{formatCompact(video.views)}
                         </span>
                         {video.engagement_rate != null && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title="Engagement">
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={t('outliers.card.engagement', 'Engagement')}>
                                 <Heart size={13} stroke="#76767F" />{video.engagement_rate}%
                             </span>
                         )}
@@ -162,6 +165,7 @@ function ShortsBody({ video, isIG, tier, handle }: { video: OutlierVideo; isIG: 
 function LongBody({ video, isIG, tier, score, barWidth }: {
     video: OutlierVideo; isIG: boolean; tier: ReturnType<typeof scoreTier>; score: number; barWidth: string;
 }) {
+    const { t } = useTranslation();
     return (
         <>
             {/* Top block: score + bar / views — hidden when views are unknown */}
@@ -171,7 +175,7 @@ function LongBody({ video, isIG, tier, score, barWidth }: {
                         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 26, lineHeight: 1, color: tier.scoreColor }}>
                             {formatScore(video.outlier_score)}{tier.emoji ? ' ' : ''}
                         </div>
-                        <div style={{ ...eyebrow, marginTop: 3 }}>Outlier score</div>
+                        <div style={{ ...eyebrow, marginTop: 3 }}>{t('outliers.card.outlierScore', 'Outlier score')}</div>
                         <div style={{ position: 'relative', height: 6, background: 'var(--paper-2)', borderRadius: 'var(--r-pill)', marginTop: 8 }}>
                             <div style={{ position: 'absolute', inset: 0, width: barWidth, background: tier.barColor, borderRadius: 'var(--r-pill)' }} />
                             {tier.emoji && (
@@ -183,7 +187,7 @@ function LongBody({ video, isIG, tier, score, barWidth }: {
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 17, fontWeight: 700, color: 'var(--ink-on-paper-1)' }}>
                             <Eye size={15} stroke="#76767F" />{formatCompact(video.views)}
                         </div>
-                        <div style={eyebrow}>Views</div>
+                        <div style={eyebrow}>{t('outliers.card.views', 'Views')}</div>
                     </div>
                 </div>
             )}
@@ -194,15 +198,15 @@ function LongBody({ video, isIG, tier, score, barWidth }: {
                     {video.title}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>
-                    <span title={video.channel?.channel_name || 'Unknown'} style={{ fontWeight: 700, color: 'var(--ink-on-paper-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '12ch' }}>{video.channel?.channel_name || 'Unknown'}</span>
+                    <span title={video.channel?.channel_name || t('outliers.card.unknownChannel', 'Unknown')} style={{ fontWeight: 700, color: 'var(--ink-on-paper-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '12ch' }}>{video.channel?.channel_name || t('outliers.card.unknownChannel', 'Unknown')}</span>
                     {isIG ? (
-                        <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-mono)' }} title="Comments">
+                        <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-mono)' }} title={t('outliers.card.comments', 'Comments')}>
                             <MessageCircle size={13} stroke="#76767F" />{formatCompact(video.comment_count)}
                         </span>
                     ) : (
                         <>
                             {video.channel?.subscriber_count != null && (
-                                <span style={{ fontFamily: 'var(--font-mono)' }}>· {formatCompact(video.channel.subscriber_count)} subs</span>
+                                <span style={{ fontFamily: 'var(--font-mono)' }}>· {t('outliers.card.subs', '{{subscribers}} subs', { subscribers: formatCompact(video.channel.subscriber_count) })}</span>
                             )}
                             <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)' }}>{timeAgo(video.published_at)}</span>
                         </>

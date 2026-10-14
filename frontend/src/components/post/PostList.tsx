@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Icon, SectionHead, Chip } from "@/components/analytics/primitives";
 import { AnalyticsLoading } from "@/components/analytics/useAnalytics";
 import { PAvatar, PMAP } from "@/components/post/composer";
@@ -25,8 +27,8 @@ export const fmtDateTime = (raw?: string | null) => {
   return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 
-const fmtWhen = (p: Post) => {
-  if (!p.scheduled_at) return p.status === "posted" ? "Posted" : "Draft";
+const fmtWhen = (p: Post, t: TFunction) => {
+  if (!p.scheduled_at) return p.status === "posted" ? t("post.list.whenPosted", "Posted") : t("post.list.whenDraft", "Draft");
   return fmtDateTime(p.scheduled_at);
 };
 
@@ -39,12 +41,13 @@ export const effectiveCaption = (p: Post, target?: PostTarget): string => {
   return main || ((p.targets || []).map((t) => (t.caption_override || "").trim()).find(Boolean) ?? "");
 };
 
-const snippet = (p: Post) => {
-  const t = effectiveCaption(p);
-  return t ? (t.length > 120 ? t.slice(0, 120) + "…" : t) : "No caption";
+const snippet = (p: Post, t: TFunction) => {
+  const text = effectiveCaption(p);
+  return text ? (text.length > 120 ? text.slice(0, 120) + "…" : text) : t("post.list.noCaption", "No caption");
 };
 
 export function PostListView({ status, eyebrow, title, emptyLabel }: { status: "draft" | "scheduled"; eyebrow: string; title: string; emptyLabel: string }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { directory: accountDirectory } = useAccountDirectory();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -61,8 +64,8 @@ export function PostListView({ status, eyebrow, title, emptyLabel }: { status: "
 
   const remove = async (id: number) => {
     const res = await viewsMaxApi.deletePost(id);
-    if (res.success) { setPosts((p) => p.filter((x) => x.id !== id)); toast.success("Post deleted."); }
-    else toast.error(res.error || "Couldn't delete the post.");
+    if (res.success) { setPosts((p) => p.filter((x) => x.id !== id)); toast.success(t("post.list.deleted", "Post deleted.")); }
+    else toast.error(res.error || t("post.list.deleteFailed", "Couldn't delete the post."));
   };
 
   return (
@@ -81,20 +84,20 @@ export function PostListView({ status, eyebrow, title, emptyLabel }: { status: "
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/dashboard/post/${p.id}`); } }}
-              title="Edit post"
+              title={t("post.list.editPost", "Edit post")}
               style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", borderTop: i ? "1px solid var(--paper-2)" : "none", cursor: "pointer" }}
             >
               <span style={{ display: "flex" }}>
-                {(p.targets || []).slice(0, 4).map((t, ti) => (
-                  <span key={t.id} style={{ marginLeft: ti ? -8 : 0, display: "inline-flex" }}>{PMAP[t.platform] ? <PAvatar id={t.platform} size={30} avatarUrl={t.social_account?.avatar_url ?? accountDirectory[t.platform]?.avatarUrl} /> : null}</span>
+                {(p.targets || []).slice(0, 4).map((tg, ti) => (
+                  <span key={tg.id} style={{ marginLeft: ti ? -8 : 0, display: "inline-flex" }}>{PMAP[tg.platform] ? <PAvatar id={tg.platform} size={30} avatarUrl={tg.social_account?.avatar_url ?? accountDirectory[tg.platform]?.avatarUrl} /> : null}</span>
                 ))}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "var(--font-body)", fontSize: 13.5, fontWeight: 600, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{snippet(p)}</div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", marginTop: 3 }}>{(p.targets || []).length} platform{(p.targets || []).length === 1 ? "" : "s"} · {(p.media || []).length} media</div>
+                <div style={{ fontFamily: "var(--font-body)", fontSize: 13.5, fontWeight: 600, color: "var(--ink-on-paper-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{snippet(p, t)}</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)", marginTop: 3 }}>{t("post.list.rowMeta", { count: (p.targets || []).length, media: (p.media || []).length, defaultValue_one: "{{count}} platform · {{media}} media", defaultValue_other: "{{count}} platforms · {{media}} media" })}</div>
               </div>
-              <Chip tone={status === "scheduled" ? "aqua" : "ghost"}>{fmtWhen(p)}</Chip>
-              <button onClick={(e) => { e.stopPropagation(); remove(p.id); }} title="Delete" style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              <Chip tone={status === "scheduled" ? "aqua" : "ghost"}>{fmtWhen(p, t)}</Chip>
+              <button onClick={(e) => { e.stopPropagation(); remove(p.id); }} title={t("post.list.delete", "Delete")} style={{ width: 34, height: 34, borderRadius: 999, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0 }}>
                 <Icon name="trash-2" size={15} stroke="var(--ink-on-paper-3)" />
               </button>
             </div>
@@ -106,13 +109,14 @@ export function PostListView({ status, eyebrow, title, emptyLabel }: { status: "
 }
 
 /* ---------------- Per-platform publish status badge ---------------- */
-const STATUS_TONE: Record<string, { bg: string; fg: string; label: string }> = {
-  published: { bg: "rgba(15,182,126,.12)", fg: "var(--up)", label: "Published" },
-  publishing: { bg: "rgba(255,176,32,.16)", fg: "var(--warn)", label: "Publishing" },
-  pending: { bg: "var(--paper-2)", fg: "var(--ink-on-paper-3)", label: "Pending" },
-  failed: { bg: "var(--vm-red-tint-l)", fg: "var(--vm-red)", label: "Failed" },
-  inbox: { bg: "rgba(255,176,32,.16)", fg: "var(--warn)", label: "In TikTok inbox" },
-};
+// Keys are the API's target status values; only the labels are translated.
+const statusTone = (t: TFunction): Record<string, { bg: string; fg: string; label: string }> => ({
+  published: { bg: "rgba(15,182,126,.12)", fg: "var(--up)", label: t("post.history.statusPublished", "Published") },
+  publishing: { bg: "rgba(255,176,32,.16)", fg: "var(--warn)", label: t("post.history.statusPublishing", "Publishing") },
+  pending: { bg: "var(--paper-2)", fg: "var(--ink-on-paper-3)", label: t("post.history.statusPending", "Pending") },
+  failed: { bg: "var(--vm-red-tint-l)", fg: "var(--vm-red)", label: t("post.history.statusFailed", "Failed") },
+  inbox: { bg: "rgba(255,176,32,.16)", fg: "var(--warn)", label: t("post.history.statusInbox", "In TikTok inbox") },
+});
 
 // TikTok inbox uploads report "published" but the video is really sitting in
 // the creator's TikTok app inbox (unaudited apps can't direct-post to public
@@ -120,7 +124,8 @@ const STATUS_TONE: Record<string, { bg: string; fg: string; label: string }> = {
 export const isInboxDelivery = (t: PostTarget): boolean =>
   t.delivery_mode === "inbox" || t.meta?.mode === "inbox";
 
-export const INBOX_NOTE = "Sent to the TikTok inbox — open the TikTok app, find the video in your notifications, and finish posting there. Captions can't be attached to inbox deliveries, so paste yours in the app.";
+export const inboxNote = (t: TFunction) =>
+  t("post.history.inboxNote", "Sent to the TikTok inbox — open the TikTok app, find the video in your notifications, and finish posting there. Captions can't be attached to inbox deliveries, so paste yours in the app.");
 
 // The live URL of a published post, when the platform gave us one. IG / X /
 // LinkedIn / Threads store meta.url; YouTube stores meta.video_url; the generic
@@ -132,8 +137,10 @@ export function publishedUrl(target: PostTarget): string | null {
 }
 
 export function TargetStatusBadge({ target }: { target: PostTarget }) {
+  const { t } = useTranslation();
+  const tones = statusTone(t);
   const inbox = target.status === "published" && isInboxDelivery(target);
-  const s = inbox ? STATUS_TONE.inbox : (STATUS_TONE[target.status || "pending"] ?? STATUS_TONE.pending);
+  const s = inbox ? tones.inbox : (tones[target.status || "pending"] ?? tones.pending);
   const url = target.status === "published" ? publishedUrl(target) : null;
   const style = { display: "inline-flex", alignItems: "center", gap: 6, background: s.bg, color: s.fg, borderRadius: 999, padding: "4px 9px 4px 6px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 11.5, textDecoration: "none" } as const;
   const inner = (
@@ -147,13 +154,13 @@ export function TargetStatusBadge({ target }: { target: PostTarget }) {
   if (url) {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-        title="View published post" style={{ ...style, cursor: "pointer" }}>
+        title={t("post.history.viewPublished", "View published post")} style={{ ...style, cursor: "pointer" }}>
         {inner}
       </a>
     );
   }
   return (
-    <span title={inbox ? INBOX_NOTE : target.error || (target.platform_post_id ? `Post ID: ${target.platform_post_id}` : undefined)}
+    <span title={inbox ? inboxNote(t) : target.error || (target.platform_post_id ? t("post.history.postId", "Post ID: {{id}}", { id: target.platform_post_id }) : undefined)}
       style={{ ...style, cursor: inbox || target.error ? "help" : "default" }}>
       {inner}
     </span>
@@ -169,21 +176,24 @@ const historyHead: CSSProperties = { fontFamily: "var(--font-mono)", fontSize: 1
 const historyCell: CSSProperties = { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--ink-on-paper-2)", minWidth: 0 };
 
 // What actually happened on the platform, in plain words.
-function deliveryDetail(t: PostTarget): { text: string; tone: string } {
-  if (t.status === "failed") return { text: t.error || "Publishing failed.", tone: "var(--vm-red)" };
-  if (t.status === "published" && isInboxDelivery(t)) return { text: INBOX_NOTE, tone: "var(--warn)" };
-  if (t.status === "published") {
-    const when = t.published_at ? ` (${fmtDateTime(t.published_at)})` : "";
-    return { text: `Live on the platform${when}.`, tone: "var(--up)" };
+function deliveryDetail(target: PostTarget, t: TFunction): { text: string; tone: string } {
+  if (target.status === "failed") return { text: target.error || t("post.history.publishFailed", "Publishing failed."), tone: "var(--vm-red)" };
+  if (target.status === "published" && isInboxDelivery(target)) return { text: inboxNote(t), tone: "var(--warn)" };
+  if (target.status === "published") {
+    const text = target.published_at
+      ? t("post.history.liveOnPlatformAt", "Live on the platform ({{when}}).", { when: fmtDateTime(target.published_at) })
+      : t("post.history.liveOnPlatform", "Live on the platform.");
+    return { text, tone: "var(--up)" };
   }
-  if (t.status === "publishing") return { text: "Uploading to the platform…", tone: "var(--warn)" };
-  return { text: "Waiting to publish.", tone: "var(--ink-on-paper-3)" };
+  if (target.status === "publishing") return { text: t("post.history.uploading", "Uploading to the platform…"), tone: "var(--warn)" };
+  return { text: t("post.history.waiting", "Waiting to publish."), tone: "var(--ink-on-paper-3)" };
 }
 
 // One platform's outcome inside a post row: status badge, plain-words detail,
 // and a Retry action when it failed (re-queues just this platform).
 function DeliveryLine({ target, comments, retrying, onRetry }: { target: PostTarget; comments?: PostComment[]; retrying: boolean; onRetry: () => void }) {
-  const detail = deliveryDetail(target);
+  const { t } = useTranslation();
+  const detail = deliveryDetail(target, t);
   // Follow-up comment delivery on THIS target: "2/3 comments posted" etc.
   const rows = (comments ?? []).flatMap((cm) => (cm.target_comments ?? []).filter((tc) => tc.post_target_id === target.id));
   const posted = rows.filter((r) => r.status === "posted").length;
@@ -197,18 +207,20 @@ function DeliveryLine({ target, comments, retrying, onRetry }: { target: PostTar
           <button
             onClick={(e) => { e.stopPropagation(); onRetry(); }}
             disabled={retrying}
-            title={`Retry publishing to ${target.platform}`}
+            title={t("post.history.retryTitle", "Retry publishing to {{platform}}", { platform: target.platform })}
             style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 24, padding: "0 10px", borderRadius: 999, border: "1px solid var(--line-1)", background: "var(--paper-0)", cursor: retrying ? "default" : "pointer", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 11, color: "var(--ink-on-paper-2)", opacity: retrying ? 0.55 : 1 }}
           >
             <Icon name="rotate-cw" size={12} stroke="var(--ink-on-paper-2)" />
-            {retrying ? "Retrying…" : "Retry"}
+            {retrying ? t("post.history.retrying", "Retrying…") : t("post.history.retry", "Retry")}
           </button>
         )}
       </div>
       <div style={{ fontFamily: "var(--font-body)", fontSize: 11.5, lineHeight: 1.45, color: detail.tone }}>{detail.text}</div>
       {rows.length > 0 && !skipped && (
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: failed ? "var(--vm-red)" : "var(--ink-on-paper-3)" }}>
-          {posted}/{rows.length} comment{rows.length === 1 ? "" : "s"} posted{failed ? ` · ${failed} failed` : ""}
+          {failed
+            ? t("post.history.commentsPostedFailed", { count: rows.length, posted, failed, defaultValue_one: "{{posted}}/{{count}} comment posted · {{failed}} failed", defaultValue_other: "{{posted}}/{{count}} comments posted · {{failed}} failed" })
+            : t("post.history.commentsPosted", { count: rows.length, posted, defaultValue_one: "{{posted}}/{{count}} comment posted", defaultValue_other: "{{posted}}/{{count}} comments posted" })}
         </div>
       )}
     </div>
@@ -216,6 +228,7 @@ function DeliveryLine({ target, comments, retrying, onRetry }: { target: PostTar
 }
 
 export function PostHistoryView() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { directory: accountDirectory } = useAccountDirectory();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -244,7 +257,7 @@ export function PostHistoryView() {
   // Refetch while any target is still in flight, and stop as soon as they have
   // all settled, so a page of finished posts costs nothing.
   const settling = posts.some((p) =>
-    (p.targets ?? []).some((t) => t.status === "pending" || t.status === "publishing")
+    (p.targets ?? []).some((tg) => tg.status === "pending" || tg.status === "publishing")
   );
 
   useEffect(() => {
@@ -260,35 +273,35 @@ export function PostHistoryView() {
     if (res.success && res.data) {
       const updated = res.data;
       setPosts((all) => all.map((p) => (p.id === updated.id ? updated : p)));
-      toast.success("Retrying — re-publishing on that platform.");
+      toast.success(t("post.history.retryQueued", "Retrying — re-publishing on that platform."));
     } else {
-      toast.error(res.error || "Couldn't retry that platform.");
+      toast.error(res.error || t("post.history.retryFailed", "Couldn't retry that platform."));
     }
     setRetrying((s) => { const n = new Set(s); n.delete(targetId); return n; });
   };
 
   return (
     <PostShell max={1280}>
-      <SectionHead eyebrow="Publishing" title="History" />
+      <SectionHead eyebrow={t("post.history.eyebrow", "Publishing")} title={t("post.history.title", "History")} />
       {loading ? (
         <AnalyticsLoading />
       ) : posts.length === 0 ? (
-        <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, padding: 48, textAlign: "center", color: "var(--ink-on-paper-3)", fontFamily: "var(--font-body)", fontSize: 14 }}>No posts yet. Published and scheduled posts show up here with their per-platform status.</div>
+        <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, padding: 48, textAlign: "center", color: "var(--ink-on-paper-3)", fontFamily: "var(--font-body)", fontSize: 14 }}>{t("post.history.empty", "No posts yet. Published and scheduled posts show up here with their per-platform status.")}</div>
       ) : (
         <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 18, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.04)" }}>
           <div style={{ display: "grid", gridTemplateColumns: HISTORY_GRID, gap: 14, alignItems: "center", padding: "11px 18px", background: "var(--ink-900)" }}>
-            <div style={historyHead}>Platforms</div>
-            <div style={historyHead}>Caption</div>
-            <div style={{ ...historyHead, textAlign: "right" }}>Media</div>
-            <div style={historyHead}>Scheduled</div>
-            <div style={historyHead}>Delivery</div>
+            <div style={historyHead}>{t("post.history.colPlatforms", "Platforms")}</div>
+            <div style={historyHead}>{t("post.history.colCaption", "Caption")}</div>
+            <div style={{ ...historyHead, textAlign: "right" }}>{t("post.history.colMedia", "Media")}</div>
+            <div style={historyHead}>{t("post.history.colScheduled", "Scheduled")}</div>
+            <div style={historyHead}>{t("post.history.colDelivery", "Delivery")}</div>
           </div>
           {posts.map((p, i) => {
             const targets = p.targets || [];
             const caption = effectiveCaption(p);
             // A post with any failed platform is re-openable: click the row to
             // load it back into the composer (all fields hydrated) and try again.
-            const hasFailed = targets.some((t) => t.status === "failed");
+            const hasFailed = targets.some((tg) => tg.status === "failed");
             const openInComposer = () => navigate(`/dashboard/post/${p.id}`);
             return (
               <div
@@ -297,7 +310,7 @@ export function PostHistoryView() {
                 role={hasFailed ? "button" : undefined}
                 tabIndex={hasFailed ? 0 : undefined}
                 onKeyDown={hasFailed ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openInComposer(); } } : undefined}
-                title={hasFailed ? "Open in the composer to edit and try again" : undefined}
+                title={hasFailed ? t("post.history.openInComposer", "Open in the composer to edit and try again") : undefined}
                 onMouseEnter={hasFailed ? (e) => { e.currentTarget.style.background = "var(--paper-1)"; } : undefined}
                 onMouseLeave={hasFailed ? (e) => { e.currentTarget.style.background = "transparent"; } : undefined}
                 style={{ display: "grid", gridTemplateColumns: HISTORY_GRID, gap: 14, alignItems: "start", padding: "14px 18px", borderTop: i ? "1px solid var(--paper-2)" : "none", cursor: hasFailed ? "pointer" : "default", transition: "background var(--dur)" }}
@@ -305,8 +318,8 @@ export function PostHistoryView() {
                 <div style={{ display: "flex", alignItems: "center", minWidth: 0, paddingTop: 2 }}>
                   {targets.length ? (
                     <span style={{ display: "flex" }}>
-                      {targets.slice(0, 5).map((t, ti) => (
-                        <span key={t.id} title={t.social_account?.name ? `${t.platform} — ${t.social_account.name}` : t.platform} style={{ marginLeft: ti ? -8 : 0, display: "inline-flex" }}>{PMAP[t.platform] ? <PAvatar id={t.platform} size={26} avatarUrl={t.social_account?.avatar_url ?? accountDirectory[t.platform]?.avatarUrl} /> : null}</span>
+                      {targets.slice(0, 5).map((tg, ti) => (
+                        <span key={tg.id} title={tg.social_account?.name ? `${tg.platform} — ${tg.social_account.name}` : tg.platform} style={{ marginLeft: ti ? -8 : 0, display: "inline-flex" }}>{PMAP[tg.platform] ? <PAvatar id={tg.platform} size={26} avatarUrl={tg.social_account?.avatar_url ?? accountDirectory[tg.platform]?.avatarUrl} /> : null}</span>
                       ))}
                     </span>
                   ) : (
@@ -314,17 +327,17 @@ export function PostHistoryView() {
                   )}
                 </div>
                 <div style={{ ...historyCell, color: caption ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)", fontStyle: caption ? "normal" : "italic", paddingTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={caption || undefined}>
-                  {caption ? (caption.length > 60 ? caption.slice(0, 60) + "…" : caption) : "No caption"}
+                  {caption ? (caption.length > 60 ? caption.slice(0, 60) + "…" : caption) : t("post.history.noCaption", "No caption")}
                 </div>
                 <div style={{ ...historyCell, fontFamily: "var(--font-mono)", fontSize: 12, textAlign: "right", paddingTop: 3 }}>{(p.media || []).length}</div>
                 <div style={{ ...historyCell, fontFamily: "var(--font-mono)", fontSize: 11.5, paddingTop: 3 }}>{p.scheduled_at ? fmtDateTime(p.scheduled_at) : "—"}</div>
                 <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
                   {targets.length ? (
-                    targets.map((t) => (
-                      <DeliveryLine key={t.id} target={t} comments={p.comments} retrying={retrying.has(t.id)} onRetry={() => retry(p.id, t.id)} />
+                    targets.map((tg) => (
+                      <DeliveryLine key={tg.id} target={tg} comments={p.comments} retrying={retrying.has(tg.id)} onRetry={() => retry(p.id, tg.id)} />
                     ))
                   ) : (
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)" }}>no platforms</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-on-paper-3)" }}>{t("post.history.noPlatforms", "no platforms")}</span>
                   )}
                 </div>
               </div>

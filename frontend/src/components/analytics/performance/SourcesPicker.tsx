@@ -1,4 +1,5 @@
 // "Sources" popover: tick whole networks or individual connected accounts.
+import { useTranslation } from "react-i18next";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,6 +9,7 @@ import { selectedNetworks, sourcesLabel, type Account } from "@/lib/analytics-pe
 interface Props { accounts: Account[]; value: string[]; onChange: (ids: string[]) => void }
 
 export function SourcesPicker({ accounts, value, onChange }: Props) {
+  const { t } = useTranslation();
   const allIds = accounts.map((a) => a.id);
   const nets = selectedNetworks(accounts, value);
   const groups = selectedNetworks(accounts, allIds);
@@ -16,7 +18,7 @@ export function SourcesPicker({ accounts, value, onChange }: Props) {
 
   return (
     <Popover>
-      <PopoverTrigger className="rounded-md border border-line-2 bg-paper-0" aria-label="Sources">
+      <PopoverTrigger className="rounded-md border border-line-2 bg-paper-0" aria-label={t("analytics.performance.sources.label", "Sources")}>
         <span style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", font: "600 13px var(--font-body)", color: "var(--ink-on-paper-1)" }}>
           <span style={{ display: "flex", paddingLeft: 5 }}>
             {nets.map((n) => (
@@ -30,8 +32,8 @@ export function SourcesPicker({ accounts, value, onChange }: Props) {
       <PopoverContent align="end" className="w-auto p-0">
         <div style={{ width: 300, display: "flex", flexDirection: "column", fontSize: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid var(--line-1)" }}>
-            <span style={{ fontWeight: 700 }}>Sources</span>
-            <button type="button" onClick={() => set(allIds)} style={{ border: 0, background: "none", fontSize: 13, fontWeight: 600, color: "var(--vm-red-deep)", cursor: "pointer", padding: 0 }}>Select all</button>
+            <span style={{ fontWeight: 700 }}>{t("analytics.performance.sources.title", "Sources")}</span>
+            <button type="button" onClick={() => set(allIds)} style={{ border: 0, background: "none", fontSize: 13, fontWeight: 600, color: "var(--vm-red-deep)", cursor: "pointer", padding: 0 }}>{t("analytics.performance.sources.selectAll", "Select all")}</button>
           </div>
           <div style={{ maxHeight: 380, overflowY: "auto", padding: "6px 0" }}>
             {groups.map((n) => {
@@ -47,9 +49,9 @@ export function SourcesPicker({ accounts, value, onChange }: Props) {
                     onClick={() => set(on === ids.length ? value.filter((id) => !ids.includes(id)) : [...value, ...ids])}
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 14px", cursor: "pointer", fontWeight: 600, border: 0, background: "none", textAlign: "left", font: "inherit" }}
                   >
-                    <Checkbox checked={state} tabIndex={-1} aria-label={`All ${n.name} accounts`} style={{ pointerEvents: "none", display: "flex" }} />
+                    <Checkbox checked={state} tabIndex={-1} aria-label={t("analytics.performance.sources.allNetworkAccounts", "All {{network}} accounts", { network: n.name })} style={{ pointerEvents: "none", display: "flex" }} />
                     <NetBadge net={n} size={20} />
-                    All {n.name} accounts
+                    {t("analytics.performance.sources.allNetworkAccounts", "All {{network}} accounts", { network: n.name })}
                   </button>
                   {members.map((a) => {
                     const c = value.includes(a.id);

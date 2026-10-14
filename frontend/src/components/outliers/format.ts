@@ -1,4 +1,7 @@
 // Shared formatting helpers for the Outliers cards + pages.
+import i18n from 'i18next';
+
+const uiLanguage = () => i18n.resolvedLanguage || 'en';
 
 export function formatCompact(n: number | null | undefined): string {
     if (n === null || n === undefined) return '—';
@@ -87,23 +90,26 @@ export function durationSeconds(iso: string | null | undefined): number {
     return parseInt(m[1] || '0', 10) * 3600 + parseInt(m[2] || '0', 10) * 60 + parseInt(m[3] || '0', 10);
 }
 
+// Relative age in the UI language ("3d ago", "3 дн. назад"). Same day/week/month/year
+// buckets as before; English keeps its compact narrow style.
 export function timeAgo(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
     const then = new Date(dateStr).getTime();
     if (Number.isNaN(then)) return '';
     const days = Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
-    if (days === 0) return 'today';
-    if (days < 7) return `${days}d ago`;
-    if (days < 30) return `${Math.floor(days / 7)}w ago`;
-    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-    return `${Math.floor(days / 365)}y ago`;
+    const lang = uiLanguage();
+    const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: lang.startsWith('en') ? 'narrow' : 'short' });
+    if (days < 7) return rtf.format(-days, 'day');
+    if (days < 30) return rtf.format(-Math.floor(days / 7), 'week');
+    if (days < 365) return rtf.format(-Math.floor(days / 30), 'month');
+    return rtf.format(-Math.floor(days / 365), 'year');
 }
 
 export function formatDate(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString(uiLanguage(), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export interface Tier {

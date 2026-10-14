@@ -1,4 +1,5 @@
 import { Crown, Zap, Sparkles, Rocket, type LucideIcon } from "lucide-react";
+import type { TFunction } from "i18next";
 import type { PlanTier } from "@/lib/api-service";
 
 // Per-tier icon, keyed by the plan's `name` (or display_name). Falls back to Crown.
@@ -60,11 +61,38 @@ export const PLAN_INCLUDES: readonly string[] = [
   "Human support",
 ];
 
+/** PLAN_INCLUDES in the UI language (same English; a test keeps the two in step). */
+export const planIncludes = (t: TFunction): string[] => [
+  t("billing.includes.multipleAccounts", "Multiple accounts per platform"),
+  t("billing.includes.brands", "Brands (account groups)"),
+  t("billing.includes.trackedLinks", "Tracked links & revenue attribution"),
+  t("billing.includes.outliers", "Outlier research with AI breakdowns"),
+  t("billing.includes.boosts", "Boosts: auto-repost & auto-promo"),
+  t("billing.includes.mcp", "MCP server & API for AI agents"),
+  t("billing.includes.commentChains", "Comment chains & X threads"),
+  t("billing.includes.beehiiv", "Beehiiv reach tracking"),
+  t("billing.includes.humanSupport", "Human support"),
+];
+
 /** Human label for a numeric limit; null = unlimited. */
-export function formatLimit(value: number | null, noun: string): string {
-  if (value === null) return `Unlimited ${noun}s`;
-  const plural = value === 1 ? noun : `${noun}s`;
-  return `${value} ${plural}`;
+export type LimitKind = "channel" | "offer" | "post";
+
+// Literal keys per kind so the extractor sees them; plurals follow each language's forms.
+export function formatLimit(t: TFunction, value: number | null, kind: LimitKind): string {
+  switch (kind) {
+    case "channel":
+      return value === null
+        ? t("billing.limits.unlimitedChannels", "Unlimited channels")
+        : t("billing.limits.channels", { count: value, defaultValue_one: "{{count}} channel", defaultValue_other: "{{count}} channels" });
+    case "offer":
+      return value === null
+        ? t("billing.limits.unlimitedOffers", "Unlimited offers")
+        : t("billing.limits.offers", { count: value, defaultValue_one: "{{count}} offer", defaultValue_other: "{{count}} offers" });
+    case "post":
+      return value === null
+        ? t("billing.limits.unlimitedPosts", "Unlimited posts")
+        : t("billing.limits.posts", { count: value, defaultValue_one: "{{count}} post", defaultValue_other: "{{count}} posts" });
+  }
 }
 
 /** Plans sorted cheapest → most expensive for display. */

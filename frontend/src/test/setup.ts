@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
+import i18n from '@/i18n'
+
+// Start i18next as the app does, so t() fills {{placeholders}}, plurals and
+// <Trans> render their English defaults. Pinned to English: tests assert English
+// text whatever language the machine running them uses.
+void i18n.changeLanguage('en')
 
 // Mock environment variables
 Object.defineProperty(import.meta, 'env', {

@@ -22,7 +22,7 @@ import ConnectAiAppsButton from "@/components/ConnectAiAppsButton";
 
 export default function DashboardLayout() {
   const { user, signOut } = useAuth();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
 
   const changeLocale = async (code: string) => {
@@ -39,36 +39,36 @@ export default function DashboardLayout() {
 
   const getPageTitle = () => {
     const path = location.pathname;
-    if (path.startsWith('/dashboard/outliers/breakdown/')) return 'Breakdown';
-    if (path === '/dashboard/outliers/library') return 'Outliers Library';
-    if (path === '/dashboard/outliers') return 'Outliers';
-    if (path === '/dashboard/titles/new') return 'Create Titles';
-    if (path === '/dashboard/scripts') return 'Scripts';
-    if (path === '/dashboard/scripts/library') return 'Script Library';
-    if (path === '/dashboard/scripts/library/new') return 'New Component';
-    if (path.startsWith('/dashboard/scripts/library/edit/')) return 'Edit Component';
-    if (path.startsWith('/dashboard/scripts/edit/')) return 'Edit Script';
-    if (path.startsWith('/dashboard/scripts/create/')) return 'Create Script';
-    if (path === '/dashboard/trending') return 'Trending';
-    if (path === '/dashboard/post') return 'New Post';
-    if (path === '/dashboard/post/drafts') return 'Drafts';
-    if (path === '/dashboard/post/scheduled') return 'Scheduled';
-    if (path === '/dashboard/post/calendar' || path === '/dashboard/calendar') return 'Calendar';
-    if (path === '/dashboard/connections') return 'Connections';
-    if (path === '/dashboard/channel-analytics') return 'Channel Analytics';
-    if (path.startsWith('/dashboard/monetization/offers')) return 'Offers';
-    if (path.startsWith('/dashboard/monetization/links')) return 'Link';
-    if (path.startsWith('/dashboard/analytics/platform')) return 'Analytics · Source';
-    if (path.startsWith('/dashboard/analytics/overview')) return 'Revenue Growth';
-    if (path.startsWith('/dashboard/analytics/profile')) return 'Profile Performance';
-    if (path.startsWith('/dashboard/analytics/posts')) return 'Post Performance';
-    if (path.startsWith('/dashboard/analytics')) return 'Analytics';
-    if (path === '/dashboard/feature-requests') return 'Request a Feature';
-    if (path === '/dashboard/settings') return 'Settings';
-    if (path === '/dashboard/billing') return 'Billing';
-    if (path === '/dashboard/review') return 'Review';
-    if (path.startsWith('/dashboard/review/video/')) return 'Video Review';
-    return 'Dashboard';
+    if (path.startsWith('/dashboard/outliers/breakdown/')) return t("layout.pageTitle.breakdown", "Breakdown");
+    if (path === '/dashboard/outliers/library') return t("layout.pageTitle.outliersLibrary", "Outliers Library");
+    if (path === '/dashboard/outliers') return t("layout.pageTitle.outliers", "Outliers");
+    if (path === '/dashboard/titles/new') return t("layout.pageTitle.createTitles", "Create Titles");
+    if (path === '/dashboard/scripts') return t("layout.pageTitle.scripts", "Scripts");
+    if (path === '/dashboard/scripts/library') return t("layout.pageTitle.scriptLibrary", "Script Library");
+    if (path === '/dashboard/scripts/library/new') return t("layout.pageTitle.newComponent", "New Component");
+    if (path.startsWith('/dashboard/scripts/library/edit/')) return t("layout.pageTitle.editComponent", "Edit Component");
+    if (path.startsWith('/dashboard/scripts/edit/')) return t("layout.pageTitle.editScript", "Edit Script");
+    if (path.startsWith('/dashboard/scripts/create/')) return t("layout.pageTitle.createScript", "Create Script");
+    if (path === '/dashboard/trending') return t("layout.pageTitle.trending", "Trending");
+    if (path === '/dashboard/post') return t("layout.pageTitle.newPost", "New Post");
+    if (path === '/dashboard/post/drafts') return t("layout.pageTitle.drafts", "Drafts");
+    if (path === '/dashboard/post/scheduled') return t("layout.pageTitle.scheduled", "Scheduled");
+    if (path === '/dashboard/post/calendar' || path === '/dashboard/calendar') return t("layout.pageTitle.calendar", "Calendar");
+    if (path === '/dashboard/connections') return t("layout.pageTitle.connections", "Connections");
+    if (path === '/dashboard/channel-analytics') return t("layout.pageTitle.channelAnalytics", "Channel Analytics");
+    if (path.startsWith('/dashboard/monetization/offers')) return t("layout.pageTitle.offers", "Offers");
+    if (path.startsWith('/dashboard/monetization/links')) return t("layout.pageTitle.link", "Link");
+    if (path.startsWith('/dashboard/analytics/platform')) return t("layout.pageTitle.analyticsSource", "Analytics · Source");
+    if (path.startsWith('/dashboard/analytics/overview')) return t("layout.pageTitle.revenueGrowth", "Revenue Growth");
+    if (path.startsWith('/dashboard/analytics/profile')) return t("layout.pageTitle.profilePerformance", "Profile Performance");
+    if (path.startsWith('/dashboard/analytics/posts')) return t("layout.pageTitle.postPerformance", "Post Performance");
+    if (path.startsWith('/dashboard/analytics')) return t("layout.pageTitle.analytics", "Analytics");
+    if (path === '/dashboard/feature-requests') return t("layout.pageTitle.requestFeature", "Request a Feature");
+    if (path === '/dashboard/settings') return t("layout.pageTitle.settings", "Settings");
+    if (path === '/dashboard/billing') return t("layout.pageTitle.billing", "Billing");
+    if (path === '/dashboard/review') return t("layout.pageTitle.review", "Review");
+    if (path.startsWith('/dashboard/review/video/')) return t("layout.pageTitle.videoReview", "Video Review");
+    return t("layout.pageTitle.dashboard", "Dashboard");
   };
 
   return (
@@ -101,7 +101,7 @@ export default function DashboardLayout() {
               */}
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5" title="Language">
+                  <Button variant="ghost" size="sm" className="gap-1.5" title={t("layout.topBar.language", "Language")}>
                     <LocaleFlag code={currentLocale.code} />
                     <span className="uppercase text-xs font-semibold">{currentLocale.code}</span>
                   </Button>
@@ -123,7 +123,7 @@ export default function DashboardLayout() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">
                     <HelpCircle className="w-4 h-4" />
-                    <span className="hidden sm:inline">Support</span>
+                    <span className="hidden sm:inline">{t("layout.topBar.support", "Support")}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -131,12 +131,12 @@ export default function DashboardLayout() {
                     onClick={() => window.open('https://discord.gg/Wwe57w3Dv5', '_blank')}
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
-                    Discord Community
+                    {t("layout.topBar.discordCommunity", "Discord Community")}
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/feature-requests" className="flex items-center">
                       <Lightbulb className="w-4 h-4 mr-2" />
-                      Request a feature
+                      {t("layout.topBar.requestFeature", "Request a feature")}
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -154,18 +154,18 @@ export default function DashboardLayout() {
                   {!locked && <DropdownMenuItem asChild>
                     <Link to="/dashboard/settings" className="flex items-center">
                       <Settings className="w-4 h-4 mr-2" />
-                      Settings
+                      {t("layout.userMenu.settings", "Settings")}
                     </Link>
                   </DropdownMenuItem>}
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/billing" className="flex items-center">
                       <Crown className="w-4 h-4 mr-2" />
-                      Billing
+                      {t("layout.userMenu.billing", "Billing")}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut}>
                     <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
+                    {t("layout.userMenu.signOut", "Sign Out")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -174,8 +174,12 @@ export default function DashboardLayout() {
 
           {locked && (
             <div className="border-b border-destructive/40 bg-destructive/10 px-6 py-3 text-sm text-foreground">
-              <span className="font-semibold">Your free access ended{promoEndedOn ? ` on ${promoEndedOn}` : ""}.</span>{" "}
-              Choose a plan below to keep using ViewsMax.
+              <span className="font-semibold">
+                {promoEndedOn
+                  ? t("layout.accessEnded.titleOn", "Your free access ended on {{date}}.", { date: promoEndedOn })
+                  : t("layout.accessEnded.title", "Your free access ended.")}
+              </span>{" "}
+              {t("layout.accessEnded.choosePlan", "Choose a plan below to keep using ViewsMax.")}
             </div>
           )}
           <main className="flex-1 p-6">

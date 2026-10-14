@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { viewsMaxApi, McpActivityItem } from "@/lib/api-service";
 
 /**
@@ -18,6 +19,7 @@ import { viewsMaxApi, McpActivityItem } from "@/lib/api-service";
  * Paginated (20/page) so the list stays usable as history grows.
  */
 const AiActivityLog = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<McpActivityItem[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -51,10 +53,10 @@ const AiActivityLog = () => {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
-              AI Activity
+              {t("aiActivity.log.title", "AI Activity")}
             </CardTitle>
             <CardDescription>
-              Every action your connected AI assistants took on this account.
+              {t("aiActivity.log.description", "Every action your connected AI assistants took on this account.")}
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={() => load(page)} disabled={loading}>
@@ -64,11 +66,10 @@ const AiActivityLog = () => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <div className="text-sm text-muted-foreground">{t("aiActivity.log.loading", "Loading…")}</div>
         ) : items.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            No activity yet. Once an AI assistant runs a tool on your account,
-            it shows up here.
+            {t("aiActivity.log.empty", "No activity yet. Once an AI assistant runs a tool on your account, it shows up here.")}
           </div>
         ) : (
           <>
@@ -86,7 +87,7 @@ const AiActivityLog = () => {
                       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     )}
                     <code className="text-sm">{item.tool}</code>
-                    {item.is_error && <Badge variant="destructive">failed</Badge>}
+                    {item.is_error && <Badge variant="destructive">{t("aiActivity.log.failed", "failed")}</Badge>}
                     <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
                       {item.auth_mode && <span className="uppercase">{item.auth_mode}</span>}
                       {new Date(item.created_at).toLocaleString()}
@@ -106,7 +107,7 @@ const AiActivityLog = () => {
 
             <div className="mt-4 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
-                Page {page} of {lastPage} · {total} total
+                {t("aiActivity.log.pagination", "Page {{page}} of {{lastPage}} · {{total}} total", { page, lastPage, total })}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -116,7 +117,7 @@ const AiActivityLog = () => {
                   disabled={loading || page <= 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  {t("aiActivity.log.previous", "Previous")}
                 </Button>
                 <Button
                   variant="outline"
@@ -124,7 +125,7 @@ const AiActivityLog = () => {
                   onClick={() => load(page + 1)}
                   disabled={loading || page >= lastPage}
                 >
-                  Next
+                  {t("aiActivity.log.next", "Next")}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

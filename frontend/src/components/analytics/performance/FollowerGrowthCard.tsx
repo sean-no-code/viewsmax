@@ -1,13 +1,13 @@
 // Follower growth: total followers as an area line (broken where no account
 // has a snapshot yet), or net growth per day as bars.
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { dayLabel, signed, type ProfileData } from "@/lib/analytics-performance";
 import { ChartFrame, PillToggle, SectionTitle, TableHead, TipRow } from "./chart";
 import { ROW, SECTION, X0, X1, deltaColor, niceTicks, xScale, yScale } from "./geometry";
 import { AccountCell } from "./NetBadge";
 
 export type FollowerView = "total" | "net";
-const VIEWS: { id: FollowerView; label: string }[] = [{ id: "total", label: "Total followers" }, { id: "net", label: "Net per day" }];
 
 /** Runs of consecutive indexes with a value. */
 function segments(vals: (number | null)[]): number[][] {
@@ -19,6 +19,11 @@ function segments(vals: (number | null)[]): number[][] {
 }
 
 export function FollowerGrowthCard({ data, view, onViewChange }: { data: ProfileData; view: FollowerView; onViewChange: (v: FollowerView) => void }) {
+  const { t: tr } = useTranslation();
+  const views: { id: FollowerView; label: string }[] = [
+    { id: "total", label: tr("analytics.performance.followers.viewTotal", "Total followers") },
+    { id: "net", label: tr("analytics.performance.followers.viewNet", "Net per day") },
+  ];
   const [hover, setHover] = useState<number | null>(null);
   const isTotal = view === "total";
   const totals = data.followers.total;
@@ -43,10 +48,10 @@ export function FollowerGrowthCard({ data, view, onViewChange }: { data: Profile
   const net = h !== null ? nets[h] : 0;
 
   return (
-    <section style={SECTION} aria-label="Follower growth">
-      <SectionTitle title="Follower growth" sub="Selected sources, by day" right={<PillToggle options={VIEWS} value={view} onChange={onViewChange} label="Follower chart view" />} />
+    <section style={SECTION} aria-label={tr("analytics.performance.followers.title", "Follower growth")}>
+      <SectionTitle title={tr("analytics.performance.followers.title", "Follower growth")} sub={tr("analytics.performance.followers.sub", "Selected sources, by day")} right={<PillToggle options={views} value={view} onChange={onViewChange} label={tr("analytics.performance.followers.viewToggleLabel", "Follower chart view")} />} />
       <ChartFrame
-        label="Follower growth chart"
+        label={tr("analytics.performance.followers.chartLabel", "Follower growth chart")}
         dates={data.dates}
         yTicks={ticks.map((v) => ({ v, y: y(v) }))}
         hover={h}
@@ -55,8 +60,8 @@ export function FollowerGrowthCard({ data, view, onViewChange }: { data: Profile
         tooltip={h !== null && (
           <>
             <div style={{ color: "var(--fg-3)", fontFamily: "var(--font-mono)" }}>{dayLabel(data.dates[h])}</div>
-            <TipRow value={totals[h] === null ? "–" : (totals[h] as number).toLocaleString("en-US")} bold>Followers</TipRow>
-            <TipRow value={signed(net)} bold color={net >= 0 ? "var(--vm-volt)" : "var(--down)"}>Net growth</TipRow>
+            <TipRow value={totals[h] === null ? "–" : (totals[h] as number).toLocaleString("en-US")} bold>{tr("analytics.performance.followers.tipFollowers", "Followers")}</TipRow>
+            <TipRow value={signed(net)} bold color={net >= 0 ? "var(--vm-volt)" : "var(--down)"}>{tr("analytics.performance.followers.tipNetGrowth", "Net growth")}</TipRow>
           </>
         )}
       >
@@ -76,7 +81,7 @@ export function FollowerGrowthCard({ data, view, onViewChange }: { data: Profile
       </ChartFrame>
 
       <div style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--line-1)" }}>
-        <TableHead cols={["Account", "Followers", "Net growth", "Change"]} />
+        <TableHead cols={[tr("analytics.performance.followers.colAccount", "Account"), tr("analytics.performance.followers.colFollowers", "Followers"), tr("analytics.performance.followers.colNetGrowth", "Net growth"), tr("analytics.performance.followers.colChange", "Change")]} />
         {data.followerRows.map((r) => (
           <div key={r.account.id} style={ROW}>
             <AccountCell account={r.account} />

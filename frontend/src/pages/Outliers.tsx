@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation, Trans } from 'react-i18next';
+import i18n from 'i18next';
 import {
     Search, Users, Globe, ChevronDown, RotateCcw, Save, FolderOpen,
     TrendingUp, Loader2, Check, Eye, Heart, Plus,
 } from 'lucide-react';
-import { COUNTRIES, countryFlag, countryName } from '@/components/outliers/countries';
+import { countryFlag, countryName, localizedCountries } from '@/components/outliers/countries';
 import { parseProfileInput } from '@/components/outliers/profile-input';
 import {
     searchOutliers, startSearchOutliers, getOutlierChannels, fetchOutlierByUrl, toggleOutlierFeature,
@@ -54,6 +56,7 @@ function detectUrlPlatform(url: string): 'tiktok' | 'instagram' | 'youtube' | nu
 }
 
 export default function Outliers() {
+    const { t } = useTranslation();
     const [query, setQuery] = useState('');
     const [exactMatch, setExactMatch] = useState(false);
     const [durationFilter, setDurationFilter] = useState<'long' | 'shorts'>('long');
@@ -157,7 +160,7 @@ export default function Outliers() {
             setShowingCurated(!!f.featured);
             applyResults(res.data, pageNum, res.total, res.last_page);
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Failed to load outliers');
+            toast.error(e instanceof Error ? e.message : i18n.t('outliers.search.loadFailed', 'Failed to load outliers'));
         } finally {
             setLoading(false);
             setLoadingMore(false);
@@ -173,7 +176,7 @@ export default function Outliers() {
             setShowingCurated(false);
             applyResults(res.data, 1, res.total, res.last_page);
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Failed to load outliers');
+            toast.error(e instanceof Error ? e.message : t('outliers.search.loadFailed', 'Failed to load outliers'));
         } finally {
             setLoading(false);
         }
@@ -185,9 +188,9 @@ export default function Outliers() {
             const featured = await toggleOutlierFeature(video.platform, video.youtube_video_id);
             setVideos((prev) => prev.map((v) =>
                 v.platform === video.platform && v.youtube_video_id === video.youtube_video_id ? { ...v, featured } : v));
-            toast.success(featured ? 'Added to the default feed' : 'Removed from the default feed');
+            toast.success(featured ? t('outliers.search.featureAdded', 'Added to the default feed') : t('outliers.search.featureRemoved', 'Removed from the default feed'));
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Failed to update');
+            toast.error(e instanceof Error ? e.message : t('outliers.search.updateFailed', 'Failed to update'));
         }
     };
 
@@ -215,7 +218,7 @@ export default function Outliers() {
         setLoading(true);
         searchOutliers({ ...buildFilters(1), query: '', channels: [channel.id], min_score: 1, duration_type: nextDuration, featured: undefined, page: 1 })
             .then((res) => { setShowingCurated(false); applyResults(res.data, 1, res.total, res.last_page); })
-            .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to load outliers'))
+            .catch((e) => toast.error(e instanceof Error ? e.message : t('outliers.search.loadFailed', 'Failed to load outliers')))
             .finally(() => setLoading(false));
     };
 
@@ -230,12 +233,12 @@ export default function Outliers() {
         try {
             const res = await addOutlierChannel(channelQuery.trim(), target);
             if (!res.queued && res.channel) {
-                toast.success(`${res.channel.name} is already in — showing their recent videos`);
+                toast.success(t('outliers.search.channelAlreadyIn', '{{name}} is already in — showing their recent videos', { name: res.channel.name }));
                 applyAddedChannel(res.channel);
                 return;
             }
             const ingestId = res.ingest_id;
-            if (!ingestId) throw new Error('Could not start the channel import');
+            if (!ingestId) throw new Error(t('outliers.search.channelImportStartFailed', 'Could not start the channel import'));
             let attempts = 0;
             addPollRef.current = setInterval(async () => {
                 attempts += 1;
@@ -243,19 +246,19 @@ export default function Outliers() {
                     const ingest = await getOutlierChannelIngest(ingestId);
                     if (ingest.status === 'done' && ingest.channel) {
                         stopAddPoll();
-                        toast.success(`Pulled in ${ingest.videos_added} recent videos from @${ingest.handle}`);
+                        toast.success(t('outliers.search.channelPulled', { count: ingest.videos_added, handle: ingest.handle, defaultValue_one: 'Pulled in {{count}} recent videos from @{{handle}}', defaultValue_other: 'Pulled in {{count}} recent videos from @{{handle}}' }));
                         applyAddedChannel(ingest.channel);
                     } else if (ingest.status === 'failed' || attempts > 100) {
                         stopAddPoll();
-                        setChannelAdd({ status: 'failed', message: ingest.error || 'That took too long — try again in a minute.' });
+                        setChannelAdd({ status: 'failed', message: ingest.error || t('outliers.search.channelAddTimeout', 'That took too long — try again in a minute.') });
                     }
                 } catch (e) {
                     stopAddPoll();
-                    setChannelAdd({ status: 'failed', message: e instanceof Error ? e.message : 'Could not add that channel' });
+                    setChannelAdd({ status: 'failed', message: e instanceof Error ? e.message : t('outliers.search.channelAddFailed', 'Could not add that channel') });
                 }
             }, 3000);
         } catch (e) {
-            setChannelAdd({ status: 'failed', message: e instanceof Error ? e.message : 'Could not add that channel' });
+            setChannelAdd({ status: 'failed', message: e instanceof Error ? e.message : t('outliers.search.channelAddFailed', 'Could not add that channel') });
         }
     };
 
@@ -275,7 +278,7 @@ export default function Outliers() {
         if (/^https?:\/\//i.test(asUrl)) {
             const urlPlatform = detectUrlPlatform(asUrl);
             if (!urlPlatform) {
-                toast.error("That URL doesn't look like a YouTube, TikTok or Instagram video link.");
+                toast.error(i18n.t('outliers.search.unsupportedUrl', "That URL doesn't look like a YouTube, TikTok or Instagram video link."));
                 return;
             }
             setLoading(true);
@@ -288,7 +291,7 @@ export default function Outliers() {
                     res.queued ? { state: { ingestUrl: asUrl } } : undefined,
                 );
             } catch (e) {
-                toast.error(e instanceof Error ? e.message : 'Could not fetch that video');
+                toast.error(e instanceof Error ? e.message : i18n.t('outliers.search.fetchVideoFailed', 'Could not fetch that video'));
             } finally {
                 setLoading(false);
             }
@@ -301,7 +304,7 @@ export default function Outliers() {
             try {
                 await startSearchOutliers(query.trim(), exactMatch);
             } catch (e) {
-                toast.error(e instanceof Error ? e.message : 'Failed to start search');
+                toast.error(e instanceof Error ? e.message : i18n.t('outliers.search.startSearchFailed', 'Failed to start search'));
             }
             let attempts = 0;
             const poll = async () => {
@@ -364,10 +367,10 @@ export default function Outliers() {
     useEffect(() => {
         if (!channelsOpen) return;
         const q = parseProfileInput(channelQuery)?.handle ?? channelQuery;
-        const t = setTimeout(() => {
+        const timer = setTimeout(() => {
             getOutlierChannels(q).then(setChannelOptions).catch(() => setChannelOptions([]));
         }, 250);
-        return () => clearTimeout(t);
+        return () => clearTimeout(timer);
     }, [channelsOpen, channelQuery]);
 
     // Infinite scroll
@@ -414,9 +417,9 @@ export default function Outliers() {
             setSavedList((prev) => [saved, ...prev]);
             setSaveName('');
             setSaveOpen(false);
-            toast.success('Filter saved');
+            toast.success(t('outliers.search.filterSaved', 'Filter saved'));
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Failed to save filter');
+            toast.error(e instanceof Error ? e.message : t('outliers.search.filterSaveFailed', 'Failed to save filter'));
         }
     };
 
@@ -450,7 +453,7 @@ export default function Outliers() {
             setSavedMap((prev) => { const n = { ...prev }; delete n[key]; return n; });
             deleteSavedOutlier(existingId).catch(() => {
                 setSavedMap((prev) => ({ ...prev, [key]: existingId }));
-                toast.error('Failed to remove');
+                toast.error(t('outliers.search.removeFailed', 'Failed to remove'));
             });
             return;
         }
@@ -485,9 +488,11 @@ export default function Outliers() {
             });
             setSavedMap((prev) => ({ ...prev, [key]: saved.id }));
             setPendingSave(null);
-            toast.success(tags.length ? `Saved with ${tags.length} tag${tags.length > 1 ? 's' : ''}` : 'Saved to library');
+            toast.success(tags.length
+                ? t('outliers.search.savedWithTags', { count: tags.length, defaultValue_one: 'Saved with {{count}} tag', defaultValue_other: 'Saved with {{count}} tags' })
+                : t('outliers.search.savedToLibrary', 'Saved to library'));
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Failed to save');
+            toast.error(e instanceof Error ? e.message : t('outliers.search.saveFailed', 'Failed to save'));
         }
     };
 
@@ -521,12 +526,12 @@ export default function Outliers() {
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            placeholder="Search titles, keywords, URLs…"
+                            placeholder={t('outliers.search.searchPlaceholder', 'Search titles, keywords, URLs…')}
                             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--ink-on-paper-1)', minWidth: 60 }}
                         />
                         <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--ink-on-paper-3)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
                             <input type="checkbox" checked={exactMatch} onChange={(e) => setExactMatch(e.target.checked)} style={{ accentColor: 'var(--vm-red)' }} />
-                            Exact match
+                            {t('outliers.search.exactMatch', 'Exact match')}
                         </label>
                     </div>
 
@@ -538,9 +543,9 @@ export default function Outliers() {
                         >
                             <Users size={15} stroke="#76767F" />
                             <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)', fontWeight: selectedChannels.length ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {selectedChannels.length === 0 ? 'All channels'
-                                    : selectedChannels.length === 1 ? (pickedChannelNames[0] || '1 channel')
-                                    : `${selectedChannels.length} channels`}
+                                {selectedChannels.length === 0 ? t('outliers.search.allChannels', 'All channels')
+                                    : selectedChannels.length === 1 ? (pickedChannelNames[0] || t('outliers.search.channelCount', { count: 1, defaultValue_one: '{{count}} channel', defaultValue_other: '{{count}} channels' }))
+                                    : t('outliers.search.channelCount', { count: selectedChannels.length, defaultValue_one: '{{count}} channel', defaultValue_other: '{{count}} channels' })}
                             </span>
                             <ChevronDown size={14} style={{ marginLeft: 'auto' }} stroke="#76767F" />
                         </button>
@@ -552,7 +557,7 @@ export default function Outliers() {
                                         value={channelQuery}
                                         onChange={(e) => { setChannelQuery(e.target.value); if (channelAdd.status === 'failed') setChannelAdd({ status: 'idle' }); }}
                                         onKeyDown={(e) => { if (e.key === 'Enter' && profileInput?.platform && channelAdd.status !== 'adding') startChannelAdd(); }}
-                                        placeholder="Filter channels, or paste a channel URL / @handle"
+                                        placeholder={t('outliers.search.channelPlaceholder', 'Filter channels, or paste a channel URL / @handle')}
                                         style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, outline: 'none' }}
                                     />
                                 </div>
@@ -560,26 +565,26 @@ export default function Outliers() {
                                     <div style={{ padding: '4px 0' }}>
                                         {channelAdd.status !== 'adding' && channelOptions.length > 0 && (
                                             <div style={{ maxHeight: 160, overflowY: 'auto', borderBottom: '1px solid var(--line-1)', marginBottom: 4 }}>
-                                                <div style={{ padding: '6px 12px 2px', fontSize: 11.5, color: 'var(--ink-on-paper-3)' }}>Already in</div>
+                                                <div style={{ padding: '6px 12px 2px', fontSize: 11.5, color: 'var(--ink-on-paper-3)' }}>{t('outliers.search.alreadyIn', 'Already in')}</div>
                                                 {channelOptions.map(channelRow)}
                                             </div>
                                         )}
                                         {channelAdd.status === 'adding' ? (
                                             <div style={{ ...rowBtn(false), cursor: 'default', color: 'var(--ink-on-paper-2)', fontSize: 13 }}>
                                                 <Loader2 size={15} className="animate-spin" />
-                                                Pulling in @{profileInput.handle}'s last 10 videos…
+                                                {t('outliers.search.pullingHandle', "Pulling in @{{handle}}'s last 10 videos…", { handle: profileInput.handle })}
                                             </div>
                                         ) : profileInput.platform ? (
                                             <button onClick={() => startChannelAdd()} style={rowBtn(false)}>
                                                 <Plus size={15} stroke="#D60B27" />
                                                 <span style={{ fontSize: 13, color: 'var(--ink-on-paper-1)' }}>
-                                                    Add channel <strong>@{profileInput.handle}</strong>
+                                                    <Trans i18nKey="outliers.search.addChannel" defaults="Add channel <0>@{{handle}}</0>" values={{ handle: profileInput.handle }} components={[<strong />]} />
                                                     <span style={{ color: 'var(--ink-on-paper-3)', textTransform: 'capitalize' }}> · {profileInput.platform}</span>
                                                 </span>
                                             </button>
                                         ) : (
                                             <div style={{ padding: '6px 12px' }}>
-                                                <div style={{ fontSize: 12.5, color: 'var(--ink-on-paper-2)', marginBottom: 6 }}>Add <strong>@{profileInput.handle}</strong> from:</div>
+                                                <div style={{ fontSize: 12.5, color: 'var(--ink-on-paper-2)', marginBottom: 6 }}><Trans i18nKey="outliers.search.addFrom" defaults="Add <0>@{{handle}}</0> from:" values={{ handle: profileInput.handle }} components={[<strong />]} /></div>
                                                 <div style={{ display: 'flex', gap: 6 }}>
                                                     {(['youtube', 'tiktok', 'instagram'] as const).map((p) => (
                                                         <button key={p} onClick={() => startChannelAdd(p)} style={{ ...actionBtn, padding: '5px 10px', fontSize: 12.5, textTransform: 'capitalize' }}>{p}</button>
@@ -591,17 +596,17 @@ export default function Outliers() {
                                             <div style={{ padding: '6px 12px 8px', fontSize: 12.5, color: 'var(--vm-red-deep)' }}>{channelAdd.message}</div>
                                         )}
                                         <div style={{ padding: '6px 12px 8px', fontSize: 11.5, color: 'var(--ink-on-paper-3)' }}>
-                                            Pulls their last 10 videos and scores them against each other.
+                                            {t('outliers.search.pullsHint', 'Pulls their last 10 videos and scores them against each other.')}
                                         </div>
                                     </div>
                                 ) : (
                                 <div style={{ maxHeight: 230, overflowY: 'auto' }}>
                                     <button onClick={() => setSelectedChannels([])} style={rowBtn(false)}>
-                                        <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>All channels</span>
+                                        <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>{t('outliers.search.allChannels', 'All channels')}</span>
                                     </button>
                                     {channelOptions.map(channelRow)}
                                     {channelOptions.length === 0 && (
-                                        <div style={{ padding: 12, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>No channels match — paste a channel URL or @handle to add one.</div>
+                                        <div style={{ padding: 12, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>{t('outliers.search.noChannelsMatch', 'No channels match — paste a channel URL or @handle to add one.')}</div>
                                     )}
                                 </div>
                                 )}
@@ -617,24 +622,25 @@ export default function Outliers() {
                         >
                             <Globe size={15} stroke="#76767F" />
                             <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)', fontWeight: selectedCountries.length ? 700 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {selectedCountries.length === 0 ? 'All countries'
+                                {selectedCountries.length === 0 ? t('outliers.search.allCountries', 'All countries')
                                     : selectedCountries.length === 1 ? `${countryFlag(selectedCountries[0])} ${countryName(selectedCountries[0])}`
-                                    : `${selectedCountries.length} countries`}
+                                    : t('outliers.search.countryCount', { count: selectedCountries.length, defaultValue_one: '{{count}} country', defaultValue_other: '{{count}} countries' })}
                             </span>
                             <ChevronDown size={14} style={{ marginLeft: 'auto' }} stroke="#76767F" />
                         </button>
                         {countriesOpen && (
                             <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30, minWidth: 250, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', overflow: 'hidden' }}>
                                 <div style={{ padding: 8, borderBottom: '1px solid var(--line-1)' }}>
-                                    <input autoFocus value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} placeholder="Filter countries…" style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, outline: 'none' }} />
+                                    <input autoFocus value={countryQuery} onChange={(e) => setCountryQuery(e.target.value)} placeholder={t('outliers.search.countryPlaceholder', 'Filter countries…')} style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '6px 8px', fontSize: 13, outline: 'none' }} />
                                 </div>
                                 <div style={{ maxHeight: 230, overflowY: 'auto' }}>
                                     <button onClick={() => setSelectedCountries([])} style={rowBtn(false)}>
-                                        <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>All countries</span>
+                                        <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>{t('outliers.search.allCountries', 'All countries')}</span>
                                     </button>
-                                    {COUNTRIES
+                                    {localizedCountries()
                                         .filter((c) => !countryQuery.trim()
                                             || c.name.toLowerCase().includes(countryQuery.trim().toLowerCase())
+                                            || c.english.toLowerCase().includes(countryQuery.trim().toLowerCase())
                                             || c.code.toLowerCase() === countryQuery.trim().toLowerCase())
                                         .map((c) => {
                                             const picked = selectedCountries.includes(c.code);
@@ -648,7 +654,7 @@ export default function Outliers() {
                                         })}
                                 </div>
                                 <div style={{ padding: '8px 12px', borderTop: '1px solid var(--line-1)', fontSize: 11.5, color: 'var(--ink-on-paper-3)' }}>
-                                    Channel country (YouTube only) · selection is remembered
+                                    {t('outliers.search.countryHint', 'Channel country (YouTube only) · selection is remembered')}
                                 </div>
                             </div>
                         )}
@@ -657,10 +663,10 @@ export default function Outliers() {
                     {/* Posted date */}
                     <select value={dateRange} onChange={(e) => { setDateRange(e.target.value as typeof dateRange); setTimeout(() => runBrowse(1), 0); }}
                         style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', padding: '8px 10px', fontSize: 13, color: 'var(--ink-on-paper-2)', background: 'var(--paper-0)', cursor: 'pointer' }}>
-                        <option value="all">Posted: Any time</option>
-                        <option value="week">Past week</option>
-                        <option value="month">Past month</option>
-                        <option value="year">Past year</option>
+                        <option value="all">{t('outliers.search.postedAnyTime', 'Posted: Any time')}</option>
+                        <option value="week">{t('outliers.search.pastWeek', 'Past week')}</option>
+                        <option value="month">{t('outliers.search.pastMonth', 'Past month')}</option>
+                        <option value="year">{t('outliers.search.pastYear', 'Past year')}</option>
                     </select>
 
                     {/* Long / Shorts */}
@@ -670,7 +676,7 @@ export default function Outliers() {
                             return (
                                 <button key={d} onClick={() => setDurationFilter(d)} /* refetch happens in the [sortBy, durationFilter] effect — a direct runBrowse here used the stale closure and fetched the OLD tab */
                                     style={{ padding: '8px 16px', fontSize: 13, fontWeight: active ? 700 : 400, cursor: 'pointer', border: 'none', textTransform: 'capitalize', background: active ? 'var(--vm-red)' : 'var(--paper-0)', color: active ? '#fff' : 'var(--ink-on-paper-2)' }}>
-                                    {d === 'long' ? 'Long' : 'Shorts'}
+                                    {d === 'long' ? t('outliers.search.long', 'Long') : t('outliers.search.shorts', 'Shorts')}
                                 </button>
                             );
                         })}
@@ -679,10 +685,10 @@ export default function Outliers() {
 
                 {/* Row 2 — metric chips */}
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <MetricChip label="Max subs" value={subsMax != null ? `${formatCompact(subsMax)}` : 'Any'} onChange={setSubsMax} current={subsMax} />
-                    <MetricChip label="Max views" value={viewsMax != null ? `${formatCompact(viewsMax)}` : 'Any'} onChange={setViewsMax} current={viewsMax} />
+                    <MetricChip label={t('outliers.search.maxSubs', 'Max subs')} value={subsMax != null ? `${formatCompact(subsMax)}` : t('outliers.search.any', 'Any')} onChange={setSubsMax} current={subsMax} />
+                    <MetricChip label={t('outliers.search.maxViews', 'Max views')} value={viewsMax != null ? `${formatCompact(viewsMax)}` : t('outliers.search.any', 'Any')} onChange={setViewsMax} current={viewsMax} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--r-pill)', border: '1px solid var(--vm-red)', background: 'var(--vm-red-tint-l)' }}>
-                        <span style={{ fontSize: 12, color: 'var(--vm-red-deep)', fontWeight: 700 }}>Score ≥</span>
+                        <span style={{ fontSize: 12, color: 'var(--vm-red-deep)', fontWeight: 700 }}>{t('outliers.search.scoreAtLeast', 'Score ≥')}</span>
                         <input type="number" value={minScore} min={0} onChange={(e) => setMinScore(Number(e.target.value) || 0)}
                             style={{ width: 46, border: 'none', background: 'transparent', fontFamily: mono, fontWeight: 700, color: 'var(--vm-red-deep)', outline: 'none' }} />
                     </div>
@@ -693,12 +699,12 @@ export default function Outliers() {
                     {/* Saved filters loader */}
                     <div style={{ position: 'relative', marginLeft: 'auto' }}>
                         <button onClick={() => { setSavedOpen((o) => !o); setSaveOpen(false); }} style={actionBtn}>
-                            <FolderOpen size={14} /> Saved filters <ChevronDown size={13} />
+                            <FolderOpen size={14} /> {t('outliers.search.savedFilters', 'Saved filters')} <ChevronDown size={13} />
                         </button>
                         {savedOpen && (
                             <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 240, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', overflow: 'hidden' }}>
                                 {savedList.length === 0 ? (
-                                    <div style={{ padding: 14, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>Nothing saved yet — set filters and hit Save.</div>
+                                    <div style={{ padding: 14, fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>{t('outliers.search.noSavedFilters', 'Nothing saved yet — set filters and hit Save.')}</div>
                                 ) : savedList.map((sf) => (
                                     <button key={sf.id} onClick={() => loadFilter(sf)} style={{ ...rowBtn(false), justifyContent: 'space-between' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
@@ -715,22 +721,22 @@ export default function Outliers() {
                     {/* Save */}
                     <div style={{ position: 'relative' }}>
                         <button onClick={() => { setSaveOpen((o) => !o); setSavedOpen(false); }} style={actionBtn}>
-                            <Save size={14} /> Save
+                            <Save size={14} /> {t('outliers.search.save', 'Save')}
                         </button>
                         {saveOpen && (
                             <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 250, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', padding: 12 }}>
-                                <div style={{ fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-on-paper-3)', fontWeight: 700, marginBottom: 6 }}>Name this filter</div>
+                                <div style={{ fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-on-paper-3)', fontWeight: 700, marginBottom: 6 }}>{t('outliers.search.nameFilter', 'Name this filter')}</div>
                                 <input autoFocus value={saveName} onChange={(e) => setSaveName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSaveFilter()}
                                     style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '7px 9px', fontSize: 13, outline: 'none', marginBottom: 8 }} />
-                                <button onClick={handleSaveFilter} style={{ width: '100%', padding: '8px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Save filter</button>
+                                <button onClick={handleSaveFilter} style={{ width: '100%', padding: '8px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>{t('outliers.search.saveFilter', 'Save filter')}</button>
                             </div>
                         )}
                     </div>
 
                     <div style={{ width: 1, height: 22, background: 'var(--line-1)' }} />
-                    <button onClick={resetFilters} style={actionBtn}><RotateCcw size={14} /> Reset</button>
+                    <button onClick={resetFilters} style={actionBtn}><RotateCcw size={14} /> {t('outliers.search.reset', 'Reset')}</button>
                     <button onClick={handleSearch} style={{ padding: '10px 22px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} Search
+                        {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} {t('outliers.search.search', 'Search')}
                     </button>
                 </div>
             </div>
@@ -738,20 +744,25 @@ export default function Outliers() {
             {/* Results header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 13, color: 'var(--ink-on-paper-2)' }}>
-                    Showing <span style={{ fontFamily: mono, fontWeight: 700 }}>{videos.length}</span> of <span style={{ fontFamily: mono, fontWeight: 700 }}>{totalResults}</span> results
+                    <Trans
+                        i18nKey="outliers.search.showingResults"
+                        defaults="Showing <0>{{shown}}</0> of <1>{{total}}</1> results"
+                        values={{ shown: videos.length, total: totalResults }}
+                        components={[<span style={{ fontFamily: mono, fontWeight: 700 }} />, <span style={{ fontFamily: mono, fontWeight: 700 }} />]}
+                    />
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingLeft: 12, borderLeft: '1px solid var(--line-1)', fontSize: 12, color: 'var(--ink-on-paper-3)' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><TrendingUp size={13} stroke="#0FB67E" /> Score</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={13} /> Views</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Heart size={13} /> Engagement</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><TrendingUp size={13} stroke="#0FB67E" /> {t('outliers.search.legendScore', 'Score')}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={13} /> {t('outliers.search.legendViews', 'Views')}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Heart size={13} /> {t('outliers.search.legendEngagement', 'Engagement')}</span>
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>Sort by</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>{t('outliers.search.sortBy', 'Sort by')}</span>
                     <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                         style={{ border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', padding: '6px 10px', fontSize: 13, background: 'var(--paper-0)', cursor: 'pointer' }}>
-                        <option value="recent">Recent</option>
-                        <option value="score">Outlier score</option>
-                        <option value="views">Views</option>
+                        <option value="recent">{t('outliers.search.sortRecent', 'Recent')}</option>
+                        <option value="score">{t('outliers.search.sortScore', 'Outlier score')}</option>
+                        <option value="views">{t('outliers.search.sortViews', 'Views')}</option>
                     </select>
                 </div>
             </div>
@@ -760,10 +771,10 @@ export default function Outliers() {
             {showingCurated && videos.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontFamily: mono, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-on-paper-3)' }}>
-                        Curated picks
+                        {t('outliers.search.curatedPicks', 'Curated picks')}
                     </span>
                     <button onClick={browseAll} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 12.5, color: 'var(--vm-red)' }}>
-                        Browse all outliers →
+                        {t('outliers.search.browseAll', 'Browse all outliers →')}
                     </button>
                 </div>
             )}
@@ -773,15 +784,15 @@ export default function Outliers() {
                 <div style={{ ...CARD, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 60, color: 'var(--ink-on-paper-3)' }}>
                     <Loader2 size={28} className="animate-spin" />
                     <div style={{ fontSize: 14, color: 'var(--ink-on-paper-2)' }}>
-                        Pulling in <strong>@{channelAdd.handle}</strong>'s last 10 videos…
+                        <Trans i18nKey="outliers.search.pullingHandleStrong" defaults="Pulling in <0>@{{handle}}</0>'s last 10 videos…" values={{ handle: channelAdd.handle }} components={[<strong />]} />
                     </div>
-                    <div style={{ fontSize: 12.5 }}>Instagram profiles can take a minute or two to scrape.</div>
+                    <div style={{ fontSize: 12.5 }}>{t('outliers.search.instagramSlow', 'Instagram profiles can take a minute or two to scrape.')}</div>
                 </div>
             ) : loading && videos.length === 0 ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 60, color: 'var(--ink-on-paper-3)' }}><Loader2 size={28} className="animate-spin" /></div>
             ) : videos.length === 0 ? (
                 <div style={{ ...CARD, padding: 48, textAlign: 'center', color: 'var(--ink-on-paper-3)' }}>
-                    No outliers yet — search a topic to discover breakout videos, paste a YouTube/TikTok/Instagram video URL into the search bar, or add a creator's channel from the Channels menu.
+                    {t('outliers.search.empty', "No outliers yet — search a topic to discover breakout videos, paste a YouTube/TikTok/Instagram video URL into the search bar, or add a creator's channel from the Channels menu.")}
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 20 }}>
@@ -829,6 +840,7 @@ function rowBtn(active: boolean): CSSProperties {
 }
 
 function MetricChip({ label, value, onChange, current }: { label: string; value: string; onChange: (v: number | undefined) => void; current: number | undefined }) {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState(current?.toString() ?? '');
     return (
@@ -841,11 +853,11 @@ function MetricChip({ label, value, onChange, current }: { label: string; value:
             </button>
             {open && (
                 <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 30, width: 190, ...CARD, boxShadow: '0 12px 32px -8px rgba(10,10,12,.25)', padding: 12 }}>
-                    <div style={{ fontSize: 12, color: 'var(--ink-on-paper-3)', marginBottom: 6 }}>{label} (leave blank for any)</div>
-                    <input type="number" value={draft} min={0} placeholder="e.g. 1000000" onChange={(e) => setDraft(e.target.value)}
+                    <div style={{ fontSize: 12, color: 'var(--ink-on-paper-3)', marginBottom: 6 }}>{t('outliers.search.metricBlankHint', '{{label}} (leave blank for any)', { label })}</div>
+                    <input type="number" value={draft} min={0} placeholder={t('outliers.search.metricPlaceholder', 'e.g. 1000000')} onChange={(e) => setDraft(e.target.value)}
                         style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-sm)', padding: '7px 9px', fontSize: 13, outline: 'none', marginBottom: 8 }} />
                     <button onClick={() => { onChange(draft.trim() === '' ? undefined : Number(draft)); setOpen(false); }}
-                        style={{ width: '100%', padding: '7px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Apply</button>
+                        style={{ width: '100%', padding: '7px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>{t('outliers.search.apply', 'Apply')}</button>
                 </div>
             )}
         </div>

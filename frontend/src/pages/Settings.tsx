@@ -124,7 +124,7 @@ const Settings = () => {
 
   const handleDisconnect = async () => {
     if (backendChannels.length === 0) {
-      toast.error('No channels to disconnect');
+      toast.error(t("settings.account.noChannels", "No channels to disconnect"));
       return;
     }
 
@@ -143,7 +143,7 @@ const Settings = () => {
       }
 
       if (!token) {
-        toast.error('Authentication required');
+        toast.error(t("settings.account.authRequired", "Authentication required"));
         return;
       }
 
@@ -177,16 +177,16 @@ const Settings = () => {
       await fetchBackendChannels();
 
       if (successCount > 0) {
-        toast.success('YouTube channel disconnected');
+        toast.success(t("settings.account.youtubeDisconnected", "YouTube channel disconnected"));
         setIsConnected(false);
         setChannelName(null);
       }
       if (failCount > 0) {
-        toast.error(`Failed to disconnect ${failCount} channel(s)`);
+        toast.error(t("settings.account.disconnectChannelsFailed", { count: failCount, defaultValue_one: "Failed to disconnect {{count}} channel(s)", defaultValue_other: "Failed to disconnect {{count}} channel(s)" }));
       }
     } catch (e) {
       console.error('Error disconnecting channels:', e);
-      toast.error('Could not disconnect. Please try again.');
+      toast.error(t("settings.account.disconnectFailed", "Could not disconnect. Please try again."));
     } finally {
       setIsDisconnecting(false);
     }
@@ -221,10 +221,10 @@ const Settings = () => {
         console.debug('Failed to clear some cached analytics items', e);
       }
 
-      toast.success('Projects, analytics cache, and privacy consent cleared. YouTube connection remains.');
+      toast.success(t("settings.account.dataCleared", "Projects, analytics cache, and privacy consent cleared. YouTube connection remains."));
     } catch (error) {
       console.error('Local data clear error:', error);
-      toast.error('Failed to clear local data. Please try again.');
+      toast.error(t("settings.account.clearFailed", "Failed to clear local data. Please try again."));
     } finally {
       setIsDeleting(false);
     }

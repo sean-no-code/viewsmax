@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import i18n from "i18next";
+import { useTranslation } from "react-i18next";
 import { CARD, Icon, SectionHead, Btn, Chip } from "@/components/analytics/primitives";
 import { Modal, Field, TextInput } from "@/components/analytics/Modal";
 import { Empty } from "@/components/analytics/shared";
@@ -13,6 +15,7 @@ import { fmtNum, fmtMoneyK, fmtMoney, fmtPct, platformMeta, type PageMetric } fr
 import { viewsMaxApi } from "@/lib/api-service";
 
 function OfferCard({ page, onOpen }: { page: PageMetric; onOpen: () => void }) {
+  const { t } = useTranslation();
   return (
     <div onClick={onOpen}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "var(--hard)"; e.currentTarget.style.transform = "translate(-1px,-1px)"; }}
@@ -35,28 +38,35 @@ function OfferCard({ page, onOpen }: { page: PageMetric; onOpen: () => void }) {
         )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10, padding: "14px 0", borderTop: "1px solid var(--paper-2)", borderBottom: "1px solid var(--paper-2)" }}>
-        {([["Views", page.viewsSince > 0 ? fmtNum(page.viewsSince) : "—"], ["Clicks", fmtNum(page.clicks)], ["Conv %", page.viewCr == null ? "—" : fmtPct(page.viewCr)], ["Sales", String(page.conversions)], ["Revenue", fmtMoneyK(page.rev)]] as const).map(([k, v]) => (
-          <div key={k} style={{ minWidth: 0 }}>
-            <div title={k === "Conv %" ? "Conversion rate (reach-based)" : undefined} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{k}</div>
+        {([
+          ["views", t("offers.list.card.views", "Views"), page.viewsSince > 0 ? fmtNum(page.viewsSince) : "—", undefined],
+          ["clicks", t("offers.list.card.clicks", "Clicks"), fmtNum(page.clicks), undefined],
+          ["conv", t("offers.list.card.convPct", "Conv %"), page.viewCr == null ? "—" : fmtPct(page.viewCr), t("offers.list.card.convPctTitle", "Conversion rate (reach-based)")],
+          ["sales", t("offers.list.card.sales", "Sales"), String(page.conversions), undefined],
+          ["revenue", t("offers.list.card.revenue", "Revenue"), fmtMoneyK(page.rev), undefined],
+        ] as const).map(([key, k, v, title]) => (
+          <div key={key} style={{ minWidth: 0 }}>
+            <div title={title} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--ink-on-paper-3)", whiteSpace: "nowrap" }}>{k}</div>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 19, color: "var(--ink-on-paper-1)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v}</div>
           </div>
         ))}
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
         <Chip tone="ghost"><Icon name="target" size={12} stroke="var(--ink-on-paper-3)" />{page.conv.url}</Chip>
-        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, color: "var(--vm-volt-deep)" }}>{page.conv.value ? fmtMoney(page.conv.value) : "lead"}</span>
+        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, color: "var(--vm-volt-deep)" }}>{page.conv.value ? fmtMoney(page.conv.value) : t("offers.list.card.lead", "lead")}</span>
       </div>
     </div>
   );
 }
 
 function AddOfferModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
   const create = async () => {
-    if (!url.trim()) { toast.error("Add the offer URL."); return; }
+    if (!url.trim()) { toast.error(t("offers.create.urlRequired", "Add the offer URL.")); return; }
     const normalized = /^https?:\/\//.test(url) ? url : `https://${url}`;
     setSaving(true);
     const res = await viewsMaxApi.createTrackingEvent({
@@ -66,26 +76,27 @@ function AddOfferModal({ onClose, onCreated }: { onClose: () => void; onCreated:
     } as never);
     setSaving(false);
     if (res.success && res.data) {
-      toast.success("Offer created.");
+      toast.success(t("offers.create.created", "Offer created."));
       onCreated(String(res.data.id));
     } else {
-      toast.error(res.error || "Couldn't create the offer.");
+      toast.error(res.error || t("offers.create.failed", "Couldn't create the offer."));
     }
   };
 
   return (
-    <Modal title="Add an offer" sub="Add the page you're driving traffic to — set up conversion events next." onClose={onClose}>
-      <Field label="Offer name" hint="internal label"><TextInput placeholder="e.g. Spring Launch" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-      <Field label="Offer URL"><TextInput placeholder="yoursite.com/spring-launch" value={url} onChange={(e) => setUrl(e.target.value)} /></Field>
+    <Modal title={t("offers.create.title", "Add an offer")} sub={t("offers.create.sub", "Add the page you're driving traffic to — set up conversion events next.")} onClose={onClose}>
+      <Field label={t("offers.create.nameLabel", "Offer name")} hint={t("offers.create.nameHint", "internal label")}><TextInput placeholder={t("offers.create.namePlaceholder", "e.g. Spring Launch")} value={name} onChange={(e) => setName(e.target.value)} /></Field>
+      <Field label={t("offers.create.urlLabel", "Offer URL")}><TextInput placeholder={t("offers.create.urlPlaceholder", "yoursite.com/spring-launch")} value={url} onChange={(e) => setUrl(e.target.value)} /></Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
-        <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
-        <Btn kind="aqua" icon="check" onClick={saving ? undefined : create}>{saving ? "Creating…" : "Create offer"}</Btn>
+        <Btn kind="ghost" onClick={onClose}>{t("offers.create.cancel", "Cancel")}</Btn>
+        <Btn kind="aqua" icon="check" onClick={saving ? undefined : create}>{saving ? t("offers.create.creating", "Creating…") : t("offers.create.submit", "Create offer")}</Btn>
       </div>
     </Modal>
   );
 }
 
 export default function Offers() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { model, loading, reload } = useFunnlModel();
   const [modal, setModal] = useState(false);
@@ -96,13 +107,13 @@ export default function Offers() {
   const filterFields = useMemo<FilterField[]>(() => {
     const present = [...new Set(allPages.flatMap((p) => p.platforms))];
     return [
-      { kind: "text", key: "q", label: "Name", placeholder: "Search offers…", suggestions: allPages.map((p) => p.name) },
-      { kind: "multi", key: "platforms", label: "Platform", options: present.map((p) => ({ value: p, label: platformMeta(p).name, icon: <PlacementIcon placement={p} size={18} /> })) },
-      { kind: "daterange", key: "created", label: "Created" },
-      { kind: "minmax", key: "revenue", label: "Revenue ($)" },
-      { kind: "minmax", key: "sales", label: "Sales" },
+      { kind: "text", key: "q", label: t("offers.list.filters.name", "Name"), placeholder: t("offers.list.filters.namePlaceholder", "Search offers…"), suggestions: allPages.map((p) => p.name) },
+      { kind: "multi", key: "platforms", label: t("offers.list.filters.platform", "Platform"), options: present.map((p) => ({ value: p, label: platformMeta(p).name, icon: <PlacementIcon placement={p} size={18} /> })) },
+      { kind: "daterange", key: "created", label: t("offers.list.filters.created", "Created") },
+      { kind: "minmax", key: "revenue", label: t("offers.list.filters.revenue", "Revenue ($)") },
+      { kind: "minmax", key: "sales", label: t("offers.list.filters.sales", "Sales") },
     ];
-  }, [allPages]);
+  }, [allPages, t]);
   const filters = useUrlFilters(filterFields);
   const pages = useMemo(() => {
     const v = filters.values;
@@ -118,7 +129,8 @@ export default function Offers() {
   // unfiltered offer total (matches the backend); the 422 stays authoritative.
   const [offerLimit, setOfferLimit] = useState<number | null>(null);
   const [offerCount, setOfferCount] = useState(0);
-  const [planName, setPlanName] = useState("current");
+  const [planName, setPlanName] = useState("");
+  const planLabel = planName || t("offers.list.planCurrent", "current");
   const atOfferCap = offerLimit !== null && offerCount >= offerLimit;
 
   useEffect(() => {
@@ -129,7 +141,7 @@ export default function Offers() {
       ]);
       if (planRes.success && planRes.data?.plan) {
         setOfferLimit(planRes.data.plan.max_offers ?? null);
-        setPlanName(planRes.data.plan.display_name ?? "current");
+        setPlanName(planRes.data.plan.display_name ?? "");
       } else {
         // No active subscription (past_due / lapsed): fall back to the Free cap so
         // the button gates to "Upgrade" instead of staying enabled and 422-ing.
@@ -138,7 +150,7 @@ export default function Offers() {
           ? (plansRes.data ?? []).find((p) => p.name === "free")
           : null;
         setOfferLimit(free?.max_offers ?? 0);
-        setPlanName(free?.display_name ?? "Free");
+        setPlanName(free?.display_name ?? i18n.t("offers.list.planFree", "Free"));
       }
       if (eventsRes.success && Array.isArray(eventsRes.data)) setOfferCount(eventsRes.data.length);
     })();
@@ -146,27 +158,32 @@ export default function Offers() {
 
   return (
     <AnalyticsShell>
-      <SectionHead eyebrow="LANDING PAGES" title="Pages you're tracking."
+      <SectionHead eyebrow={t("offers.list.eyebrow", "LANDING PAGES")} title={t("offers.list.title", "Pages you're tracking.")}
         right={atOfferCap ? (
           <span title={offerLimit === 0
-            ? `Your ${planName} plan doesn't include offer tracking. Upgrade to add offers.`
-            : `You've reached your ${planName} plan's limit of ${offerLimit} offer${offerLimit === 1 ? "" : "s"}. Upgrade to add more.`}>
-            <Btn kind="ghost" icon="plus" onClick={() => navigate("/dashboard/billing")}>Upgrade to add more</Btn>
+            ? t("offers.list.capNoTracking", "Your {{plan}} plan doesn't include offer tracking. Upgrade to add offers.", { plan: planLabel })
+            : t("offers.list.capReached", {
+                count: offerLimit ?? 0,
+                plan: planLabel,
+                defaultValue_one: "You've reached your {{plan}} plan's limit of {{count}} offer. Upgrade to add more.",
+                defaultValue_other: "You've reached your {{plan}} plan's limit of {{count}} offers. Upgrade to add more.",
+              })}>
+            <Btn kind="ghost" icon="plus" onClick={() => navigate("/dashboard/billing")}>{t("offers.list.upgrade", "Upgrade to add more")}</Btn>
           </span>
         ) : (
-          <Btn icon="plus" onClick={() => setModal(true)}>Add landing page</Btn>
+          <Btn icon="plus" onClick={() => setModal(true)}>{t("offers.list.addLandingPage", "Add landing page")}</Btn>
         )} />
       {loading || !model ? (
         <AnalyticsLoading />
       ) : model.pages.length === 0 ? (
-        <div style={{ ...CARD, padding: 48 }}><Empty label="No offers yet — add your first to get a tracking snippet." /></div>
+        <div style={{ ...CARD, padding: 48 }}><Empty label={t("offers.list.empty", "No offers yet — add your first to get a tracking snippet.")} /></div>
       ) : (
         <>
           <div style={{ marginBottom: 14 }}>
             <FiltersPanel fields={filterFields} filters={filters} />
           </div>
           {pages.length === 0 ? (
-            <div style={{ ...CARD, padding: 48 }}><Empty label="No offers match your filters." /></div>
+            <div style={{ ...CARD, padding: 48 }}><Empty label={t("offers.list.noMatches", "No offers match your filters.")} /></div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(340px,1fr))", gap: 16 }}>
               {pages.map((p) => <OfferCard key={p.id} page={p} onOpen={() => navigate(`/dashboard/monetization/offers/${p.id}`)} />)}

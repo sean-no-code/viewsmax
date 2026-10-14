@@ -66,5 +66,33 @@ export function mapStrings(source: unknown, text: (key: string, sourceText: stri
   return source;
 }
 
+// i18next plurals are sibling keys per CLDR category ("count_one", "count_other"),
+// and each language has its own set (Russian one/few/many/other, Indonesian
+// only other). Returns English reshaped to `locale`'s categories, so that
+// language's file is expected to hold exactly those keys. A new form starts
+// from the English "one" text for `one`, otherwise from "other".
+const PLURAL_ORDER = ["zero", "one", "two", "few", "many", "other"];
+export const PLURAL_KEY = /_(zero|one|two|few|many|other)$/;
+
+export function forLocale(source: unknown, locale: string): unknown {
+  if (Array.isArray(source)) return source.map((v) => forLocale(v, locale));
+  if (!source || typeof source !== "object") return source;
+  const categories = new Intl.PluralRules(locale).resolvedOptions().pluralCategories;
+  const forms = PLURAL_ORDER.filter((c) => categories.includes(c as Intl.LDMLPluralRule));
+  const entries = Object.entries(source as Record<string, unknown>);
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of entries) {
+    const base = key.replace(PLURAL_KEY, "");
+    if (base === key || typeof (source as Record<string, unknown>)[`${base}_other`] !== "string") {
+      out[key] = forLocale(value, locale);
+      continue;
+    }
+    if (`${base}_other` in out) continue; // group already expanded at its first key
+    const en = source as Record<string, string>;
+    for (const form of forms) out[`${base}_${form}`] = form === "one" && en[`${base}_one`] ? en[`${base}_one`] : en[`${base}_other`];
+  }
+  return out;
+}
+
 // i18next / template placeholders, sorted: "Hi {{name}}" -> ["name"].
 export const placeholders = (s: string) => [...s.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]).sort();

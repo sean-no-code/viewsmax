@@ -3,11 +3,13 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import type { Appearance } from "@stripe/stripe-js";
 import { Check, Loader2, Lock } from "lucide-react";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
-import { sortPlansByPrice, formatLimit, PLAN_INCLUDES } from "@/lib/plan-helpers";
+import { sortPlansByPrice, formatLimit, planIncludes } from "@/lib/plan-helpers";
 import { isMockApi } from "@/lib/mock-api";
 import { useAuth } from "@/hooks/useAuth";
 import { activateSubscription, stripePromise } from "@/components/StripeTrialStep";
 import { toast } from "sonner";
+import i18n, { type TFunction } from "i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 // Only accounts with no free window reach this step (users inside their
 // card-free window skip it, see Onboarding). Subscribing here charges the
@@ -24,15 +26,15 @@ interface TrialCheckoutProps {
  * Feature bullets for a plan: the tier's limit lines (seeded list, else derived
  * from the numeric limits) followed by what every paid plan includes.
  */
-function featuresFor(plan: PlanTier): string[] {
+function featuresFor(plan: PlanTier, t: TFunction): string[] {
   const limits = plan.features && plan.features.length
     ? plan.features
     : [
-        formatLimit(plan.max_channels, "channel"),
-        formatLimit(plan.max_offers, "offer"),
-        `${formatLimit(plan.max_posts_per_month, "post")}/mo`,
+        formatLimit(t, plan.max_channels, "channel"),
+        formatLimit(t, plan.max_offers, "offer"),
+        t("trial.checkout.postsPerMonth", "{{limit}}/mo", { limit: formatLimit(t, plan.max_posts_per_month, "post") }),
       ];
-  return [...limits, ...PLAN_INCLUDES];
+  return [...limits, ...planIncludes(t)];
 }
 
 
@@ -41,6 +43,7 @@ function featuresFor(plan: PlanTier): string[] {
  * summary + Stripe payment, side by side (design: Trial Checkout.dc.html).
  */
 export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
+  const { t } = useTranslation();
   const [plans, setPlans] = useState<PlanTier[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +58,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
         setPlans(paid);
         setSelectedId((prev) => prev ?? paid[0]?.id ?? null);
       } else {
-        toast.error(res.error || "Failed to load plans");
+        toast.error(res.error || i18n.t("trial.checkout.errors.loadPlans", "Failed to load plans"));
       }
       setLoading(false);
     })();
@@ -99,16 +102,16 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
         }}
       >
         <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15, letterSpacing: "-.01em", color: "var(--ink-on-paper-1)" }}>
-          Simple monthly billing
+          {t("trial.checkout.banner.simpleBilling", "Simple monthly billing")}
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
-          Charged <strong style={{ color: "var(--ink-on-paper-1)" }}>today</strong>, then monthly
+          <Trans i18nKey="trial.checkout.banner.chargedToday" defaults="Charged <0>today</0>, then monthly" components={[<strong style={{ color: "var(--ink-on-paper-1)" }} />]} />
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
-          Cancel anytime from <strong style={{ color: "var(--ink-on-paper-1)" }}>Settings</strong>
+          <Trans i18nKey="trial.checkout.banner.cancelAnytime" defaults="Cancel anytime from <0>Settings</0>" components={[<strong style={{ color: "var(--ink-on-paper-1)" }} />]} />
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
-          Change plans <strong style={{ color: "var(--ink-on-paper-1)" }}>anytime</strong>
+          <Trans i18nKey="trial.checkout.banner.changePlans" defaults="Change plans <0>anytime</0>" components={[<strong style={{ color: "var(--ink-on-paper-1)" }} />]} />
         </span>
       </div>
 
@@ -125,9 +128,9 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, letterSpacing: "-.01em", color: "var(--ink-on-paper-1)" }}>
-              Your plan
+              {t("trial.checkout.yourPlan", "Your plan")}
             </div>
-            <div style={{ fontSize: 13, color: "var(--ink-on-paper-3)", marginTop: 2 }}>Upgrade or downgrade anytime.</div>
+            <div style={{ fontSize: 13, color: "var(--ink-on-paper-3)", marginTop: 2 }}>{t("trial.checkout.upgradeAnytime", "Upgrade or downgrade anytime.")}</div>
           </div>
 
           {loading ? (
@@ -188,7 +191,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
                             borderRadius: 999,
                           }}
                         >
-                          POPULAR
+                          {t("trial.checkout.popular", "POPULAR")}
                         </span>
                       )}
                     </div>
@@ -200,7 +203,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
                     <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, letterSpacing: "-.02em", color: "var(--ink-on-paper-1)" }}>
                       ${Math.round(Number(p.price))}
                     </span>
-                    <span style={{ fontSize: 12, color: "var(--ink-on-paper-3)" }}>/mo</span>
+                    <span style={{ fontSize: 12, color: "var(--ink-on-paper-3)" }}>{t("trial.checkout.perMonthSuffix", "/mo")}</span>
                   </div>
                 </div>
               );
@@ -219,7 +222,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--ink-on-paper-3)" }}>
-            What's included
+            {t("trial.checkout.whatsIncluded", "What's included")}
           </div>
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26, letterSpacing: "-.02em", marginTop: 8, color: "var(--ink-on-paper-1)" }}>
             {selected?.display_name ?? "—"}
@@ -229,7 +232,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 22 }}>
             {selected &&
-              featuresFor(selected).map((f) => (
+              featuresFor(selected, t).map((f) => (
                 <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <Check size={18} strokeWidth={2.5} style={{ color: "var(--vm-red)", flexShrink: 0 }} />
                   <span style={{ fontSize: 15, color: "var(--ink-on-paper-1)" }}>{f}</span>
@@ -238,12 +241,12 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
           </div>
           <div style={{ borderTop: "1px solid var(--line-1)", marginTop: 24, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-              <span style={{ color: "var(--ink-on-paper-2)" }}>Due today</span>
+              <span style={{ color: "var(--ink-on-paper-2)" }}>{t("trial.checkout.dueToday", "Due today")}</span>
               <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>${selPrice}.00</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
-              <span>Renews monthly</span>
-              <span style={{ fontFamily: "var(--font-mono)" }}>${selPrice}/mo</span>
+              <span>{t("trial.checkout.renewsMonthly", "Renews monthly")}</span>
+              <span style={{ fontFamily: "var(--font-mono)" }}>{t("trial.checkout.pricePerMonth", "${{price}}/mo", { price: selPrice })}</span>
             </div>
           </div>
         </div>
@@ -293,6 +296,7 @@ interface PaymentColumnProps {
 }
 
 function PaymentColumn({ priceId, price, onSubscribed }: PaymentColumnProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -300,13 +304,13 @@ function PaymentColumn({ priceId, price, onSubscribed }: PaymentColumnProps) {
   useEffect(() => {
     if (isMockApi()) return;
     if (!stripePromise) {
-      setError("Payments are not configured. Please contact support.");
+      setError(i18n.t("trial.checkout.errors.notConfigured", "Payments are not configured. Please contact support."));
       return;
     }
     (async () => {
       const res = await viewsMaxApi.createStripeSetupIntent();
       if (res.success && res.data?.client_secret) setClientSecret(res.data.client_secret);
-      else setError(res.error || "Couldn't load the payment form. Please try again.");
+      else setError(res.error || i18n.t("trial.checkout.errors.loadPaymentForm", "Couldn't load the payment form. Please try again."));
     })();
   }, []);
 
@@ -314,10 +318,10 @@ function PaymentColumn({ priceId, price, onSubscribed }: PaymentColumnProps) {
     <div style={paymentCardStyle}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, letterSpacing: "-.01em", color: "var(--ink-on-paper-1)" }}>
-          Payment details
+          {t("trial.checkout.paymentDetails", "Payment details")}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--ink-on-paper-3)" }}>
-          <Lock size={13} /> Encrypted
+          <Lock size={13} /> {t("trial.checkout.encrypted", "Encrypted")}
         </div>
       </div>
 
@@ -351,13 +355,14 @@ const ctaStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const reassurance = (price: number) => (
+const reassurance = (price: number, t: TFunction) => (
   <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)", textAlign: "center", lineHeight: 1.5 }}>
-    Your card is charged ${price} today, then monthly. Cancel in one click from Settings — no calls, no forms.
+    {t("trial.checkout.reassurance", "Your card is charged ${{price}} today, then monthly. Cancel in one click from Settings — no calls, no forms.", { price })}
   </div>
 );
 
 function CardForm({ priceId, price, onSubscribed, email }: PaymentColumnProps & { email?: string }) {
+  const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -369,21 +374,21 @@ function CardForm({ priceId, price, onSubscribed, email }: PaymentColumnProps & 
     try {
       const { error, setupIntent } = await stripe.confirmSetup({ elements, redirect: "if_required" });
       if (error) {
-        toast.error(error.message || "Card couldn't be saved. Please try again.");
+        toast.error(error.message || t("trial.checkout.errors.cardNotSaved", "Card couldn't be saved. Please try again."));
         setSubmitting(false);
         return;
       }
       const paymentMethodId =
         typeof setupIntent?.payment_method === "string" ? setupIntent.payment_method : setupIntent?.payment_method?.id;
       if (!paymentMethodId) {
-        toast.error("Couldn't read your payment method. Please try again.");
+        toast.error(t("trial.checkout.errors.noPaymentMethod", "Couldn't read your payment method. Please try again."));
         setSubmitting(false);
         return;
       }
       const ok = await activateSubscription(paymentMethodId, onSubscribed, priceId);
       if (!ok) setSubmitting(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+      toast.error(err instanceof Error ? err.message : t("trial.checkout.errors.generic", "Something went wrong."));
       setSubmitting(false);
     }
   };
@@ -396,18 +401,19 @@ function CardForm({ priceId, price, onSubscribed, email }: PaymentColumnProps & 
       <button type="submit" className="tc-cta" style={ctaStyle} disabled={!stripe || submitting}>
         {submitting ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <Loader2 className="animate-spin" size={16} /> Subscribing…
+            <Loader2 className="animate-spin" size={16} /> {t("trial.checkout.subscribing", "Subscribing…")}
           </span>
         ) : (
-          `Subscribe — $${price} today`
+          t("trial.checkout.subscribeCta", "Subscribe — ${{price}} today", { price })
         )}
       </button>
-      {reassurance(price)}
+      {reassurance(price, t)}
     </form>
   );
 }
 
 function MockPaymentForm({ priceId, price, onSubscribed }: PaymentColumnProps) {
+  const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -418,18 +424,18 @@ function MockPaymentForm({ priceId, price, onSubscribed }: PaymentColumnProps) {
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ background: "var(--paper-1)", border: "1px solid var(--line-1)", borderRadius: "var(--r-md)", padding: 14, fontSize: 13, color: "var(--ink-on-paper-3)" }}>
-        Demo mode — no real card is collected. Click below to simulate adding a card and subscribing.
+        {t("trial.checkout.mock.notice", "Demo mode — no real card is collected. Click below to simulate adding a card and subscribing.")}
       </div>
       <button type="submit" className="tc-cta" style={ctaStyle} disabled={submitting}>
         {submitting ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <Loader2 className="animate-spin" size={16} /> Subscribing…
+            <Loader2 className="animate-spin" size={16} /> {t("trial.checkout.subscribing", "Subscribing…")}
           </span>
         ) : (
-          `Subscribe — $${price} today (mock)`
+          t("trial.checkout.mock.subscribeCta", "Subscribe — ${{price}} today (mock)", { price })
         )}
       </button>
-      {reassurance(price)}
+      {reassurance(price, t)}
     </form>
   );
 }

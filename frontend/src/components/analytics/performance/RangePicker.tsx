@@ -1,9 +1,21 @@
 // Date-range popover: preset list on the left, two-month range calendar on the right.
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { DateRange as DayRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { PRESETS, presetFor, presetRange, rangeLabel, type DateRange, type PresetId } from "@/lib/analytics-performance";
+
+// Preset labels live in analytics-performance (English); translate by id here.
+const presetLabels = (t: TFunction): Record<PresetId, string> => ({
+  "7d": t("analytics.range.last7Days", "Last 7 days"),
+  "28d": t("analytics.range.last28Days", "Last 28 days"),
+  "90d": t("analytics.range.last90Days", "Last 90 days"),
+  tm: t("analytics.range.thisMonth", "This month"),
+  lm: t("analytics.range.lastMonth", "Last month"),
+  ytd: t("analytics.range.yearToDate", "Year to date"),
+});
 
 interface Props {
   value: DateRange;
@@ -15,9 +27,11 @@ interface Props {
 }
 
 export function RangePicker({ value, min, max, onChange }: Props) {
+  const { t } = useTranslation();
+  const labels = presetLabels(t);
   const [draft, setDraft] = useState<DayRange | undefined>(value);
   const active = presetFor(value, max);
-  const label = active ? `${PRESETS.find((p) => p.id === active)!.label} · ${rangeLabel(value)}` : rangeLabel(value);
+  const label = active ? `${labels[active]} · ${rangeLabel(value)}` : rangeLabel(value);
 
   const pick = (id: PresetId) => { const r = presetRange(id, max); setDraft(r); onChange(r, id); };
   const onSelect = (r: DayRange | undefined) => {
@@ -27,7 +41,7 @@ export function RangePicker({ value, min, max, onChange }: Props) {
 
   return (
     <Popover onOpenChange={(open) => { if (open) setDraft(value); }}>
-      <PopoverTrigger className="rounded-md border border-line-2 bg-paper-0" aria-label="Date range">
+      <PopoverTrigger className="rounded-md border border-line-2 bg-paper-0" aria-label={t("analytics.range.label", "Date range")}>
         <span style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", font: "600 13px var(--font-body)", color: "var(--ink-on-paper-1)" }}>
           {label}
           <span style={{ color: "var(--ink-on-paper-3)" }}>▾</span>
@@ -41,7 +55,7 @@ export function RangePicker({ value, min, max, onChange }: Props) {
               return (
                 <button key={p.id} type="button" aria-pressed={on} onClick={() => pick(p.id)} className="hover:bg-paper-2"
                   style={{ padding: "8px 10px", borderRadius: 7, fontSize: 13, cursor: "pointer", border: 0, textAlign: "left", background: on ? "var(--paper-2)" : "transparent", fontWeight: on ? 600 : 400 }}>
-                  {p.label}
+                  {labels[p.id]}
                 </button>
               );
             })}

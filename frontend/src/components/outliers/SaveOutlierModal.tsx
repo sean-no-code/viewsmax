@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, CSSProperties } from 'react';
 import { Loader2, X, Check, Bookmark } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { getOutlierTags, type OutlierVideo, type OutlierTag } from '@/lib/outlier-service';
 
 const CARD: CSSProperties = {
@@ -17,6 +18,7 @@ interface Props {
 
 /** Save-to-library modal: pick existing tags (typeahead) or create new ones inline. */
 export default function SaveOutlierModal({ video, onSave, onClose }: Props) {
+    const { t } = useTranslation();
     const [allTags, setAllTags] = useState<OutlierTag[]>([]);
     const [selected, setSelected] = useState<string[]>([]);
     const [query, setQuery] = useState('');
@@ -72,8 +74,8 @@ export default function SaveOutlierModal({ video, onSave, onClose }: Props) {
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: '1px solid var(--line-1)' }}>
                     <Bookmark size={16} stroke="var(--vm-red)" />
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, letterSpacing: '-.02em', color: 'var(--ink-on-paper-1)' }}>Save to library</span>
-                    <button onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ink-on-paper-3)', display: 'flex' }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, letterSpacing: '-.02em', color: 'var(--ink-on-paper-1)' }}>{t('outliers.save.title', 'Save to library')}</span>
+                    <button onClick={onClose} aria-label={t('outliers.save.close', 'Close')} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ink-on-paper-3)', display: 'flex' }}>
                         <X size={17} />
                     </button>
                 </div>
@@ -83,13 +85,13 @@ export default function SaveOutlierModal({ video, onSave, onClose }: Props) {
                     {thumb && <img src={thumb} alt="" style={{ width: 74, height: 42, objectFit: 'cover', borderRadius: 'var(--r-sm)', background: 'var(--ink-800)', flexShrink: 0 }} />}
                     <div style={{ minWidth: 0 }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink-on-paper-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{video.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--ink-on-paper-3)', marginTop: 2 }}>{video.channel?.channel_name || 'Unknown'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--ink-on-paper-3)', marginTop: 2 }}>{video.channel?.channel_name || t('outliers.save.unknownChannel', 'Unknown')}</div>
                     </div>
                 </div>
 
                 {/* Tags */}
                 <div style={{ padding: '12px 18px 18px' }}>
-                    <div style={{ fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-on-paper-3)', fontWeight: 700, marginBottom: 8 }}>Tags</div>
+                    <div style={{ fontSize: 9, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-on-paper-3)', fontWeight: 700, marginBottom: 8 }}>{t('outliers.save.tags', 'Tags')}</div>
 
                     {selected.length > 0 && (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -112,7 +114,7 @@ export default function SaveOutlierModal({ video, onSave, onClose }: Props) {
                                 else if (matches.length > 0) addTag(matches[0].name);
                             }
                         }}
-                        placeholder="Search or add a tag…"
+                        placeholder={t('outliers.save.tagPlaceholder', 'Search or add a tag…')}
                         style={{ width: '100%', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', padding: '9px 12px', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
                     />
 
@@ -127,7 +129,7 @@ export default function SaveOutlierModal({ video, onSave, onClose }: Props) {
                         ))}
                         {matches.length === 0 && (
                             <div style={{ padding: '12px 12px', fontSize: 12.5, color: 'var(--ink-on-paper-3)' }}>
-                                {allTags.length === 0 ? 'No tags yet — type one and save.' : 'No matching tags — type a new one and save.'}
+                                {allTags.length === 0 ? t('outliers.save.noTags', 'No tags yet — type one and save.') : t('outliers.save.noMatchingTags', 'No matching tags — type a new one and save.')}
                             </div>
                         )}
                     </div>
@@ -136,11 +138,13 @@ export default function SaveOutlierModal({ video, onSave, onClose }: Props) {
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                         <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: 'var(--r-md)', border: '1px solid var(--line-2)', background: 'var(--paper-0)', color: 'var(--ink-on-paper-2)', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
-                            Cancel
+                            {t('outliers.save.cancel', 'Cancel')}
                         </button>
                         <button onClick={handleSave} disabled={saving} style={{ flex: 2, padding: '10px', borderRadius: 'var(--r-md)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                             {saving ? <Loader2 size={14} className="animate-spin" /> : <Bookmark size={14} />}
-                            Save{tagsToSave.length > 0 ? ` with ${tagsToSave.length} tag${tagsToSave.length > 1 ? 's' : ''}` : ''}
+                            {tagsToSave.length > 0
+                                ? t('outliers.save.saveWithTags', { count: tagsToSave.length, defaultValue_one: 'Save with {{count}} tag', defaultValue_other: 'Save with {{count}} tags' })
+                                : t('outliers.save.save', 'Save')}
                         </button>
                     </div>
                 </div>

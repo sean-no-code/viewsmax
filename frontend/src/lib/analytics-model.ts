@@ -4,6 +4,7 @@
 // rolls up per-event and per-link metrics in GET /api/tracking-events; this
 // module flattens + groups them by platform and formats values.
 
+import i18n from "i18next";
 import { API_BASE_URL, type ReferrerStat, type TrackingEvent, type TrackingLink, type GoalType } from "@/lib/api-service";
 
 /* ---------- formatting helpers (ported from the design) ---------- */
@@ -41,8 +42,24 @@ export const PLACEMENT_META: Record<string, PlatformMeta> = {
   other: { name: "Other", color: "#76767F", glyph: "generic" },
 };
 
-export const platformMeta = (placement: string): PlatformMeta =>
-  PLACEMENT_META[placement] || { name: placement || "Other", color: "#76767F", glyph: "generic" };
+// Display names that aren't brands, in the UI language (looked up at call time;
+// PLACEMENT_META keeps the English).
+const placementName = (placement: string): string | undefined => {
+  switch (placement) {
+    case "email": return i18n.t("analytics.placement.email", "Email");
+    case "blog": return i18n.t("analytics.placement.blog", "Blog");
+    case "website": return i18n.t("analytics.placement.website", "Website");
+    case "podcast": return i18n.t("analytics.placement.podcast", "Podcast");
+    case "ad": return i18n.t("analytics.placement.ads", "Ads");
+    case "other": return i18n.t("analytics.placement.other", "Other");
+  }
+};
+
+export const platformMeta = (placement: string): PlatformMeta => {
+  const meta = PLACEMENT_META[placement];
+  if (meta) return { ...meta, name: placementName(placement) ?? meta.name };
+  return { name: placement || i18n.t("analytics.placement.other", "Other"), color: "#76767F", glyph: "generic" };
+};
 
 /* ---------- view-model shapes ---------- */
 export interface PlatformMetric {
@@ -178,13 +195,13 @@ function mapPage(e: TrackingEvent, labels: Map<string, string>): PageMetric {
   const rev = num(e.sales_amount);
   return {
     id: String(e.id),
-    name: e.name || e.offer_url || "Untitled offer",
+    name: e.name || e.offer_url || i18n.t("analytics.offer.untitled", "Untitled offer"),
     url: (e.offer_url || "").replace(/^https?:\/\//, ""),
     live: num(e.total_clicks) > 0,
     conv: {
       url: goal?.conversion_url || "/thank-you",
       value: num(goal?.conversion_value) || num(e.conversion_value),
-      label: goal?.event_type ? goalLabel(goal.event_type, labels) : "Conversion",
+      label: goal?.event_type ? goalLabel(goal.event_type, labels) : i18n.t("analytics.goal.conversion", "Conversion"),
     },
     goals: (e.goals || []).map((g) => ({
       id: g.id ?? null,
@@ -209,7 +226,7 @@ function mapPage(e: TrackingEvent, labels: Map<string, string>): PageMetric {
 // passed in as `labels`. Anything outside it is a user-defined custom event: we echo
 // its own name (de-slugged + title-cased).
 export function goalLabel(eventType: string, labels?: Map<string, string>): string {
-  if (!eventType) return "Purchase";
+  if (!eventType) return i18n.t("analytics.goal.purchase", "Purchase");
   const known = labels?.get(eventType);
   if (known) return known;
   return eventType.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { sortPlansByPrice, formatLimit } from "@/lib/plan-helpers";
 import { toast } from "sonner";
 
@@ -12,12 +14,12 @@ interface PlanSelectorProps {
 }
 
 /** The feature bullets to show on a card: prefer the seeded list, else derive from limits. */
-function featuresFor(plan: PlanTier): string[] {
+function featuresFor(plan: PlanTier, t: TFunction): string[] {
   if (plan.features && plan.features.length) return plan.features;
   return [
-    formatLimit(plan.max_channels, "channel"),
-    formatLimit(plan.max_offers, "offer"),
-    `${formatLimit(plan.max_posts_per_month, "post")}/mo`,
+    formatLimit(t, plan.max_channels, "channel"),
+    formatLimit(t, plan.max_offers, "offer"),
+    t("trial.checkout.postsPerMonth", "{{limit}}/mo", { limit: formatLimit(t, plan.max_posts_per_month, "post") }),
   ];
 }
 
@@ -27,6 +29,7 @@ function featuresFor(plan: PlanTier): string[] {
  * so the user picks a plan before payment.
  */
 export default function PlanSelector({ value, onChange }: PlanSelectorProps) {
+  const { t } = useTranslation();
   const [plans, setPlans] = useState<PlanTier[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -159,7 +162,7 @@ export default function PlanSelector({ value, onChange }: PlanSelectorProps) {
               </span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 2 }}>
-              {featuresFor(plan).map((f) => (
+              {featuresFor(plan, t).map((f) => (
                 <div
                   key={f}
                   style={{

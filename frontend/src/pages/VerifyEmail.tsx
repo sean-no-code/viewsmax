@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/hooks/useAuth";
 import { viewsMaxApi } from "@/lib/api-service";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 type Status = "verifying" | "success" | "error";
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { setAuthData } = useAuth();
   const token = searchParams.get("token");
@@ -27,7 +29,7 @@ const VerifyEmail = () => {
 
     if (!token) {
       setStatus("error");
-      setErrorMessage("This verification link is missing its token.");
+      setErrorMessage(t("verifyEmail.errors.missingToken", "This verification link is missing its token."));
       return;
     }
 
@@ -40,23 +42,23 @@ const VerifyEmail = () => {
         navigate("/onboarding", { replace: true });
       } else {
         setStatus("error");
-        setErrorMessage(result.error || "This verification link is invalid or has expired.");
+        setErrorMessage(result.error || t("verifyEmail.errors.invalidOrExpired", "This verification link is invalid or has expired."));
       }
     })();
-  }, [token, setAuthData, navigate]);
+  }, [token, setAuthData, navigate, t]);
 
   const handleResend = async () => {
     if (!resendEmail) {
-      toast.error("Enter your email to resend the link.");
+      toast.error(t("verifyEmail.resend.emailRequired", "Enter your email to resend the link."));
       return;
     }
     setResending(true);
     const result = await viewsMaxApi.resendVerification(resendEmail);
     setResending(false);
     if (result.success) {
-      toast.success("Verification email sent. Check your inbox.");
+      toast.success(t("verifyEmail.resend.sent", "Verification email sent. Check your inbox."));
     } else {
-      toast.error(result.error || "Couldn't resend the email.");
+      toast.error(result.error || t("verifyEmail.resend.failed", "Couldn't resend the email."));
     }
   };
 
@@ -67,21 +69,21 @@ const VerifyEmail = () => {
           {status === "verifying" && (
             <>
               <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
-              <CardTitle className="mt-4 text-2xl">Verifying your email</CardTitle>
-              <CardDescription>This should only take a moment…</CardDescription>
+              <CardTitle className="mt-4 text-2xl">{t("verifyEmail.verifying.title", "Verifying your email")}</CardTitle>
+              <CardDescription>{t("verifyEmail.verifying.description", "This should only take a moment…")}</CardDescription>
             </>
           )}
           {status === "success" && (
             <>
               <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
-              <CardTitle className="mt-4 text-2xl">Email verified</CardTitle>
-              <CardDescription>Taking you to set up your account…</CardDescription>
+              <CardTitle className="mt-4 text-2xl">{t("verifyEmail.success.title", "Email verified")}</CardTitle>
+              <CardDescription>{t("verifyEmail.success.description", "Taking you to set up your account…")}</CardDescription>
             </>
           )}
           {status === "error" && (
             <>
               <XCircle className="mx-auto h-10 w-10 text-destructive" />
-              <CardTitle className="mt-4 text-2xl">Verification failed</CardTitle>
+              <CardTitle className="mt-4 text-2xl">{t("verifyEmail.error.title", "Verification failed")}</CardTitle>
               <CardDescription>{errorMessage}</CardDescription>
             </>
           )}
@@ -92,14 +94,14 @@ const VerifyEmail = () => {
               type="email"
               value={resendEmail}
               onChange={(e) => setResendEmail(e.target.value)}
-              placeholder="Enter your email to resend"
+              placeholder={t("verifyEmail.resend.placeholder", "Enter your email to resend")}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
             <Button className="w-full" onClick={handleResend} disabled={resending}>
-              {resending ? "Sending…" : "Resend verification email"}
+              {resending ? t("verifyEmail.resend.sending", "Sending…") : t("verifyEmail.resend.button", "Resend verification email")}
             </Button>
             <Button variant="link" className="w-full" onClick={() => navigate("/auth")}>
-              Back to sign in
+              {t("verifyEmail.backToSignIn", "Back to sign in")}
             </Button>
           </CardContent>
         )}

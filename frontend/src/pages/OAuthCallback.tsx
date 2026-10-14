@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const OAuthCallback = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleOAuthCallback = () => {
@@ -87,10 +89,10 @@ const OAuthCallback = () => {
     <div className="flex items-center justify-center min-h-screen bg-gradient-secondary">
       <div className="text-center p-8">
         <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-6"></div>
-        <h2 className="text-xl font-semibold mb-2">Completing YouTube Connection</h2>
-        <p className="text-muted-foreground mb-4">Finalizing your channel authentication...</p>
+        <h2 className="text-xl font-semibold mb-2">{t("oauthCallback.title", "Completing YouTube Connection")}</h2>
+        <p className="text-muted-foreground mb-4">{t("oauthCallback.finalizing", "Finalizing your channel authentication...")}</p>
         <div className="text-sm text-muted-foreground">
-          This should only take a moment
+          {t("oauthCallback.moment", "This should only take a moment")}
         </div>
       </div>
     </div>

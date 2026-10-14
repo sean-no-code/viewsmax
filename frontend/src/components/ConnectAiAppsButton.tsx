@@ -21,7 +21,7 @@ export default function ConnectAiAppsButton() {
       >
         <Sparkles className="h-4 w-4 text-[color:var(--vm-volt-deep)]" aria-hidden />
         <span className="hidden lg:inline">{label}</span>
-        <span className="hidden rounded-full bg-[color:var(--vm-red)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white lg:inline">New</span>
+        <span className="hidden rounded-full bg-[color:var(--vm-red)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white lg:inline">{t("layout.aiApps.newBadge", "New")}</span>
       </button>
       <ConnectAiAppsDialog open={open} onOpenChange={setOpen} />
     </>

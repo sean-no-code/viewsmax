@@ -1,11 +1,13 @@
 // Engagement: daily engagements stacked by network, plus a per-account table.
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { dayLabel, type ProfileData } from "@/lib/analytics-performance";
 import { ChartFrame, SectionTitle, TableHead, TipRow } from "./chart";
 import { ROW, SECTION, deltaColor, niceTicks, xScale, yScale } from "./geometry";
 import { AccountCell, NetBadge } from "./NetBadge";
 
 export function EngagementCard({ data }: { data: ProfileData }) {
+  const { t: tr } = useTranslation();
   const [hover, setHover] = useState<number | null>(null);
   const { totals, byNet } = data.engagement;
   const n = totals.length, x = xScale(n);
@@ -27,10 +29,10 @@ export function EngagementCard({ data }: { data: ProfileData }) {
   const h = hover !== null && hover < n ? hover : null;
 
   return (
-    <section style={SECTION} aria-label="Engagement">
+    <section style={SECTION} aria-label={tr("analytics.performance.engagement.title", "Engagement")}>
       <SectionTitle
-        title="Engagement"
-        sub="Likes, comments and shares gained by day, stacked by network"
+        title={tr("analytics.performance.engagement.title", "Engagement")}
+        sub={tr("analytics.performance.engagement.sub", "Likes, comments and shares gained by day, stacked by network")}
         right={
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: "var(--ink-on-paper-2)" }}>
             {byNet.map((s) => (
@@ -40,7 +42,7 @@ export function EngagementCard({ data }: { data: ProfileData }) {
         }
       />
       <ChartFrame
-        label="Engagement chart"
+        label={tr("analytics.performance.engagement.chartLabel", "Engagement chart")}
         dates={data.dates}
         yTicks={ticks.map((v) => ({ v, y: y(v) }))}
         hover={h}
@@ -55,7 +57,7 @@ export function EngagementCard({ data }: { data: ProfileData }) {
               </TipRow>
             ))}
             <div style={{ borderTop: "1px solid var(--ink-600)", paddingTop: 4, marginTop: 2 }}>
-              <TipRow value={totals[h].toLocaleString("en-US")} bold>Total</TipRow>
+              <TipRow value={totals[h].toLocaleString("en-US")} bold>{tr("analytics.performance.engagement.total", "Total")}</TipRow>
             </div>
           </>
         )}
@@ -64,7 +66,7 @@ export function EngagementCard({ data }: { data: ProfileData }) {
       </ChartFrame>
 
       <div style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--line-1)" }}>
-        <TableHead cols={["Account", "Engagements", "Eng. rate", "Change"]} />
+        <TableHead cols={[tr("analytics.performance.engagement.colAccount", "Account"), tr("analytics.performance.engagement.colEngagements", "Engagements"), tr("analytics.performance.engagement.colEngRate", "Eng. rate"), tr("analytics.performance.engagement.colChange", "Change")]} />
         {data.engagementRows.map((r) => (
           <div key={r.account.id} style={ROW}>
             <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
