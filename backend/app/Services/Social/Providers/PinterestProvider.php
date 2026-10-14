@@ -285,6 +285,14 @@ class PinterestProvider extends AbstractSocialProvider
         Log::info('[Pinterest] create pin', $log + ['board_id' => $boardId]);
         $response = $this->api($account)->post($this->apiBase().'/pins', $payload);
 
+        // Pinterest sometimes refuses an image link without fetching it (e.g.
+        // a tunnel or localhost address). Retry once with the image itself.
+        if (! $response->successful() && $this->isImageLinkRefused($response)
+            && ($inline = $this->inlineImage($payload['media_source']))) {
+            Log::info('[Pinterest] image link refused; retrying with the image data', $log + ['status' => $response->status()]);
+            $response = $this->api($account)->post($this->apiBase().'/pins', ['media_source' => $inline] + $payload);
+        }
+
         if (! $response->successful()) {
             Log::error('[Pinterest] create pin failed', $log + ['status' => $response->status(), 'body' => $response->body()]);
 
@@ -294,6 +302,52 @@ class PinterestProvider extends AbstractSocialProvider
         $pinId = (string) $response->json('id');
 
         return PublishResult::success($pinId, 'https://www.pinterest.com/pin/'.$pinId.'/', $response->json());
+    }
+
+    /**
+     * Pinterest's own error numbers for an image link it won't use: 235
+     * ("image broken", returned for a blocked address without fetching it)
+     * and 1 on an image-URL parameter ("not a valid URL format").
+     */
+    protected function isImageLinkRefused(\Illuminate\Http\Client\Response $response): bool
+    {
+        $code = (int) $response->json('code');
+        $param = strtolower((string) $response->json('details.param_name'));
+
+        return $code === 235 || ($code === 1 && str_contains($param, 'image'));
+    }
+
+    /**
+     * The media source with its image link swapped for the image itself
+     * (base64), or null when it can't be: Pinterest takes only JPEG and PNG
+     * this way, and the image must be downloadable by us.
+     */
+    protected function inlineImage(array $source): ?array
+    {
+        $isVideo = ($source['source_type'] ?? null) === 'video_id';
+        $url = $isVideo ? ($source['cover_image_url'] ?? null) : ($source['url'] ?? null);
+        if (! $url) {
+            return null;
+        }
+
+        $download = Http::timeout(60)->get($url);
+        if (! $download->successful()) {
+            return null;
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($download->body());
+        if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
+            return null;
+        }
+        $data = base64_encode($download->body());
+
+        if ($isVideo) {
+            unset($source['cover_image_url']);
+
+            return $source + ['cover_image_data' => $data, 'cover_image_content_type' => $mime];
+        }
+
+        return ['source_type' => 'image_base64', 'content_type' => $mime, 'data' => $data];
     }
 
     /**

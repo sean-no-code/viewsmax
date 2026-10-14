@@ -129,6 +129,27 @@ class PinterestContractTest extends TestCase
         $this->assertNotEmpty($board['id']);
     }
 
+    public function test_image_and_cover_sent_as_data_match_the_spec(): void
+    {
+        // The fallback when Pinterest refuses an image link: the image itself.
+        $account = $this->account(User::factory()->create());
+        $api = Http::withToken($account->access_token)->acceptJson();
+        $boardId = (new PinterestProvider)->boards($account)[0]['id'];
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+        $image = $api->post($this->base.'/pins', [
+            'board_id' => $boardId,
+            'media_source' => ['source_type' => 'image_base64', 'content_type' => 'image/png', 'data' => $png],
+        ]);
+        $this->assertTrue($image->successful(), $image->body());
+
+        $video = $api->post($this->base.'/pins', [
+            'board_id' => $boardId,
+            'media_source' => ['source_type' => 'video_id', 'media_id' => '12345', 'cover_image_data' => $png, 'cover_image_content_type' => 'image/png'],
+        ]);
+        $this->assertTrue($video->successful(), $video->body());
+    }
+
     public function test_video_steps_match_the_spec(): void
     {
         // The upload itself goes to Amazon S3, not Pinterest, so it can't be

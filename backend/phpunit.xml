@@ -45,5 +45,6 @@
              .env keys never change what the suite sees. -->
         <env name="PINTEREST_CLIENT_ID" value="" force="true"/>
         <env name="PINTEREST_CLIENT_SECRET" value="" force="true"/>
+        <env name="PINTEREST_SANDBOX" value="false" force="true"/>
     </php>
 </phpunit>

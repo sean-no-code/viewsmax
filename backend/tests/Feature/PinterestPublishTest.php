@@ -132,6 +132,108 @@ class PinterestPublishTest extends TestCase
         Http::assertNotSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins'));
     }
 
+    /** A real 1x1 PNG, so the image type is detected from the bytes. */
+    private const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    public function test_a_refused_image_link_is_retried_once_with_the_image_itself(): void
+    {
+        // Pinterest refuses some links without fetching them (seen with an
+        // ngrok address: code 235 "image broken").
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'cdn.example/a.png' => Http::response(base64_decode(self::PNG)),
+            'api.pinterest.com/v5/pins' => Http::sequence()
+                ->push(['code' => 235, 'message' => 'Sorry, this image is broken. Please pick a different image.'], 403)
+                ->push(['id' => 'pin-b64'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'hi', 'media' => [['type' => 'image', 'url' => 'https://cdn.example/a.png']]]);
+        $post->board_id = 'board-1';
+        $result = (new PinterestProvider)->publish($this->account(), $post);
+
+        $this->assertTrue($result->success, (string) $result->error);
+        $this->assertSame('pin-b64', $result->remotePostId);
+        Http::assertSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')
+            && $req['media_source'] === ['source_type' => 'image_base64', 'content_type' => 'image/png', 'data' => self::PNG]);
+        $this->assertCount(2, Http::recorded(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')));
+    }
+
+    public function test_an_invalid_image_link_is_also_retried_with_the_image_itself(): void
+    {
+        // Pinterest rejects e.g. a localhost link: code 1 on the "image url" parameter.
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'localhost:8000/*' => Http::response(base64_decode(self::PNG)),
+            'api.pinterest.com/v5/pins' => Http::sequence()
+                ->push(['code' => 1, 'message' => "Parameter 'image url' is not a valid URL format.", 'details' => ['param_name' => 'image url']], 400)
+                ->push(['id' => 'pin-b64'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'hi', 'media' => [['type' => 'image', 'url' => 'https://localhost:8000/storage/a.png']]]);
+        $post->board_id = 'board-1';
+
+        $this->assertTrue((new PinterestProvider)->publish($this->account(), $post)->success);
+    }
+
+    public function test_other_pin_errors_are_not_retried(): void
+    {
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/pins' => Http::response(['code' => 29, 'message' => 'Apps with Trial access may not create Pins in production'], 403),
+        ]);
+
+        $post = new SocialPost(['content' => 'hi', 'media' => [['type' => 'image', 'url' => 'https://cdn.example/a.png']]]);
+        $post->board_id = 'board-1';
+
+        $this->assertFalse((new PinterestProvider)->publish($this->account(), $post)->success);
+        $this->assertCount(1, Http::recorded(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')));
+        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), 'cdn.example'));
+    }
+
+    public function test_an_image_pinterest_cannot_take_as_a_file_is_not_retried(): void
+    {
+        // Pinterest only accepts JPEG and PNG as image_base64 (API spec).
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'cdn.example/a.gif' => Http::response('GIF89a'.str_repeat("\0", 20)),
+            'api.pinterest.com/v5/pins' => Http::response(['code' => 235, 'message' => 'Sorry, this image is broken.'], 403),
+        ]);
+
+        $post = new SocialPost(['content' => 'hi', 'media' => [['type' => 'image', 'url' => 'https://cdn.example/a.gif']]]);
+        $post->board_id = 'board-1';
+
+        $this->assertFalse((new PinterestProvider)->publish($this->account(), $post)->success);
+        $this->assertCount(1, Http::recorded(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')));
+    }
+
+    public function test_a_refused_video_cover_link_is_retried_with_the_cover_itself(): void
+    {
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            'api.pinterest.com/v5/media/media-9' => Http::response(['media_id' => 'media-9', 'status' => 'succeeded']),
+            'api.pinterest.com/v5/media' => Http::response(['media_id' => 'media-9', 'upload_url' => 'https://pinterest-media-upload.s3.amazonaws.com/', 'upload_parameters' => ['key' => 'k']], 201),
+            'cdn.example/clip.mp4' => Http::response('VIDEO-BYTES'),
+            'cdn.example/cover.png' => Http::response(base64_decode(self::PNG)),
+            'pinterest-media-upload.s3.amazonaws.com/*' => Http::response('', 204),
+            'api.pinterest.com/v5/pins' => Http::sequence()
+                ->push(['code' => 235, 'message' => 'Sorry, this image is broken.'], 403)
+                ->push(['id' => 'pin-video'], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'v', 'media' => [['type' => 'video', 'url' => 'https://cdn.example/clip.mp4']]]);
+        $post->cover_url = 'https://cdn.example/cover.png';
+        $post->board_id = 'board-1';
+
+        $this->assertTrue((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertSent(fn (Request $req) => str_ends_with($req->url(), '/v5/pins')
+            && ($req['media_source']['cover_image_data'] ?? null) === self::PNG
+            && ($req['media_source']['cover_image_content_type'] ?? null) === 'image/png'
+            && ! isset($req['media_source']['cover_image_url'])
+            && $req['media_source']['media_id'] === 'media-9');
+        // The video itself is uploaded once, not again for the retry.
+        $this->assertCount(1, Http::recorded(fn (Request $req) => str_contains($req->url(), 's3.amazonaws.com')));
+    }
+
     public function test_pin_without_media_fails_without_calling_pinterest(): void
     {
         Http::fake();
