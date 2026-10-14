@@ -357,6 +357,20 @@ class PostFailureEmailTest extends TestCase
         $this->assertFalse($this->user->fresh()->notify_post_failures);
     }
 
+    public function test_settings_endpoint_accepts_supported_locales_only(): void
+    {
+        $this->withHeaders($this->auth())
+            ->patchJson('/api/user/settings', ['locale' => 'ru'])
+            ->assertOk()
+            ->assertJsonPath('data.locale', 'ru');
+
+        $this->withHeaders($this->auth())
+            ->patchJson('/api/user/settings', ['locale' => 'xx'])
+            ->assertUnprocessable();
+
+        $this->assertSame('ru', $this->user->fresh()->locale);
+    }
+
     public function test_settings_endpoint_requires_auth(): void
     {
         $this->getJson('/api/user/settings')->assertUnauthorized();
