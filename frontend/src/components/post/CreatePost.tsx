@@ -552,7 +552,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     patchNewBoard(accountId, { saving: true, error: null });
     const res = await viewsMaxApi.createPinterestBoard(accountId, name);
     if (!res.success || !res.data) {
-      patchNewBoard(accountId, { saving: false, error: res.error ?? "Couldn't create the board." });
+      patchNewBoard(accountId, { saving: false, error: res.error ?? t("post.composer.pinterest.createBoardFailed", "Couldn't create the board.") });
       return;
     }
     const board = res.data;
@@ -606,9 +606,9 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     : tiktokDurationOver ? t("post.composer.tiktokDurationBlock", "Your TikTok video is {{duration}}s — this account allows up to {{max}}s.", { duration: Math.round(tiktokVideoDuration), max: tiktokMaxDur })
     : null;
   const pinterestBlockReason: string | null = !pinterestSelected ? null
-    : pinterestMissingBoard ? "Choose a Pinterest board before publishing."
-    : pinterestNeedsCover ? "Add a cover image for the Pinterest video Pin."
-    : pinterestMixedShapes ? "Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image."
+    : pinterestMissingBoard ? t("post.composer.pinterest.chooseBoardBlock", "Choose a Pinterest board before publishing.")
+    : pinterestNeedsCover ? t("post.composer.pinterest.coverBlock", "Add a cover image for the Pinterest video Pin.")
+    : pinterestMixedShapes ? t("post.composer.pinterest.mixedShapesBlock", "Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image.")
     : null;
   const blockReason = tiktokBlockReason ?? pinterestBlockReason;
 
@@ -662,7 +662,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     }
     // Every Pin is an image or a video, and a video Pin needs a cover image.
     if (status !== "draft" && c.selected.includes("pinterest") && !c.media.some((m) => m.url)) {
-      toast.error("Pinterest needs an uploaded image or video."); return;
+      toast.error(t("post.composer.pinterest.needsMedia", "Pinterest needs an uploaded image or video.")); return;
     }
     if (status !== "draft" && pinterestBlockReason) { toast.error(pinterestBlockReason); return; }
     setSaving(true);
@@ -918,7 +918,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   {pinterestImageOverflow && (
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
                       <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
-                      <span>Pinterest takes up to {PINTEREST_MAX_IMAGES} images (as one carousel Pin) — only the first {PINTEREST_MAX_IMAGES} will be posted there.</span>
+                      <span>{t("post.composer.pinterestImageOverflow", "Pinterest takes up to {{max}} images (as one carousel Pin) — only the first {{max}} will be posted there.", { max: PINTEREST_MAX_IMAGES })}</span>
                     </div>
                   )}
                 </>
@@ -1014,8 +1014,8 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   </div>
                   {c.selected.includes("pinterest") && (
                     <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                      This text is the Pinterest description. Pinterest also has a title:{" "}
-                      <button onClick={() => setTab("pinterest")} style={{ background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 11.5, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>open the Pinterest tab</button>.
+                      {t("post.composer.pinterest.descriptionNote", "This text is the Pinterest description. Pinterest also has a title:")}{" "}
+                      <button onClick={() => setTab("pinterest")} style={{ background: "none", border: "none", padding: 0, color: "var(--vm-red)", fontWeight: 700, fontSize: 11.5, cursor: "pointer", textDecoration: "underline", fontFamily: "var(--font-body)" }}>{t("post.composer.pinterest.openTab", "open the Pinterest tab")}</button>.
                     </div>
                   )}
                   {captionHasDelimiter && c.selected.some((id) => id !== "x") && (
@@ -1043,16 +1043,16 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   {tab === "pinterest" && (
                     <label style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
                       <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--ink-on-paper-2)", fontWeight: 600 }}>
-                        <span>Pinterest title (optional)</span>
+                        <span>{t("post.composer.pinterest.titleLabel", "Pinterest title (optional)")}</span>
                         <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 11.5, color: "var(--ink-on-paper-3)" }}>{c.pinterest.title.length}/100</span>
                       </span>
                       <input
-                        aria-label="Pinterest title"
+                        aria-label={t("post.composer.pinterest.titleAria", "Pinterest title")}
                         value={c.pinterest.title}
                         maxLength={100}
                         onChange={(e) => c.patchPinterest({ title: e.target.value })}
                         style={fieldBase}
-                        placeholder="The bold headline under the image. Leave empty for a Pin without a title."
+                        placeholder={t("post.composer.pinterest.titlePlaceholder", "The bold headline under the image. Leave empty for a Pin without a title.")}
                       />
                     </label>
                   )}
@@ -1269,68 +1269,68 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       return (
                         <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
-                            Board{pinterestAccounts.length > 1 ? ` for ${a.name ?? "this account"}` : ""}
+                            {pinterestAccounts.length > 1 ? t("post.composer.pinterest.boardFor", "Board for {{account}}", { account: a.name ?? "" }) : t("post.composer.pinterest.board", "Board")}
                           </span>
                           <select
-                            aria-label={`Pinterest board${a.name ? ` for ${a.name}` : ""}`}
+                            aria-label={t("post.composer.pinterest.boardAria", "Pinterest board for {{account}}", { account: a.name ?? "" })}
                             value={value}
                             onChange={(e) => c.patchPinterest({ board_ids: { ...c.pinterest.board_ids, [String(a.id)]: e.target.value } })}
                             disabled={entry?.state === "loading"}
                             style={{ ...fieldBase, width: 260, maxWidth: "100%", color: value ? "var(--ink-on-paper-1)" : "var(--ink-on-paper-3)" }}
                           >
-                            <option value="" disabled>{entry?.state === "loading" ? "Loading boards…" : "Choose a board…"}</option>
+                            <option value="" disabled>{entry?.state === "loading" ? t("post.composer.pinterest.loadingBoards", "Loading boards…") : t("post.composer.pinterest.chooseBoard", "Choose a board…")}</option>
                             {(entry?.boards ?? []).map((b) => (
-                              <option key={b.id} value={b.id}>{b.name}{b.privacy === "SECRET" ? " (secret)" : ""}</option>
+                              <option key={b.id} value={b.id}>{b.name}{b.privacy === "SECRET" ? ` ${t("post.composer.pinterest.secret", "(secret)")}` : ""}</option>
                             ))}
                           </select>
                           {nb?.open ? (
                             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                               <input
-                                aria-label={`New Pinterest board name${a.name ? ` for ${a.name}` : ""}`}
+                                aria-label={t("post.composer.pinterest.newBoardAria", "New Pinterest board name for {{account}}", { account: a.name ?? "" })}
                                 value={nb.name}
                                 autoFocus
-                                placeholder="Board name"
+                                placeholder={t("post.composer.pinterest.boardName", "Board name")}
                                 onChange={(e) => patchNewBoard(a.id!, { name: e.target.value })}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); createPinBoard(a.id!); } }}
                                 style={{ ...fieldBase, width: 260, maxWidth: "100%" }}
                               />
                               <button onClick={() => createPinBoard(a.id!)} disabled={nb.saving || !nb.name.trim()} style={linkBtn}>
-                                {nb.saving ? "Creating…" : "Create board"}
+                                {nb.saving ? t("post.composer.pinterest.creatingBoard", "Creating…") : t("post.composer.pinterest.createBoard", "Create board")}
                               </button>
-                              <button onClick={() => patchNewBoard(a.id!, { open: false, name: "", error: null })} style={{ ...linkBtn, color: "var(--ink-on-paper-3)" }}>Cancel</button>
+                              <button onClick={() => patchNewBoard(a.id!, { open: false, name: "", error: null })} style={{ ...linkBtn, color: "var(--ink-on-paper-3)" }}>{t("post.composer.pinterest.cancel", "Cancel")}</button>
                             </div>
                           ) : (
-                            <button onClick={() => patchNewBoard(a.id!, { open: true })} style={{ ...linkBtn, alignSelf: "flex-start" }}>+ New board</button>
+                            <button onClick={() => patchNewBoard(a.id!, { open: true })} style={{ ...linkBtn, alignSelf: "flex-start" }}>{t("post.composer.pinterest.newBoard", "+ New board")}</button>
                           )}
                           {nb?.error && (
                             <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>{nb.error}</span>
                           )}
                           <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                            A board is a folder on your Pinterest profile. The Pin is saved into the one you pick. New boards are public.
+                            {t("post.composer.pinterest.boardHelp", "A board is a folder on your Pinterest profile. The Pin is saved into the one you pick. New boards are public.")}
                           </span>
                           {entry?.state === "error" && (
                             <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>
-                              Couldn't load the boards.{" "}
-                              <button onClick={() => loadPinBoards(a.id!)} style={linkBtn}>Try again</button>
+                              {t("post.composer.pinterest.boardsLoadFailed", "Couldn't load the boards.")}{" "}
+                              <button onClick={() => loadPinBoards(a.id!)} style={linkBtn}>{t("post.composer.pinterest.tryAgain", "Try again")}</button>
                             </span>
                           )}
                           {entry?.state === "idle" && entry.boards.length === 0 && !nb?.open && (
                             <span style={{ fontSize: 11.5, color: "var(--vm-red-deep)", lineHeight: 1.5 }}>
-                              This account has no boards yet. Create one with "+ New board".
+                              {t("post.composer.pinterest.noBoards", "This account has no boards yet. Create one with \"+ New board\".")}
                             </span>
                           )}
                         </div>
                       );
                     })}
                     {([
-                      ["link", "Link", 2048, "The page people open when they tap the Pin. Leave empty for a Pin without a link.", "url"],
-                      ["alt_text", "Alt text", 500, "Describes the image for people using screen readers. Leave empty to skip.", "text"],
+                      ["link", t("post.composer.pinterest.link", "Link"), 2048, t("post.composer.pinterest.linkHelp", "The page people open when they tap the Pin. Leave empty for a Pin without a link."), "url"],
+                      ["alt_text", t("post.composer.pinterest.altText", "Alt text"), 500, t("post.composer.pinterest.altTextHelp", "Describes the image for people using screen readers. Leave empty to skip."), "text"],
                     ] as const).map(([key, label, max, help, type]) => (
                       <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{label}</span>
                         <input
                           type={type}
-                          aria-label={`Pinterest ${label.toLowerCase()}`}
+                          aria-label={`Pinterest ${key === "link" ? "link" : "alt text"}`}
                           value={c.pinterest[key]}
                           maxLength={max}
                           onChange={(e) => c.patchPinterest({ [key]: e.target.value })}
@@ -1340,12 +1340,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       </label>
                     ))}
                     <div style={{ fontSize: 11.5, color: "var(--ink-on-paper-3)", lineHeight: 1.5, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
-                      The Pin's title and description are written above, in Title / Description → Pinterest.
+                      {t("post.composer.pinterest.textAboveNote", "The Pin's title and description are written above, in Title / Description → Pinterest.")}
                     </div>
                     {mediaVideoPost && coverUploaderBlock("Pinterest")}
                     {pinterestNeedsCover && (
                       <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--vm-red)", lineHeight: 1.5 }}>
-                        A video Pin needs a cover image. Add one above.
+                        {t("post.composer.pinterest.videoNeedsCover", "A video Pin needs a cover image. Add one above.")}
                       </span>
                     )}
                   </div>
