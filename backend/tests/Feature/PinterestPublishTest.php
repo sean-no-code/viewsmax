@@ -422,6 +422,25 @@ class PinterestPublishTest extends TestCase
             ]);
     }
 
+    public function test_media_links_to_internal_addresses_are_refused(): void
+    {
+        // Media links come from users; downloads go through SafeHttp, which
+        // refuses private/internal addresses (here the cloud metadata service).
+        Http::fake([
+            'api.pinterest.com/v5/boards*' => Http::response($this->boardsResponse()),
+            '169.254.169.254/*' => Http::response('SECRET'),
+            'api.pinterest.com/v5/media' => Http::response(['media_id' => 'm', 'upload_url' => 'https://s3.example/', 'upload_parameters' => []], 201),
+        ]);
+
+        $post = new SocialPost(['content' => 'x', 'media' => [['type' => 'video', 'url' => 'http://169.254.169.254/latest/meta-data']]]);
+        $post->cover_url = 'https://cdn.example/cover.jpg';
+        $post->board_id = 'board-1';
+
+        $this->assertFalse((new PinterestProvider)->publish($this->account(), $post)->success);
+        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), '169.254.169.254'));
+        Http::assertNotSent(fn (Request $req) => str_ends_with($req->url(), '/v5/media'));
+    }
+
     public function test_video_pin_without_any_cover_image_fails_before_uploading(): void
     {
         Http::fake([

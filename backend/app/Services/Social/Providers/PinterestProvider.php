@@ -375,14 +375,15 @@ class PinterestProvider extends AbstractSocialProvider
      */
     protected function imageData(string $url): ?array
     {
-        $download = Http::timeout(60)->get($url);
-        if (! $download->successful()) {
+        // Through SafeHttp (fetchMedia): media links come from users.
+        $download = $this->fetchMedia($url);
+        if ($download === null) {
             return null;
         }
 
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($download->body());
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($download['body']);
 
-        return in_array($mime, ['image/jpeg', 'image/png'], true) ? [$mime, base64_encode($download->body())] : null;
+        return in_array($mime, ['image/jpeg', 'image/png'], true) ? [$mime, base64_encode($download['body'])] : null;
     }
 
     /**
@@ -392,6 +393,13 @@ class PinterestProvider extends AbstractSocialProvider
      */
     protected function uploadVideo(SocialAccount $account, string $videoUrl): array
     {
+        // Fetched first (through SafeHttp: media links come from users), so a
+        // refused or unreachable link never leaves a registered upload behind.
+        $binary = $this->fetchMedia($videoUrl, 'video');
+        if ($binary === null) {
+            return [null, 'Pinterest video upload failed: could not fetch '.$videoUrl];
+        }
+
         $register = $this->api($account)->post($this->apiBase().'/media', ['media_type' => 'video']);
         if (! $register->successful()) {
             return [null, 'Pinterest video upload could not start: '.$register->body()];
@@ -401,15 +409,10 @@ class PinterestProvider extends AbstractSocialProvider
         $uploadUrl = (string) $register->json('upload_url');
         $params = (array) $register->json('upload_parameters', []);
 
-        $binary = Http::timeout(120)->get($videoUrl);
-        if (! $binary->successful()) {
-            return [null, 'Pinterest video upload failed: could not fetch '.$videoUrl];
-        }
-
         // The upload URL is a pre-signed storage form: every parameter goes in
         // as a form field, then the file.
         $upload = Http::timeout(300)->asMultipart()
-            ->attach('file', $binary->body(), 'video.mp4')
+            ->attach('file', $binary['body'], 'video.mp4')
             ->post($uploadUrl, $params);
 
         if (! $upload->successful()) {
