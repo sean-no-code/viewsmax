@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\PublishYouTubeJob;
 use App\Models\Post;
 use App\Models\PostTarget;
@@ -12,6 +13,7 @@ use App\Services\Social\Providers\YouTubeProvider;
 use App\Models\User;
 use App\Services\YouTubePublishService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -115,6 +117,134 @@ class PublishYouTubeJobTest extends TestCase
         $this->assertFalse($result->success);
         $this->assertSame(YouTubeProvider::USE_POSTS_API, $result->error);
         Http::assertNothingSent();
+    }
+
+    public function test_privacy_defaults_to_private_when_the_target_did_not_choose(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['id' => 'yt-vid-1'], 200),
+        ]);
+        $user = User::factory()->create();
+        $target = $this->videoPost($user)->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $this->ytAccount($user)->id,
+            'status' => PostTarget::STATUS_PENDING,
+        ]);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status, (string) $target->error);
+        $this->assertSame('private', $target->meta['privacy_status']);
+        Http::assertSent(fn (Request $r) => $r->method() === 'POST' && $r['status']['privacyStatus'] === 'private');
+    }
+
+    public function test_session_uri_is_on_the_target_before_the_first_byte_goes_out(): void
+    {
+        $seen = null;
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => function () use (&$seen) {
+                $seen = PostTarget::first()->meta['upload_url'] ?? null;
+
+                return Http::response(['id' => 'yt-vid-1'], 200);
+            },
+        ]);
+        $user = User::factory()->create();
+        $target = $this->pendingTarget($user, $this->ytAccount($user));
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame('https://upload.youtube/session', $seen);
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status);
+        $this->assertArrayNotHasKey('upload_url', $target->meta, 'a finished session is forgotten');
+    }
+
+    public function test_a_retry_whose_session_already_holds_the_video_never_uploads_it_again(): void
+    {
+        // A worker killed after Google received the last byte: the stored
+        // session answers the probe with the created video.
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => fn () => $this->fail('no new session'),
+            'upload.youtube/*' => function (Request $request) {
+                $this->assertSame('bytes */16', $request->header('Content-Range')[0]);
+
+                return Http::response(['id' => 'yt-vid-done'], 200);
+            },
+        ]);
+        $user = User::factory()->create();
+        $target = $this->pendingTarget($user, $this->ytAccount($user));
+        $target->forceFill([
+            'status' => PostTarget::STATUS_PUBLISHING,
+            'meta' => ['upload_url' => 'https://upload.youtube/session', 'step' => ['name' => 'upload', 'at' => now()->toIso8601String()]],
+        ])->save();
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+        $this->assertSame('yt-vid-done', $target->platform_post_id);
+        Http::assertSentCount(1);
+    }
+
+    public function test_a_transient_upload_failure_keeps_the_session_and_lets_the_queue_retry(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['error' => ['message' => 'Backend Error']], 503),
+        ]);
+        $user = User::factory()->create();
+        $target = $this->pendingTarget($user, $this->ytAccount($user));
+        $target->forceFill(['status' => PostTarget::STATUS_PUBLISHING])->save();
+
+        try {
+            (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+            $this->fail('Expected the transient failure to propagate to the queue.');
+        } catch (TransientPublishException) {
+        }
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->status, 'not failed: the queue retries');
+        $this->assertSame('https://upload.youtube/session', $target->meta['upload_url'], 'the next attempt probes this session');
+        $this->assertNull($target->error);
+    }
+
+    public function test_a_definitive_failure_forgets_the_session(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['error' => [
+                'message' => 'Media body required', 'errors' => [['reason' => 'mediaBodyRequired']],
+            ]], 400),
+        ]);
+        $user = User::factory()->create();
+        $target = $this->pendingTarget($user, $this->ytAccount($user));
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertStringContainsString('did not receive the video file', (string) $target->error);
+        $this->assertArrayNotHasKey('upload_url', $target->meta, 'a manual Retry after a fix starts a fresh session');
+    }
+
+    public function test_a_dead_token_fails_the_target_and_flags_the_account_for_reconnect(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response(['error' => [
+                'status' => 'UNAUTHENTICATED', 'message' => 'Request had invalid authentication credentials.',
+            ]], 401),
+        ]);
+        $user = User::factory()->create();
+        $account = $this->ytAccount($user);
+        $target = $this->pendingTarget($user, $account);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+        $this->assertSame(YouTubePublishService::SESSION_EXPIRED, $target->error);
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->refresh()->status);
+        $this->assertSame(YouTubePublishService::SESSION_EXPIRED, $account->last_error);
     }
 
     public function test_workspace_policy_refresh_rejections_get_their_own_message(): void
