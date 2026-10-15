@@ -9,6 +9,7 @@ use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * TikTok publishing via the Content Posting API (direct post, PULL_FROM_URL).
@@ -159,20 +160,30 @@ class TikTokProvider extends AbstractSocialProvider
             return $account;
         }
 
-        $response = Http::asForm()->post(self::TOKEN_URL, [
-            'client_key' => $this->clientId(),
-            'client_secret' => $this->clientSecret(),
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-        ]);
+        return $this->refreshingSafely($account, function (SocialAccount $account) {
+            $response = Http::asForm()->post(self::TOKEN_URL, [
+                'client_key' => $this->clientId(),
+                'client_secret' => $this->clientSecret(),
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $account->refresh_token,
+            ]);
 
-        if (! $response->successful()) {
-            $account->markNeedsReauth('TikTok token refresh failed.');
+            if (! $response->successful()) {
+                // Only a definitive rejection means the grant is dead; a 429/5xx
+                // must not brick the account (the daily refresh retries tomorrow).
+                if ($this->isDefinitiveAuthFailure($response->status())) {
+                    $account->markNeedsReauth('TikTok token refresh was rejected — reconnect the account.');
+                } else {
+                    Log::warning('TikTok token refresh failed transiently', [
+                        'account_id' => $account->id, 'status' => $response->status(),
+                    ]);
+                }
 
-            return $account;
-        }
+                return $account;
+            }
 
-        return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+        });
     }
 
     public function publish(SocialAccount $account, SocialPost $post): PublishResult

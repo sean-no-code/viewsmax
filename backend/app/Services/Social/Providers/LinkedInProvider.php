@@ -7,6 +7,7 @@ use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Contracts\SupportsComments;
 use App\Services\Social\Data\CommentResult;
+use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
