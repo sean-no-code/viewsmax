@@ -9,6 +9,7 @@ use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Contracts\SupportsComments;
 use App\Services\Social\Data\CommentResult;
 use App\Services\Social\Data\PublishResult;
+use App\Services\Social\SocialConnectException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -81,6 +82,8 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
             $this->fail('token exchange', $short->status(), 'no access_token in response: '.$short->body());
         }
 
+        $this->assertRequiredPermissions($short->json('permissions') ?? $short->json('data.0.permissions'));
+
         // Upgrade to a long-lived (~60 day) token. This must NOT fall back to
         // the 1-hour short-lived token: storing it (with no expiry) made a
         // "successful" reconnect die within the hour at publish time (OAuth 190),
@@ -149,6 +152,43 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         Log::info('[Instagram] connect finished', ['user_id' => $user->id, 'ig_user_id' => $igUserId]);
 
         return collect([$account]);
+    }
+
+    /**
+     * Fail the connect when the user unticked a publish-critical permission on
+     * the Instagram consent screen. The token exchange succeeds anyway, and
+     * storing the account meant every later post died with a raw (#200)/190
+     * body instead of a fix the user could act on. Instagram reports the grant
+     * on the token exchange itself as an array or a comma/space-separated
+     * string; when it is absent we cannot verify and let the connect through.
+     *
+     * @param  array<int, string>|string|null  $granted
+     *
+     * @throws SocialConnectException naming the missing permissions
+     */
+    protected function assertRequiredPermissions(array|string|null $granted): void
+    {
+        if ($granted === null) {
+            return;
+        }
+
+        if (is_string($granted)) {
+            $granted = preg_split('/[,\s]+/', urldecode($granted), -1, PREG_SPLIT_NO_EMPTY);
+        }
+
+        // The insights scope is only requested behind the reach flag and never
+        // blocks publishing, so a user who declines it may still connect.
+        $required = array_diff((array) $this->config('scopes', []), ['instagram_business_manage_insights']);
+        $missing = array_values(array_diff($required, $granted));
+
+        Log::info('[Instagram] permissions checked', ['granted' => $granted, 'missing' => $missing]);
+
+        if ($missing !== []) {
+            throw new SocialConnectException(
+                'Instagram did not grant the permissions this app needs to publish: '
+                .implode(', ', $missing).'. Reconnect the account and tick every box on the permission screen.'
+            );
+        }
     }
 
     public function ensureFreshToken(SocialAccount $account): SocialAccount
