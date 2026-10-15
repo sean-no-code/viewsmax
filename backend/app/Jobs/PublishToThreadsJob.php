@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
@@ -86,6 +87,10 @@ class PublishToThreadsJob implements ShouldQueue
             }
 
             $this->markFailed($target, $result->error ?: 'Threads publish failed.');
+        } catch (TransientPublishException $e) {
+            // Nothing is live yet (the provider only throws before
+            // threads_publish succeeds) — rethrow so the queue retries.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Threads publish job error', [
                 'post_target_id' => $target->id,

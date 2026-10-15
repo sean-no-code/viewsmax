@@ -150,6 +150,41 @@ class PostCaptionLimitsTest extends TestCase
         ])->assertStatus(201);
     }
 
+    public function test_threads_limit_counts_utf8_bytes(): void
+    {
+        // 497 ASCII + one emoji: 498 code points, but 501 bytes — Meta counts
+        // bytes and would reject it with "text must be at most 500 characters".
+        $response = $this->createPost([
+            'caption' => str_repeat('a', 497).'😀',
+            'platforms' => ['threads'],
+            'status' => 'posted',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('Threads', $response->json('message'));
+        $this->assertStringContainsString('1 character over', $response->json('message'));
+    }
+
+    public function test_threads_accepts_exactly_500_bytes(): void
+    {
+        $this->createPost([
+            'caption' => str_repeat('a', 496).'😀',
+            'platforms' => ['threads'],
+            'status' => 'posted',
+        ])->assertStatus(201);
+    }
+
+    public function test_other_platforms_still_count_code_points(): void
+    {
+        // The same 501-byte caption is 498 code points: fine on Bluesky-style
+        // code-point platforms with room to spare (Instagram's 2200).
+        $this->createPost([
+            'caption' => str_repeat('a', 497).'😀',
+            'platforms' => ['instagram'],
+            'status' => 'draft',
+        ])->assertStatus(201);
+    }
+
     public function test_updating_a_draft_to_scheduled_enforces_limits(): void
     {
         $id = $this->createPost([
@@ -286,11 +321,14 @@ class PostCaptionLimitsTest extends TestCase
         $this->assertStringContainsString("1 character over Bluesky's 300 limit", $response->json('message'));
     }
 
-    public function test_other_platforms_still_count_code_points(): void
+    public function test_the_same_caption_is_graphemes_on_bluesky_and_bytes_on_threads(): void
     {
-        $caption = str_repeat("e\u{0301}", 251); // 502 code points, 251 graphemes
+        $caption = str_repeat("e\u{0301}", 251); // 502 code points, 251 graphemes, 753 UTF-8 bytes
 
-        $this->assertSame(502, \App\Services\Social\CaptionRules::lengthFor('threads', $caption));
+        $this->assertSame(251, \App\Services\Social\CaptionRules::lengthFor('bluesky', $caption));
+        $this->assertSame(753, \App\Services\Social\CaptionRules::lengthFor('threads', $caption));
+        $this->assertSame(502, \App\Services\Social\CaptionRules::lengthFor('instagram', $caption));
+        $this->assertNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption));
         $this->assertNotNull(\App\Services\Social\CaptionRules::captionError('threads', $caption));
     }
 }

@@ -49,15 +49,18 @@ final class CaptionRules
     }
 
     /**
-     * Effective length for a single-caption platform (X is weighted
-     * separately by xLength). Bluesky's 300 limit counts graphemes, so an
-     * emoji ZWJ sequence or a letter plus combining mark is one unit, not
-     * four. Mirrors platformLength() in text-metrics.ts.
+     * Effective length against a platform's limit (X is weighted separately by
+     * xLength). Meta counts the Threads 500 in UTF-8 bytes, so emoji, curly
+     * quotes and accents weigh more there than their code-point count;
+     * Bluesky's 300 counts graphemes, so an emoji ZWJ sequence or a letter
+     * plus combining mark is one unit. Mirrors platformLength() in
+     * text-metrics.ts.
      */
     public static function lengthFor(string $platform, string $text): int
     {
         return match ($platform) {
             'bluesky' => (int) grapheme_strlen(self::normalize($text)),
+            'threads' => strlen(self::normalize($text)),
             default => self::plainLength($text),
         };
     }

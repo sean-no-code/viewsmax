@@ -70,13 +70,19 @@ export function graphemeLength(text: string): number {
   return n;
 }
 
-/** Per-platform effective length: X is URL-weighted, Bluesky counts graphemes, everything else plain. */
+/**
+ * Per-platform effective length: X is URL-weighted, Threads is counted in
+ * UTF-8 bytes (Meta's rule for its 500 limit), Bluesky counts graphemes,
+ * everything else plain.
+ */
 export function platformLength(id: string, text: string): number {
   switch (id) {
     case "x":
       return xWeightedLength(text);
     case "bluesky":
       return graphemeLength(text);
+    case "threads":
+      return new TextEncoder().encode(normalize(text)).length;
     default:
       return plainLength(text);
   }
