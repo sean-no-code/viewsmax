@@ -130,6 +130,31 @@ class FacebookProvider extends MetaGraphProvider
                 'description' => $message,
                 'access_token' => $token,
             ]);
+        } elseif (count($images) > 1) {
+            // Several photos in one post: upload each unpublished, then attach
+            // them to a single feed post. Nothing is visible until the feed
+            // call succeeds, so a failed upload can be retried from scratch.
+            $attached = [];
+            foreach ($images as $image) {
+                $upload = Http::post($this->graphBase()."/{$pageId}/photos", [
+                    'url' => $image,
+                    'published' => false,
+                    'access_token' => $token,
+                ]);
+
+                if (! $upload->successful()) {
+                    return $this->rejected($account, $upload);
+                }
+
+                $attached[] = ['media_fbid' => (string) $upload->json('id')];
+            }
+
+            $response = Http::post($this->graphBase()."/{$pageId}/feed", array_filter([
+                'message' => $message,
+                'link' => $post->link,
+                'attached_media' => $attached,
+                'access_token' => $token,
+            ]));
         } elseif ($images) {
             // Publish a photo with optional caption.
             $response = Http::post($this->graphBase()."/{$pageId}/photos", array_filter([

@@ -138,6 +138,88 @@ class FacebookPublishTest extends TestCase
         $this->assertNotEmpty($target->error);
     }
 
+    /* ---------------- multi-photo feed posts ---------------- */
+
+    public function test_two_or_more_images_are_uploaded_unpublished_then_attached_to_one_feed_post(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::sequence()
+                ->push(['id' => 'photo-1'])
+                ->push(['id' => 'photo-2']),
+            'graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_999']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('Album', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+            ['type' => 'image', 'url' => 'https://cdn.example/b.jpg'],
+        ], $account->id);
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+        $this->assertSame('page-1_999', $target->platform_post_id);
+
+        $requests = collect(Http::recorded())->map(fn ($pair) => $pair[0]);
+        $this->assertCount(3, $requests);
+
+        // Each photo goes up unpublished, without the caption.
+        foreach ([0, 1] as $i) {
+            $this->assertStringContainsString('/page-1/photos', $requests[$i]->url());
+            $this->assertSame(['a.jpg', 'b.jpg'][$i], basename($requests[$i]['url']));
+            $this->assertFalse($requests[$i]['published']);
+            $this->assertArrayNotHasKey('caption', $requests[$i]->data());
+        }
+
+        // Then one feed post carries the message and both photo ids.
+        $feed = $requests[2];
+        $this->assertStringContainsString('/page-1/feed', $feed->url());
+        $this->assertSame('Album', $feed['message']);
+        $this->assertSame([['media_fbid' => 'photo-1'], ['media_fbid' => 'photo-2']], $feed['attached_media']);
+    }
+
+    public function test_single_image_still_posts_one_published_photo_with_caption(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::response(['id' => '888', 'post_id' => 'page-1_888']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('With pic', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+        ], $account->id);
+
+        $this->runJob($target);
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/page-1/photos')
+            && $request['caption'] === 'With pic'
+            && ! array_key_exists('published', $request->data()));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page-1/feed'));
+    }
+
+    public function test_a_rejected_photo_upload_fails_the_target_without_posting_to_the_feed(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::sequence()
+                ->push(['id' => 'photo-1'])
+                ->push(['error' => ['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 1366046]], 400),
+            'graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_999']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('Album', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+            ['type' => 'image', 'url' => 'https://cdn.example/too-big.jpg'],
+        ], $account->id);
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertStringContainsString('4 MB', (string) $target->error);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page-1/feed'));
+    }
+
     /* ---------------- reauth ---------------- */
 
     public function test_token_and_page_role_errors_flag_the_page_for_reconnect(): void
@@ -220,6 +302,30 @@ class FacebookPublishTest extends TestCase
         $this->expectException(TransientPublishException::class);
 
         $this->runJob($target);
+    }
+
+    public function test_a_transient_error_while_uploading_photos_retries_before_anything_is_posted(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::sequence()
+                ->push(['id' => 'photo-1'])
+                ->push('Bad Gateway', 502),
+            'graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_999']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('Album', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+            ['type' => 'image', 'url' => 'https://cdn.example/b.jpg'],
+        ], $account->id);
+
+        try {
+            $this->runJob($target);
+            $this->fail('expected TransientPublishException');
+        } catch (TransientPublishException $e) {
+        }
+
+        $this->assertSame(PostTarget::STATUS_PENDING, $target->refresh()->status);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page-1/feed'));
     }
 
     /* ---------------- readable rejections ---------------- */
