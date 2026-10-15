@@ -19,7 +19,7 @@ final class CaptionRules
         'instagram' => 2200,
         'x' => 280,
         'linkedin' => 3000,
-        'facebook' => 5000,
+        'facebook' => 63206,
         'threads' => 500,
         'bluesky' => 300,
     ];

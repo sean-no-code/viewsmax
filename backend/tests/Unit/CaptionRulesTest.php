@@ -13,6 +13,8 @@ class CaptionRulesTest extends TestCase
     {
         $this->assertSame(280, CaptionRules::limit('x'));
         $this->assertSame(3000, CaptionRules::limit('linkedin'));
+        // Facebook's real Page post maximum; 5000 used to reject long posts Facebook accepts.
+        $this->assertSame(63206, CaptionRules::limit('facebook'));
         $this->assertSame(500, CaptionRules::limit('threads'));
         $this->assertSame(2200, CaptionRules::limit('tiktok'));
         $this->assertNull(CaptionRules::limit('myspace'));

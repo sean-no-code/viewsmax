@@ -26,7 +26,7 @@ export const PLATFORMS: Platform[] = [
   { id: "instagram", name: "Instagram", glyph: "IG", handle: "@creator.lab", accent: "#E1306C", limit: 2200, followers: "96.4K", kind: "Reel / Post" },
   { id: "x", name: "X", glyph: "X", handle: "@creatorlab", accent: "#0A0A0C", limit: 280, followers: "54.1K", kind: "Post" },
   { id: "linkedin", name: "LinkedIn", glyph: "in", handle: "Creator Lab", accent: "#0A66C2", limit: 3000, followers: "12.3K", kind: "Post" },
-  { id: "facebook", name: "Facebook", glyph: "f", handle: "Creator Lab", accent: "#1877F2", limit: 5000, followers: "38.0K", kind: "Post" },
+  { id: "facebook", name: "Facebook", glyph: "f", handle: "Creator Lab", accent: "#1877F2", limit: 63206, followers: "38.0K", kind: "Post" },
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
 ];
