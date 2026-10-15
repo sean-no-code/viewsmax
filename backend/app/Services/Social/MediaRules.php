@@ -28,7 +28,8 @@ class MediaRules
         'x' => ['max_images' => 4, 'max_videos' => 0, 'mixed' => false],
         // ViewsMax has no LinkedIn video upload either.
         'linkedin' => ['max_videos' => 0],
-        'bluesky' => ['max_images' => 4, 'max_videos' => 1, 'mixed' => false],
+        // Bluesky video (app.bsky.video) is not wired up yet either.
+        'bluesky' => ['max_images' => 4, 'max_videos' => 0, 'mixed' => false],
     ];
 
     /**

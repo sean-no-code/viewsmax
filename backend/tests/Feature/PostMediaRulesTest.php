@@ -130,22 +130,12 @@ class PostMediaRulesTest extends TestCase
         $this->assertStringContainsString('Bluesky allows at most 4 images', $response->json('message'));
     }
 
-    public function test_bluesky_allows_one_video_but_not_two(): void
+    public function test_bluesky_rejects_video_until_the_video_path_exists(): void
     {
-        $this->createPost(['caption' => 'hi', 'platforms' => ['bluesky'], 'media' => [$this->video()], 'status' => 'posted'])
-            ->assertStatus(201);
-
-        $response = $this->createPost(['caption' => 'hi', 'platforms' => ['bluesky'], 'media' => [$this->video(), $this->video()], 'status' => 'posted']);
-        $response->assertStatus(422);
-        $this->assertStringContainsString('Bluesky allows only 1 video', $response->json('message'));
-    }
-
-    public function test_bluesky_rejects_images_mixed_with_video(): void
-    {
-        $response = $this->createPost(['caption' => 'hi', 'platforms' => ['bluesky'], 'media' => [$this->video(), ...$this->images(1)], 'status' => 'posted']);
+        $response = $this->createPost(['caption' => 'hi', 'platforms' => ['bluesky'], 'media' => [$this->video()], 'status' => 'posted']);
 
         $response->assertStatus(422);
-        $this->assertStringContainsString("Bluesky can't combine images and video", $response->json('message'));
+        $this->assertStringContainsString("Bluesky can't post video from here yet", $response->json('message'));
     }
 
     // ── General ───────────────────────────────────────────────────────────
