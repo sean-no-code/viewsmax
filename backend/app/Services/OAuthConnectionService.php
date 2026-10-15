@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class OAuthConnectionService
 {
-    public const PROVIDERS = ['youtube', 'tiktok', 'instagram'];
+    public const PROVIDERS = ['youtube', 'tiktok'];
 
     /**
      * Exchange an OAuth authorization code for the given provider, fetch the
@@ -21,7 +21,6 @@ class OAuthConnectionService
     {
         $profile = match ($provider) {
             'tiktok' => $this->exchangeTikTok($code, $redirectUri, $codeVerifier),
-            'instagram' => $this->exchangeInstagram($code, $redirectUri),
             default => throw new Exception("Unsupported provider: {$provider}"),
         };
 
@@ -97,7 +96,7 @@ class OAuthConnectionService
 
     /**
      * Re-fetch the connected account's display name + avatar and store them.
-     * TikTok (and Instagram) avatar URLs are short-lived SIGNED urls — the one
+     * TikTok avatar URLs are short-lived SIGNED urls — the one
      * captured at connect time expires within days, after which the UI falls
      * back to a brand glyph. Callers throttle this (see ConnectionController)
      * and must treat failure as non-fatal.
@@ -228,77 +227,6 @@ class OAuthConnectionService
             'access_token' => $accessToken,
             'refresh_token' => $token['refresh_token'] ?? null,
             'token_expires_at' => isset($token['expires_in']) ? now()->addSeconds($token['expires_in']) : null,
-        ];
-    }
-
-    /**
-     * Instagram via Meta/Facebook Login: exchange code for a token, then resolve
-     * the linked Instagram business account (falling back to the basic /me profile).
-     * Scopes: instagram_basic,pages_show_list
-     */
-    private function exchangeInstagram(string $code, string $redirectUri): array
-    {
-        $clientId = config('services.meta.client_id');
-        $clientSecret = config('services.meta.client_secret');
-
-        if (! $clientId || ! $clientSecret) {
-            throw new Exception('Instagram OAuth is not configured');
-        }
-
-        $tokenResponse = Http::get('https://graph.facebook.com/v19.0/oauth/access_token', [
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-            'redirect_uri' => $redirectUri,
-            'code' => $code,
-        ]);
-
-        if (! $tokenResponse->successful()) {
-            Log::error('Instagram token exchange failed', ['response' => $tokenResponse->body()]);
-            throw new Exception('Failed to exchange Instagram authorization code');
-        }
-
-        $token = $tokenResponse->json();
-        $accessToken = $token['access_token'] ?? null;
-        if (! $accessToken) {
-            throw new Exception('Instagram did not return an access token');
-        }
-
-        $expiresAt = isset($token['expires_in']) ? now()->addSeconds($token['expires_in']) : null;
-
-        // Try to resolve the IG business account linked to one of the user's pages.
-        $pagesResponse = Http::withToken($accessToken)
-            ->get('https://graph.facebook.com/v19.0/me/accounts', [
-                'fields' => 'instagram_business_account{id,username,profile_picture_url}',
-            ]);
-
-        if ($pagesResponse->successful()) {
-            foreach ($pagesResponse->json('data', []) as $page) {
-                $ig = $page['instagram_business_account'] ?? null;
-                if ($ig && ! empty($ig['id'])) {
-                    return [
-                        'account_id' => $ig['id'],
-                        'account_name' => $ig['username'] ?? 'Instagram Account',
-                        'avatar_url' => $ig['profile_picture_url'] ?? null,
-                        'access_token' => $accessToken,
-                        'refresh_token' => null,
-                        'token_expires_at' => $expiresAt,
-                    ];
-                }
-            }
-        }
-
-        // Fallback to the basic Facebook profile if no IG business account is linked.
-        $me = Http::withToken($accessToken)
-            ->get('https://graph.facebook.com/v19.0/me', ['fields' => 'id,name,picture'])
-            ->json();
-
-        return [
-            'account_id' => $me['id'] ?? '',
-            'account_name' => $me['name'] ?? 'Instagram Account',
-            'avatar_url' => $me['picture']['data']['url'] ?? null,
-            'access_token' => $accessToken,
-            'refresh_token' => null,
-            'token_expires_at' => $expiresAt,
         ];
     }
 }

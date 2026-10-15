@@ -194,32 +194,11 @@ class PromoOnlyPlatformsTest extends TestCase
         $this->assertTrue($this->catalogEntry($admin, 'instagram')['available']);
     }
 
-    public function test_the_legacy_connection_exchange_refuses_a_promo_only_platform(): void
+    public function test_the_legacy_connection_exchange_does_not_accept_instagram(): void
     {
-        // /api/auth/{provider}/exchange writes to the older Connection store and
-        // accepts instagram. The UI only drives it for YouTube, but it is
-        // reachable with any valid login, so it needs the same gate.
-        Http::fake();
-
-        $this->withHeaders($this->auth($this->user(promotional: false)))
-            ->postJson('/api/auth/instagram/exchange', [
-                'code' => 'abc',
-                'redirect_uri' => 'https://app.test/cb',
-            ])
-            ->assertStatus(503);
-
-        Http::assertNothingSent();
-    }
-
-    public function test_the_legacy_connection_exchange_does_not_depend_on_the_social_stores_credentials(): void
-    {
-        // That path authenticates with config('services.meta.*'), not
-        // social.platforms.instagram.*, so blanking the latter must not start
-        // refusing it — only the promotional-customer rule applies there.
-        config([
-            'social.platforms.instagram.client_id' => null,
-            'social.platforms.instagram.client_secret' => null,
-        ]);
+        // /api/auth/{provider}/exchange writes to the older Connection store.
+        // Instagram connects through /api/social, so the old path must refuse
+        // it outright, before any call to Meta, for every user.
         Http::fake();
 
         $this->withHeaders($this->auth($this->user(promotional: true)))
@@ -227,7 +206,9 @@ class PromoOnlyPlatformsTest extends TestCase
                 'code' => 'abc',
                 'redirect_uri' => 'https://app.test/cb',
             ])
-            ->assertStatus(422); // reaches the provider exchange and fails there
+            ->assertStatus(422);
+
+        Http::assertNothingSent();
     }
 
     public function test_the_legacy_connection_exchange_still_serves_an_open_platform(): void

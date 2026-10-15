@@ -130,7 +130,6 @@ const buildUser = (db: MockDb, email: string) => {
 const PROVIDER_LABEL: Record<OAuthProvider, string> = {
   youtube: "YouTube",
   tiktok: "TikTok",
-  instagram: "Instagram",
 };
 
 export const mockApi = {

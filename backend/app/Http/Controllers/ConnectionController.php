@@ -50,7 +50,7 @@ class ConnectionController extends Controller
 
     /**
      * Exchange an OAuth code for a provider and upsert the connection.
-     * (YouTube is handled by YouTubeOAuthController; this covers tiktok|instagram.)
+     * (YouTube is handled by YouTubeOAuthController; this covers tiktok.)
      */
     public function exchange(Request $request, string $provider, OAuthConnectionService $service)
     {
@@ -59,11 +59,10 @@ class ConnectionController extends Controller
         }
 
         // Limited release (config/social → promo_only) applies here too: this
-        // store is older than the /api/social one, but the platform is the same,
-        // so a code posted straight at it must not slip the gate. Only the
-        // audience rule, not isAvailableTo() — this path authenticates with
-        // config('services.meta.*'), a different credential pair, so it must not
-        // pick up a check against the social store's client_id/secret.
+        // store is older than the /api/social one, but a platform in limited
+        // release must not slip the gate through it. Only the audience rule,
+        // not isAvailableTo(): this path has its own credentials, so it must
+        // not pick up a check against the social store's client_id/secret.
         if (app(SocialProviderManager::class)->promoOnly($provider) && ! $request->user()->isPromotional()) {
             return response()->json([
                 'success' => false,

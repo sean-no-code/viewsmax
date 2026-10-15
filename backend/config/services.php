@@ -239,11 +239,6 @@ return [
         'video_pull_from_url' => env('TIKTOK_VIDEO_PULL_FROM_URL', true),
     ],
 
-    'meta' => [
-        'client_id' => env('META_CLIENT_ID'),
-        'client_secret' => env('META_CLIENT_SECRET'),
-    ],
-
     'perplexity' => [
         'api_key' => env('PERPLEXITY_API_KEY'),
         'api_url' => env('PERPLEXITY_API_URL', 'https://api.perplexity.ai/chat/completions'),

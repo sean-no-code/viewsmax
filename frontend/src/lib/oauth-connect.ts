@@ -1,6 +1,6 @@
 // Provider-agnostic OAuth "connect account" flow.
 // Generalizes the YouTube popup + postMessage pattern in youtube-auth.ts to
-// support YouTube, TikTok and Instagram. The popup posts a generic
+// support YouTube and TikTok. The popup posts a generic
 // { type: 'OAUTH_SUCCESS', provider, code } message (see OAuthCallback.tsx),
 // which we exchange for a stored connection via the backend.
 
@@ -34,7 +34,6 @@ const computeCodeChallenge = async (verifier: string): Promise<string> => {
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const TIKTOK_CLIENT_KEY = import.meta.env.VITE_TIKTOK_CLIENT_KEY;
-const INSTAGRAM_CLIENT_ID = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
 
 export const PROVIDER_CONFIG: Record<OAuthProvider, ProviderConfig> = {
   youtube: {
@@ -78,19 +77,6 @@ export const PROVIDER_CONFIG: Record<OAuthProvider, ProviderConfig> = {
       return `https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`;
     },
   },
-  instagram: {
-    label: "Instagram",
-    buildAuthUrl: (state) => {
-      const params = new URLSearchParams({
-        client_id: INSTAGRAM_CLIENT_ID || "",
-        redirect_uri: REDIRECT_URI,
-        scope: "instagram_basic,pages_show_list",
-        response_type: "code",
-        state,
-      });
-      return `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
-    },
-  },
 };
 
 export const PROVIDERS = Object.keys(PROVIDER_CONFIG) as OAuthProvider[];
@@ -102,8 +88,6 @@ export const isProviderConfigured = (provider: OAuthProvider): boolean => {
       return !!GOOGLE_CLIENT_ID;
     case "tiktok":
       return !!TIKTOK_CLIENT_KEY;
-    case "instagram":
-      return !!INSTAGRAM_CLIENT_ID;
     default:
       return false;
   }

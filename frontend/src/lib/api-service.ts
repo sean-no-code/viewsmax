@@ -107,11 +107,12 @@ interface User {
   access_expired?: boolean;
 }
 
-export type OAuthProvider = 'youtube' | 'tiktok' | 'instagram';
+export type OAuthProvider = 'youtube' | 'tiktok';
 
 export interface Connection {
   id: number;
-  provider: OAuthProvider;
+  // Older rows can still be 'instagram' (Instagram now connects via /api/social).
+  provider: OAuthProvider | 'instagram';
   account_name: string;
   account_id: string;
   avatar_url?: string | null;
