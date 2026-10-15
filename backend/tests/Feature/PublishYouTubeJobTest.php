@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
 use App\Models\SocialPost;
+use App\Services\Social\Providers\GoogleOAuthProvider;
 use App\Services\Social\Providers\YouTubeProvider;
 use App\Models\User;
 use App\Services\YouTubePublishService;
@@ -118,6 +119,31 @@ class PublishYouTubeJobTest extends TestCase
 
         $this->assertFalse($result->success);
         $this->assertStringContainsString("reached YouTube's upload limit", (string) $result->error);
+    }
+
+    public function test_workspace_policy_refresh_rejections_get_their_own_message(): void
+    {
+        $cases = [
+            [['error' => 'invalid_grant', 'error_subtype' => 'invalid_rapt', 'error_description' => 'reauth related error (invalid_rapt)'], GoogleOAuthProvider::WORKSPACE_POLICY_MESSAGE],
+            [['error' => 'invalid_grant', 'error_description' => 'Token has been expired or revoked.'], 'Google token refresh was rejected — reconnect the account.'],
+        ];
+
+        config(['social.platforms.youtube.client_id' => 'cid', 'social.platforms.youtube.client_secret' => 'csecret']);
+        $current = null;
+        Http::fake(['oauth2.googleapis.com/token' => function () use (&$current) {
+            return Http::response($current, 400);
+        }]);
+
+        foreach ($cases as $i => [$current, $expected]) {
+            $user = User::factory()->create();
+            $account = $this->ytAccount($user, 'yt-chan-'.$i);
+            $account->forceFill(['token_expires_at' => now()->subHour()])->save();
+
+            app(YouTubeProvider::class)->ensureFreshToken($account);
+
+            $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->refresh()->status);
+            $this->assertSame($expected, $account->last_error);
+        }
     }
 
     private function videoPost(User $user): Post
