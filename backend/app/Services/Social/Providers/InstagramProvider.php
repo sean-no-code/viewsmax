@@ -46,6 +46,9 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
             // storeAccount() just updates the existing row (one account per user)
             // instead of adding the new one.
             'force_reauth' => 'true',
+            // Never offer "Log in with Facebook" on the dialog: that path hands
+            // back a token graph.instagram.com rejects.
+            'enable_fb_login' => '0',
         ]);
     }
 
