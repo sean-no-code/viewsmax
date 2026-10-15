@@ -9,6 +9,7 @@ use App\Models\PostTarget;
 use App\Services\TikTokPublishService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -34,6 +35,17 @@ class PublishToTikTokJob implements ShouldQueue
     private const POLL_SECONDS = 15;
 
     public function __construct(public int $postTargetId) {}
+
+    /**
+     * Cap how many TikTok job runs start per minute (config/publishing.php,
+     * limiter registered in AppServiceProvider) so a TikTok spike cannot
+     * starve the other platforms' jobs. Each status poll is a run too, so the
+     * cap is set well above the YouTube one.
+     */
+    public function middleware(): array
+    {
+        return [new RateLimited('publish-tiktok')];
+    }
 
     public function handle(TikTokPublishService $tiktok): void
     {

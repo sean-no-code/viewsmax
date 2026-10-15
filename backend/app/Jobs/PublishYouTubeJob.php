@@ -9,6 +9,7 @@ use App\Services\Social\CaptionRules;
 use App\Services\YouTubePublishService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -40,6 +41,17 @@ class PublishYouTubeJob implements ShouldQueue
     ];
 
     public function __construct(public int $postTargetId) {}
+
+    /**
+     * Cap how many YouTube publishes start per minute (config/publishing.php,
+     * limiter registered in AppServiceProvider) so a YouTube spike cannot
+     * starve the other platforms' jobs. Over the cap the job is released until
+     * the window resets.
+     */
+    public function middleware(): array
+    {
+        return [new RateLimited('publish-youtube')];
+    }
 
     public function handle(YouTubePublishService $youtube): void
     {
