@@ -19,7 +19,14 @@
 
 $frontend = env('FRONTEND_URL', env('APP_URL'));
 
+// One Graph API version for every Meta platform (Facebook + Instagram share
+// the same release cycle; Threads has its own v1.0 API). Meta sunsets each
+// version ~2 years after release, so bump this env when a new one ships.
+$metaGraphVersion = env('META_GRAPH_API_VERSION', 'v25.0');
+
 return [
+
+    'meta_graph_version' => $metaGraphVersion,
 
     // Default callback path on the frontend. The frontend may override per-call.
     'default_redirect_uri' => $frontend ? rtrim($frontend, '/').'/social/callback' : null,
@@ -42,7 +49,7 @@ return [
             'enabled' => env('FACEBOOK_ENABLED', true),
             'client_id' => env('FACEBOOK_CLIENT_ID'),
             'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-            'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v21.0'),
+            'graph_version' => env('FACEBOOK_GRAPH_VERSION', $metaGraphVersion),
             // Publishing to a Page requires these scopes + a Page selection.
             'scopes' => [
                 'public_profile',
@@ -65,7 +72,7 @@ return [
             // NOT the Facebook app credentials.
             'client_id' => env('INSTAGRAM_CLIENT_ID'),
             'client_secret' => env('INSTAGRAM_CLIENT_SECRET'),
-            'graph_version' => env('INSTAGRAM_GRAPH_VERSION', 'v21.0'),
+            'graph_version' => env('INSTAGRAM_GRAPH_VERSION', $metaGraphVersion),
             // Content-views/reach tracking for IG links. Off until Meta App Review
             // grants the insights scope; flipping it on adds the scope to the
             // connect flow (existing accounts must reconnect) and turns on the

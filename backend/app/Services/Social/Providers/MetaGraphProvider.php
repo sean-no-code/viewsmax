@@ -14,7 +14,7 @@ abstract class MetaGraphProvider extends AbstractSocialProvider
 {
     protected function graphVersion(): string
     {
-        return $this->config('graph_version', 'v21.0');
+        return $this->config('graph_version', config('social.meta_graph_version', 'v25.0'));
     }
 
     protected function graphBase(): string

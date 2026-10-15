@@ -28,7 +28,7 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
 
     protected function graphBase(): string
     {
-        return 'https://graph.instagram.com/'.$this->config('graph_version', 'v21.0');
+        return 'https://graph.instagram.com/'.$this->config('graph_version', config('social.meta_graph_version', 'v25.0'));
     }
 
     public function getAuthorizationUrl(string $redirectUri, string $state, array $options = []): string

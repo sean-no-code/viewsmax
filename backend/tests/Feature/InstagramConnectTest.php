@@ -83,6 +83,9 @@ class InstagramConnectTest extends TestCase
         $this->assertSame('long-lived', $account->access_token);
         $this->assertNotNull($account->token_expires_at);
         $this->assertTrue($account->token_expires_at->gt(now()->addDays(50)));
+
+        // Profile lookups go through the shared Meta Graph version (config/social.php).
+        Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://graph.instagram.com/v25.0/me'));
     }
 
     /**
