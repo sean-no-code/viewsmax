@@ -13,8 +13,10 @@ use App\Services\Social\Contracts\SupportsFollowing;
 use App\Services\Social\Data\CommentResult;
 use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 
 /**
@@ -183,18 +185,29 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
                 ->post('https://api.twitter.com/2/tweets', $payload);
 
             if (! $response->successful()) {
-                $label = $total > 1 ? sprintf(' at tweet %d of %d', $i + 1, $total) : '';
-                $message = "X publish failed{$label}: ".$response->body();
+                $progress = ['tweet_ids' => $tweetIds, 'partial' => $tweetIds !== []];
 
-                // Rate limits / X hiccups: let the queue retry and resume.
-                if ($response->status() === 429 || $response->serverError()) {
-                    throw new TransientPublishException($message);
+                // A dead token flags the account for reconnect.
+                if ($this->failReauthIfUnauthorized($account, $response, 'publish', $this->tokenRejected(...))) {
+                    return PublishResult::failure((string) $account->last_error, $progress);
                 }
 
-                return PublishResult::failure($message, [
-                    'tweet_ids' => $tweetIds,
-                    'partial' => $tweetIds !== [],
-                ] + ($response->json() ?? []));
+                $position = $total > 1 ? sprintf(' (tweet %d of %d)', $i + 1, $total) : '';
+                $message = $this->rejectionMessage($response).$position;
+                Log::warning('X publish rejected', [
+                    'social_account_id' => $account->id,
+                    'status' => $response->status(),
+                    'body' => $this->bodyExcerpt($response),
+                ]);
+
+                // Rate limits / X hiccups: let the queue retry and resume. The
+                // status rides in the exception code so PublishToXJob::failed()
+                // can tell an exhausted rate limit apart.
+                if (self::isTransientStatus($response->status())) {
+                    throw new TransientPublishException($message, $response->status());
+                }
+
+                return PublishResult::failure($message, $progress + ($response->json() ?? []));
             }
 
             $tweetIds[] = (string) $response->json('data.id');
@@ -416,10 +429,89 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
             ]);
 
         if (! $response->successful()) {
-            return CommentResult::failure('X comment failed: '.$response->body(), $response->json() ?? []);
+            if ($this->failReauthIfUnauthorized($account, $response, 'comment', $this->tokenRejected(...))) {
+                return CommentResult::failure((string) $account->last_error, $response->json() ?? []);
+            }
+
+            Log::warning('X comment rejected', [
+                'social_account_id' => $account->id,
+                'status' => $response->status(),
+                'body' => $this->bodyExcerpt($response),
+            ]);
+
+            return CommentResult::failure($this->rejectionMessage($response, 'the reply'), $response->json() ?? []);
         }
 
         return CommentResult::success((string) $response->json('data.id'), $response->json() ?? []);
+    }
+
+    /** Final error once a rate limit never cleared. */
+    public const RATE_LIMIT_MESSAGE = 'X rate limit reached, please try again later';
+
+    public const UNAVAILABLE_MESSAGE = 'X is currently unavailable, please try again later';
+
+    /**
+     * X error bodies → what the user reads instead of raw JSON.
+     * Substring matches, checked in order.
+     */
+    protected const ERROR_MESSAGES = [
+        'You are not permitted to perform this action' => 'There is a problem posting, please edit your post and check character count and media attachments',
+        'Service Unavailable' => self::UNAVAILABLE_MESSAGE,
+        'Too Many Requests' => self::RATE_LIMIT_MESSAGE,
+        'maximum of one cashtag' => 'There can be maximum of one cashtag ($SYMBOL) per post',
+        'maximum of 4 items' => 'There must be a maximum of 4 items per post',
+        'You are not allowed to create a Tweet' => 'You are not allowed to create a post with duplicate content',
+        'usage-capped' => 'Posting failed - capped reached. Please try again later',
+        'user-suspended' => 'Your X account has been suspended, please reconnect with another account',
+        'duplicate-rules' => 'You have already posted this post, please wait before posting again',
+        'Your account is not permitted to access this feature' => 'X blocked your request',
+        'The Tweet contains an invalid URL.' => 'The Tweet contains a URL that is not allowed on X',
+        'This user is not allowed to post a video longer than 2 minutes' => 'The video you are trying to post is longer than 2 minutes, which is not allowed for this account',
+        'This user is not allowed to post a video longer than 10 minutes' => 'The video you are trying to post is longer than 10 minutes, which is not allowed for this account',
+        'Your account is temporarily locked' => 'Your X account is temporarily locked, log in to x.com to unlock it and then try again',
+        'Crypto addresses are prohibited' => 'X does not allow crypto addresses in posts for the first 7 days after connecting the account',
+        'Your media IDs are invalid' => 'X rejected the attached media, please re-upload the media and try again',
+        'not authorized to create or publish articles' => 'Publishing articles on X requires an X Premium subscription',
+        'Please include either text or media in your Tweet' => 'One of the posts in this thread has no text or media, please add some text or remove it',
+    ];
+
+    /**
+     * User-facing reason for a refused X call. Known bodies come from
+     * ERROR_MESSAGES; a rate limit or 5xx with an unlisted body still reads as
+     * such; anything else quotes X's own detail/title ("X rejected the post:
+     * Your Tweet text is too long.") rather than the JSON blob.
+     */
+    protected function rejectionMessage(Response $response, string $what = 'the post'): string
+    {
+        $body = (string) $response->body();
+        foreach (self::ERROR_MESSAGES as $needle => $message) {
+            if (str_contains($body, $needle)) {
+                return $message;
+            }
+        }
+
+        if ($response->status() === 429) {
+            return self::RATE_LIMIT_MESSAGE;
+        }
+        if ($response->serverError()) {
+            return self::UNAVAILABLE_MESSAGE;
+        }
+
+        $detail = $response->json('errors.0.message') ?: $response->json('detail') ?: $response->json('title');
+
+        return "X rejected {$what}: ".($detail ?: "HTTP {$response->status()}");
+    }
+
+    /**
+     * Bodies that mean a dead token regardless of status:
+     * X answers some revoked/expired tokens with a 403 whose body still says
+     * Unauthorized. Used as failReauthIfUnauthorized()'s $alsoWhen.
+     */
+    protected function tokenRejected(Response $response): bool
+    {
+        $body = (string) $response->body();
+
+        return str_contains($body, '"title":"Unauthorized"') || str_contains($body, 'Unsupported Authentication');
     }
 
     public const MEDIA_SCOPE = 'media.write';
@@ -467,17 +559,21 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
 
             $id = $upload->json('data.id') ?? $upload->json('media_id_string');
             if (! $id) {
-                \Illuminate\Support\Facades\Log::warning('X image upload refused', [
+                Log::warning('X image upload refused', [
                     'social_account_id' => $account->id,
                     'status' => $upload->status(),
-                    'body' => $upload->body(),
+                    'body' => $this->bodyExcerpt($upload),
                 ]);
+
+                if ($this->failReauthIfUnauthorized($account, $upload, 'image upload', $this->tokenRejected(...))) {
+                    return [[], (string) $account->last_error];
+                }
 
                 // 403 with the scope present means X still sees an old token
                 // (or the app lost media access) — reconnecting fixes both.
                 $hint = $upload->status() === 403 ? ' — '.self::RECONNECT_HINT : '';
 
-                return [[], 'X image upload was refused: '.$upload->body().$hint];
+                return [[], $this->rejectionMessage($upload, 'the image upload').$hint];
             }
 
             $ids[] = (string) $id;
