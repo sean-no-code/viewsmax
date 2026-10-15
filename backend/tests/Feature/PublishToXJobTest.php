@@ -415,4 +415,99 @@ class PublishToXJobTest extends TestCase
 
         $this->assertSame('X is currently unavailable, please try again later', $target->refresh()->error);
     }
+
+    /* ---------- image uploads retry rate limits in place ---------- */
+
+    public function test_image_upload_retries_rate_limits_and_server_errors_then_succeeds(): void
+    {
+        $uploads = 0;
+        Http::fake([
+            'cdn.example/*' => Http::response('binary'),
+            'api.twitter.com/2/media/upload*' => function () use (&$uploads) {
+                $uploads++;
+
+                return match ($uploads) {
+                    1 => Http::response('{"title":"Too Many Requests","status":429}', 429),
+                    2 => Http::response('{"title":"Service Unavailable","status":503}', 503),
+                    default => Http::response(['data' => ['id' => 'm1']]),
+                };
+            },
+            'api.twitter.com/2/tweets' => Http::response(['data' => ['id' => 't1']]),
+        ]);
+        $user = User::factory()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, 'One pic', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+        ]);
+
+        $this->runJob($target);
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status, (string) $target->error);
+        $this->assertSame(3, $uploads);
+        // 5 s × attempt between attempts; the image is fetched once.
+        Sleep::assertSequence([Sleep::for(5)->seconds(), Sleep::for(10)->seconds()]);
+        Http::assertSentCount(5);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
+            && ($request['media']['media_ids'] ?? null) === ['m1']);
+    }
+
+    /** A 429 that outlives the three in-place attempts hands the whole post to the queue: nothing was tweeted. */
+    public function test_persistent_upload_rate_limit_throws_transient_for_the_queue(): void
+    {
+        $uploads = 0;
+        Http::fake([
+            'cdn.example/*' => Http::response('binary'),
+            'api.twitter.com/2/media/upload*' => function () use (&$uploads) {
+                $uploads++;
+
+                return Http::response('{"title":"Too Many Requests","status":429}', 429);
+            },
+        ]);
+        $user = User::factory()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, 'One pic', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+        ]);
+
+        try {
+            $this->runJob($target);
+            $this->fail('Expected a TransientPublishException for the queue to retry.');
+        } catch (TransientPublishException $e) {
+            $this->assertSame(XProvider::RATE_LIMIT_MESSAGE, $e->getMessage());
+        }
+
+        $this->assertSame(3, $uploads);
+        $this->assertSame(PostTarget::STATUS_PENDING, $target->refresh()->status);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+
+        // …and once the queue gives up, the user reads why.
+        (new PublishToXJob($target->id))->failed($e);
+        $this->assertSame('X rate limit reached, please try again later', $target->refresh()->error);
+    }
+
+    /** Permanent upload refusals are not retried. */
+    public function test_image_upload_does_not_retry_permanent_refusals(): void
+    {
+        $uploads = 0;
+        Http::fake([
+            'cdn.example/*' => Http::response('binary'),
+            'api.twitter.com/2/media/upload*' => function () use (&$uploads) {
+                $uploads++;
+
+                return Http::response('{"detail":"Your media IDs are invalid.","title":"Invalid Request","status":400}', 400);
+            },
+        ]);
+        $user = User::factory()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, 'One pic', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+        ]);
+
+        $this->runJob($target);
+
+        $this->assertSame(1, $uploads);
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+        $this->assertSame('X rejected the attached media, please re-upload the media and try again', $target->error);
+        Sleep::assertNeverSlept();
+    }
 }

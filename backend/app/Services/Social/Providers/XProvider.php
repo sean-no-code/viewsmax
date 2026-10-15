@@ -13,6 +13,7 @@ use App\Services\Social\Contracts\SupportsFollowing;
 use App\Services\Social\Data\CommentResult;
 use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -551,7 +552,12 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
                 return [[], 'X image upload failed: could not fetch '.$img['url']];
             }
 
+            // Nothing is live yet, so a rate limit / X hiccup is retried in
+            // place (3 attempts, 5 s × attempt) before bothering the queue.
             $upload = Http::withToken($account->access_token)
+                ->retry(3, fn (int $attempt) => $attempt * 5000, function ($e) {
+                    return $e instanceof RequestException && self::isTransientStatus($e->response->status());
+                }, throw: false)
                 ->attach('media', $binary['body'], 'upload')
                 ->post('https://api.twitter.com/2/media/upload', [
                     'media_category' => 'tweet_image',
@@ -567,6 +573,12 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
 
                 if ($this->failReauthIfUnauthorized($account, $upload, 'image upload', $this->tokenRejected(...))) {
                     return [[], (string) $account->last_error];
+                }
+
+                // Still rate limited / down after the in-place retries: no
+                // tweet exists yet, so let the queue retry the whole post later.
+                if (self::isTransientStatus($upload->status())) {
+                    throw new TransientPublishException($this->rejectionMessage($upload, 'the image upload'), $upload->status());
                 }
 
                 // 403 with the scope present means X still sees an old token
