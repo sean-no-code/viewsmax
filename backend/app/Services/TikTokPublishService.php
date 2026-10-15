@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Exceptions\MediaReadException;
 use App\Exceptions\TikTokCreatorUnavailableException;
 use App\Exceptions\TikTokPublishException;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
+use App\Support\BoundedMediaStream;
 use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -282,15 +284,22 @@ class TikTokPublishService
             throw new TikTokPublishException('TikTok rejected the post: '.$init['body'], ['log' => $log, 'mode' => $mode]);
         }
 
+        // Bound every read: a stalled R2 read or a file shorter than the size
+        // we declared to TikTok fails with a re-upload message instead of
+        // running the job into its timeout.
+        $reader = new BoundedMediaStream($stream, $videoSize);
+
         for ($i = 0; $i < $totalChunks; $i++) {
             $isLast = $i === $totalChunks - 1;
             $start = $chunkSize * $i;
             $thisSize = $isLast ? ($videoSize - $start) : $chunkSize;
-            $bytes = $this->readExact($stream, $thisSize);
-            $len = strlen($bytes);
-            if ($len === 0) {
-                throw new TikTokPublishException('Unexpected end of video file while uploading.', ['log' => $log, 'mode' => $mode]);
+            try {
+                $bytes = $this->readExact($reader, $thisSize);
+            } catch (MediaReadException $e) {
+                // Rethrow as the TikTok exception so the audit log so far is kept.
+                throw new TikTokPublishException($e->getMessage(), ['log' => $log, 'mode' => $mode]);
             }
+            $len = strlen($bytes);
             $range = "{$start}-".($start + $len - 1)."/{$videoSize}";
             $upload = $this->uploadVideoChunk($init['upload_url'], $bytes, $start, $start + $len - 1, $videoSize);
             $log[] = $this->event("upload:{$i}", $upload['status'], $upload['body'], ['range' => $range]);
@@ -577,18 +586,15 @@ class TikTokPublishService
     }
 
     /**
-     * Read exactly $len bytes from the stream (or until EOF).
-     *
-     * @param  resource  $stream
+     * Read exactly $len bytes from the bounded stream. The stream throws
+     * MediaReadException on a stall or when the file ends before the declared
+     * size, so a short return here is impossible.
      */
-    private function readExact($stream, int $len): string
+    private function readExact(BoundedMediaStream $stream, int $len): string
     {
         $buf = '';
-        while ($len > 0 && ! feof($stream)) {
-            $chunk = fread($stream, (int) min(1024 * 1024, $len));
-            if ($chunk === false || $chunk === '') {
-                break;
-            }
+        while ($len > 0) {
+            $chunk = $stream->read((int) min(1024 * 1024, $len));
             $buf .= $chunk;
             $len -= strlen($chunk);
         }

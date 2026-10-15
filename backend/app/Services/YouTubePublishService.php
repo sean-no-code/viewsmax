@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
+use App\Support\BoundedMediaStream;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
@@ -144,10 +145,13 @@ class YouTubePublishService
             throw new RuntimeException('YouTube did not return a resumable upload URL.');
         }
 
-        // 2. Stream the video bytes into the session in a single PUT.
+        // 2. Stream the video bytes into the session in a single PUT. The
+        // stream is bounded so a stalled storage read or a file shorter than
+        // $size throws MediaReadException (a re-upload message) out of the
+        // PUT instead of running the job into its timeout.
         $upload = Http::withToken($accessToken)
             ->timeout(600)
-            ->withBody($videoStream, 'video/*')
+            ->withBody(new BoundedMediaStream($videoStream, $size), 'video/*')
             ->put($uploadUrl);
 
         if (! $upload->successful()) {
