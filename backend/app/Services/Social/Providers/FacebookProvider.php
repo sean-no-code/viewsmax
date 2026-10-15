@@ -6,22 +6,45 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\PublishResult;
+use App\Services\Social\SocialConnectException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class FacebookProvider extends MetaGraphProvider
 {
     protected string $platform = 'facebook';
 
     /**
+     * A Page listed through a business the user has no role on comes back
+     * from /me/accounts without a Page token; storing it anyway looked
+     * connected while every publish failed.
+     */
+    public const MESSAGE_NO_PAGE_TOKEN = 'Your Facebook user has no permission to manage this page. Ask a page admin for full content access, then reconnect';
+
+    /**
      * Connect every Facebook Page the user manages as a separate account.
+     *
+     * @throws SocialConnectException when no listed Page carries a Page token
      */
     public function connectFromCode(User $user, string $code, string $redirectUri, array $options = []): Collection
     {
         $userToken = $this->getLongLivedUserToken($code, $redirectUri);
-        $pages = $this->getManagedPages($userToken);
+        [$pages, $withoutToken] = collect($this->getManagedPages($userToken))
+            ->partition(fn (array $page) => ! empty($page['access_token']));
 
-        return collect($pages)->map(function (array $page) use ($user) {
+        if ($withoutToken->isNotEmpty()) {
+            Log::warning('[Facebook] pages listed without a page token were skipped', [
+                'pages' => $withoutToken->map(fn (array $page) => ($page['name'] ?? '?').' ('.$page['id'].')')->values()->all(),
+                'reason' => self::MESSAGE_NO_PAGE_TOKEN,
+            ]);
+
+            if ($pages->isEmpty()) {
+                throw new SocialConnectException(self::MESSAGE_NO_PAGE_TOKEN);
+            }
+        }
+
+        return $pages->values()->map(function (array $page) use ($user) {
             return $this->storeAccount($user, [
                 'platform_account_id' => $page['id'],
                 'name' => $page['name'] ?? null,

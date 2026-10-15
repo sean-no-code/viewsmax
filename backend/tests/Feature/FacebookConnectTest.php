@@ -82,6 +82,68 @@ class FacebookConnectTest extends TestCase
         $this->assertSame(0, SocialAccount::count());
     }
 
+    private const ALL_GRANTED = [
+        ['permission' => 'public_profile', 'status' => 'granted'],
+        ['permission' => 'pages_show_list', 'status' => 'granted'],
+        ['permission' => 'pages_manage_posts', 'status' => 'granted'],
+        ['permission' => 'pages_read_engagement', 'status' => 'granted'],
+    ];
+
+    /** @param array<int, array<string, mixed>> $pages */
+    private function fakeGraphWithPages(array $pages): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/oauth/access_token*' => Http::response(['access_token' => 'user-token'], 200),
+            'graph.facebook.com/*/me/permissions*' => Http::response(['data' => self::ALL_GRANTED], 200),
+            'graph.facebook.com/*/me/accounts*' => Http::response(['data' => $pages], 200),
+        ]);
+    }
+
+    public function test_a_page_listed_without_a_page_token_is_skipped_and_the_others_are_stored(): void
+    {
+        // A Page reached through a business the user has no role on is listed
+        // without access_token; it used to be stored with a null token and
+        // look connected while every publish failed.
+        $this->fakeGraphWithPages([
+            ['id' => 'page-1', 'name' => 'Managed', 'access_token' => 'page-token'],
+            ['id' => 'page-2', 'name' => 'Business only'],
+            ['id' => 'page-3', 'name' => 'Empty token', 'access_token' => ''],
+        ]);
+
+        $accounts = (new FacebookProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+
+        $this->assertSame(['page-1'], $accounts->pluck('platform_account_id')->all());
+        $this->assertSame(1, SocialAccount::count());
+        $this->assertSame('page-token', SocialAccount::sole()->access_token);
+    }
+
+    public function test_connect_fails_with_the_page_role_message_when_no_page_has_a_token(): void
+    {
+        $this->fakeGraphWithPages([
+            ['id' => 'page-2', 'name' => 'Business only'],
+        ]);
+
+        try {
+            (new FacebookProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+            $this->fail('expected the connect to fail');
+        } catch (SocialConnectException $e) {
+            $this->assertSame(FacebookProvider::MESSAGE_NO_PAGE_TOKEN, $e->getMessage());
+            $this->assertStringContainsString('no permission to manage this page', $e->getMessage());
+        }
+
+        $this->assertSame(0, SocialAccount::count());
+    }
+
+    public function test_a_user_with_no_pages_connects_nothing_without_an_error(): void
+    {
+        $this->fakeGraphWithPages([]);
+
+        $accounts = (new FacebookProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+
+        $this->assertTrue($accounts->isEmpty());
+        $this->assertSame(0, SocialAccount::count());
+    }
+
     public function test_permission_lookup_failure_fails_the_connect(): void
     {
         Http::fake([
