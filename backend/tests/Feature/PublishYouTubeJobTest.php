@@ -99,15 +99,10 @@ class PublishYouTubeJobTest extends TestCase
         }
     }
 
-    public function test_social_post_path_names_the_upload_limit_too(): void
+    public function test_legacy_social_post_path_is_retired_with_a_pointer_to_the_posts_api(): void
     {
-        Http::fake([
-            'googleapis.com/upload/youtube/v3/videos*' => Http::response(['error' => [
-                'code' => 400,
-                'errors' => [['domain' => 'youtube.video', 'reason' => 'uploadLimitExceeded']],
-                'message' => 'The user has exceeded the number of videos they may upload.',
-            ]], 400),
-        ]);
+        // It used to download the whole video into memory before the PUT.
+        Http::fake();
         $user = User::factory()->create();
         $post = SocialPost::create([
             'user_id' => $user->id,
@@ -118,7 +113,8 @@ class PublishYouTubeJobTest extends TestCase
         $result = app(YouTubeProvider::class)->publish($this->ytAccount($user), $post);
 
         $this->assertFalse($result->success);
-        $this->assertStringContainsString("reached YouTube's upload limit", (string) $result->error);
+        $this->assertSame(YouTubeProvider::USE_POSTS_API, $result->error);
+        Http::assertNothingSent();
     }
 
     public function test_workspace_policy_refresh_rejections_get_their_own_message(): void
