@@ -150,16 +150,20 @@ class PublishYouTubeJob implements ShouldQueue
             }
 
             // Custom thumbnail is best-effort: the video is already live, so a
-            // rejected thumbnail (e.g. channel not eligible) must not fail the target.
-            $thumbnailSet = $this->applyThumbnail($youtube, $target, $accessToken, $result['video_id'], $options);
+            // rejected thumbnail (e.g. channel not eligible) must not fail the
+            // target — but the user must still learn the cover was dropped.
+            $thumbnailError = $this->applyThumbnail($youtube, $target, $accessToken, $result['video_id'], $options);
 
             $meta = $target->meta ?? [];
-            unset($meta['upload_url']);
+            unset($meta['upload_url'], $meta['warning']);
             $meta['video_id'] = $result['video_id'];
             $meta['video_url'] = $result['video_url'];
             $meta['privacy_status'] = $privacy;
-            if ($thumbnailSet !== null) {
-                $meta['thumbnail_set'] = $thumbnailSet;
+            if (! empty($options['thumbnail']['path'])) {
+                $meta['thumbnail_set'] = $thumbnailError === null;
+            }
+            if ($thumbnailError !== null) {
+                $meta['warning'] = 'We uploaded your video but could not set the thumbnail: '.$thumbnailError;
             }
 
             $target->forceFill([
@@ -200,10 +204,11 @@ class PublishYouTubeJob implements ShouldQueue
 
     /**
      * Upload a custom thumbnail for the video from the per-target options, if one
-     * was set. Returns true/false when a thumbnail was attempted, or null when no
-     * thumbnail was configured. Never throws — a thumbnail failure is non-fatal.
+     * was set. Returns the reason when the thumbnail could not be set, or null
+     * when it was (or none was configured). Never throws — a thumbnail failure
+     * is non-fatal, the job stores the reason as a warning on the target.
      */
-    private function applyThumbnail(YouTubePublishService $youtube, PostTarget $target, string $accessToken, ?string $videoId, array $options): ?bool
+    private function applyThumbnail(YouTubePublishService $youtube, PostTarget $target, string $accessToken, ?string $videoId, array $options): ?string
     {
         $thumb = $options['thumbnail'] ?? null;
         if (! $videoId || ! is_array($thumb) || empty($thumb['path'])) {
@@ -215,7 +220,7 @@ class PublishYouTubeJob implements ShouldQueue
         if (! Storage::disk($disk)->exists($path)) {
             Log::warning('YouTube thumbnail file missing', ['post_target_id' => $target->id, 'path' => $path]);
 
-            return false;
+            return 'the thumbnail file could not be found.';
         }
 
         $this->recordStep($target, 'thumbnail');
@@ -223,14 +228,14 @@ class PublishYouTubeJob implements ShouldQueue
         try {
             $youtube->setThumbnail($accessToken, $videoId, $stream, $thumb['mime'] ?? 'image/jpeg');
 
-            return true;
+            return null;
         } catch (\Throwable $e) {
             Log::warning('YouTube thumbnail set failed (non-fatal)', [
                 'post_target_id' => $target->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return false;
+            return $e->getMessage();
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);

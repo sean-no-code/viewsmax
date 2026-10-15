@@ -247,6 +247,37 @@ class PublishYouTubeJobTest extends TestCase
         $this->assertSame(YouTubePublishService::SESSION_EXPIRED, $account->last_error);
     }
 
+    public function test_a_rejected_thumbnail_leaves_the_target_published_with_a_visible_warning(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['id' => 'yt-vid-1'], 200),
+            'googleapis.com/upload/youtube/v3/thumbnails/set*' => Http::response(['error' => [
+                'message' => 'Forbidden', 'errors' => [['reason' => 'forbidden', 'domain' => 'youtube.thumbnail']],
+            ]], 403),
+        ]);
+        $user = User::factory()->create();
+        $post = $this->videoPost($user);
+        Storage::disk('r2test')->put('posts/1/cover.jpg', 'fake-jpeg');
+        $target = $post->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $this->ytAccount($user)->id,
+            'status' => PostTarget::STATUS_PENDING,
+            'options' => ['privacy_status' => 'public', 'thumbnail' => ['path' => 'posts/1/cover.jpg', 'disk' => 'r2test', 'mime' => 'image/jpeg']],
+        ]);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+        $this->assertNull($target->error);
+        $this->assertFalse($target->meta['thumbnail_set']);
+        $this->assertSame(
+            'We uploaded your video but could not set the thumbnail: This channel is not verified, so YouTube does not allow custom thumbnails. Verify the channel on YouTube, then try again.',
+            $target->meta['warning']
+        );
+    }
+
     public function test_workspace_policy_refresh_rejections_get_their_own_message(): void
     {
         $cases = [
