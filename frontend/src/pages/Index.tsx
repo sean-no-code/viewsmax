@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import i18n from "i18next";
 import ViewsMaxLanding from "@/pages/landing/ViewsMaxLanding";
 import { homeLocale } from "@/pages/landing/locales";
+import { useAppLocaleFor } from "@/pages/landing/useAppLocaleFor";
 import CookieNotice from "@/components/CookieNotice";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -18,13 +18,7 @@ const Index = ({ locale }: { locale?: string }) => {
     }
   }, [user, navigate]);
 
-  // A visitor who chose /ru signs up into a Russian app. Logged-in users keep
-  // the language they picked in the app.
-  useEffect(() => {
-    if (!user && home.appLocale && i18n.resolvedLanguage !== home.appLocale) {
-      void i18n.changeLanguage(home.appLocale);
-    }
-  }, [user, home]);
+  useAppLocaleFor(home);
 
   // Don't render landing page content if user is logged in (redirect will happen)
   if (user) {

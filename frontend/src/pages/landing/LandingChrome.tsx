@@ -9,7 +9,7 @@ import logoDark from "@/assets/logo-lockup-dark.svg";
 import { API_BASE_URL } from "@/lib/api-service";
 import { AGENT_LIST } from "@/lib/agent-pages";
 import LocaleFlag from "@/components/LocaleFlag";
-import { HOME_LOCALES, useHomeLocale, useLandingCopy, type HomeLocale, type LandingCopy } from "./locales";
+import { HOME_LOCALES, localizedPath, useHomeLocale, useLandingCopy, usePagePath, type HomeLocale, type LandingCopy } from "./locales";
 
 const AUTH = "/auth";
 const API_DOCS = `${API_BASE_URL}/docs`;
@@ -81,10 +81,11 @@ function NavDropdown({ label, href, items }: { label: string; href: string; item
   );
 }
 
-/* ---------- Language picker (homepages only) ---------- */
-// Plain links, not client-side navigation: each homepage is its own
+/* ---------- Language picker (translated pages only) ---------- */
+// Plain links, not client-side navigation: each language version is its own
 // prerendered file with its own <html lang> and head tags.
 function LanguagePicker({ current, label }: { current: HomeLocale; label: string }) {
+  const page = usePagePath();
   const [open, setOpen] = useState(false); // click/tap; hover also opens it via CSS
   return (
     <div className={`nav-dd nav-lang${open ? " open" : ""}`} style={{ position: "relative" }}
@@ -96,7 +97,7 @@ function LanguagePicker({ current, label }: { current: HomeLocale; label: string
       <div className="nav-dd-panel" style={{ position: "absolute", top: "100%", right: -12, paddingTop: 10 }}>
         <div style={{ minWidth: 200, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 14, padding: 6, boxShadow: "0 16px 40px rgba(16,14,12,.12)" }}>
           {HOME_LOCALES.map((l) => (
-            <a key={l.code} href={l.path} hrefLang={l.htmlLang} lang={l.htmlLang}
+            <a key={l.code} href={localizedPath(l, page)} hrefLang={l.htmlLang} lang={l.htmlLang}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, textDecoration: "none", fontFamily: "var(--font-body)", fontSize: 14, fontWeight: l.code === current.code ? 700 : 500, color: "var(--ink-on-paper-1)" }}>
               <LocaleFlag code={l.flag} />{l.label}
             </a>
@@ -141,6 +142,7 @@ export function LandingNav() {
 /* ---------- Footer ---------- */
 export function LandingFooter() {
   const home = useHomeLocale();
+  const page = usePagePath();
   const c = useLandingCopy();
   const f = c.footer;
   const links = (items: NavItem[]) => items.map(({ label, href }) => ({ label, href }));
@@ -172,7 +174,7 @@ export function LandingFooter() {
           <span>{f.copyright}</span>
           {home && <span aria-label={c.nav.language} style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
             {HOME_LOCALES.map((l) => (
-              <a key={l.code} href={l.path} hrefLang={l.htmlLang} lang={l.htmlLang} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: l.code === home.code ? "var(--fg-1)" : "var(--fg-3)", textDecoration: "none" }}>
+              <a key={l.code} href={localizedPath(l, page)} hrefLang={l.htmlLang} lang={l.htmlLang} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: l.code === home.code ? "var(--fg-1)" : "var(--fg-3)", textDecoration: "none" }}>
                 <LocaleFlag code={l.flag} size={15} />{l.label}
               </a>
             ))}

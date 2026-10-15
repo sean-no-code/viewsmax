@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { useEffect } from "react";
 import Index from "./pages/Index";
-import { HOME_LOCALES } from "./pages/landing/locales";
+import { HOME_LOCALES, localizedPath } from "./pages/landing/locales";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -114,6 +114,9 @@ const App = () => (
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/ai" element={<ConnectAI />} />
                 <Route path="/mcp" element={<McpLanding />} />
+                {HOME_LOCALES.filter((l) => l.path !== "/").map((l) => (
+                  <Route key={`mcp-${l.code}`} path={localizedPath(l, "/mcp")} element={<McpLanding locale={l.code} />} />
+                ))}
                 {/* Per-agent setup guides: /claude, /chatgpt, /cursor, ... (src/lib/agent-pages.ts) */}
                 {AGENT_LIST.map((a) => (
                   <Route key={a.key} path={a.slug} element={<AgentPage agent={a.key} />} />

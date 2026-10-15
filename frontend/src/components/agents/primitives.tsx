@@ -1,7 +1,7 @@
 // House-style building blocks shared by the per-agent guides (AgentPage) and the
 // /mcp landing page: card/heading/button classes, a clipboard hook with toasts,
 // a labelled code block, a copyable prompt, and a <details>-based FAQ accordion.
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { Check, ChevronRight, Copy } from "lucide-react";
 import { toast } from "sonner";
 import type { FaqItem } from "@/lib/agent-pages";
@@ -13,16 +13,28 @@ export const PRIMARY_BTN =
 export const OUTLINE_BTN =
   "inline-flex h-[50px] items-center justify-center rounded-xl border border-line-2 bg-paper-0 px-[26px] font-body text-[15px] font-bold text-ink-on-paper-1 transition-colors duration-200 hover:border-ink-on-paper-1";
 
+// Button and toast text. English by default (the agent guides); a translated
+// page (/ru/mcp) provides its own.
+export const CopyLabelsContext = createContext({
+  copy: "Copy",
+  copyLabel: (label: string) => `Copy ${label}`,
+  copied: "Copied",
+  copyFailed: "Couldn't copy — try selecting the text.",
+  copyPrompt: "Copy prompt",
+  promptCopied: "Prompt copied",
+});
+
 export const useCopy = () => {
+  const labels = useContext(CopyLabelsContext);
   const [copied, setCopied] = useState<string | null>(null);
-  const copy = async (text: string, id: string, message = "Copied") => {
+  const copy = async (text: string, id: string, message = labels.copied) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(id);
       toast.success(message);
       setTimeout(() => setCopied(null), 1500);
     } catch {
-      toast.error("Couldn't copy — try selecting the text.");
+      toast.error(labels.copyFailed);
     }
   };
   return { copied, copy };
@@ -31,6 +43,7 @@ export const useCopy = () => {
 export type CopyFn = ReturnType<typeof useCopy>["copy"];
 
 export function CodeBlock({ id, label, text, copied, copy }: { id: string; label: string; text: string; copied: string | null; copy: CopyFn }) {
+  const labels = useContext(CopyLabelsContext);
   return (
     <div className="mt-3 overflow-hidden rounded-xl border border-line-1 bg-paper-2">
       <div className="flex items-center justify-between border-b border-line-1 px-3.5 py-2 text-xs font-bold text-ink-on-paper-2">
@@ -38,10 +51,10 @@ export function CodeBlock({ id, label, text, copied, copy }: { id: string; label
         <button
           type="button"
           onClick={() => copy(text, id)}
-          aria-label={`Copy ${label}`}
+          aria-label={labels.copyLabel(label)}
           className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-ink-on-paper-1 transition-colors hover:bg-paper-0"
         >
-          {copied === id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} Copy
+          {copied === id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {labels.copy}
         </button>
       </div>
       <pre className="overflow-x-auto px-3.5 py-3 font-mono text-[13px] leading-[1.55] text-ink-on-paper-1">{text}</pre>
@@ -50,10 +63,11 @@ export function CodeBlock({ id, label, text, copied, copy }: { id: string; label
 }
 
 export function PromptBox({ id, text, copied, copy }: { id: string; text: string; copied: string | null; copy: CopyFn }) {
+  const labels = useContext(CopyLabelsContext);
   return (
     <div className="mt-3 flex items-start gap-3 rounded-xl border border-line-1 bg-paper-2 px-4 py-3">
       <p className="flex-1 text-[15px] italic leading-[1.5]">{text}</p>
-      <button type="button" onClick={() => copy(text, id, "Prompt copied")} aria-label="Copy prompt" className="mt-0.5 shrink-0 text-ink-on-paper-2 hover:text-ink-on-paper-1">
+      <button type="button" onClick={() => copy(text, id, labels.promptCopied)} aria-label={labels.copyPrompt} className="mt-0.5 shrink-0 text-ink-on-paper-2 hover:text-ink-on-paper-1">
         {copied === id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </button>
     </div>

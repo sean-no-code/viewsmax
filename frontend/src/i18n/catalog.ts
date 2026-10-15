@@ -37,6 +37,17 @@ export const CATALOGS: Catalog[] = [
       "pricing.tiers": "The keys are plan names; the plan names themselves are never translated.",
     },
   },
+  {
+    name: "mcp",
+    file: (l) => `src/lib/mcp-copy/${l}.json`,
+    locales: HOME_LOCALES.map((l) => l.code).filter((c) => c !== "en"),
+    context: "Developer documentation page for the ViewsMax MCP (Model Context Protocol) server: what an AI agent can do, how to connect each AI client, authentication, rate limits, FAQ. Precise, plain technical writing. Keep exactly as written: tool names (snake_case like create_post), CLI commands, file paths, URLs, header and token formats (Authorization: Bearer vmx_…), scope names (mcp:read), protocol names (Streamable HTTP, SSE, stdio, OAuth 2.1, PKCE), and other apps' menu paths (Customize → Connectors, Developer mode). Markup tags such as <b>…</b>, <code>…</code>, <hub>…</hub> and self-closing <docs/> must stay exactly as written: translate only the words inside paired tags.",
+    notes: {
+      "page.accessRead": "Short label for the read-only access level; also used inside page.capabilitiesIntro.",
+      "page.accessWrite": "Short label for the write access level; also used inside page.capabilitiesIntro.",
+      "prompts": "An example message a user types to their AI agent, or the agent's example reply. Translate naturally; keep URLs, tool names and quoted captions' meaning.",
+    },
+  },
 ];
 
 export interface Leaf {
@@ -94,8 +105,13 @@ export function forLocale(source: unknown, locale: string): unknown {
   return out;
 }
 
-// i18next / template placeholders, sorted: "Hi {{name}}" -> ["name"].
-export const placeholders = (s: string) => [...s.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]).sort();
+// What a translation must keep, sorted: {{placeholders}} by name, and markup
+// tags (<b>…</b>, <0>…</0> from <Trans>, self-closing <docs/>) as written.
+// "Hi {{name}}, see <0>terms</0>" -> ["<0>", "</0>", "name"] (sorted).
+export const placeholders = (s: string) =>
+  [...s.matchAll(/\{\{\s*(\w+)\s*\}\}|<(\/?\w+)\s*(\/?)>/g)]
+    .map((m) => m[1] ?? `<${m[2]}${m[3]}>`)
+    .sort();
 
 // A translation must keep the English placeholders. Plural forms may add or drop
 // {{count}}: English "one" says "A file", but Russian "one" also covers 21, 31…

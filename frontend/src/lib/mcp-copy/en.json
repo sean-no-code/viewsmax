@@ -1,0 +1,191 @@
+{
+  "seo": {
+    "title": "MCP Server for Social Media Posting & Scheduling | ViewsMax",
+    "description": "Connect Claude, ChatGPT, Cursor or any MCP client to ViewsMax to post, schedule and track on {{platforms}}.",
+    "keywords": "social media mcp server, mcp server social media scheduling, connect claude to tiktok, connect chatgpt to youtube, ai agent social media posting, model context protocol social media, viewsmax mcp"
+  },
+  "page": {
+    "breadcrumbAi": "AI agents",
+    "breadcrumbMcp": "MCP server",
+    "badge": "Streamable HTTP · {{toolCount}} tools · OAuth or API key",
+    "platformsAria": "Posts to {{platformNames}}",
+    "h1": "A social media MCP server for Claude, ChatGPT, Cursor and any AI agent",
+    "lead": "ViewsMax runs a remote MCP server. Point your AI client at one address and it can draft, schedule and publish to {{platformCount}} platforms, track offers and revenue, and research outlier videos — with your permission, and with every call logged.",
+    "copyAddress": "Copy the MCP address",
+    "addressCopied": "MCP address copied",
+    "start": "Start for $0",
+    "aiReaderTitle": "Reading this with an AI?",
+    "aiReaderBody": "This page as plain text: the address, every tool, auth modes, limits and setup per client.",
+    "copyMarkdown": "Copy as markdown",
+    "markdownCopied": "Page copied as markdown",
+    "viewPlainText": "View plain text",
+    "whatIsTitle": "What is a social media MCP server?",
+    "whatIsBody": "MCP (Model Context Protocol) is the open standard AI apps use to call outside tools. A social media MCP server exposes posting, scheduling and analytics as tools, so an agent like Claude or ChatGPT can run them for you instead of you copying things between tabs. With ViewsMax the platform logins stay inside ViewsMax — the agent only ever holds a ViewsMax permission that you can scope to read-only and revoke at any time.",
+    "capabilitiesTitle": "What can an AI agent do through ViewsMax?",
+    "capabilitiesIntro": "Everything below is a tool call the agent makes on your behalf. Rows marked <b>{{write}}</b> change something and need full access; read-only credentials only see the <b>{{read}}</b> rows.",
+    "accessRead": "read",
+    "accessWrite": "write",
+    "headTask": "Task",
+    "headTools": "Tools",
+    "headAccess": "Access",
+    "notSupportedTitle": "Not through the MCP",
+    "connectTitle": "How do I connect an AI agent to ViewsMax?",
+    "connectBody": "Link your channels once under Dashboard → Connections, then give your AI client this address. Chat apps sign you in with OAuth; headless agents use an API key from {{apiKeyPath}}. The transport is Streamable HTTP — there is no SSE endpoint and nothing to run locally.",
+    "addressLabel": "ViewsMax MCP server address",
+    "discoveryLine": "Machine-readable description of the server: <discovery/>. REST reference: <docs/>.",
+    "fullGuide": "Full {{name}} guide",
+    "matrixTitle": "Which clients support which connection method?",
+    "headClient": "Client",
+    "headHow": "How it connects",
+    "headCredential": "Credential",
+    "headGuide": "Guide",
+    "setupSteps": "Setup steps",
+    "otherClient": "Using something else? Any MCP client that speaks Streamable HTTP works with the address above — see the <hub>install hub</hub> for the generic setup and the REST API.",
+    "platformsTitle": "Which platforms can an AI agent post to?",
+    "platformsBody": "Whichever of these you have linked in ViewsMax. Each one is published separately and keeps its own status.",
+    "securityTitle": "How does authentication and security work?",
+    "bestFor": "Best for {{who}}",
+    "scopesTitle": "Scopes and the audit log",
+    "scopesBody": "Credentials carry <code>mcp:read</code> or <code>mcp:read mcp:write</code>. A read-only credential doesn't just get refused on writes — write tools are left out of its tool list entirely. Every <code>tools/call</code> is recorded with the tool, its arguments and whether it failed, and you can review the log under {{apiKeyPath}}. OAuth metadata lives at <as/> and <pr/>; clients register themselves at <register/>.",
+    "rateLimitsTitle": "Rate limits",
+    "headScope": "Scope",
+    "headLimit": "Limit",
+    "rateLimitsAfter": "A limited call comes back with a retry-after hint. There is no separate charge for the MCP server; plan limits such as monthly posts apply as they do in the app.",
+    "promptsTitle": "What can you ask your AI agent?",
+    "exampleReply": "Example reply",
+    "toolsTitle": "Which ViewsMax MCP tools exist?",
+    "toolsIntro": "{{toolCount}} tools, grouped by job. The server exposes tools only — no MCP resources or prompts — and its own instructions tell the agent the typical posting and research flows.",
+    "faqTitle": "Frequently asked questions",
+    "guidesTitle": "Setup guides for each AI agent",
+    "otherClientTitle": "Another MCP client",
+    "otherClientBody": "Generic MCP setup, API keys and the REST API",
+    "ctaTitle": "Let your AI agent run the posting",
+    "ctaBody": "Link your accounts once. After that, publishing, tracked links and revenue reports are a message away in whichever agent you use.",
+    "ctaSetupSteps": "See the setup steps",
+    "copy": "Copy",
+    "copyLabel": "Copy {{label}}",
+    "copied": "Copied",
+    "copyFailed": "Couldn't copy — try selecting the text.",
+    "copyPrompt": "Copy prompt",
+    "promptCopied": "Prompt copied"
+  },
+  "callouts": {
+    "platforms": { "title": "One connection, {{platformCount}} platforms", "body": "Link each channel once in ViewsMax. Your agent gets them all, including ones you add later." },
+    "access": { "title": "Read-only or full access", "body": "You choose on the approval screen. Read-only credentials can't see write tools at all." },
+    "logged": { "title": "Every call logged", "body": "Each tool call lands in your audit log under {{apiKeyPath}}, so you can see what the agent did." },
+    "publish": { "title": "Draft, schedule or publish", "body": "Save a draft to review, queue it for a time, or send it now. Each platform reports its own result." },
+    "offers": { "title": "Offers and tracked links", "body": "Set up a promotion, mint a link per placement, and read clicks, conversions and revenue." },
+    "outliers": { "title": "Outlier research", "body": "Find videos beating their channel's average, get an AI breakdown of why, and save the best." }
+  },
+  "toolGroups": {
+    "accounts": { "name": "Accounts & brands", "blurb": "See which channels are linked, group them into brands, and hand the user a connect link when one is missing." },
+    "posting": { "name": "Posting & scheduling", "blurb": "Host media by URL, then draft, schedule or publish to any mix of platforms and read each platform's result." },
+    "offers": { "name": "Offers & link tracking", "blurb": "Read and update your offers and their tracked links, and read clicks, conversions and revenue over time." },
+    "outliers": { "name": "Outlier research", "blurb": "Find videos that beat their channel's average, get an AI breakdown of why, and save the best." }
+  },
+  "capabilities": {
+    "accounts": "List linked accounts and brands",
+    "publish": "Publish or schedule to any mix of {{platformCount}} platforms — draft, scheduled or posted, with per-platform caption and option overrides",
+    "media": "Host an image or video by URL for TikTok, Instagram and YouTube posts",
+    "results": "Read each platform's publish result for a post",
+    "offers": "Read your offers and their tracked links",
+    "updateOffer": "Update an offer's name, URL, goals or tracked links",
+    "stats": "Read clicks, conversions and revenue — totals and a daily series",
+    "browseOutliers": "Browse outlier videos by platform, score, views and date",
+    "searchOutliers": "Search YouTube for a new topic, or pull in a specific video by URL",
+    "breakdown": "Generate and read an AI breakdown of why a video over-performed",
+    "saveOutliers": "Save outliers to a tagged library"
+  },
+  "notSupported": [
+    "Generating images or video — you supply media by URL and ViewsMax hosts it",
+    "Clipping or editing video",
+    "Reading or replying to comments and DMs",
+    "Channel analytics such as follower counts or watch time — the MCP reports offer clicks, conversions and revenue",
+    "Plans and billing — those stay in the ViewsMax web app"
+  ],
+  "authModes": {
+    "oauth": {
+      "name": "OAuth 2.1 + PKCE",
+      "bestFor": "Chat apps and IDEs: Claude, ChatGPT, Codex, Hermes",
+      "how": "Point the client at {{endpoint}}. It finds ViewsMax through {{oauthAs}}, registers itself (dynamic client registration at {{oauthRegister}}), and opens a browser where you sign in and choose read-only or full access. Access tokens are scoped to this endpoint and last an hour; refresh tokens last 30 days."
+    },
+    "apiKey": {
+      "name": "API key",
+      "bestFor": "Headless agents, scripts, CI, Cursor",
+      "how": "Generate a key under {{apiKeyPath}} (it starts with vmx_), read-only or full. Send it as Authorization: Bearer vmx_… on every request — keys in the URL are rejected. Rotate the key to revoke access instantly; the same key works on the REST API."
+    }
+  },
+  "rateLimits": {
+    "allScope": "All MCP requests",
+    "allLimit": "120 per minute, per credential",
+    "perHour": "{{n}} per hour",
+    "uploadMedia": "40 per hour · 100 MB per file"
+  },
+  "clients": {
+    "claude": { "method": "Custom connector (Customize → Connectors)", "auth": "OAuth" },
+    "claude-code": { "method": "claude mcp add --transport http", "auth": "OAuth or API key" },
+    "claude-cowork": { "method": "Shares the claude.ai connector", "auth": "OAuth" },
+    "chatgpt": { "method": "Developer mode → custom connector", "auth": "OAuth" },
+    "codex": { "method": "codex mcp add, or ~/.codex/config.toml", "auth": "OAuth or API key" },
+    "cursor": { "method": "~/.cursor/mcp.json", "auth": "API key" },
+    "openclaw": { "method": "ViewsMax skill (drives the REST API)", "auth": "API key" },
+    "hermes": { "method": "~/.hermes/config.yaml", "auth": "OAuth or API key" }
+  },
+  "snippetLabels": {
+    "mcpAddress": "ViewsMax MCP address",
+    "terminal": "Terminal",
+    "insideClaudeCode": "Inside Claude Code",
+    "insideCodex": "Inside Codex"
+  },
+  "platformNotes": {
+    "youtube": "One video. You'll be asked whether it goes out public, unlisted or private.",
+    "tiktok": "A video or a photo set. You'll be asked to pick the privacy level.",
+    "instagram": "One photo or one Reel, on an Instagram Business or Creator account.",
+    "x": "Text, with up to 4 images. No video yet.",
+    "linkedin": "Text, with one image. No video yet.",
+    "threads": "Text, with one image or one video.",
+    "bluesky": "Text, with up to 4 images. No video yet."
+  },
+  "prompts": {
+    "schedule": {
+      "title": "Schedule a cross-post",
+      "prompt": "Post the video at https://example.com/clip.mp4 to TikTok and YouTube tomorrow at 9am. Caption: \"Three mistakes new creators make.\"",
+      "reply": "Before I schedule it: which TikTok privacy level do you want, and should the YouTube upload be public, unlisted or private? Once you answer I'll host the file with upload_media and create one scheduled post for both platforms — you'll get a separate publish status for each."
+    },
+    "earner": {
+      "title": "Find the best earner",
+      "prompt": "Which of my offers made the most money in the last 30 days, and which platform sent the clicks?",
+      "reply": "Your top offer by revenue is the Content Calendar Template ($1,240 from 38 conversions). get_offer_stats puts 61% of its clicks on YouTube and 27% on Instagram, and the daily series shows the spike lines up with Tuesday's video. Want the same breakdown for the other offers?"
+    },
+    "research": {
+      "title": "Research what's working",
+      "prompt": "Find YouTube outliers about home workouts from this month, explain why the top one worked, and save it to my library.",
+      "reply": "search_outliers queued a YouTube scan for \"home workouts\". The top result is a 10-minute no-equipment routine running at 14x its channel's median. I generated the breakdown (hook, structure, retention beats) and saved it with the tags home-workout and hook-study. Breakdowns are capped at 30 an hour, so say the word before I run more."
+    }
+  },
+  "faq": {
+    "what": { "q": "What is the ViewsMax MCP server?", "a": "A remote MCP (Model Context Protocol) server at {{endpoint}} that gives any MCP client {{toolCount}} tools for posting and scheduling to {{platforms}}, tracking offers and revenue, and researching outlier videos. It runs over Streamable HTTP, so there is nothing to install or host." },
+    "agents": { "q": "Which AI agents work with it?", "a": "Any client that speaks MCP over Streamable HTTP. ViewsMax has step-by-step guides for Claude, Claude Code, Claude Cowork, ChatGPT, Codex, Cursor and Hermes Agent, plus a REST-based skill for OpenClaw." },
+    "claude": { "q": "How do I connect Claude to ViewsMax?", "a": "In Claude, open Customize → Connectors, add a custom connector with the address {{endpoint}}, then press Connect and approve read-only or full access. The same connector carries over to Claude Code and Claude Cowork." },
+    "chatgpt": { "q": "How do I connect ChatGPT to ViewsMax?", "a": "Turn on Developer mode under Settings → Security and login, then add a custom connector at chatgpt.com/plugins with the address {{endpoint}} and complete the sign-in. ViewsMax is an action connector — post, schedule, read stats — not a deep-research source." },
+    "transport": { "q": "Does the MCP server support SSE or stdio?", "a": "No. The server speaks Streamable HTTP only — the current MCP transport that Claude, ChatGPT, Codex, Cursor and Hermes all support. There is no SSE endpoint and nothing to run locally." },
+    "auth": { "q": "How does authentication work?", "a": "Two ways, both sent as a Bearer token. Chat apps use OAuth 2.1 with PKCE: the client registers itself, you sign in to ViewsMax in a browser and choose read-only or full access. Headless agents use an API key (vmx_…) generated under {{apiKeyPath}}. Keys go in the Authorization header, never the URL." },
+    "readOnly": { "q": "Can I give an agent read-only access?", "a": "Yes. Pick Read-only on the OAuth consent screen or generate a read-only API key. Read-only credentials carry the mcp:read scope, so write tools such as create_post don't even appear in the agent's tool list." },
+    "audit": { "q": "Can I see what my AI agent did?", "a": "Yes. Every tool call — the tool, its arguments and whether it failed — is recorded in your audit log under {{apiKeyPath}}. Rotating the API key or disconnecting the OAuth client revokes access instantly." },
+    "platforms": { "q": "Which platforms can an AI agent post to?", "a": "{{platforms}} — whichever of them you have linked in ViewsMax. Platform logins stay inside ViewsMax; the agent only ever holds a ViewsMax permission." },
+    "generate": { "q": "Can it generate videos or images?", "a": "No. The MCP server publishes media you already have: give the agent a public URL and upload_media hosts the file (JPEG, PNG, WebP, GIF, MP4 or MOV, up to 100 MB) for the post." },
+    "multi": { "q": "Can it post to several accounts at once?", "a": "Yes. One create_post call can target any mix of platforms, or a brand — a named group of accounts — with per-platform caption and option overrides. Each platform is published separately and keeps its own status, so one failure never blocks the rest." },
+    "limits": { "q": "What are the rate limits?", "a": "120 MCP requests a minute per credential. Per hour: 180 create_post, 40 upload_media, 60 fetch_outlier, 30 search_outliers, and 30 generate_outlier_breakdown. A limited call returns a retry-after hint rather than failing silently." },
+    "cost": { "q": "Does the MCP server cost extra?", "a": "No. Connecting an agent is included on every plan, including the free one. What the agent can do follows your ViewsMax plan limits, such as monthly posts and active offers." },
+    "resources": { "q": "Does it expose MCP resources or prompts?", "a": "No — tools only. All {{toolCount}} capabilities are tools, and the server's own instructions tell the agent the typical posting and research flows. A JSON description of everything lives at {{discovery}}." }
+  },
+  "howTo": {
+    "name": "How to connect an AI agent to ViewsMax",
+    "link": { "name": "Link your channels in ViewsMax", "text": "Sign up, open Dashboard → Connections and link the platforms you publish to. The platform logins stay inside ViewsMax." },
+    "add": { "name": "Add the ViewsMax MCP server to your AI client", "text": "Give the client the address {{endpoint}} — as a custom connector in Claude or ChatGPT, or with claude mcp add / codex mcp add on the command line." },
+    "approve": { "name": "Approve access", "text": "Sign in when the client asks and choose read-only or full access. Headless agents use an API key from Settings → AI Assistant Access instead." }
+  },
+  "jsonLd": {
+    "appName": "ViewsMax MCP Server"
+  }
+}
