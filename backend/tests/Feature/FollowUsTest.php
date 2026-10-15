@@ -42,7 +42,7 @@ class FollowUsTest extends TestCase
         Http::fake([
             'api.twitter.com/2/oauth2/token' => Http::response([
                 'access_token' => 'tok', 'refresh_token' => 'ref', 'expires_in' => 7200,
-                'scope' => 'tweet.read tweet.write users.read offline.access follows.write',
+                'scope' => 'tweet.read tweet.write users.read offline.access media.write follows.write',
             ]),
             'api.twitter.com/2/users/me*' => Http::response(['data' => ['id' => '111', 'name' => 'Jo', 'username' => 'jo']]),
             'api.twitter.com/2/users/by/username/viewsmax*' => Http::response(['data' => ['id' => '999', 'name' => 'ViewsMax', 'username' => 'viewsmax']]),

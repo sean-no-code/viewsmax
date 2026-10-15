@@ -29,6 +29,13 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
 
     protected const TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
 
+    /**
+     * What publishing needs (text + images + silent refresh). Checked against
+     * the token response at connect so a token minted without one of these
+     * fails there, not at publish. follows.write is optional and not listed.
+     */
+    public const PUBLISH_SCOPES = ['tweet.read', 'tweet.write', 'users.read', 'offline.access', 'media.write'];
+
     public function getAuthorizationUrl(string $redirectUri, string $state, array $options = []): string
     {
         // PKCE: the caller generates a verifier and passes its S256 challenge.
@@ -65,6 +72,7 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
         }
 
         $tokens = OAuthResult::fromArray($response->json());
+        $this->assertGrantedScopes($tokens->scopes, self::PUBLISH_SCOPES);
 
         $profile = Http::withToken($tokens->accessToken)
             ->get('https://api.twitter.com/2/users/me', ['user.fields' => 'profile_image_url,username,name'])

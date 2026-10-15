@@ -23,6 +23,13 @@ class LinkedInProvider extends AbstractSocialProvider implements SupportsComment
     protected const DEFAULT_API_VERSION = '202601';
 
     /**
+     * What publishing needs: openid + profile identify the member (userinfo
+     * sub → author urn), w_member_social creates posts. email is requested
+     * but optional, so it is not listed.
+     */
+    public const PUBLISH_SCOPES = ['openid', 'profile', 'w_member_social'];
+
+    /**
      * The LinkedIn-Version (YYYYMM) to send. Configurable so an expired version
      * can be bumped via env without a code change. Defensive against malformed
      * env values: LinkedIn 426s NONEXISTENT_VERSION on anything that isn't an
@@ -55,6 +62,7 @@ class LinkedInProvider extends AbstractSocialProvider implements SupportsComment
             $code,
             $redirectUri
         );
+        $this->assertGrantedScopes($tokens->scopes, self::PUBLISH_SCOPES);
 
         // OpenID userinfo gives us the member id (sub) and profile basics.
         $profile = Http::withToken($tokens->accessToken)
