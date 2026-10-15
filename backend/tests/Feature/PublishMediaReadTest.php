@@ -148,9 +148,9 @@ class PublishMediaReadTest extends TestCase
         // The file is truncated after the job has already learned its size.
         $service = new class extends YouTubePublishService
         {
-            public function uploadVideo(string $accessToken, $videoStream, int $size, array $snippet, string $privacyStatus): array
+            public function uploadVideo(string $accessToken, $videoStream, int $size, array $snippet, string $privacyStatus, ?callable $onStep = null): array
             {
-                return parent::uploadVideo($accessToken, $videoStream, $size + 100, $snippet, $privacyStatus);
+                return parent::uploadVideo($accessToken, $videoStream, $size + 100, $snippet, $privacyStatus, $onStep);
             }
         };
 

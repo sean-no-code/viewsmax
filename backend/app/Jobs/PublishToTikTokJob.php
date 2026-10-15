@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exceptions\TikTokPublishException;
+use App\Jobs\Concerns\RecordsPublishStep;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Services\TikTokPublishService;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 class PublishToTikTokJob implements ShouldQueue
 {
     use Queueable;
+    use RecordsPublishStep;
     use ResolvesTargetAccount;
 
     public $timeout = 120;
@@ -59,6 +61,9 @@ class PublishToTikTokJob implements ShouldQueue
             // required; a photo slideshow is pulled by TikTok from the images'
             // public URLs (PULL_FROM_URL). Video wins when both are present.
             if (empty($meta['publish_id'])) {
+                // Step markers (meta.step) are written BEFORE each call, unlike
+                // meta.log, so a job killed on $timeout can still be explained.
+                $meta = $this->recordStep($target, 'init');
                 $caption = $target->caption_override ?: $post->caption ?: '';
                 $videoMedia = collect($post->media ?? [])
                     ->first(fn ($m) => ($m['type'] ?? null) === 'video' && ! empty($m['path']));
@@ -134,6 +139,7 @@ class PublishToTikTokJob implements ShouldQueue
             }
 
             // Step 2: poll status until terminal.
+            $meta = $this->recordStep($target, 'status');
             $status = $tiktok->fetchStatus($account, $meta['publish_id']);
             $meta['last_status'] = $status;
             // Keep an audit trail of polls, bounded so meta can't grow without limit.
@@ -204,7 +210,11 @@ class PublishToTikTokJob implements ShouldQueue
         if ($target && ! in_array($target->status, [PostTarget::STATUS_PUBLISHED, PostTarget::STATUS_FAILED], true)) {
             $target->forceFill([
                 'status' => PostTarget::STATUS_FAILED,
-                'error' => $e?->getMessage() ?: 'Timed out waiting for TikTok to finish processing.',
+                'error' => match ($this->timedOutStep($e, $target)) {
+                    'init' => 'Timed out while handing the media to TikTok.',
+                    'status' => "Timed out while checking TikTok's processing status.",
+                    default => $e?->getMessage() ?: 'Timed out waiting for TikTok to finish processing.',
+                },
             ])->save();
         }
     }

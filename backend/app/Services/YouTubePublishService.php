@@ -99,9 +99,10 @@ class YouTubePublishService
      * bytes from the given stream so large files don't load into memory.
      *
      * @param  resource  $videoStream
+     * @param  callable(string): void|null  $onStep  told the step name ("session-init", "upload") before each call, so the job can persist it
      * @return array{video_id: ?string, video_url: ?string, response: mixed}
      */
-    public function uploadVideo(string $accessToken, $videoStream, int $size, array $snippet, string $privacyStatus): array
+    public function uploadVideo(string $accessToken, $videoStream, int $size, array $snippet, string $privacyStatus, ?callable $onStep = null): array
     {
         if (! in_array($privacyStatus, self::PRIVACY, true)) {
             $privacyStatus = 'public';
@@ -122,6 +123,9 @@ class YouTubePublishService
         // final response flowing into failureMessage() below. The PUT itself
         // is NOT retried: re-sending a partial body into a resumable session
         // would corrupt the upload.
+        if ($onStep) {
+            $onStep('session-init');
+        }
         $init = Http::retry(3, 5000, fn (Throwable $e) => self::isTransient($e), throw: false)
             ->withToken($accessToken)
             ->withHeaders([
@@ -149,6 +153,9 @@ class YouTubePublishService
         // stream is bounded so a stalled storage read or a file shorter than
         // $size throws MediaReadException (a re-upload message) out of the
         // PUT instead of running the job into its timeout.
+        if ($onStep) {
+            $onStep('upload');
+        }
         $upload = Http::withToken($accessToken)
             ->timeout(600)
             ->withBody(new BoundedMediaStream($videoStream, $size), 'video/*')
