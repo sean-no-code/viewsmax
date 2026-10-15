@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -32,6 +33,9 @@ class SocialProviderHelpersTest extends TestCase
     {
         parent::setUp();
         config(['social.platforms.stub' => ['label' => 'Stub']]);
+        // markNeedsReauth emails the owner on the first flip; this test spies
+        // on Log, which the mail listener would otherwise trip over.
+        Mail::fake();
 
         $this->provider = new class extends AbstractSocialProvider
         {
