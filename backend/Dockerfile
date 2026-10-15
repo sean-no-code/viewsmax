@@ -1,4 +1,4 @@
-FROM php:8.3-fpm
+FROM php:8.5-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -7,14 +7,16 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
+    libwebp-dev \
+    libicu-dev \
     libonig-dev \
     libxml2-dev \
     zip \
     unzip \
     libzip-dev \
     libpq-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip intl
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -38,13 +40,6 @@ COPY --chown=www-data:www-data . /var/www/html
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
-
-# Install Node.js dependencies and build assets (if needed)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install \
-    && npm run build \
-    && npm cache clean --force
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \

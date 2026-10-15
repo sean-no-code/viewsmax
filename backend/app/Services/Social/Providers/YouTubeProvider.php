@@ -6,6 +6,7 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\PublishResult;
+use App\Services\YouTubePublishService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -146,7 +147,7 @@ class YouTubeProvider extends GoogleOAuthProvider
             ->post('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', $metadata);
 
         if (! $init->successful()) {
-            return PublishResult::failure('YouTube upload init failed: '.$init->body(), $init->json() ?? []);
+            return PublishResult::failure(YouTubePublishService::failureMessage($init) ?? 'YouTube upload init failed: '.$init->body(), $init->json() ?? []);
         }
 
         $uploadUrl = $init->header('Location');
@@ -166,7 +167,7 @@ class YouTubeProvider extends GoogleOAuthProvider
             ->put($uploadUrl);
 
         if (! $upload->successful()) {
-            return PublishResult::failure('YouTube upload failed: '.$upload->body(), $upload->json() ?? []);
+            return PublishResult::failure(YouTubePublishService::failureMessage($upload) ?? 'YouTube upload failed: '.$upload->body(), $upload->json() ?? []);
         }
 
         $videoId = $upload->json('id');

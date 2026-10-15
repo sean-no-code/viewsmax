@@ -6,6 +6,8 @@ use App\Jobs\PublishYouTubeJob;
 use App\Models\Post;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
+use App\Models\SocialPost;
+use App\Services\Social\Providers\YouTubeProvider;
 use App\Models\User;
 use App\Services\YouTubePublishService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,6 +73,8 @@ class PublishYouTubeJobTest extends TestCase
             [403, ['errors' => [['reason' => 'insufficientPermissions']], 'message' => 'Insufficient Permission'], 'grant video upload permission'],
             [403, ['errors' => [['reason' => 'youtubeSignupRequired']], 'message' => 'x'], 'no YouTube channel'],
             [401, ['errors' => [['reason' => 'authError']], 'message' => 'Invalid Credentials'], 'session expired'],
+            // Google sends the channel's own upload cap as a 400, not a 403.
+            [400, ['code' => 400, 'errors' => [['message' => 'The user has exceeded the number of videos they may upload.', 'domain' => 'youtube.video', 'reason' => 'uploadLimitExceeded']], 'message' => 'The user has exceeded the number of videos they may upload.'], "reached YouTube's upload limit"],
         ];
 
         // One stub that reads the current case: Http::fake() calls stack, and
@@ -92,6 +96,28 @@ class PublishYouTubeJobTest extends TestCase
             $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
             $this->assertStringContainsString($expected, (string) $target->error, "status {$status}");
         }
+    }
+
+    public function test_social_post_path_names_the_upload_limit_too(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response(['error' => [
+                'code' => 400,
+                'errors' => [['domain' => 'youtube.video', 'reason' => 'uploadLimitExceeded']],
+                'message' => 'The user has exceeded the number of videos they may upload.',
+            ]], 400),
+        ]);
+        $user = User::factory()->create();
+        $post = SocialPost::create([
+            'user_id' => $user->id,
+            'content' => 'My video',
+            'media' => [['type' => 'video', 'url' => 'https://cdn.example.com/clip.mp4']],
+        ]);
+
+        $result = app(YouTubeProvider::class)->publish($this->ytAccount($user), $post);
+
+        $this->assertFalse($result->success);
+        $this->assertStringContainsString("reached YouTube's upload limit", (string) $result->error);
     }
 
     private function videoPost(User $user): Post

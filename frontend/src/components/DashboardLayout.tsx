@@ -4,8 +4,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Crown, Coins, HelpCircle, MessageCircle, Settings, Lightbulb } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { SUPPORTED_LOCALES } from "@/i18n";
-import LocaleFlag from "@/components/LocaleFlag";
+import LanguageMenu from "@/components/LanguageMenu";
 import { viewsMaxApi } from "@/lib/api-service";
 import { useAuth } from "@/hooks/useAuth";
 import { isAccessExpired } from "@/lib/access";
@@ -22,14 +21,9 @@ import ConnectAiAppsButton from "@/components/ConnectAiAppsButton";
 
 export default function DashboardLayout() {
   const { user, signOut } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
 
-  const changeLocale = async (code: string) => {
-    await i18n.changeLanguage(code); // persists to localStorage via the detector
-    void viewsMaxApi.updateUserSettings({ locale: code }); // best-effort server sync
-  };
-  const currentLocale = SUPPORTED_LOCALES.find((l) => l.code === i18n.resolvedLanguage) ?? SUPPORTED_LOCALES[0];
   const { credits, isAnimating } = useUserCredits();
   // Expired promotional customer: nav is reduced to Billing + sign out.
   const locked = isAccessExpired(user);
@@ -99,26 +93,7 @@ export default function DashboardLayout() {
                 </span>
               </div>
               */}
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5" title={t("layout.topBar.language", "Language")}>
-                    <LocaleFlag code={currentLocale.code} />
-                    <span className="uppercase text-xs font-semibold">{currentLocale.code}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {SUPPORTED_LOCALES.map((locale) => (
-                    <DropdownMenuItem
-                      key={locale.code}
-                      onClick={() => void changeLocale(locale.code)}
-                      className={`gap-2.5${locale.code === currentLocale.code ? " font-semibold" : ""}`}
-                    >
-                      <LocaleFlag code={locale.code} />
-                      {locale.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <LanguageMenu onChange={(code) => void viewsMaxApi.updateUserSettings({ locale: code })} />
               {!locked && <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-2">

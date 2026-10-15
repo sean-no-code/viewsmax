@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -23,8 +24,29 @@ class YouTubePublishService
 
     public const RECONNECT_FOR_UPLOAD = 'Reconnect YouTube from the Connections page to grant video upload permission, then try again.';
 
+    /** Refusal reasons refusalMessage() has specific advice for, whatever the HTTP status. */
+    private const KNOWN_REASONS = [
+        'quotaExceeded', 'dailyLimitExceeded', 'rateLimitExceeded', 'userRateLimitExceeded',
+        'uploadLimitExceeded', 'youtubeSignupRequired', 'insufficientPermissions',
+    ];
+
     /**
-     * Turn a 401/403 from the upload endpoint into advice the user can act on.
+     * Advice for a failed upload call, or null when it isn't a refusal we recognise.
+     * Google doesn't keep refusals to 401/403: a channel over its own upload cap
+     * comes back as a 400 `uploadLimitExceeded`.
+     */
+    public static function failureMessage(Response $response): ?string
+    {
+        $error = (array) ($response->json('error') ?? []);
+        $reason = (string) data_get($error, 'errors.0.reason', '');
+
+        return in_array($response->status(), [401, 403], true) || in_array($reason, self::KNOWN_REASONS, true)
+            ? self::refusalMessage($response->status(), $error)
+            : null;
+    }
+
+    /**
+     * Turn a refusal from the upload endpoint into advice the user can act on.
      * A dead token, a grant without the upload scope and an exhausted API
      * quota all arrive here; "reconnect" is wrong advice for two of them.
      *
@@ -98,10 +120,10 @@ class YouTubePublishService
             ])
             ->post('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', $metadata);
 
-        // A dead token, a missing upload scope or an exhausted quota all surface
-        // here as 401/403 — name the one it was so the advice is right.
-        if (in_array($init->status(), [401, 403], true)) {
-            throw new RuntimeException(self::refusalMessage($init->status(), (array) ($init->json('error') ?? [])));
+        // A dead token, a missing upload scope, an exhausted quota or the
+        // channel's upload cap: name the one it was so the advice is right.
+        if (! $init->successful() && ($refusal = self::failureMessage($init))) {
+            throw new RuntimeException($refusal);
         }
         if (! $init->successful()) {
             throw new RuntimeException('YouTube upload init failed: '.$init->body());
@@ -119,7 +141,7 @@ class YouTubePublishService
             ->put($uploadUrl);
 
         if (! $upload->successful()) {
-            throw new RuntimeException('YouTube upload failed: '.$upload->body());
+            throw new RuntimeException(self::failureMessage($upload) ?? 'YouTube upload failed: '.$upload->body());
         }
 
         $videoId = $upload->json('id');
