@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 /**
  * Token refresh + resumable video upload for the legacy posting pipeline's
@@ -111,8 +114,15 @@ class YouTubePublishService
             ],
         ];
 
-        // 1. Open a resumable upload session.
-        $init = Http::withToken($accessToken)
+        // 1. Open a resumable upload session. Opening one is idempotent, so a
+        // connection error, 429 or 5xx is retried a few times with a short
+        // pause; a 4xx is Google's real answer (dead token,
+        // quota, missing scope) and is never retried. `throw: false` keeps the
+        // final response flowing into failureMessage() below. The PUT itself
+        // is NOT retried: re-sending a partial body into a resumable session
+        // would corrupt the upload.
+        $init = Http::retry(3, 5000, fn (Throwable $e) => self::isTransient($e), throw: false)
+            ->withToken($accessToken)
             ->withHeaders([
                 'X-Upload-Content-Type' => 'video/*',
                 'X-Upload-Content-Length' => (string) $size,
@@ -151,6 +161,12 @@ class YouTubePublishService
             'video_url' => $videoId ? "https://www.youtube.com/watch?v={$videoId}" : null,
             'response' => $upload->json(),
         ];
+    }
+
+    private static function isTransient(Throwable $e): bool
+    {
+        return $e instanceof ConnectionException
+            || ($e instanceof RequestException && ($e->response->status() === 429 || $e->response->serverError()));
     }
 
     /**

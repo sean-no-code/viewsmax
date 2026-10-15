@@ -7,8 +7,12 @@ use App\Exceptions\TikTokPublishException;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
 use Exception;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * TikTok Content Posting API client.
@@ -38,7 +42,38 @@ class TikTokPublishService
     // well within TikTok's 5–64 MB per-chunk range while keeping memory bounded.
     private const UPLOAD_CHUNK = 8 * 1024 * 1024; // 8 MB
 
+    // Publish calls retry a connection error, a 429 or a 5xx a few times with
+    // a short pause so one TikTok blip cannot fail the post
+    // for good. 3 attempts × the 30 s default HTTP timeout + 2 pauses stays
+    // under PublishToTikTokJob's 120 s $timeout.
+    private const RETRY_TIMES = 3;
+
+    private const RETRY_DELAY_MS = 5000;
+
+    // One chunk PUT must also fit the retry budget inside the job timeout
+    // (3 × 30 s + 2 × 5 s = 100 s). This path is only used where TikTok
+    // cannot pull from our storage, so 8 MB in 30 s is plenty.
+    private const CHUNK_TIMEOUT = 30;
+
     public function __construct(private SocialProviderManager $providers) {}
+
+    /**
+     * A request that retries transient failures only. A 4xx is TikTok's real
+     * answer (bad params, unaudited client, creator can't post) and is never
+     * retried. `throw: false` keeps the final response flowing into the
+     * callers' existing status/body inspection instead of surfacing as a
+     * RequestException, so the inbox fallback and error mapping are unchanged.
+     */
+    private static function retrying(): PendingRequest
+    {
+        return Http::retry(self::RETRY_TIMES, self::RETRY_DELAY_MS, fn (Throwable $e) => self::isTransient($e), throw: false);
+    }
+
+    private static function isTransient(Throwable $e): bool
+    {
+        return $e instanceof ConnectionException
+            || ($e instanceof RequestException && ($e->response->status() === 429 || $e->response->serverError()));
+    }
 
     /**
      * A live access token for the account, refreshing it first if needed. Multi-
@@ -495,7 +530,7 @@ class TikTokPublishService
      */
     private function initRequest(string $token, string $endpoint, array $body, bool $requireUploadUrl = true): array
     {
-        $response = Http::withToken($token)
+        $response = self::retrying()->withToken($token)
             ->contentType('application/json; charset=UTF-8')
             ->post(self::BASE.$endpoint, $body);
 
@@ -523,7 +558,8 @@ class TikTokPublishService
      */
     public function uploadVideoChunk(string $uploadUrl, string $bytes, int $start, int $end, int $total): array
     {
-        $response = Http::timeout(120)
+        // A chunk PUT carries its Content-Range, so re-sending it is safe.
+        $response = self::retrying()->timeout(self::CHUNK_TIMEOUT)
             ->withHeaders([
                 'Content-Type' => 'video/mp4',
                 'Content-Range' => "bytes {$start}-{$end}/{$total}",
@@ -569,7 +605,7 @@ class TikTokPublishService
     {
         $token = $this->freshToken($account);
 
-        $response = Http::withToken($token)
+        $response = self::retrying()->withToken($token)
             ->contentType('application/json; charset=UTF-8')
             ->post(self::BASE.'/post/publish/status/fetch/', [
                 'publish_id' => $publishId,
