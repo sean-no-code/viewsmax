@@ -48,9 +48,19 @@ export function xWeightedLength(text: string): number {
   return length;
 }
 
-/** Per-platform effective length: X is URL-weighted, everything else plain. */
+/**
+ * Per-platform effective length: X is URL-weighted, Threads is counted in
+ * UTF-8 bytes (Meta's rule for its 500 limit), everything else plain.
+ */
 export function platformLength(id: string, text: string): number {
-  return id === "x" ? xWeightedLength(text) : plainLength(text);
+  switch (id) {
+    case "x":
+      return xWeightedLength(text);
+    case "threads":
+      return new TextEncoder().encode(normalize(text)).length;
+    default:
+      return plainLength(text);
+  }
 }
 
 /** Split an X caption into trimmed thread segments on `---` lines. */

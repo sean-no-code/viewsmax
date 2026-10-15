@@ -49,6 +49,20 @@ final class CaptionRules
     }
 
     /**
+     * Effective length against a platform's limit. Meta counts the Threads
+     * 500 in UTF-8 bytes, so emoji, curly quotes and accents weigh more
+     * there than their code-point count — mirrors platformLength() in
+     * text-metrics.ts.
+     */
+    public static function lengthFor(string $platform, string $text): int
+    {
+        return match ($platform) {
+            'threads' => strlen(self::normalize($text)),
+            default => self::plainLength($text),
+        };
+    }
+
+    /**
      * t.co-aware weighted length for X: every URL counts 23, remaining code
      * points weigh 1 in twitter-text's "light" ranges and 2 otherwise (CJK,
      * emoji). Accepted drift from full twitter-text: bare domains without a
@@ -138,7 +152,7 @@ final class CaptionRules
             return null;
         }
 
-        $over = self::plainLength($text) - $limit;
+        $over = self::lengthFor($platform, $text) - $limit;
         if ($over <= 0) {
             return null;
         }
