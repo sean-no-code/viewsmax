@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Models\PostTarget;
+use App\Services\Social\MediaRules;
 use App\Services\Social\PostPublishDispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -219,6 +220,7 @@ class PostController extends Controller
             $data['comments'] = [['body' => $firstComment, 'delay_seconds' => 0]];
         }
 
+        $this->validatePlatforms($data);
         $this->validateTargetAccounts($data['targets'] ?? null);
 
         // Honour the offset: "18:00+07:00" is 11:00 UTC. The datetime cast
@@ -239,6 +241,34 @@ class PostController extends Controller
             throw ValidationException::withMessages([
                 'scheduled_at' => 'A scheduled post needs a scheduled_at time (ISO-8601).',
             ]);
+        }
+
+        // A past time would publish on the scheduler's next tick, which is
+        // almost never what the caller meant (the MCP tool refuses it too).
+        // Checked when the request sets the time or moves the post into
+        // scheduled; a caption edit on a scheduled post whose time just
+        // passed is left to the scheduler. One minute of grace covers the
+        // tick interval and browser/server clock skew.
+        $enteringSchedule = array_key_exists('scheduled_at', $data) || $post?->status !== Post::STATUS_SCHEDULED;
+        if ($resultingStatus === Post::STATUS_SCHEDULED && $enteringSchedule
+            && Carbon::parse($resultingTime)->lt(now()->subMinute())) {
+            throw ValidationException::withMessages([
+                'scheduled_at' => 'scheduled_at is in the past. The current time is '
+                    .now()->utc()->toIso8601ZuluString().' — pick a later time.',
+            ]);
+        }
+
+        // Once a platform has the post live, the post can't go back to a draft
+        // or be rescheduled: publishing again would double-post. Retrying a
+        // single failed platform goes through retryTarget instead.
+        if ($post && $resultingStatus !== Post::STATUS_POSTED) {
+            $live = $post->targets()->where('status', PostTarget::STATUS_PUBLISHED)->pluck('platform')->unique();
+            if ($live->isNotEmpty()) {
+                abort(response()->json([
+                    'message' => 'This post has already been published to '.$live->map(fn ($p) => config("social.platforms.{$p}.label", ucfirst($p)))->join(', ')
+                        ." and can't be moved back to {$resultingStatus}.",
+                ], 422));
+            }
         }
 
         // Platform list for the publish-time checks below, whichever payload
@@ -276,6 +306,18 @@ class PostController extends Controller
 
                 if ($errors !== []) {
                     abort(response()->json(['message' => implode(' ', $errors)], 422));
+                }
+            }
+
+            // Per-platform media rules (count, type, mixing) — resolved the
+            // same way as captions: the payload's media, else what's saved.
+            $effectiveMedia = array_key_exists('media', $data)
+                ? ($data['media'] ?? [])
+                : ($post?->media ?? []);
+
+            foreach (array_unique($platformList) as $platform) {
+                if ($error = MediaRules::error($platform, $effectiveMedia)) {
+                    abort(response()->json(['message' => $error], 422));
                 }
             }
 
@@ -345,6 +387,34 @@ class PostController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * Every requested platform must have a publisher and be switched on;
+     * otherwise its target would sit pending forever. Same rule the MCP
+     * create_post tool applies before delegating here.
+     */
+    private function validatePlatforms(array $data): void
+    {
+        $requested = array_unique(array_merge(
+            $data['platforms'] ?? [],
+            array_column($data['targets'] ?? [], 'platform'),
+        ));
+
+        foreach ($requested as $platform) {
+            if (! in_array($platform, PostPublishDispatcher::platforms(), true)) {
+                abort(response()->json([
+                    'message' => "Unsupported platform: {$platform}. Supported platforms: "
+                        .implode(', ', PostPublishDispatcher::platforms()).'.',
+                ], 422));
+            }
+            if (config("social.platforms.{$platform}.enabled", true) === false) {
+                $label = config("social.platforms.{$platform}.label", ucfirst($platform));
+                abort(response()->json([
+                    'message' => "{$label} isn't available on ViewsMax right now.",
+                ], 422));
+            }
+        }
     }
 
     /**
@@ -442,8 +512,11 @@ class PostController extends Controller
             }
         }
 
+        // A published target is the record of a live post: it is never deleted
+        // (and so never recreated as a fresh pending target that could
+        // publish again) even when the request leaves it out.
         foreach ($existing as $key => $target) {
-            if (! isset($kept[$key])) {
+            if (! isset($kept[$key]) && $target->status !== PostTarget::STATUS_PUBLISHED) {
                 $target->delete();
             }
         }
@@ -505,11 +578,16 @@ class PostController extends Controller
     }
 
     /**
-     * Dispatch publish jobs for every target we have a publisher for
-     * (TikTok, YouTube). See PostPublishDispatcher for the platform map.
+     * Dispatch publish jobs for every target we have a publisher for. See
+     * PostPublishDispatcher for the platform map. A target that is already
+     * published is skipped so a re-save can never double-post.
      */
     private function dispatchPublishing(Post $post): void
     {
-        PostPublishDispatcher::dispatch($post);
+        foreach ($post->targets()->get() as $target) {
+            if ($target->status !== PostTarget::STATUS_PUBLISHED) {
+                PostPublishDispatcher::dispatchTarget($target);
+            }
+        }
     }
 }
