@@ -24,8 +24,8 @@ use Illuminate\Support\Sleep;
  * account — no Facebook Page required. The flow mirrors Threads: authorize on
  * instagram.com, exchange for a short-lived token, upgrade to a long-lived
  * (~60 day) token, then publish via the graph.instagram.com create-container →
- * publish two-step (polling containers until processed). Graph errors go
- * through MetaGraphErrors +
+ * publish two-step (polling containers until processed; 2–10 media become a
+ * carousel of child containers). Graph errors go through MetaGraphErrors +
  * ERRORS: transient ones throw TransientPublishException for the queue, dead
  * tokens and checkpoints flag the account, everything else fails with a
  * readable reason.
@@ -35,13 +35,17 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
     protected string $platform = 'instagram';
 
     /**
-     * Container polling budget for one publish, kept under
-     * PublishToInstagramJob's 600 s timeout:
+     * Container polling budget, shared by every container of one publish (a
+     * Reel, or each carousel child plus the carousel itself) so a long post
+     * still finishes under PublishToInstagramJob's 600 s timeout:
      * 16 × 30 s = 8 minutes.
      */
     public const CONTAINER_POLL_ATTEMPTS = 16;
 
     public const CONTAINER_POLL_INTERVAL_SECONDS = 30;
+
+    /** Instagram carousels hold 2–10 items. MediaRules rejects more at save time; the API call is guarded anyway. */
+    public const CAROUSEL_MAX_ITEMS = 10;
 
     /**
      * Instagram-specific Graph errors for MetaGraphErrors, keyed by
@@ -317,6 +321,7 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
 
         $kind = match (true) {
             $items === [] => 'none',
+            count($items) > 1 => 'CAROUSEL',
             $items[0]['type'] === 'video' => 'REELS',
             default => 'IMAGE',
         };
@@ -329,24 +334,32 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
             return PublishResult::failure('Instagram requires at least one image or video to publish.');
         }
 
-        // 1. Create a media container. A Reel may carry a custom cover image
-        // (public URL); Instagram ignores cover_url for non-video posts.
-        $video = $kind === 'REELS';
-        $creationId = $this->createContainer($account, array_filter([
-            'caption' => $caption,
-            'image_url' => $video ? null : $items[0]['url'],
-            'video_url' => $video ? $items[0]['url'] : null,
-            'media_type' => $video ? 'REELS' : null,
-            'cover_url' => $video ? ($post->cover_url ?? null) : null,
-        ]), $log);
+        if (count($items) > self::CAROUSEL_MAX_ITEMS) {
+            return PublishResult::failure('Instagram carousels can hold at most '.self::CAROUSEL_MAX_ITEMS.' items; this post has '.count($items).'.');
+        }
+
+        if ($kind === 'CAROUSEL') {
+            $creationId = $this->createCarousel($account, $items, $caption, $log);
+        } else {
+            // 1. Create a media container. A Reel may carry a custom cover image
+            // (public URL); Instagram ignores cover_url for non-video posts.
+            $video = $kind === 'REELS';
+            $creationId = $this->createContainer($account, array_filter([
+                'caption' => $caption,
+                'image_url' => $video ? null : $items[0]['url'],
+                'video_url' => $video ? $items[0]['url'] : null,
+                'media_type' => $video ? 'REELS' : null,
+                'cover_url' => $video ? ($post->cover_url ?? null) : null,
+            ]), $log);
+
+            // 2. Video containers must finish processing before publishing.
+            if ($video && is_string($creationId) && ($failure = $this->waitForContainer($account, $creationId, $log))) {
+                return $failure;
+            }
+        }
 
         if ($creationId instanceof PublishResult) {
             return $creationId;
-        }
-
-        // 2. Video containers must finish processing before publishing.
-        if ($video && ($failure = $this->waitForContainer($account, $creationId, $log))) {
-            return $failure;
         }
 
         // 3. Publish the container.
@@ -396,6 +409,57 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         }
 
         return (string) $create->json('id');
+    }
+
+    /**
+     * Carousel (2–10 items): one container per item flagged is_carousel_item,
+     * every child processed, then a CAROUSEL container listing the children —
+     * the caption goes on the carousel only. Returns the carousel container
+     * id, ready to publish.
+     *
+     * @param  array<int, array{url: string, type: string}>  $items
+     */
+    protected function createCarousel(SocialAccount $account, array $items, string $caption, array $log): string|PublishResult
+    {
+        $children = [];
+        foreach ($items as $i => $item) {
+            $video = $item['type'] === 'video';
+            $childId = $this->createContainer($account, array_filter([
+                'image_url' => $video ? null : $item['url'],
+                'video_url' => $video ? $item['url'] : null,
+                'media_type' => $video ? 'VIDEO' : null,
+                'is_carousel_item' => 'true',
+            ]), $log + ['carousel_item' => $i + 1]);
+
+            if ($childId instanceof PublishResult) {
+                return $childId;
+            }
+            $children[] = $childId;
+        }
+
+        // Instagram only accepts FINISHED children; images finish once it has
+        // fetched them, so every child is checked, not just the videos.
+        foreach ($children as $i => $childId) {
+            if ($failure = $this->waitForContainer($account, $childId, $log + ['carousel_item' => $i + 1])) {
+                return $failure;
+            }
+        }
+
+        $carouselId = $this->createContainer($account, array_filter([
+            'caption' => $caption,
+            'media_type' => 'CAROUSEL',
+            'children' => implode(',', $children),
+        ]), $log);
+
+        if ($carouselId instanceof PublishResult) {
+            return $carouselId;
+        }
+
+        if ($failure = $this->waitForContainer($account, $carouselId, $log)) {
+            return $failure;
+        }
+
+        return $carouselId;
     }
 
     /**

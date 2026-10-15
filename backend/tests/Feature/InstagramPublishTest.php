@@ -18,8 +18,8 @@ use Tests\TestCase;
 
 /**
  * InstagramProvider::publish against a faked Graph API: container status
- * reasons reach the user, the polling budget fits the job timeout and
- * transient errors are handed to the queue.
+ * reasons reach the user, the polling budget fits the job timeout, transient
+ * errors are handed to the queue, and 2–10 media become a carousel.
  */
 class InstagramPublishTest extends TestCase
 {
@@ -254,6 +254,101 @@ class InstagramPublishTest extends TestCase
 
         $this->assertSame('You have reached the maximum of 25 posts per day, allowed for your account', $result->error);
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
+    }
+
+    /* ---------------- carousel ---------------- */
+
+    public function test_single_media_still_publishes_one_container_with_the_caption(): void
+    {
+        Http::fake([
+            '*/media_publish' => Http::response(['id' => 'media-1']),
+            '*/media' => Http::response(['id' => 'container-1']),
+        ]);
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost([['type' => 'image', 'url' => 'https://cdn.example/a.jpg']]));
+
+        $this->assertTrue($result->success, (string) $result->error);
+        $this->assertSame([
+            ['POST', 'ig-1/media', ['caption' => 'A caption', 'image_url' => 'https://cdn.example/a.jpg']],
+            ['POST', 'ig-1/media_publish', ['creation_id' => 'container-1']],
+        ], $this->sent());
+    }
+
+    public function test_two_to_ten_media_publish_as_a_carousel(): void
+    {
+        Http::fake([
+            '*/media_publish' => Http::response(['id' => 'media-1']),
+            '*/media' => Http::sequence()->push(['id' => 'c1'])->push(['id' => 'c2'])->push(['id' => 'c3'])->push(['id' => 'car-1']),
+            '*' => Http::response(['status_code' => 'FINISHED']),
+        ]);
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost([
+            ['type' => 'image', 'url' => 'https://cdn.example/1.jpg'],
+            ['type' => 'video', 'url' => 'https://cdn.example/2.mp4'],
+            ['type' => 'image', 'url' => 'https://cdn.example/3.jpg'],
+        ]));
+
+        $this->assertTrue($result->success, (string) $result->error);
+        $this->assertSame('media-1', $result->remotePostId);
+        $this->assertSame([
+            // children: no caption, flagged as carousel items, VIDEO for the clip
+            ['POST', 'ig-1/media', ['image_url' => 'https://cdn.example/1.jpg', 'is_carousel_item' => 'true']],
+            ['POST', 'ig-1/media', ['video_url' => 'https://cdn.example/2.mp4', 'media_type' => 'VIDEO', 'is_carousel_item' => 'true']],
+            ['POST', 'ig-1/media', ['image_url' => 'https://cdn.example/3.jpg', 'is_carousel_item' => 'true']],
+            // every child is checked before the carousel is built
+            ['GET', 'c1', []],
+            ['GET', 'c2', []],
+            ['GET', 'c3', []],
+            ['POST', 'ig-1/media', ['caption' => 'A caption', 'media_type' => 'CAROUSEL', 'children' => 'c1,c2,c3']],
+            ['GET', 'car-1', []],
+            ['POST', 'ig-1/media_publish', ['creation_id' => 'car-1']],
+        ], $this->sent());
+    }
+
+    public function test_a_failed_carousel_child_stops_before_the_carousel_container(): void
+    {
+        Http::fake([
+            '*/media' => Http::sequence()->push(['id' => 'c1'])->push(['id' => 'c2']),
+            '*/c2?*' => Http::response(['status_code' => 'ERROR', 'status' => 'Error: Image too large. Error code: 2207004']),
+            '*' => Http::response(['status_code' => 'FINISHED']),
+        ]);
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost([
+            ['type' => 'image', 'url' => 'https://cdn.example/1.jpg'],
+            ['type' => 'image', 'url' => 'https://cdn.example/2.jpg'],
+        ]));
+
+        $this->assertSame('Image is too large', $result->error);
+        Http::assertNotSent(fn (Request $r) => ($r['media_type'] ?? null) === 'CAROUSEL');
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'media_publish'));
+    }
+
+    public function test_the_poll_budget_is_shared_across_carousel_children(): void
+    {
+        Http::fake([
+            '*/media' => Http::sequence()->push(['id' => 'c1'])->push(['id' => 'c2']),
+            '*' => Http::response(['status_code' => 'IN_PROGRESS']),
+        ]);
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost([
+            ['type' => 'video', 'url' => 'https://cdn.example/1.mp4'],
+            ['type' => 'video', 'url' => 'https://cdn.example/2.mp4'],
+        ]));
+
+        $this->assertStringContainsString('did not complete in time', (string) $result->error);
+        $this->assertSame(InstagramProvider::CONTAINER_POLL_ATTEMPTS, Http::recorded(fn (Request $r) => $r->method() === 'GET')->count());
+    }
+
+    public function test_more_than_ten_media_fail_before_any_graph_call(): void
+    {
+        Http::fake();
+        $media = array_map(fn (int $i) => ['type' => 'image', 'url' => "https://cdn.example/{$i}.jpg"], range(1, 11));
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost($media));
+
+        $this->assertFalse($result->success);
+        $this->assertStringContainsString('at most 10', (string) $result->error);
+        Http::assertNothingSent();
     }
 
     /* ---------------- comments ---------------- */
