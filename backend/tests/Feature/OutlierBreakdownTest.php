@@ -12,6 +12,7 @@ use App\Services\AnthropicService;
 use App\Services\CaptApiOutlierService;
 use App\Services\CaptApiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -257,6 +258,7 @@ class OutlierBreakdownTest extends TestCase
 
     public function test_job_marks_failed_when_transcript_unavailable(): void
     {
+        Exceptions::fake();
         $this->makeVideo();
         $breakdown = OutlierBreakdown::create([
             'platform' => 'youtube', 'video_id' => 'abc123xyz',
@@ -277,6 +279,10 @@ class OutlierBreakdownTest extends TestCase
         $breakdown->refresh();
         $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
         $this->assertStringContainsString('transcript', strtolower($breakdown->error));
+
+        // The failure must reach the exception handler (Sentry, error log, Slack),
+        // not just the row — a swallowed exception is how failures went unnoticed.
+        Exceptions::assertReported(fn (\RuntimeException $e) => str_contains($e->getMessage(), 'transcript'));
     }
 
     // ---- TikTok: transcript URL must carry the creator's @handle ----
