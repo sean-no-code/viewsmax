@@ -172,6 +172,41 @@ class PostCaptionLimitsTest extends TestCase
         ])->assertStatus(201);
     }
 
+    public function test_threads_limit_counts_utf8_bytes(): void
+    {
+        // 497 ASCII + one emoji: 498 code points, but 501 bytes — Meta counts
+        // bytes and would reject it with "text must be at most 500 characters".
+        $response = $this->createPost([
+            'caption' => str_repeat('a', 497).'😀',
+            'platforms' => ['threads'],
+            'status' => 'posted',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('Threads', $response->json('message'));
+        $this->assertStringContainsString('1 character over', $response->json('message'));
+    }
+
+    public function test_threads_accepts_exactly_500_bytes(): void
+    {
+        $this->createPost([
+            'caption' => str_repeat('a', 496).'😀',
+            'platforms' => ['threads'],
+            'status' => 'posted',
+        ])->assertStatus(201);
+    }
+
+    public function test_other_platforms_still_count_code_points(): void
+    {
+        // The same 501-byte caption is 498 code points: fine on Bluesky-style
+        // code-point platforms with room to spare (Instagram's 2200).
+        $this->createPost([
+            'caption' => str_repeat('a', 497).'😀',
+            'platforms' => ['instagram'],
+            'status' => 'draft',
+        ])->assertStatus(201);
+    }
+
     public function test_updating_a_draft_to_scheduled_enforces_limits(): void
     {
         $id = $this->createPost([
