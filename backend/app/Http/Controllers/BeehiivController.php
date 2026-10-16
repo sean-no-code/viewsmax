@@ -37,6 +37,8 @@ class BeehiivController extends Controller
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => 'That Beehiiv API key was rejected — double-check it and try again.'], 422);
         } catch (\Throwable $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json(['success' => false, 'message' => 'Couldn’t reach Beehiiv right now. Please try again shortly.'], 502);
         }
 
@@ -86,6 +88,8 @@ class BeehiivController extends Controller
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => 'Beehiiv rejected the stored key — reconnect it.'], 422);
         } catch (\Throwable $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json(['success' => false, 'message' => 'Couldn’t reach Beehiiv right now.'], 502);
         }
 

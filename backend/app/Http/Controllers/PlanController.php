@@ -22,6 +22,8 @@ class PlanController extends Controller
                 'data' => $plans
             ]);
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plans',

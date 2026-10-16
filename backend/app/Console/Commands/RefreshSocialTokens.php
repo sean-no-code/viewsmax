@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Context;
 
 /**
  * Keeps connected accounts alive WITHOUT the user publishing: refreshes every
@@ -28,6 +28,7 @@ class RefreshSocialTokens extends Command
             ->get();
 
         $refreshed = 0;
+        $failed = 0;
         foreach ($due as $account) {
             if (! $manager->supports($account->platform)) {
                 continue;
@@ -37,16 +38,20 @@ class RefreshSocialTokens extends Command
                 $manager->for($account->platform)->ensureFreshToken($account);
                 $refreshed++;
             } catch (\Throwable $e) {
-                Log::warning('Proactive token refresh failed', [
-                    'social_account_id' => $account->id,
-                    'platform' => $account->platform,
-                    'error' => $e->getMessage(),
-                ]);
+                // A refresh that keeps failing is terminal: once the token
+                // expires it cannot be refreshed at all and the user must
+                // reconnect. Report it rather than warn — this command is the
+                // only thing standing between an idle account and that state.
+                $failed++;
+                Context::add(['social_account_id' => $account->id, 'platform' => $account->platform]);
+                report($e);
             }
         }
 
-        $this->info("Checked {$due->count()} account(s), attempted {$refreshed} refresh(es).");
+        $this->info("Checked {$due->count()} account(s), refreshed {$refreshed}, failed {$failed}.");
 
-        return self::SUCCESS;
+        // A non-zero exit makes the scheduler's onFailure hook fire, so a
+        // provider-wide refresh outage is visible without reading the log.
+        return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

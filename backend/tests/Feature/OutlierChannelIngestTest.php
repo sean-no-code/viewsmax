@@ -215,6 +215,7 @@ class OutlierChannelIngestTest extends TestCase
 
     public function test_job_records_a_user_safe_failure(): void
     {
+        \Illuminate\Support\Facades\Exceptions::fake();
         Http::fake(['*' => Http::response(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'Profile not found']], 404)]);
         $ingest = OutlierChannelIngest::create([
             'user_id' => User::factory()->create()->id, 'platform' => 'tiktok', 'input' => '@nobody', 'handle' => 'nobody',
@@ -226,6 +227,12 @@ class OutlierChannelIngestTest extends TestCase
         $this->assertSame(OutlierChannelIngest::STATUS_FAILED, $ingest->status);
         $this->assertSame('Profile not found', $ingest->error);
         $this->assertNull($ingest->channel_id);
+
+        // The row tells one user their handle was wrong; Sentry is what tells
+        // us the provider itself is down for everyone.
+        \Illuminate\Support\Facades\Exceptions::assertReported(
+            fn (\RuntimeException $e) => $e->getMessage() === 'Profile not found'
+        );
     }
 
     public function test_job_failed_hook_marks_the_row_so_it_never_sticks_in_processing(): void

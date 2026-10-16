@@ -61,6 +61,8 @@ class AuthController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed',
@@ -114,6 +116,8 @@ class AuthController extends Controller
             return response()->json($this->loginPayload($user));
 
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Login failed',
@@ -249,6 +253,8 @@ class AuthController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Logout failed',
@@ -275,6 +281,8 @@ class AuthController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get profile',
@@ -307,6 +315,8 @@ class AuthController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Token refresh failed',

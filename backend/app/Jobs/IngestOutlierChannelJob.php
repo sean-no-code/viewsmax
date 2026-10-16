@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\Log;
  * request, then follows the channel for the requesting user. No AI breakdown
  * is generated — that stays opt-in per video. Progress and the user-facing
  * error live on the outlier_channel_ingests row, which the app and the MCP
- * tool poll.
+ * tool poll — and every failure is report()ed, so a broken provider key or a
+ * dead scraper reaches Sentry instead of resting as one warning per user.
  */
 class IngestOutlierChannelJob implements ShouldQueue
 {
@@ -57,10 +59,8 @@ class IngestOutlierChannelJob implements ShouldQueue
                 $result = $captApiOutliers->ingestChannel($ingest->platform, $ingest->handle, $ingest->max_videos);
             }
         } catch (\Throwable $e) {
-            Log::warning('[channel-ingest] failed', [
-                'ingest_id' => $ingest->id, 'platform' => $ingest->platform, 'handle' => $ingest->handle,
-                'error' => $e->getMessage(),
-            ]);
+            Context::add(['ingest_id' => $ingest->id, 'platform' => $ingest->platform, 'handle' => $ingest->handle]);
+            report($e);
             $ingest->markFailed(UserSafeError::message($e, self::FAILURE_FALLBACK));
 
             return;
