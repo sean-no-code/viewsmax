@@ -47,6 +47,11 @@ return [
         'facebook' => [
             'label' => 'Facebook',
             'enabled' => env('FACEBOOK_ENABLED', true),
+            // Limited release pending Meta App Review: configured and live, but
+            // only promotional customers may connect it — everyone else sees
+            // "Coming soon". Restricted in production by default; set
+            // FACEBOOK_PROMO_ONLY=false to open it to all users.
+            'promo_only' => env('FACEBOOK_PROMO_ONLY', env('APP_ENV') === 'production'),
             'client_id' => env('FACEBOOK_CLIENT_ID'),
             'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
             'graph_version' => env('FACEBOOK_GRAPH_VERSION', $metaGraphVersion),
@@ -61,11 +66,14 @@ return [
 
         'instagram' => [
             'label' => 'Instagram',
-            // Pending Meta App Review: off in production by default, so the
-            // Connections page shows "Coming soon" and create_post omits it,
-            // while local/staging keep testing. Set INSTAGRAM_ENABLED=true
-            // once approved.
-            'enabled' => env('INSTAGRAM_ENABLED', env('APP_ENV') !== 'production'),
+            // Kill switch for everybody. INSTAGRAM_ENABLED=false hides the
+            // platform outright (Connections shows "Coming soon", create_post
+            // omits it) regardless of promo_only below.
+            'enabled' => env('INSTAGRAM_ENABLED', true),
+            // Limited release pending Meta App Review: live, but only
+            // promotional customers may connect it. Restricted in production by
+            // default; set INSTAGRAM_PROMO_ONLY=false once approved.
+            'promo_only' => env('INSTAGRAM_PROMO_ONLY', env('APP_ENV') === 'production'),
             // "Instagram API with Instagram Login" — connects directly to an
             // Instagram professional account (no Facebook Page). Uses the
             // Instagram app id/secret from the Instagram product settings,
@@ -89,6 +97,9 @@ return [
         'threads' => [
             'label' => 'Threads',
             'enabled' => env('THREADS_ENABLED', true),
+            // Limited release alongside the other two Meta platforms; set
+            // THREADS_PROMO_ONLY=false to open it to all users.
+            'promo_only' => env('THREADS_PROMO_ONLY', env('APP_ENV') === 'production'),
             'client_id' => env('THREADS_CLIENT_ID'),
             'client_secret' => env('THREADS_CLIENT_SECRET'),
             'api_version' => env('THREADS_API_VERSION', 'v1.0'),

@@ -121,9 +121,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     return socialAcct(e.key)?.avatar_url || null;
   };
 
+  // Connectable by THIS user: the backend's `available` folds credentials in
+  // with the limited-release audience (Facebook/Instagram/Threads are
+  // promotional-customer-only for now). Falls back to `configured` so a
+  // frontend deployed ahead of the backend keeps working.
   const isConfigured = (e: ProviderEntry): boolean => {
     if (e.system === "legacy") return isProviderConfigured(e.key as OAuthProvider) || isMockApi();
-    return platforms.find((p) => p.platform === e.key)?.configured ?? true;
+    const p = platforms.find((p) => p.platform === e.key);
+    return p?.available ?? p?.configured ?? true;
   };
 
   // Our handle on a platform that offers "Follow us" (X, Bluesky), else null.
