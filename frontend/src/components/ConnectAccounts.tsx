@@ -246,9 +246,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     )}
                   </div>
                 </div>
-                <Button size="sm" className="shrink-0" disabled={!configured || isBusy} onClick={() => handleConnect(entry)}>
-                  {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? t("connections.accounts.addAccount", "Add account") : t("connections.accounts.connect", "Connect")}
-                </Button>
+                {/* Nothing to click on a platform the user can't connect yet:
+                    "Coming soon" says it, a greyed-out Connect only invites a
+                    click that does nothing. */}
+                {configured && (
+                  <Button size="sm" className="shrink-0" disabled={isBusy} onClick={() => handleConnect(entry)}>
+                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? t("connections.accounts.addAccount", "Add account") : t("connections.accounts.connect", "Connect")}
+                  </Button>
+                )}
               </div>
               {follow && (
                 <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
@@ -370,15 +375,15 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                   <Check className="h-4 w-4" /> {t("connections.accounts.connected", "Connected")}
                 </span>
               )
-            ) : (
+            ) : configured ? (
               <Button
                 size="sm"
-                disabled={!configured || isBusy}
+                disabled={isBusy}
                 onClick={() => handleConnect(entry)}
               >
                 {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("connections.accounts.connect", "Connect")}
               </Button>
-            )}
+            ) : null}
           </div>
         );
       })}

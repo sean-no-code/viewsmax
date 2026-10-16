@@ -44,14 +44,18 @@ class PromoOnlyPlatformsTest extends TestCase
 
     private function user(bool $promotional): User
     {
+        return $this->userWithRoles($promotional ? [User::PROMO_ROLE] : []);
+    }
+
+    /** @param array<int, string> $roles */
+    private function userWithRoles(array $roles): User
+    {
         $user = User::factory()->create();
 
-        if ($promotional) {
-            $role = Role::firstOrCreate(
-                ['name' => User::PROMO_ROLE],
-                ['display_name' => 'Promotional customer'],
+        foreach ($roles as $name) {
+            $user->roles()->attach(
+                Role::firstOrCreate(['name' => $name], ['display_name' => $name])->id
             );
-            $user->roles()->attach($role->id);
         }
 
         return $user;
@@ -165,6 +169,79 @@ class PromoOnlyPlatformsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonStructure(['data' => ['authorization_url']]);
+    }
+
+    public function test_an_admin_is_blocked_too_unless_they_hold_the_promotional_role(): void
+    {
+        // Deliberately no admin bypass: an admin who wants early access gets
+        // the role (php artisan users:promo), so there is one rule to reason
+        // about and no way to connect by accident.
+        $admin = $this->userWithRoles(['admin']);
+
+        $this->assertFalse($this->catalogEntry($admin, 'instagram')['available']);
+
+        $this->withHeaders($this->auth($admin))
+            ->getJson('/api/social/instagram/auth-url?redirect_uri=https://app.test/cb')
+            ->assertStatus(503);
+
+        $this->assertNotContains('instagram', CreatePost::availablePlatforms($admin));
+    }
+
+    public function test_an_admin_who_also_holds_the_promotional_role_may_connect(): void
+    {
+        $admin = $this->userWithRoles(['admin', User::PROMO_ROLE]);
+
+        $this->assertTrue($this->catalogEntry($admin, 'instagram')['available']);
+    }
+
+    public function test_the_legacy_connection_exchange_refuses_a_promo_only_platform(): void
+    {
+        // /api/auth/{provider}/exchange writes to the older Connection store and
+        // accepts instagram. The UI only drives it for YouTube, but it is
+        // reachable with any valid login, so it needs the same gate.
+        Http::fake();
+
+        $this->withHeaders($this->auth($this->user(promotional: false)))
+            ->postJson('/api/auth/instagram/exchange', [
+                'code' => 'abc',
+                'redirect_uri' => 'https://app.test/cb',
+            ])
+            ->assertStatus(503);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_the_legacy_connection_exchange_does_not_depend_on_the_social_stores_credentials(): void
+    {
+        // That path authenticates with config('services.meta.*'), not
+        // social.platforms.instagram.*, so blanking the latter must not start
+        // refusing it — only the promotional-customer rule applies there.
+        config([
+            'social.platforms.instagram.client_id' => null,
+            'social.platforms.instagram.client_secret' => null,
+        ]);
+        Http::fake();
+
+        $this->withHeaders($this->auth($this->user(promotional: true)))
+            ->postJson('/api/auth/instagram/exchange', [
+                'code' => 'abc',
+                'redirect_uri' => 'https://app.test/cb',
+            ])
+            ->assertStatus(422); // reaches the provider exchange and fails there
+    }
+
+    public function test_the_legacy_connection_exchange_still_serves_an_open_platform(): void
+    {
+        // TikTok isn't in limited release, so the gate must not touch it: the
+        // call gets through to the provider exchange and fails there instead.
+        Http::fake();
+
+        $this->withHeaders($this->auth($this->user(promotional: false)))
+            ->postJson('/api/auth/tiktok/exchange', [
+                'code' => 'abc',
+                'redirect_uri' => 'https://app.test/cb',
+            ])
+            ->assertStatus(422);
     }
 
     public function test_exchange_refuses_a_promo_only_platform_for_a_normal_user(): void

@@ -50,6 +50,24 @@ describe("ConnectAccounts — platform availability", () => {
     expect(screen.getAllByText("Not connected").length).toBeGreaterThan(0);
   });
 
+  it.each(["settings", "onboarding"] as const)(
+    "renders no Connect button at all for an unavailable platform (%s)",
+    async (mode) => {
+      // A greyed-out Connect next to "Coming soon" reads as a broken button;
+      // the card should simply have nothing to click.
+      api.getSocialPlatforms.mockResolvedValue({
+        success: true,
+        data: [platform("instagram", { available: false }), platform("x")],
+      });
+
+      render(<ConnectAccounts mode={mode} />);
+      const card = (await screen.findByText("Coming soon")).closest("div.rounded-lg") as HTMLElement;
+
+      expect(card).not.toBeNull();
+      expect(card.querySelector("button")).toBeNull();
+    },
+  );
+
   it("offers Connect when the platform is available, even though nothing is connected", async () => {
     api.getSocialPlatforms.mockResolvedValue({
       success: true,
