@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\PublishToFacebookJob;
 use App\Models\Post;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Services\Social\Providers\FacebookProvider;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -59,6 +61,20 @@ class FacebookPublishTest extends TestCase
     private function runJob(PostTarget $target): void
     {
         (new PublishToFacebookJob($target->id))->handle(app(SocialProviderManager::class));
+    }
+
+    /**
+     * Fake every Graph call with a 400 whose `error` is whatever $error holds
+     * when the request is made. Repeated Http::fake() calls stack (the first
+     * stub wins), so table-driven tests need one stub that reads a variable.
+     *
+     * @param  array<string, mixed>|null  $error  by reference
+     */
+    private function fakeGraphError(?array &$error): void
+    {
+        Http::fake(['graph.facebook.com/*' => function () use (&$error) {
+            return Http::response(['error' => $error], 400);
+        }]);
     }
 
     public function test_text_post_publishes_to_the_page_feed(): void
@@ -120,5 +136,271 @@ class FacebookPublishTest extends TestCase
         $target->refresh();
         $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
         $this->assertNotEmpty($target->error);
+    }
+
+    /* ---------------- multi-photo feed posts ---------------- */
+
+    public function test_two_or_more_images_are_uploaded_unpublished_then_attached_to_one_feed_post(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::sequence()
+                ->push(['id' => 'photo-1'])
+                ->push(['id' => 'photo-2']),
+            'graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_999']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('Album', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+            ['type' => 'image', 'url' => 'https://cdn.example/b.jpg'],
+        ], $account->id);
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+        $this->assertSame('page-1_999', $target->platform_post_id);
+
+        $requests = collect(Http::recorded())->map(fn ($pair) => $pair[0]);
+        $this->assertCount(3, $requests);
+
+        // Each photo goes up unpublished, without the caption.
+        foreach ([0, 1] as $i) {
+            $this->assertStringContainsString('/page-1/photos', $requests[$i]->url());
+            $this->assertSame(['a.jpg', 'b.jpg'][$i], basename($requests[$i]['url']));
+            $this->assertFalse($requests[$i]['published']);
+            $this->assertArrayNotHasKey('caption', $requests[$i]->data());
+        }
+
+        // Then one feed post carries the message and both photo ids.
+        $feed = $requests[2];
+        $this->assertStringContainsString('/page-1/feed', $feed->url());
+        $this->assertSame('Album', $feed['message']);
+        $this->assertSame([['media_fbid' => 'photo-1'], ['media_fbid' => 'photo-2']], $feed['attached_media']);
+    }
+
+    public function test_single_image_still_posts_one_published_photo_with_caption(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::response(['id' => '888', 'post_id' => 'page-1_888']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('With pic', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+        ], $account->id);
+
+        $this->runJob($target);
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/page-1/photos')
+            && $request['caption'] === 'With pic'
+            && ! array_key_exists('published', $request->data()));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page-1/feed'));
+    }
+
+    public function test_a_rejected_photo_upload_fails_the_target_without_posting_to_the_feed(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::sequence()
+                ->push(['id' => 'photo-1'])
+                ->push(['error' => ['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 1366046]], 400),
+            'graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_999']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('Album', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+            ['type' => 'image', 'url' => 'https://cdn.example/too-big.jpg'],
+        ], $account->id);
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertStringContainsString('4 MB', (string) $target->error);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page-1/feed'));
+    }
+
+    /* ---------------- reauth ---------------- */
+
+    public function test_token_and_page_role_errors_flag_the_page_for_reconnect(): void
+    {
+        $cases = [
+            ['message' => 'Error validating access token: Session has expired', 'type' => 'OAuthException', 'code' => 190, 'error_subcode' => 463],
+            ['message' => 'REVOKED_ACCESS_TOKEN', 'code' => 190],
+            ['message' => 'Unpublished posts must be posted to a page as the page itself', 'code' => 100],
+            ['message' => '(#100) Page publishing authorization is required', 'code' => 100, 'error_subcode' => 1404078],
+            ['message' => 'The permission must be granted before impersonating a user\'s page', 'code' => 100],
+            ['message' => 'Access token expired', 'code' => 490],
+            // A plain 190 is a dead token (generic classifier).
+            ['message' => 'Invalid OAuth access token - Cannot parse access token', 'type' => 'OAuthException', 'code' => 190],
+        ];
+
+        $error = null;
+        $this->fakeGraphError($error);
+
+        foreach ($cases as $error) {
+            $account = $this->connectPage();
+            $target = $this->makeTarget('boom', [], $account->id);
+
+            $this->runJob($target);
+
+            $target->refresh();
+            $account->refresh();
+            $this->assertSame(PostTarget::STATUS_FAILED, $target->status, json_encode($error));
+            $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->status, json_encode($error));
+            $this->assertStringContainsStringIgnoringCase('reconnect', (string) $target->error, json_encode($error));
+            $this->assertSame($target->error, $account->last_error);
+            $this->assertStringNotContainsString('{', (string) $target->error);
+
+            $account->delete();
+        }
+    }
+
+    public function test_a_page_flagged_for_reconnect_is_not_published_to_again(): void
+    {
+        Http::fake();
+        $account = $this->connectPage();
+        $account->markNeedsReauth('dead');
+        $target = $this->makeTarget('later', [], $account->id);
+
+        $this->runJob($target);
+
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+        Http::assertNothingSent();
+    }
+
+    /* ---------------- retry ---------------- */
+
+    public function test_temporary_block_is_handed_to_the_queue_for_a_retry(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*' => Http::response(['error' => ['message' => 'Temporarily blocked for policies violations', 'code' => 368, 'error_subcode' => 1390008]], 400),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('fast', [], $account->id);
+
+        try {
+            $this->runJob($target);
+            $this->fail('expected TransientPublishException');
+        } catch (TransientPublishException $e) {
+            $this->assertStringContainsString('retried', $e->getMessage());
+        }
+
+        // Not failed: the queue's $tries/$backoff retry it; the Page stays connected.
+        $this->assertSame(PostTarget::STATUS_PENDING, $target->refresh()->status);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status);
+    }
+
+    public function test_html_outage_page_is_retried_even_on_a_4xx(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*' => Http::response('<html><body><h1>Sorry, something went wrong.</h1></body></html>', 400, ['Content-Type' => 'text/html']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('outage', [], $account->id);
+
+        $this->expectException(TransientPublishException::class);
+
+        $this->runJob($target);
+    }
+
+    public function test_a_transient_error_while_uploading_photos_retries_before_anything_is_posted(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*/page-1/photos' => Http::sequence()
+                ->push(['id' => 'photo-1'])
+                ->push('Bad Gateway', 502),
+            'graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_999']),
+        ]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('Album', [
+            ['type' => 'image', 'url' => 'https://cdn.example/a.jpg'],
+            ['type' => 'image', 'url' => 'https://cdn.example/b.jpg'],
+        ], $account->id);
+
+        try {
+            $this->runJob($target);
+            $this->fail('expected TransientPublishException');
+        } catch (TransientPublishException $e) {
+        }
+
+        $this->assertSame(PostTarget::STATUS_PENDING, $target->refresh()->status);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/page-1/feed'));
+    }
+
+    /* ---------------- readable rejections ---------------- */
+
+    public function test_known_graph_rejections_fail_with_a_readable_message_not_the_raw_json(): void
+    {
+        $cases = [
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 1366046], '4 MB'],
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 1346003], 'abusive'],
+            [['message' => 'Invalid parameter', 'code' => 368, 'error_subcode' => 1404006], 'security check'],
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 2069019], 'invalid'],
+            [['message' => 'Invalid parameter', 'code' => 368, 'error_subcode' => 1404102], 'Community Standards'],
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 1366051], 'already posted'],
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 1609008], 'facebook.com links'],
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 2061006], 'URL'],
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 1349125], 'content format'],
+            [['message' => 'Invalid parameter', 'code' => 368, 'error_subcode' => 1404112], 'few days'],
+            [['message' => '(#100) Name parameter too long', 'code' => 100], 'too long'],
+            [['message' => 'Service temporarily unavailable', 'code' => 2, 'error_subcode' => 1363047], 'temporarily unavailable'],
+            [['message' => 'Service temporarily unavailable', 'code' => 2, 'error_subcode' => 1609010], 'temporarily unavailable'],
+            [['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 4854002], 'Confirm your identity'],
+            [['message' => '(#100) No permission to publish the video', 'code' => 100], 'permission to publish the video'],
+            [['message' => 'Error validating access token: You cannot access the app till you log in', 'code' => 190, 'error_subcode' => 459], 'security check'],
+            [['message' => 'Error validating access token: The user has not authorized application', 'code' => 190, 'error_subcode' => 492], 'no longer has a role on this Page'],
+            [['message' => 'Unsupported get request. Object with ID \'1\' does not exist', 'code' => 100, 'error_subcode' => 33], 'no longer exists'],
+            [['message' => '(#200) Requires pages_manage_posts permission', 'code' => 200], 'missing permissions'],
+        ];
+
+        $error = null;
+        $this->fakeGraphError($error);
+
+        foreach ($cases as [$case, $expected]) {
+            $error = $case + ['fbtrace_id' => 'AbCdEf'];
+            $account = $this->connectPage();
+            $target = $this->makeTarget('boom', [], $account->id);
+
+            $this->runJob($target);
+
+            $target->refresh();
+            $this->assertSame(PostTarget::STATUS_FAILED, $target->status, json_encode($error));
+            $this->assertStringContainsString($expected, (string) $target->error, json_encode($error));
+            $this->assertStringNotContainsString('{', (string) $target->error, json_encode($error));
+            // These are final rejections, not dead tokens: the Page stays connected.
+            $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status, json_encode($error));
+
+            $account->delete();
+        }
+    }
+
+    public function test_subcode_33_never_matches_330_or_a_trace_id_containing_33(): void
+    {
+        $pageGone = FacebookProvider::ERRORS[33][1];
+        $cases = [
+            ['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 330, 'fbtrace_id' => 'AbCdEf'],
+            ['message' => 'Invalid parameter', 'code' => 100, 'error_subcode' => 2207033, 'fbtrace_id' => 'AbCdEf'],
+            ['message' => 'Invalid parameter', 'code' => 100, 'fbtrace_id' => 'Ab33Cd'],
+            ['message' => 'Invalid parameter', 'code' => 100, 'fbtrace_id' => 'A459Z'],
+        ];
+
+        $error = null;
+        $this->fakeGraphError($error);
+
+        foreach ($cases as $error) {
+            $account = $this->connectPage();
+            $target = $this->makeTarget('boom', [], $account->id);
+
+            $this->runJob($target);
+
+            $target->refresh();
+            $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+            $this->assertNotSame($pageGone, $target->error, json_encode($error));
+            $this->assertStringNotContainsString('security check', (string) $target->error, json_encode($error));
+            $this->assertSame('Meta rejected the post: Invalid parameter', $target->error, json_encode($error));
+
+            $account->delete();
+        }
     }
 }

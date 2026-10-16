@@ -61,6 +61,28 @@ class PostCaptionLimitsTest extends TestCase
         $this->assertStringContainsString('3000', $response->json('message'));
     }
 
+    public function test_scheduling_a_long_facebook_caption_is_accepted_up_to_facebooks_maximum(): void
+    {
+        // 5000 was ViewsMax's own cap; Facebook accepts up to 63206 characters.
+        $this->createPost([
+            'caption' => str_repeat('a', 63206),
+            'platforms' => ['facebook'],
+            'status' => 'scheduled',
+            'scheduled_at' => now()->addHour()->toDateTimeString(),
+        ])->assertStatus(201);
+
+        $response = $this->createPost([
+            'caption' => str_repeat('a', 63207),
+            'platforms' => ['facebook'],
+            'status' => 'scheduled',
+            'scheduled_at' => now()->addHour()->toDateTimeString(),
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsStringIgnoringCase('facebook', $response->json('message'));
+        $this->assertStringContainsString('63206', $response->json('message'));
+    }
+
     public function test_posting_over_limit_x_caption_is_rejected(): void
     {
         $this->createPost([
