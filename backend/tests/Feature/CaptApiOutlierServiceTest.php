@@ -383,6 +383,7 @@ class CaptApiOutlierServiceTest extends TestCase
     public function test_ingest_job_records_failure_on_breakdown_row(): void
     {
         \Illuminate\Support\Facades\Queue::fake();
+        \Illuminate\Support\Facades\Exceptions::fake();
         $this->fakeTiktokNotFound();
 
         app()->call([new \App\Jobs\IngestOutlierByUrlJob('tiktok', 'https://www.tiktok.com/@x/video/1', '1'), 'handle']);
@@ -391,6 +392,12 @@ class CaptApiOutlierServiceTest extends TestCase
         $this->assertSame(\App\Models\OutlierBreakdown::STATUS_FAILED, $breakdown->status);
         $this->assertSame('Download failed: Video not found', $breakdown->error);
         \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\GenerateOutlierBreakdownJob::class);
+
+        // The failure must reach the exception handler (Sentry, error log), not
+        // just the row — a swallowed warning is how a blocked API key went unnoticed.
+        \Illuminate\Support\Facades\Exceptions::assertReported(
+            fn (\RuntimeException $e) => $e->getMessage() === 'Video not found'
+        );
     }
 
     public function test_short_tiktok_link_resolves_to_canonical_url_and_queues(): void
