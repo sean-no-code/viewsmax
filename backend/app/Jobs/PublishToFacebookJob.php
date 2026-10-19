@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
@@ -84,6 +85,10 @@ class PublishToFacebookJob implements ShouldQueue
             }
 
             $this->markFailed($target, $result->error ?: 'Facebook publish failed.');
+        } catch (TransientPublishException $e) {
+            // Facebook asked us to retry (outage, temporary block) before
+            // anything was published — rethrow so the queue retries.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Facebook publish job error', [
                 'post_target_id' => $target->id,

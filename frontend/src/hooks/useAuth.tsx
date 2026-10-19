@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { viewsMaxApi } from '@/lib/api-service';
 import { disableTrackingForAdmin } from '@/lib/tracking';
+import { setSentryUser } from '@/lib/sentry';
 
 interface CustomUser {
   id: number | string;
@@ -165,6 +166,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
     setLoading(false);
   }, []);
+
+  // Error reports name the user by id only, so a crash can be matched to an account.
+  useEffect(() => {
+    setSentryUser(user?.id);
+  }, [user?.id]);
 
   // index.html blocks trackers at page load for admins; this stops any that
   // loaded before an admin logged in mid-session (no reload needed)

@@ -174,4 +174,26 @@ class SocialTokenLifecycleTest extends TestCase
         $this->assertSame('access', $far->fresh()->access_token);
         $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $dead->fresh()->status);
     }
+
+    public function test_refresh_tokens_command_reports_an_unexpected_refresh_failure(): void
+    {
+        // A refresh that never succeeds is terminal — once the token expires it
+        // cannot be refreshed at all and the user must reconnect. So the command
+        // must not swallow the cause: report it and exit non-zero.
+        \Illuminate\Support\Facades\Exceptions::fake();
+        $this->account('x', ['platform_account_id' => 'x-boom']);
+
+        $provider = \Mockery::mock(\App\Services\Social\Contracts\SocialProviderInterface::class);
+        $provider->shouldReceive('ensureFreshToken')->andThrow(new \RuntimeException('refresh endpoint exploded'));
+        $this->mock(SocialProviderManager::class, function ($mock) use ($provider) {
+            $mock->shouldReceive('supports')->andReturn(true);
+            $mock->shouldReceive('for')->andReturn($provider);
+        });
+
+        $this->artisan('social:refresh-tokens')->assertExitCode(1);
+
+        \Illuminate\Support\Facades\Exceptions::assertReported(
+            fn (\RuntimeException $e) => $e->getMessage() === 'refresh endpoint exploded'
+        );
+    }
 }

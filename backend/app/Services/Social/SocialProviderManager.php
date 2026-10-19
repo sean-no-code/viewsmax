@@ -2,6 +2,7 @@
 
 namespace App\Services\Social;
 
+use App\Models\User;
 use App\Services\Social\Contracts\SocialProviderInterface;
 use App\Services\Social\Providers\BlueskyProvider;
 use App\Services\Social\Providers\FacebookProvider;
@@ -102,13 +103,38 @@ class SocialProviderManager
     }
 
     /**
+     * Whether the platform is in limited release: configured and live, but only
+     * promotional customers may connect it (see config/social → promo_only).
+     */
+    public function promoOnly(string $platform): bool
+    {
+        return (bool) config('social.platforms.'.strtolower($platform).'.promo_only', false);
+    }
+
+    /**
+     * Whether this user may connect the platform right now. `isConfigured()`
+     * answers "is it live at all"; this adds the limited-release audience, so
+     * it is the check every connect path uses. A null user (console, queue,
+     * unauthenticated) gets the restricted answer.
+     */
+    public function isAvailableTo(?User $user, string $platform): bool
+    {
+        if (! $this->isConfigured($platform)) {
+            return false;
+        }
+
+        return ! $this->promoOnly($platform) || (bool) $user?->isPromotional();
+    }
+
+    /**
      * Metadata describing every platform, for the frontend connect screen.
+     * Pass the viewer so `available` reflects limited-release platforms.
      *
      * @return array<int, array<string, mixed>>
      */
-    public function catalog(): array
+    public function catalog(?User $user = null): array
     {
-        return collect($this->platforms())->map(function (string $platform) {
+        return collect($this->platforms())->map(function (string $platform) use ($user) {
             $config = config("social.platforms.{$platform}", []);
 
             return [
@@ -116,6 +142,9 @@ class SocialProviderManager
                 'label' => $config['label'] ?? ucfirst($platform),
                 'enabled' => (bool) ($config['enabled'] ?? true),
                 'configured' => $this->isConfigured($platform),
+                // What the connect screen renders from: `configured` stays
+                // honest about credentials, this is the per-user answer.
+                'available' => $this->isAvailableTo($user, $platform),
                 'uses_oauth' => $this->for($platform)->usesOAuth(),
                 // Our handle when the connect page should offer "Follow us".
                 'follow_us' => app(FollowUs::class)->handle($platform),

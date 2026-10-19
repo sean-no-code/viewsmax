@@ -39,6 +39,39 @@ class SendFreeTrialRemindersTest extends TestCase
         Mail::assertSent(FreeTrialEndingMail::class, 1);
     }
 
+    public function test_reads_as_a_check_in_that_asks_for_feedback_and_routes_replies_to_a_person(): void
+    {
+        config(['mail.admin_address' => 'sean@example.com']);
+        $this->freeUser('soon@example.com', now()->addHours(23));
+
+        $this->artisan('subscriptions:send-free-trial-reminders')->assertSuccessful();
+
+        $mail = Mail::sent(FreeTrialEndingMail::class, fn ($m) => $m->hasTo('soon@example.com'))->sole();
+        $this->assertSame("How's it going so far?", $mail->envelope()->subject);
+        $this->assertTrue($mail->hasReplyTo('sean@example.com'));
+        $html = $mail->render();
+        $this->assertStringContainsString('hit reply', $html);
+        $this->assertStringNotContainsString('do not reply', $html);
+        // The trial facts are still there: when it ends, nothing is charged, how to keep going.
+        $this->assertStringContainsString('ends tomorrow', $html);
+        $this->assertStringContainsString("won't be charged", $html);
+        $this->assertStringContainsString('Choose a plan', $html);
+    }
+
+    public function test_without_a_reply_inbox_it_links_to_the_feedback_page_instead(): void
+    {
+        config(['mail.admin_address' => null]);
+        $this->freeUser('soon@example.com', now()->addHours(23));
+
+        $this->artisan('subscriptions:send-free-trial-reminders')->assertSuccessful();
+
+        $mail = Mail::sent(FreeTrialEndingMail::class, fn ($m) => $m->hasTo('soon@example.com'))->sole();
+        $this->assertFalse($mail->hasReplyTo('sean@example.com'));
+        $html = $mail->render();
+        $this->assertStringContainsString('href="https://app.example.com/dashboard/feature-requests"', $html);
+        $this->assertStringNotContainsString('hit reply', $html);
+    }
+
     public function test_skips_users_outside_the_window_or_already_covered(): void
     {
         $this->freeUser('early@example.com', now()->addHours(30));

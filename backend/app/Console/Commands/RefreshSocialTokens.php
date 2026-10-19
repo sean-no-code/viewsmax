@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,7 +26,10 @@ use Illuminate\Support\Facades\Log;
  *
  * needs_reauth accounts are skipped (the user has to reconnect). A transient
  * refresh failure (429/5xx) leaves the account connected and is retried on
- * the next run; only a definitive rejection flags it.
+ * the next run; only a definitive rejection flags it. An exception escaping
+ * a provider is reported (Sentry) and makes the command exit non-zero: this
+ * command is the only thing standing between an idle account and a token
+ * that can no longer be refreshed, so its own failures must not be silent.
  */
 class RefreshSocialTokens extends Command
 {
@@ -52,11 +56,8 @@ class RefreshSocialTokens extends Command
                 $fresh = $manager->for($account->platform)->ensureFreshToken($account);
             } catch (\Throwable $e) {
                 $failed++;
-                Log::warning('Proactive token refresh failed', [
-                    'social_account_id' => $account->id,
-                    'platform' => $account->platform,
-                    'error' => $e->getMessage(),
-                ]);
+                Context::add(['social_account_id' => $account->id, 'platform' => $account->platform]);
+                report($e);
 
                 continue;
             }
@@ -75,6 +76,8 @@ class RefreshSocialTokens extends Command
 
         $this->info("Checked {$due->count()} account(s): {$refreshed} refreshed, {$flagged} now need reconnect, {$failed} errored.");
 
-        return self::SUCCESS;
+        // A non-zero exit makes the scheduler's onFailure hook fire, so a
+        // provider-wide refresh outage is visible without reading the log.
+        return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

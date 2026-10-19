@@ -194,6 +194,10 @@ export interface SocialPlatformInfo {
   label: string;
   enabled: boolean;
   configured: boolean;
+  // Whether THIS user may connect it: `configured` plus the limited-release
+  // audience (Facebook/Instagram/Threads are promotional-customer-only until
+  // Meta App Review lands). Optional so an older backend still works.
+  available?: boolean;
   uses_oauth: boolean;
   // Our own handle on this platform when the connect page offers "Follow us"
   // (X and Bluesky, once configured on the backend); null otherwise.

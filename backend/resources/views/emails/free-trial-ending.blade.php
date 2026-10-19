@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Your free trial ends tomorrow</title>
+    <title>How's it going so far?</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -42,51 +42,67 @@
             font-size: 14px;
             color: #6c757d;
         }
-        .warning {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 15px;
+        .questions {
+            background-color: #f8f9fa;
+            padding: 15px 15px 15px 35px;
             border-radius: 5px;
             margin: 20px 0;
+        }
+        .note {
+            border-top: 1px solid #e9ecef;
+            margin-top: 25px;
+            padding-top: 15px;
+            font-size: 15px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Your free trial ends tomorrow</h1>
+        <h1>How's it going so far?</h1>
     </div>
 
     <div class="content">
         <p>Hi {{ $name }},</p>
 
-        <p>Your {{ config('app.name') }} free trial ends on <strong>{{ $endsAt }}</strong>.</p>
+        <p>You've been trying {{ config('app.name') }} for a little while now, and your free trial ends tomorrow,
+        so it feels like a good moment to check in. How's it going so far?</p>
 
-        <div class="warning">
-            <strong>Heads up:</strong> after that, your account is paused. You will not be charged
-            anything, but outlier research, publishing and the AI connector stop working until you
-            choose a plan.
+        <p>We'd genuinely love your feedback, good or bad. It shapes what we build next. A few things we're curious about:</p>
+
+        <ul class="questions">
+            <li>What were you hoping {{ config('app.name') }} would help you with?</li>
+            <li>What's been most useful so far?</li>
+            <li>Was anything confusing, or did anything get in your way?</li>
+            <li>What's the one thing you wish it did?</li>
+        </ul>
+
+        @if ($canReply)
+            <p>Just hit reply. Every answer is read by a real person on our team, and a sentence or two is plenty.</p>
+        @else
+            <p><a href="{{ $feedbackUrl }}">Tell us here</a>. Every answer is read by a real person on our team, and a sentence or two is plenty.</p>
+        @endif
+
+        <div class="note">
+            <p><strong>About your trial:</strong> it ends on <strong>{{ $endsAt }}</strong>. After that your account is
+            paused and you won't be charged anything. Outlier research, publishing and the AI connector stop working
+            until you choose a plan.</p>
+
+            <div style="text-align: center;">
+                <a href="{{ $billingUrl }}" class="button">Choose a plan</a>
+            </div>
+
+            <p style="font-size: 13px; color: #6c757d;">Button not working? Copy this link into your browser:<br>
+            <span style="word-break: break-all;">{{ $billingUrl }}</span></p>
         </div>
 
-        <p>To keep using {{ config('app.name') }} without interruption, pick a plan now:</p>
-
-        <div style="text-align: center;">
-            <a href="{{ $billingUrl }}" class="button">Choose a plan</a>
-        </div>
-
-        <p>Or copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
-            {{ $billingUrl }}
-        </p>
-
-        <p>Thanks for trying {{ config('app.name') }}!</p>
-
-        <p>Best regards,<br>
+        <p>Thanks for giving {{ config('app.name') }} a try,<br>
         The {{ config('app.name') }} Team</p>
     </div>
 
     <div class="footer">
-        <p>This is an automated message. Please do not reply to this email.</p>
+        @unless ($canReply)
+            <p>This is an automated message. Please do not reply to this email.</p>
+        @endunless
         <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
     </div>
 </body>

@@ -25,6 +25,8 @@ class FreeToolTranscriptController extends Controller
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 422);
         } catch (\Throwable $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 502);
         }
 

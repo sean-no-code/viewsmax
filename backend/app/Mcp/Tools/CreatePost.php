@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\PostController;
 use App\Models\Post;
+use App\Models\User;
 use App\Services\Social\PostPublishDispatcher;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Http\Request;
@@ -314,17 +315,20 @@ class CreatePost extends ViewsMaxTool
     }
 
     /**
-     * Platforms the AI may offer: they have a publisher and app credentials.
-     * Without credentials the Connections page shows the platform as
-     * "Coming soon", so nobody can connect an account to post to.
+     * Platforms the AI may offer this user: they have a publisher, app
+     * credentials, and are out of limited release for them. Anything else shows
+     * as "Coming soon" on the Connections page, so there is no account to post
+     * to. Defaults to the current request's user; a null user (console, queue)
+     * sees only the platforms everyone can connect.
      */
-    public static function availablePlatforms(): array
+    public static function availablePlatforms(?User $user = null): array
     {
         $providers = app(SocialProviderManager::class);
+        $user ??= request()->user();
 
         return array_values(array_filter(
             PostPublishDispatcher::platforms(),
-            fn (string $platform) => $providers->isConfigured($platform)
+            fn (string $platform) => $providers->isAvailableTo($user, $platform)
         ));
     }
 

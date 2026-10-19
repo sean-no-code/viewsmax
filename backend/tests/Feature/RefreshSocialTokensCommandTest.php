@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -155,16 +157,20 @@ class RefreshSocialTokensCommandTest extends TestCase
 
     public function test_one_provider_blowing_up_does_not_stop_the_others(): void
     {
+        Exceptions::fake();
         $this->fakeTokenEndpoints([
-            'tiktok' => fn () => throw new \Illuminate\Http\Client\ConnectionException('cURL error 28: timed out'),
+            'tiktok' => fn () => throw new ConnectionException('cURL error 28: timed out'),
         ]);
         $tiktok = $this->account('tiktok');
         $x = $this->account('x');
 
+        // The other accounts are still refreshed, but the blow-up is reported
+        // and the command exits non-zero so the scheduler's onFailure fires.
         $this->artisan('social:refresh-tokens')
             ->expectsOutputToContain('1 refreshed, 0 now need reconnect, 1 errored')
-            ->assertExitCode(0);
+            ->assertExitCode(1);
 
+        Exceptions::assertReported(fn (ConnectionException $e) => str_contains($e->getMessage(), 'timed out'));
         $this->assertSame('new-x', $x->fresh()->access_token);
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $tiktok->fresh()->status);
     }

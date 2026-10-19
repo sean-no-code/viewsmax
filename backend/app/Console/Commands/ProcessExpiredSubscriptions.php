@@ -81,11 +81,20 @@ class ProcessExpiredSubscriptions extends Command
                                 'next_billing_time' => $nextBillingTime?->toDateTimeString(),
                             ]);
                         } catch (\Exception $e) {
-                            Log::warning('Failed to verify Stripe subscription status', [
+                            // Stripe is the authority on whether this subscription
+                            // is really dead. A failed lookup is NOT a "no" — left
+                            // to fall through, $stripeStatus stays null, no branch
+                            // below matches, and the defaults expire the plan and
+                            // zero the credits of a paying customer because an API
+                            // call failed. Skip them; the daily run retries.
+                            report($e);
+                            Log::error('Stripe verification failed — leaving subscription untouched', [
                                 'user_id' => $user->id,
                                 'stripe_sub_id' => $stripeSubId,
                                 'error' => $e->getMessage(),
                             ]);
+
+                            continue;
                         }
                     }
 
