@@ -2,12 +2,14 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\RecordsPublishStep;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Services\Social\CaptionRules;
 use App\Services\YouTubePublishService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 class PublishYouTubeJob implements ShouldQueue
 {
     use Queueable;
+    use RecordsPublishStep;
     use ResolvesTargetAccount;
 
     // Large uploads can run long; give the job room but keep retries low since
@@ -29,7 +32,26 @@ class PublishYouTubeJob implements ShouldQueue
 
     private const ALLOWED_PRIVACY = ['public', 'unlisted', 'private'];
 
+    /** What each recorded step (see RecordsPublishStep) was doing, for the timeout message. */
+    private const STEP_LABELS = [
+        'token' => 'refreshing the YouTube access token',
+        'session-init' => 'opening the YouTube upload session',
+        'upload' => 'uploading the video to YouTube',
+        'thumbnail' => 'setting the YouTube thumbnail',
+    ];
+
     public function __construct(public int $postTargetId) {}
+
+    /**
+     * Cap how many YouTube publishes start per minute (config/publishing.php,
+     * limiter registered in AppServiceProvider) so a YouTube spike cannot
+     * starve the other platforms' jobs. Over the cap the job is released until
+     * the window resets.
+     */
+    public function middleware(): array
+    {
+        return [new RateLimited('publish-youtube')];
+    }
 
     public function handle(YouTubePublishService $youtube): void
     {
@@ -100,12 +122,18 @@ class PublishYouTubeJob implements ShouldQueue
         ];
 
         try {
+            // Each outbound call is preceded by a persisted step marker so a
+            // job killed on $timeout can still say where it stalled (failed()).
+            $this->recordStep($target, 'token');
             $accessToken = $youtube->freshAccessToken($account);
             $size = Storage::disk($disk)->size($path);
             $stream = Storage::disk($disk)->readStream($path);
 
             try {
-                $result = $youtube->uploadVideo($accessToken, $stream, $size, $snippet, $privacy);
+                $result = $youtube->uploadVideo(
+                    $accessToken, $stream, $size, $snippet, $privacy,
+                    fn (string $step) => $this->recordStep($target, $step)
+                );
             } finally {
                 if (is_resource($stream)) {
                     fclose($stream);
@@ -160,6 +188,7 @@ class PublishYouTubeJob implements ShouldQueue
             return false;
         }
 
+        $this->recordStep($target, 'thumbnail');
         $stream = Storage::disk($disk)->readStream($path);
         try {
             $youtube->setThumbnail($accessToken, $videoId, $stream, $thumb['mime'] ?? 'image/jpeg');
@@ -188,12 +217,18 @@ class PublishYouTubeJob implements ShouldQueue
     }
 
     /**
-     * Called when retries are exhausted.
+     * Called when retries are exhausted. A job killed on $timeout never reached
+     * handle()'s catch block, so name the step it was in from the marker.
      */
     public function failed(?\Throwable $e): void
     {
         $target = PostTarget::find($this->postTargetId);
         if ($target && ! in_array($target->status, [PostTarget::STATUS_PUBLISHED, PostTarget::STATUS_FAILED], true)) {
+            if ($step = $this->timedOutStep($e, $target)) {
+                $this->markFailed($target, 'Timed out while '.(self::STEP_LABELS[$step] ?? $step).'.');
+
+                return;
+            }
             $this->markFailed($target, $e?->getMessage() ?: 'YouTube upload failed.');
         }
     }
