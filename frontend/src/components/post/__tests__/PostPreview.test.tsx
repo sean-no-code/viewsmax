@@ -10,6 +10,15 @@ const gbp = (o: Partial<GoogleBusinessOptions>): GoogleBusinessOptions => ({
   ...o,
 });
 
+// The preview writes dates in the UI language (English in tests).
+const day = (y: number, m: number, d: number, h: number, min: number) => {
+  const at = new Date(y, m - 1, d, h, min);
+  return {
+    date: new Intl.DateTimeFormat("en", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(at),
+    time: new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(at),
+  };
+};
+
 describe("PostPreview", () => {
   it("shows a Google Business update's text and button", () => {
     render(<PostPreview id="google_business" text="Fresh bread every morning." media={[]}
@@ -25,7 +34,8 @@ describe("PostPreview", () => {
       googleBusiness={gbp({ topic_type: "EVENT", event_title: "Bread tasting night", event_start: "2026-11-06T18:00", event_end: "2026-11-06T21:00", cta_type: "SIGN_UP", cta_url: "https://x.example" })} />);
 
     expect(screen.getByText("Bread tasting night")).toBeInTheDocument();
-    expect(screen.getByText("Fri 6 Nov 2026, 18:00 – 21:00")).toBeInTheDocument();
+    const [a, b] = [day(2026, 11, 6, 18, 0), day(2026, 11, 6, 21, 0)];
+    expect(screen.getByText(`${a.date}, ${a.time} – ${b.time}`)).toBeInTheDocument();
     expect(screen.getByText("Join us.")).toBeInTheDocument();
     expect(screen.getByText("Sign up")).toBeInTheDocument();
   });
@@ -35,7 +45,8 @@ describe("PostPreview", () => {
       googleBusiness={gbp({ topic_type: "OFFER", event_title: "20% off croissants", event_start: "2026-11-02T07:00", event_end: "2026-11-08T12:00", coupon_code: "CROISSANT20", cta_type: "ORDER" })} />);
 
     expect(screen.getByText("20% off croissants")).toBeInTheDocument();
-    expect(screen.getByText("Mon 2 Nov 2026, 07:00 – Sun 8 Nov 2026, 12:00")).toBeInTheDocument();
+    const [a, b] = [day(2026, 11, 2, 7, 0), day(2026, 11, 8, 12, 0)];
+    expect(screen.getByText(`${a.date}, ${a.time} – ${b.date}, ${b.time}`)).toBeInTheDocument();
     expect(screen.getByText("CROISSANT20")).toBeInTheDocument();
     expect(screen.getByText("View offer")).toBeInTheDocument();
     expect(screen.queryByText("Order online")).toBeNull();

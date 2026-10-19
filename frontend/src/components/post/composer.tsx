@@ -663,34 +663,44 @@ function XThreadPreview({ segments, media, compact }: { segments: string[]; medi
 }
 
 /* ---------------- Live feed preview ---------------- */
-// "2026-11-06T18:00" as typed, shown as the same wall-clock time (no time zone shift).
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-function gbpWhen(start: string, end: string): string {
+// "2026-11-06T18:00" as typed, shown as the same wall-clock time (no time zone
+// shift), with day and month names in the UI language.
+function gbpWhen(start: string, end: string, lang: string, fallback: string): string {
   const parse = (v: string) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(v);
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v);
     if (!m) return null;
-    const [, y, mo, d, hm] = m;
-    const day = DAYS[new Date(Number(y), Number(mo) - 1, Number(d)).getDay()];
-    return { date: `${day} ${Number(d)} ${MONTHS[Number(mo) - 1]} ${y}`, hm };
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+    return {
+      date: new Intl.DateTimeFormat(lang, { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(d),
+      time: new Intl.DateTimeFormat(lang, { hour: "numeric", minute: "2-digit" }).format(d),
+    };
   };
   const a = parse(start), b = parse(end);
-  if (!a || !b) return "Set a start and an end";
-  return a.date === b.date ? `${a.date}, ${a.hm} – ${b.hm}` : `${a.date}, ${a.hm} – ${b.date}, ${b.hm}`;
+  if (!a || !b) return fallback;
+  return a.date === b.date ? `${a.date}, ${a.time} – ${b.time}` : `${a.date}, ${a.time} – ${b.date}, ${b.time}`;
 }
-const GBP_BUTTON_LABELS: Record<string, string> = {
-  BOOK: "Book", ORDER: "Order online", SHOP: "Buy", LEARN_MORE: "Learn more", SIGN_UP: "Sign up", CALL: "Call now",
-};
 
 // Google Business Profile post, laid out like the post card on a Business Profile:
 // photo, then the event/offer title and dates, the text, the coupon, and one button.
 function GoogleBusinessPreview({ name, text, media, o }: { name: string; text: string; media: MediaItem[]; o?: GoogleBusinessOptions }) {
+  const { t, i18n } = useTranslation();
   const topic = o?.topic_type ?? "STANDARD";
   const dated = topic === "EVENT" || topic === "OFFER";
   const photo = media.find((m) => m.type === "image");
   const src = photo ? photo.preview || resolveMediaUrl(photo.url) : null;
-  const button = topic === "OFFER" ? "View offer" : (o?.cta_type ? GBP_BUTTON_LABELS[o.cta_type] : null);
-  const kind = topic === "EVENT" ? "Event" : topic === "OFFER" ? "Offer" : "Update";
+  // Written out key by key: the deploy's string harvester only sees literal t() keys.
+  const buttons: Record<string, string> = {
+    BOOK: t("post.preview.gbp.buttonBook", "Book"),
+    ORDER: t("post.preview.gbp.buttonOrder", "Order online"),
+    SHOP: t("post.preview.gbp.buttonShop", "Buy"),
+    LEARN_MORE: t("post.preview.gbp.buttonLearnMore", "Learn more"),
+    SIGN_UP: t("post.preview.gbp.buttonSignUp", "Sign up"),
+    CALL: t("post.preview.gbp.buttonCall", "Call now"),
+  };
+  const button = topic === "OFFER" ? t("post.preview.gbp.viewOffer", "View offer") : (o?.cta_type ? buttons[o.cta_type] : null);
+  const kind = topic === "EVENT" ? t("post.preview.gbp.kindEvent", "Event")
+    : topic === "OFFER" ? t("post.preview.gbp.kindOffer", "Offer")
+    : t("post.preview.gbp.kindUpdate", "Update");
   return (
     <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.05)", fontFamily: "var(--font-body)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px" }}>
@@ -704,14 +714,18 @@ function GoogleBusinessPreview({ name, text, media, o }: { name: string; text: s
       <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
         {dated && (
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>{o?.event_title || (topic === "EVENT" ? "Event title" : "Offer title")}</div>
-            <div style={{ fontSize: 12, color: "var(--ink-on-paper-3)", marginTop: 2 }}>{gbpWhen(o?.event_start ?? "", o?.event_end ?? "")}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>
+              {o?.event_title || (topic === "EVENT" ? t("post.preview.gbp.eventTitle", "Event title") : t("post.preview.gbp.offerTitle", "Offer title"))}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--ink-on-paper-3)", marginTop: 2 }}>
+              {gbpWhen(o?.event_start ?? "", o?.event_end ?? "", i18n.language || "en", t("post.preview.gbp.setStartEnd", "Set a start and an end"))}
+            </div>
           </div>
         )}
         {text && <div style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink-on-paper-1)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{text}</div>}
         {topic === "OFFER" && o?.coupon_code && (
           <div style={{ border: "1.5px dashed var(--line-2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
-            <div style={{ fontSize: 11, color: "var(--ink-on-paper-3)" }}>Show this code at the store</div>
+            <div style={{ fontSize: 11, color: "var(--ink-on-paper-3)" }}>{t("post.preview.gbp.showCode", "Show this code at the store")}</div>
             <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, letterSpacing: 1, color: "var(--ink-on-paper-1)" }}>{o.coupon_code}</div>
           </div>
         )}

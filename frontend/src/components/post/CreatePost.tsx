@@ -63,21 +63,9 @@ const SUPPORTED_PLATFORM_IDS = ["youtube", "tiktok", "instagram", "x", "linkedin
 const SHOWN_WHEN_CONNECTED_IDS = ["google_business"];
 
 // Google Business Profile post types and buttons, as Google names them.
-const GBP_TOPICS: Array<{ id: "STANDARD" | "EVENT" | "OFFER"; label: string; help: string }> = [
-  { id: "STANDARD", label: "Update", help: "News, a new product, anything you want customers to see." },
-  { id: "EVENT", label: "Event", help: "Something happening at a set time, with a title, start and end." },
-  { id: "OFFER", label: "Offer", help: "A deal for a set time. Google adds a \"View offer\" button itself." },
-];
+const GBP_TOPIC_IDS = ["STANDARD", "EVENT", "OFFER"] as const;
 const isWebLink = (s: string) => /^https?:\/\/\S+\.\S+/i.test(s.trim());
-const GBP_BUTTONS: Array<{ id: string; label: string }> = [
-  { id: "", label: "No button" },
-  { id: "BOOK", label: "Book" },
-  { id: "ORDER", label: "Order online" },
-  { id: "SHOP", label: "Buy" },
-  { id: "LEARN_MORE", label: "Learn more" },
-  { id: "SIGN_UP", label: "Sign up" },
-  { id: "CALL", label: "Call now" },
-];
+const GBP_BUTTON_IDS = ["", "BOOK", "ORDER", "SHOP", "LEARN_MORE", "SIGN_UP", "CALL"] as const;
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -566,13 +554,32 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const gbp = c.googleBusiness;
   const gbpDated = gbp.topic_type === "EVENT" || gbp.topic_type === "OFFER";
   const gbpKind = gbp.topic_type === "EVENT" ? "event" : "offer";
+  const isEvent = gbp.topic_type === "EVENT";
+  // Written out key by key: the deploy's string harvester only sees literal t() keys.
+  const gbpTopic: Record<string, { label: string; help: string }> = {
+    STANDARD: { label: t("post.composer.gbp.topicUpdate", "Update"), help: t("post.composer.gbp.topicUpdateHelp", "News, a new product, anything you want customers to see.") },
+    EVENT: { label: t("post.composer.gbp.topicEvent", "Event"), help: t("post.composer.gbp.topicEventHelp", "Something happening at a set time, with a title, start and end.") },
+    OFFER: { label: t("post.composer.gbp.topicOffer", "Offer"), help: t("post.composer.gbp.topicOfferHelp", "A deal for a set time. Google adds a \"View offer\" button itself.") },
+  };
+  const gbpButtonLabel: Record<string, string> = {
+    "": t("post.composer.gbp.buttonNone", "No button"),
+    BOOK: t("post.composer.gbp.buttonBook", "Book"),
+    ORDER: t("post.composer.gbp.buttonOrder", "Order online"),
+    SHOP: t("post.composer.gbp.buttonShop", "Buy"),
+    LEARN_MORE: t("post.composer.gbp.buttonLearnMore", "Learn more"),
+    SIGN_UP: t("post.composer.gbp.buttonSignUp", "Sign up"),
+    CALL: t("post.composer.gbp.buttonCall", "Call now"),
+  };
   const gbpBlockReason: string | null = !gbpSelected ? null
-    : gbpDated && !gbp.event_title.trim() ? `Give the Google ${gbpKind} a title.`
-    : gbpDated && (!gbp.event_start || !gbp.event_end) ? `Set when the Google ${gbpKind} starts and ends.`
-    : gbpDated && gbp.event_end <= gbp.event_start ? `The Google ${gbpKind} must end after it starts.`
-    : gbp.topic_type !== "OFFER" && gbp.cta_type && gbp.cta_type !== "CALL" && !gbp.cta_url.trim() ? "Add the link for the Google button."
-    : gbp.topic_type !== "OFFER" && gbp.cta_type && gbp.cta_type !== "CALL" && !isWebLink(gbp.cta_url) ? "The Google button link must start with https://."
-    : gbp.topic_type === "OFFER" && gbp.redeem_url.trim() && !isWebLink(gbp.redeem_url) ? "The offer's redeem link must start with https://."
+    : gbpDated && !gbp.event_title.trim()
+      ? (isEvent ? t("post.composer.gbp.eventNeedsTitle", "Give the Google event a title.") : t("post.composer.gbp.offerNeedsTitle", "Give the Google offer a title."))
+    : gbpDated && (!gbp.event_start || !gbp.event_end)
+      ? (isEvent ? t("post.composer.gbp.eventNeedsTimes", "Set when the Google event starts and ends.") : t("post.composer.gbp.offerNeedsTimes", "Set when the Google offer starts and ends."))
+    : gbpDated && gbp.event_end <= gbp.event_start
+      ? (isEvent ? t("post.composer.gbp.eventEndsBeforeStart", "The Google event must end after it starts.") : t("post.composer.gbp.offerEndsBeforeStart", "The Google offer must end after it starts."))
+    : gbp.topic_type !== "OFFER" && gbp.cta_type && gbp.cta_type !== "CALL" && !gbp.cta_url.trim() ? t("post.composer.gbp.buttonNeedsLink", "Add the link for the Google button.")
+    : gbp.topic_type !== "OFFER" && gbp.cta_type && gbp.cta_type !== "CALL" && !isWebLink(gbp.cta_url) ? t("post.composer.gbp.buttonLinkHttps", "The Google button link must start with https://.")
+    : gbp.topic_type === "OFFER" && gbp.redeem_url.trim() && !isWebLink(gbp.redeem_url) ? t("post.composer.gbp.redeemLinkHttps", "The offer's redeem link must start with https://.")
     : null;
   const blockReason = tiktokBlockReason ?? gbpBlockReason;
   // Google gets the first photo only; a video-only post goes out as text.
@@ -870,7 +877,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                   {gbpVideoOnly && (
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
                       <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
-                      <span>Google Business gets photos only — without one, its post goes out as text.</span>
+                      <span>{t("post.composer.gbp.photosOnly", "Google Business gets photos only — without one, its post goes out as text.")}</span>
                     </div>
                   )}
                   {xImageOverflow && (
@@ -1198,14 +1205,15 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 {activeOptTab === "google_business" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Post type</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.gbp.postType", "Post type")}</span>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {GBP_TOPICS.map((t) => (
-                          <button key={t.id} onClick={() => c.patchGoogleBusiness({ topic_type: t.id })} style={tabStyle(gbp.topic_type === t.id)}>{t.label}</button>
+                        {GBP_TOPIC_IDS.map((id) => (
+                          <button key={id} onClick={() => c.patchGoogleBusiness({ topic_type: id })} style={tabStyle(gbp.topic_type === id)}>{gbpTopic[id].label}</button>
                         ))}
                       </div>
                       <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                        {GBP_TOPICS.find((t) => t.id === gbp.topic_type)?.help} The caption is the post's text.
+                        {gbpTopic[gbp.topic_type].help}{" "}
+                        {t("post.composer.gbp.captionIsText", "The caption is the post's text.")}
                       </span>
                     </div>
 
@@ -1213,33 +1221,34 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                       <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
                         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           <span style={{ display: "flex", justifyContent: "space-between", maxWidth: 480, fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
-                            <span>{gbp.topic_type === "EVENT" ? "Event title" : "Offer title"}</span>
+                            <span>{isEvent ? t("post.composer.gbp.eventTitle", "Event title") : t("post.composer.gbp.offerTitle", "Offer title")}</span>
                             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{gbp.event_title.length}/58</span>
                           </span>
                           {/* Google's post form caps titles at 58 characters. */}
                           <input aria-label={`Google ${gbpKind} title`} value={gbp.event_title} maxLength={58} onChange={(e) => c.patchGoogleBusiness({ event_title: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
                         </label>
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                          {([["event_start", "Starts"], ["event_end", "Ends"]] as const).map(([key, label]) => (
+                          {([["event_start", "Starts", t("post.composer.gbp.starts", "Starts")], ["event_end", "Ends", t("post.composer.gbp.ends", "Ends")]] as const).map(([key, label, shown]) => (
                             <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{label}</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{shown}</span>
                               <input type="datetime-local" aria-label={`Google ${gbpKind} ${label.toLowerCase()}`} value={gbp[key]} onChange={(e) => c.patchGoogleBusiness({ [key]: e.target.value })} style={{ ...fieldBase, width: 230 }} />
                             </label>
                           ))}
                         </div>
-                        <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>In the business's own time zone.</span>
+                        <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{t("post.composer.gbp.ownTimeZone", "In the business's own time zone.")}</span>
                       </div>
                     )}
 
                     {gbp.topic_type === "OFFER" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
                         {([
-                          ["coupon_code", "Coupon code", "text", "Optional. Customers show or enter it to get the deal."],
-                          ["redeem_url", "Link to redeem online", "url", "Optional."],
-                          ["terms", "Terms and conditions", "text", "Optional."],
-                        ] as const).map(([key, label, type, help]) => (
+                          // English labels stay in the aria-label (stable for tests); shown text is translated.
+                          ["coupon_code", "Coupon code", "text", t("post.composer.gbp.couponCode", "Coupon code"), t("post.composer.gbp.couponCodeHelp", "Optional. Customers show or enter it to get the deal.")],
+                          ["redeem_url", "Link to redeem online", "url", t("post.composer.gbp.redeemLink", "Link to redeem online"), t("post.composer.gbp.optional", "Optional.")],
+                          ["terms", "Terms and conditions", "text", t("post.composer.gbp.terms", "Terms and conditions"), t("post.composer.gbp.optional", "Optional.")],
+                        ] as const).map(([key, label, type, shown, help]) => (
                           <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{label}</span>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{shown}</span>
                             <input type={type} aria-label={`Google offer ${label.toLowerCase()}`} value={gbp[key]} onChange={(e) => c.patchGoogleBusiness({ [key]: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
                             <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{help}</span>
                           </label>
@@ -1250,17 +1259,17 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     {gbp.topic_type !== "OFFER" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
                         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Button</span>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.gbp.button", "Button")}</span>
                           <select aria-label="Google button" value={gbp.cta_type} onChange={(e) => c.patchGoogleBusiness({ cta_type: e.target.value as typeof gbp.cta_type })} style={{ ...fieldBase, width: 260, maxWidth: "100%" }}>
-                            {GBP_BUTTONS.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+                            {GBP_BUTTON_IDS.map((id) => <option key={id} value={id}>{gbpButtonLabel[id]}</option>)}
                           </select>
                           {gbp.cta_type === "CALL" && (
-                            <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>Calls the phone number on the Business Profile.</span>
+                            <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{t("post.composer.gbp.callHint", "Calls the phone number on the Business Profile.")}</span>
                           )}
                         </label>
                         {gbp.cta_type && gbp.cta_type !== "CALL" && (
                           <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>Button link</span>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.gbp.buttonLink", "Button link")}</span>
                             <input type="url" aria-label="Google button link" placeholder="https://" value={gbp.cta_url} onChange={(e) => c.patchGoogleBusiness({ cta_url: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
                           </label>
                         )}
