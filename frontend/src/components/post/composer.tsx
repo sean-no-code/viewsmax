@@ -652,13 +652,78 @@ function XThreadPreview({ segments, media, compact }: { segments: string[]; medi
 }
 
 /* ---------------- Live feed preview ---------------- */
-export function PostPreview({ id, text, media, compact, handle }: { id: string; text: string; media: MediaItem[]; compact?: boolean; handle?: string }) {
+// "2026-11-06T18:00" as typed, shown as the same wall-clock time (no time zone shift).
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function gbpWhen(start: string, end: string): string {
+  const parse = (v: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(v);
+    if (!m) return null;
+    const [, y, mo, d, hm] = m;
+    const day = DAYS[new Date(Number(y), Number(mo) - 1, Number(d)).getDay()];
+    return { date: `${day} ${Number(d)} ${MONTHS[Number(mo) - 1]} ${y}`, hm };
+  };
+  const a = parse(start), b = parse(end);
+  if (!a || !b) return "Set a start and an end";
+  return a.date === b.date ? `${a.date}, ${a.hm} – ${b.hm}` : `${a.date}, ${a.hm} – ${b.date}, ${b.hm}`;
+}
+const GBP_BUTTON_LABELS: Record<string, string> = {
+  BOOK: "Book", ORDER: "Order online", SHOP: "Buy", LEARN_MORE: "Learn more", SIGN_UP: "Sign up", CALL: "Call now",
+};
+
+// Google Business Profile post, laid out like the post card on a Business Profile:
+// photo, then the event/offer title and dates, the text, the coupon, and one button.
+function GoogleBusinessPreview({ name, text, media, o }: { name: string; text: string; media: MediaItem[]; o?: GoogleBusinessOptions }) {
+  const topic = o?.topic_type ?? "STANDARD";
+  const dated = topic === "EVENT" || topic === "OFFER";
+  const photo = media.find((m) => m.type === "image");
+  const src = photo ? photo.preview || resolveMediaUrl(photo.url) : null;
+  const button = topic === "OFFER" ? "View offer" : (o?.cta_type ? GBP_BUTTON_LABELS[o.cta_type] : null);
+  const kind = topic === "EVENT" ? "Event" : topic === "OFFER" ? "Offer" : "Update";
+  return (
+    <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.05)", fontFamily: "var(--font-body)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px" }}>
+        <PAvatar id="google_business" size={36} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--ink-on-paper-1)" }}>{name}</div>
+          <div style={{ fontSize: 11, color: "var(--ink-on-paper-3)", fontFamily: "var(--font-mono)" }}>{kind} · Google Business Profile</div>
+        </div>
+      </div>
+      {src && <div style={{ width: "100%", aspectRatio: "4 / 3", background: `center/cover no-repeat url(${src})` }} />}
+      <div style={{ padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {dated && (
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>{o?.event_title || (topic === "EVENT" ? "Event title" : "Offer title")}</div>
+            <div style={{ fontSize: 12, color: "var(--ink-on-paper-3)", marginTop: 2 }}>{gbpWhen(o?.event_start ?? "", o?.event_end ?? "")}</div>
+          </div>
+        )}
+        {text && <div style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--ink-on-paper-1)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{text}</div>}
+        {topic === "OFFER" && o?.coupon_code && (
+          <div style={{ border: "1.5px dashed var(--line-2)", borderRadius: 10, padding: "8px 10px", textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: "var(--ink-on-paper-3)" }}>Show this code at the store</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, letterSpacing: 1, color: "var(--ink-on-paper-1)" }}>{o.coupon_code}</div>
+          </div>
+        )}
+        {topic === "OFFER" && o?.terms && <div style={{ fontSize: 11, color: "var(--ink-on-paper-3)" }}>{o.terms}</div>}
+        {button && (
+          <span style={{ alignSelf: "flex-start", border: "1px solid #DADCE0", borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 600, color: "#1A73E8" }}>{button}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function PostPreview({ id, text, media, compact, handle, googleBusiness }: { id: string; text: string; media: MediaItem[]; compact?: boolean; handle?: string; googleBusiness?: GoogleBusinessOptions }) {
   // `handle` overrides the catalog placeholder with the real connected account,
   // so the preview names the profile the post is actually going to.
   const p = handle ? { ...PMAP[id], handle } : PMAP[id];
   // Carousel slide index for multi-image slideshows. Derived `active` is clamped
   // to the current length so removing/reordering media can't strand the view.
   const [slide, setSlide] = useState(0);
+  // After the hook, so switching the previewed platform keeps the hook order stable.
+  if (id === "google_business") {
+    return <GoogleBusinessPreview name={p.handle} text={text || ""} media={media} o={googleBusiness} />;
+  }
   // X: a `---` line splits the caption into a thread — render the real
   // stacked reply chain instead of a single flattened post.
   const thread = id === "x" ? splitXThread(text || "") : [];
@@ -680,7 +745,7 @@ export function PostPreview({ id, text, media, compact, handle }: { id: string; 
     : id === "youtube" ? "16 / 9"
     : (id === "x" || id === "linkedin" || id === "facebook" || id === "threads") ? "16 / 10"
     : "4 / 5";
-  const textFirst = id === "x" || id === "threads" || id === "linkedin" || id === "facebook";
+  const textFirst = id === "x" || id === "threads" || id === "linkedin" || id === "facebook" || id === "bluesky";
   const captionAfter = id === "instagram" || id === "tiktok" || id === "youtube";
   return (
     <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.05)", fontFamily: "var(--font-body)" }}>

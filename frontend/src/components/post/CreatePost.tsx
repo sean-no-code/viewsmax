@@ -1323,7 +1323,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     media={c.media}
                     handle={previewId === "tiktok"
                       ? (c.creatorInfo?.creator_username ? `@${c.creatorInfo.creator_username}` : c.creatorInfo?.creator_nickname) || undefined
-                      : undefined}
+                      : previewId === "google_business"
+                        // The first picked location, so the card names the real business.
+                        ? (accountsByPlatform["google_business"] ?? []).find((a) => a.id === c.accountSel["google_business"]?.[0])?.name || undefined
+                        : undefined}
+                    googleBusiness={c.googleBusiness}
                   />
                 </div>
               </div>
