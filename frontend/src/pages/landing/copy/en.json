@@ -1,0 +1,240 @@
+{
+  "seo": {
+    "title": "ViewsMax — Generate More Leads From Your Content",
+    "description": "ViewsMax helps creators and marketers generate more leads from their content"
+  },
+  "nav": {
+    "features": "Features",
+    "channels": "Channels",
+    "pricing": "Pricing",
+    "freeTools": "Free Tools",
+    "aiAgents": "AI Agents",
+    "resources": "Resources",
+    "logIn": "Log in",
+    "start": "Start for $0",
+    "language": "Language"
+  },
+  "resources": {
+    "api": {
+      "label": "API docs",
+      "desc": "REST API reference & OpenAPI spec"
+    },
+    "mcp": {
+      "label": "Install MCP",
+      "desc": "The ViewsMax MCP server: address, auth & 26 tools"
+    },
+    "cli": {
+      "label": "CLI setup",
+      "desc": "Use ViewsMax from Claude Code"
+    },
+    "blog": {
+      "label": "Blog",
+      "desc": "Growth tactics & product updates"
+    },
+    "support": {
+      "label": "Support",
+      "desc": "Join our Discord for help & updates"
+    },
+    "github": {
+      "label": "GitHub",
+      "desc": "ViewsMax examples, SDKs & issues"
+    }
+  },
+  "freeTools": {
+    "youtube": {
+      "label": "YouTube Transcript",
+      "desc": "Download & copy any YouTube transcript"
+    },
+    "tiktok": {
+      "label": "TikTok Transcript",
+      "desc": "Convert any TikTok video to text"
+    },
+    "instagram": {
+      "label": "Instagram Transcript",
+      "desc": "Turn Reels & videos into text"
+    },
+    "thumbnail": {
+      "label": "Thumbnail Preview",
+      "desc": "See your thumbnail on YouTube's home page"
+    },
+    "revenue": {
+      "label": "Revenue Calculator",
+      "desc": "Estimate your YouTube earnings"
+    }
+  },
+  "agentCards": {
+    "claude": "One connector across all of Claude's apps",
+    "claude-cowork": "Same connector as Claude, used by the desktop agent",
+    "claude-code": "One terminal command, sign in over OAuth",
+    "chatgpt": "Custom connector in Developer mode",
+    "codex": "Two commands in the Codex CLI",
+    "cursor": "MCP config with an API key",
+    "openclaw": "ViewsMax skill with an API key",
+    "hermes": "MCP server in config.yaml, sign in over OAuth"
+  },
+  "footer": {
+    "tagline": "Make content that makes sales.",
+    "product": "Product",
+    "scheduler": "Scheduler",
+    "salesTracking": "Sales tracking",
+    "analytics": "Analytics",
+    "company": "Company",
+    "about": "About",
+    "careers": "Careers",
+    "contact": "Contact",
+    "affiliates": "Affiliates",
+    "copyright": "© 2026 ViewsMax. Not affiliated with the social platforms shown.",
+    "privacy": "Privacy",
+    "terms": "Terms"
+  },
+  "hero": {
+    "headline": [
+      "Build a content engine",
+      "that drives revenue."
+    ],
+    "sub": "Spot winning content, post to every platform and track what converts (with human support from Sean).",
+    "connectPlaceholder": "Connect your socials",
+    "connect": "Connect",
+    "noCard": "No card required"
+  },
+  "demos": {
+    "tabsLabel": "Feature demos",
+    "demoAlt": "demo",
+    "play": "Play demo",
+    "comingSoon": "Demo video coming soon",
+    "tryFree": "Try it free",
+    "outliers": {
+      "label": "Outliers",
+      "title": "Find outliers worth copying",
+      "desc": "Search millions of videos across YouTube, TikTok and Instagram to surface posts massively outperforming their channel — then break down why they worked and remake them for your niche."
+    },
+    "tracking": {
+      "label": "Tracking",
+      "title": "See which posts make sales",
+      "desc": "Every click and conversion is tied back to the exact post and platform it came from, so you know which content actually drives revenue — not just views."
+    },
+    "scheduling": {
+      "label": "Scheduling",
+      "title": "Post everywhere from one calendar",
+      "desc": "Compose once and publish to YouTube, TikTok, Instagram, X, LinkedIn and Threads on your schedule — ViewsMax posts for you at the time you pick."
+    }
+  },
+  "features": {
+    "eyebrow": "THE AUTOPILOT LOOP",
+    "title": "Post everywhere. Track every sale.",
+    "sub": "One calendar to schedule it all, and one dashboard that shows what actually makes you money.",
+    "items": [
+      {
+        "t": "Schedule across every channel",
+        "d": "Plan and auto-post to Instagram, TikTok, X, YouTube, LinkedIn and more from one calendar. Set it once and ViewsMax publishes at the perfect time — hands off."
+      },
+      {
+        "t": "Track what actually sells",
+        "d": "Every post gets tied to real revenue, not likes. See exactly which content and which channel put money in your account — no vanity metrics."
+      },
+      {
+        "t": "Double down on what works",
+        "d": "ViewsMax spots your highest-earning posts and tells you what to schedule next, so every week sells more than the last — automatically."
+      }
+    ]
+  },
+  "channels": {
+    "eyebrow": "EVERY CHANNEL YOU CARE ABOUT",
+    "title": "Post to the channels we support.",
+    "sub": "Connect once, then schedule, auto-post, and track sales across all of them from a single place."
+  },
+  "monetize": {
+    "eyebrow": "ATTRIBUTION, NOT VANITY METRICS",
+    "title": [
+      "Know exactly which post made the",
+      "sale."
+    ],
+    "body": "ViewsMax connects every channel to your revenue, so you stop guessing. See which platform, which post, and which time of day actually drives sales — then let the winners run on autopilot.",
+    "rows": [
+      "Schedule a month of content in minutes",
+      "Tie every post to the sales it generated",
+      "Auto-repost your top earners, hands-off"
+    ],
+    "topSellers": "See my top sellers",
+    "example": "See an example"
+  },
+  "mock": {
+    "pill": "Your {{post}} drove {{amount}} in sales",
+    "pillPost": "Tuesday Reel",
+    "topPost": "TOP POST",
+    "thumbAlt": "Top post thumbnail",
+    "play": "Play video",
+    "postTitle": "Behind-the-scenes Reel",
+    "postMeta": "Auto-posted Tue 6:00pm · 128K reach",
+    "salesLabel": "Sales from this post",
+    "orders": "312 orders",
+    "conv": "4.1% conv.",
+    "scheduleMore": "Schedule more like this"
+  },
+  "pricing": {
+    "eyebrow": "PRICING",
+    "title": "Free to start. Cheap to scale.",
+    "sub": "Schedule on every channel, track every sale, and pick the plan that grows with you.",
+    "popular": "POPULAR",
+    "perMonth": "/mo",
+    "talkToUs": "Talk to us",
+    "tiers": {
+      "Starter": {
+        "blurb": "Launch your first offer.",
+        "feats": [
+          "5 channels",
+          "1 offer",
+          "400 posts/mo"
+        ]
+      },
+      "Creator": {
+        "blurb": "For brands that sell.",
+        "feats": [
+          "30 channels",
+          "5 offers",
+          "Unlimited posts/mo"
+        ]
+      },
+      "Pro": {
+        "blurb": "Scale every channel.",
+        "feats": [
+          "Unlimited channels",
+          "10 offers",
+          "Unlimited posts/mo"
+        ]
+      },
+      "Agency": {
+        "blurb": "For teams & agencies.",
+        "feats": [
+          "Unlimited channels",
+          "Unlimited offers",
+          "Unlimited posts/mo"
+        ]
+      }
+    },
+    "includes": [
+      "Multiple accounts per platform",
+      "Brands (account groups)",
+      "Tracked links & revenue attribution",
+      "Outlier research with AI breakdowns",
+      "Boosts: auto-repost & auto-promo",
+      "MCP server & API for AI agents",
+      "Comment chains & X threads",
+      "Beehiiv reach tracking",
+      "Human support"
+    ]
+  },
+  "cta": {
+    "title": [
+      "Make content",
+      "that makes sales."
+    ],
+    "body": "Schedule everywhere, track what sells, and grow revenue without lifting a finger. Free to start — no card required."
+  },
+  "cookie": {
+    "message": "We use cookies to enhance your browsing experience and analyze our traffic. By clicking \"Accept\", you consent to our use of cookies.",
+    "learnMore": "Learn more",
+    "decline": "Decline",
+    "accept": "Accept"
+  }
+}

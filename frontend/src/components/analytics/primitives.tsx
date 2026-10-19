@@ -12,6 +12,7 @@ import {
   SquarePen, Eye, BarChart3, Download, LogIn,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { fmtFull, platformMeta } from "@/lib/analytics-model";
 
 export const CARD: CSSProperties = {
@@ -215,6 +216,7 @@ export function Funnel({ stages, dense }: { stages: FunnelStage[]; dense?: boole
 
 /* ---------- install code block ---------- */
 export function CodeBlock({ code, label }: { code: string; label?: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard?.writeText(code).catch(() => {});
@@ -226,7 +228,7 @@ export function CodeBlock({ code, label }: { code: string; label?: string }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", borderBottom: "1px solid var(--ink-700)" }}>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: ".04em", color: "var(--fg-3)", textTransform: "uppercase" }}>{label}</span>
           <button onClick={copy} style={{ display: "flex", alignItems: "center", gap: 6, background: copied ? "var(--vm-volt)" : "var(--ink-700)", color: copied ? "var(--fg-on-volt)" : "var(--fg-1)", border: "none", borderRadius: 7, padding: "5px 10px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 11.5, cursor: "pointer", transition: "background var(--dur)" }}>
-            <Icon name={copied ? "check" : "copy"} size={13} stroke={copied ? "var(--fg-on-volt)" : "var(--fg-1)"} />{copied ? "Copied" : "Copy"}
+            <Icon name={copied ? "check" : "copy"} size={13} stroke={copied ? "var(--fg-on-volt)" : "var(--fg-1)"} />{copied ? t("analytics.common.copied", "Copied") : t("analytics.common.copy", "Copy")}
           </button>
         </div>
       )}
@@ -237,13 +239,14 @@ export function CodeBlock({ code, label }: { code: string; label?: string }) {
 
 /* ---------- status dot ---------- */
 export function StatusDot({ live }: { live: boolean }) {
+  const { t } = useTranslation();
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--font-mono)", fontSize: 11.5, fontWeight: 500, color: live ? "var(--up)" : "var(--warn)" }}>
       <span style={{ position: "relative", width: 8, height: 8 }}>
         <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: live ? "var(--up)" : "var(--warn)" }} />
         {live && <span style={{ position: "absolute", inset: -3, borderRadius: "50%", background: "var(--up)", opacity: 0.25, animation: "fnlPulse 1.8s ease-out infinite" }} />}
       </span>
-      {live ? "Receiving data" : "Awaiting first event"}
+      {live ? t("analytics.common.receivingData", "Receiving data") : t("analytics.common.awaitingFirstEvent", "Awaiting first event")}
     </span>
   );
 }
@@ -329,6 +332,7 @@ export function SearchSelect({
   disabled?: boolean;
   clearLabel?: string;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -360,7 +364,7 @@ export function SearchSelect({
         type="text"
         disabled={disabled}
         value={open ? query : (selected?.label ?? "")}
-        placeholder={loading ? "Loading…" : (placeholder ?? "Type to search…")}
+        placeholder={loading ? t("analytics.common.loading", "Loading…") : (placeholder ?? t("analytics.common.typeToSearch", "Type to search…"))}
         onFocus={() => { if (!disabled) { setOpen(true); setQuery(""); setHighlight(0); } }}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); setHighlight(0); }}
         onKeyDown={(e) => {
@@ -377,14 +381,14 @@ export function SearchSelect({
       {open && !disabled && (
         <div style={{ position: "absolute", zIndex: 40, top: "calc(100% + 4px)", left: 0, right: 0, maxHeight: 240, overflowY: "auto", background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 12, boxShadow: "0 8px 24px rgba(10,10,12,.12)", padding: 4 }}>
           {loading ? (
-            <div style={ssMuted}>Loading…</div>
+            <div style={ssMuted}>{t("analytics.common.loading", "Loading…")}</div>
           ) : (
             <>
               {clearLabel && (
                 <button type="button" onMouseDown={(e) => { e.preventDefault(); pick(""); }} style={ssRow(value === "")}>{clearLabel}</button>
               )}
               {filtered.length === 0 ? (
-                <div style={ssMuted}>{q ? "No matches" : (emptyLabel ?? "Nothing to show")}</div>
+                <div style={ssMuted}>{q ? t("analytics.common.noMatches", "No matches") : (emptyLabel ?? t("analytics.common.nothingToShow", "Nothing to show"))}</div>
               ) : (
                 filtered.map((o, i) => (
                   <button

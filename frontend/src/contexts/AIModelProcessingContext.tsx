@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Model } from '@/lib/api-service';
 import { viewsMaxApi } from '@/lib/api-service';
 import { toast } from 'sonner';
+import i18n from 'i18next';
 
 interface AIModelProcessingContextType {
   processingModels: Model[];
@@ -71,10 +72,11 @@ export const AIModelProcessingProvider = ({ children }: AIModelProcessingProvide
           const previousModel = previousModels.find(p => p.id === newModel.id);
           if (previousModel && previousModel.status !== newModel.status) {
             if (newModel.status === 'completed') {
-              toast.success(`Model "${newModel.name}" is ready!`);
+              // i18n.t, not a hook's t: the polling interval keeps the first render's closure.
+              toast.success(i18n.t('layout.aiModels.ready', 'Model "{{name}}" is ready!', { name: newModel.name }));
               removeProcessingModel(newModel.id);
             } else if (newModel.status === 'failed') {
-              toast.error(`Model "${newModel.name}" creation failed.`);
+              toast.error(i18n.t('layout.aiModels.failed', 'Model "{{name}}" creation failed.', { name: newModel.name }));
               removeProcessingModel(newModel.id);
             }
           }

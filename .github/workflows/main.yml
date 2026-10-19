@@ -10,6 +10,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # commit the translations the step below produces
     defaults:
       run:
         working-directory: frontend   # all `run` steps execute here
@@ -27,6 +29,32 @@ jobs:
 
     - name: Install Dependencies
       run: npm ci
+
+    # Harvests new t() strings and has Claude translate anything missing or
+    # changed (scripts/i18n-translate.ts). No API call when nothing is missing.
+    # Fails the deploy rather than ship untranslated UI; the catalog test in
+    # "Run Tests" is the second check.
+    - name: Translate new UI strings
+      run: npm run i18n:translate
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    # Commit them back so they are reviewable and never paid for twice. A push
+    # made with GITHUB_TOKEN does not start another run. If the push is refused
+    # (e.g. branch protection) this deploy still ships the translations.
+    # Runs even when translating failed partway: the script saves after every
+    # batch, so the next run only pays for what's left. Tests and build still
+    # don't run after a failure, so nothing half-translated ships.
+    - name: Commit translations
+      if: ${{ !cancelled() }}
+      run: |
+        git add src/locales src/pages/landing/copy scripts/i18n-translate.lock.json
+        if git diff --cached --quiet; then echo "No translation changes"; exit 0; fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git commit -m "Translate new UI strings"
+        git pull --rebase && git push \
+          || echo "::warning::Could not push the new translations; the next deploy will translate them again."
 
     - name: Run Tests
       run: npm run test:run
@@ -50,6 +78,12 @@ jobs:
         VITE_CLARITY_ID: ${{ secrets.VITE_CLARITY_ID }}
         VITE_REWARDFUL_ID: ${{ secrets.VITE_REWARDFUL_ID }}
         VITE_VIEWSMAX_TRACKER_USER: ${{ secrets.VITE_VIEWSMAX_TRACKER_USER }}
+        # Error reporting (src/lib/sentry.ts): the React project's DSN; blank = off.
+        VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+        # Source-map upload (vite.config.ts); without the token the build skips it.
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4

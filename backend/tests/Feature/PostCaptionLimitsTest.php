@@ -61,6 +61,28 @@ class PostCaptionLimitsTest extends TestCase
         $this->assertStringContainsString('3000', $response->json('message'));
     }
 
+    public function test_scheduling_a_long_facebook_caption_is_accepted_up_to_facebooks_maximum(): void
+    {
+        // 5000 was ViewsMax's own cap; Facebook accepts up to 63206 characters.
+        $this->createPost([
+            'caption' => str_repeat('a', 63206),
+            'platforms' => ['facebook'],
+            'status' => 'scheduled',
+            'scheduled_at' => now()->addHour()->toDateTimeString(),
+        ])->assertStatus(201);
+
+        $response = $this->createPost([
+            'caption' => str_repeat('a', 63207),
+            'platforms' => ['facebook'],
+            'status' => 'scheduled',
+            'scheduled_at' => now()->addHour()->toDateTimeString(),
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsStringIgnoringCase('facebook', $response->json('message'));
+        $this->assertStringContainsString('63206', $response->json('message'));
+    }
+
     public function test_posting_over_limit_x_caption_is_rejected(): void
     {
         $this->createPost([
@@ -147,6 +169,41 @@ class PostCaptionLimitsTest extends TestCase
             'caption' => $caption,
             'platforms' => ['threads'],
             'status' => 'posted',
+        ])->assertStatus(201);
+    }
+
+    public function test_threads_limit_counts_utf8_bytes(): void
+    {
+        // 497 ASCII + one emoji: 498 code points, but 501 bytes — Meta counts
+        // bytes and would reject it with "text must be at most 500 characters".
+        $response = $this->createPost([
+            'caption' => str_repeat('a', 497).'😀',
+            'platforms' => ['threads'],
+            'status' => 'posted',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('Threads', $response->json('message'));
+        $this->assertStringContainsString('1 character over', $response->json('message'));
+    }
+
+    public function test_threads_accepts_exactly_500_bytes(): void
+    {
+        $this->createPost([
+            'caption' => str_repeat('a', 496).'😀',
+            'platforms' => ['threads'],
+            'status' => 'posted',
+        ])->assertStatus(201);
+    }
+
+    public function test_other_platforms_still_count_code_points(): void
+    {
+        // The same 501-byte caption is 498 code points: fine on Bluesky-style
+        // code-point platforms with room to spare (Instagram's 2200).
+        $this->createPost([
+            'caption' => str_repeat('a', 497).'😀',
+            'platforms' => ['instagram'],
+            'status' => 'draft',
         ])->assertStatus(201);
     }
 
@@ -256,5 +313,44 @@ class PostCaptionLimitsTest extends TestCase
             ->putJson("/api/posts/{$id}", ['status' => 'posted', 'media' => self::YT_VIDEO])
             ->assertStatus(422)
             ->assertJsonFragment(['message' => \App\Services\Social\CaptionRules::YOUTUBE_TITLE_REQUIRED]);
+    }
+
+    /* ---------- Bluesky counts graphemes, not code points ---------- */
+
+    public function test_bluesky_counts_graphemes_so_emoji_sequences_and_combining_marks_fit(): void
+    {
+        // 👨‍👩‍👧 is 5 code points / 1 grapheme; "é" as e + combining acute is 2 / 1.
+        $family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        $caption = str_repeat($family, 150).str_repeat("e\u{0301}", 150); // exactly 300 graphemes
+
+        $this->assertSame(300, \App\Services\Social\CaptionRules::lengthFor('bluesky', $caption));
+        $this->assertSame(1050, \App\Services\Social\CaptionRules::plainLength($caption));
+        $this->assertNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption));
+        $this->assertNotNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption.'x'));
+
+        $this->createPost([
+            'caption' => $caption,
+            'platforms' => ['bluesky'],
+            'status' => 'posted',
+        ])->assertStatus(201);
+
+        $response = $this->createPost([
+            'caption' => $caption.'x',
+            'platforms' => ['bluesky'],
+            'status' => 'posted',
+        ]);
+        $response->assertStatus(422);
+        $this->assertStringContainsString("1 character over Bluesky's 300 limit", $response->json('message'));
+    }
+
+    public function test_the_same_caption_is_graphemes_on_bluesky_and_bytes_on_threads(): void
+    {
+        $caption = str_repeat("e\u{0301}", 251); // 502 code points, 251 graphemes, 753 UTF-8 bytes
+
+        $this->assertSame(251, \App\Services\Social\CaptionRules::lengthFor('bluesky', $caption));
+        $this->assertSame(753, \App\Services\Social\CaptionRules::lengthFor('threads', $caption));
+        $this->assertSame(502, \App\Services\Social\CaptionRules::lengthFor('instagram', $caption));
+        $this->assertNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption));
+        $this->assertNotNull(\App\Services\Social\CaptionRules::captionError('threads', $caption));
     }
 }

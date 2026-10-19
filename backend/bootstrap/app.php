@@ -36,6 +36,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:reconcile-stuck scheduled run failed'));
 
+        // TikTok hands out the public post id only after moderation, so a
+        // target can be published with no id/link; fill them in once they exist.
+        $schedule->command('posts:resolve-tiktok-ids')
+            ->everyTenMinutes()
+            ->withoutOverlapping(10)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:resolve-tiktok-ids scheduled run failed'));
+
         // Downgrade users whose paid subscription lapsed back to the free plan.
         $schedule->command('subscriptions:process-expired')
             ->daily()
@@ -163,22 +170,30 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         Integration::handles($exceptions);
         // Ensure API routes always return JSON responses
+        // Nothing in here may throw. A fatal error during boot reaches this
+        // renderer before the auth service exists, and a second exception
+        // here hides the real one and returns a header-less 500 that the
+        // browser reports as CORS. Hence rescue() around auth()->id().
         $exceptions->render(function (Throwable $e, $request) {
             if ($request->is('api/*')) {
                 // Handle validation exceptions properly
                 if ($e instanceof \Illuminate\Validation\ValidationException) {
-                    // Log validation errors to both file and Slack
+                    // Log validation errors to both file and Slack. The
+                    // 'exception' key keeps them OUT of Sentry: the sentry log
+                    // channel skips records carrying an exception object, and a
+                    // user mistyping an email is not an issue to alert on.
                     \Illuminate\Support\Facades\Log::error('Validation Error (422)', [
                         'url' => $request->url(),
                         'method' => $request->method(),
                         'ip' => $request->ip(),
                         'user_agent' => $request->userAgent(),
-                        'user_id' => auth()->id(),
+                        'user_id' => rescue(fn () => auth()->id(), null, false),
                         'validation_errors' => $e->errors(),
                         'input_data' => $request->except(['password', 'password_confirmation', 'token']),
                         'exception_message' => $e->getMessage(),
                         'exception_file' => $e->getFile(),
                         'exception_line' => $e->getLine(),
+                        'exception' => $e,
                     ]);
                     
                     return response()->json([
@@ -188,18 +203,23 @@ return Application::configure(basePath: dirname(__DIR__))
                     ], 422);
                 }
                 
-                // Log other exceptions
+                // Log other exceptions. The 'exception' key keeps this line out
+                // of Sentry — the exception itself already went there through
+                // Integration::handles(), which also honours what must not be
+                // reported (404s, 401s, validation), so logging it again here
+                // would bill a second event for every API error.
                 \Illuminate\Support\Facades\Log::error('API Error', [
                     'url' => $request->url(),
                     'method' => $request->method(),
                     'ip' => $request->ip(),
                     'user_agent' => $request->userAgent(),
-                    'user_id' => auth()->id(),
+                    'user_id' => rescue(fn () => auth()->id(), null, false),
                     'exception_message' => $e->getMessage(),
                     'exception_code' => $e->getCode(),
                     'exception_file' => $e->getFile(),
                     'exception_line' => $e->getLine(),
                     'exception_trace' => $e->getTraceAsString(),
+                    'exception' => $e,
                 ]);
                 
                 // Resolve a valid integer HTTP status. Never use $e->getCode()
@@ -216,9 +236,19 @@ return Application::configure(basePath: dirname(__DIR__))
                     $status = (is_int($code) && $code >= 400 && $code < 600) ? $code : 500;
                 }
 
+                // Exception text can carry SQL, hosts and URLs: only HTTP/auth
+                // exceptions (whose messages are written for clients) and our own
+                // user-safe errors reach the response unless debugging.
+                $message = match (true) {
+                    $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface,
+                    $e instanceof \Illuminate\Auth\AuthenticationException => $e->getMessage(),
+                    $e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException => 'Not found.',
+                    default => \App\Support\UserSafeError::detail($e) ?? 'Something went wrong on our side. Please try again.',
+                };
+
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage(),
+                    'message' => $message,
                     'error' => config('app.debug') ? [
                         'file' => $e->getFile(),
                         'line' => $e->getLine(),

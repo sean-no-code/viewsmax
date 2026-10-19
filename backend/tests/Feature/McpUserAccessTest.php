@@ -12,8 +12,9 @@ use Tests\TestCase;
 /**
  * A user who can't use ViewsMax right now (unverified email, free trial over
  * with no plan since — see UserAccess) gets that answer from every tools/call
- * as an HTTP 200 tool result the AI can relay. initialize and tools/list still
- * work so the connector stays attached and nothing counts as a server error.
+ * as a plain HTTP 200 tool result (not isError) the AI can relay. initialize
+ * and tools/list still work so the connector stays attached and nothing counts
+ * as a server or tool error.
  */
 class McpUserAccessTest extends TestCase
 {
@@ -55,7 +56,7 @@ class McpUserAccessTest extends TestCase
         $response = $this->rpc($key, 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
             ->assertOk()
             ->assertJsonPath('id', 1)
-            ->assertJsonPath('result.isError', true)
+            ->assertJsonPath('result.isError', false)
             ->assertJsonMissingPath('error');
 
         $text = $response->json('result.content.0.text');
@@ -83,7 +84,7 @@ class McpUserAccessTest extends TestCase
 
         $response = $this->rpc($key, 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
             ->assertOk()
-            ->assertJsonPath('result.isError', true)
+            ->assertJsonPath('result.isError', false)
             ->assertJsonMissingPath('error');
 
         $text = $response->json('result.content.0.text');

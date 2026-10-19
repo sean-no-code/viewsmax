@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { RotateCcw, ExternalLink, Bookmark, Play, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+import type { TFunction } from 'i18next';
 import {
     getOutlier, getOutlierBreakdown, requestOutlierBreakdown, getLibrary, saveOutlier, deleteSavedOutlier, fetchOutlierByUrl,
     getOutlierCompetitors, addOutlierCompetitor, removeOutlierCompetitor, refreshOutlierMedia,
@@ -12,6 +15,14 @@ import { formatCompact, formatDuration, formatScore, formatBeatTime, timeAgo, is
 
 const TABS = ['Transcript', 'Idea analysis', 'Hook', 'Storytelling format', 'Visual layout'] as const;
 type Tab = typeof TABS[number];
+
+const tabLabels = (t: TFunction): Record<Tab, string> => ({
+    'Transcript': t('outliers.breakdown.tabTranscript', 'Transcript'),
+    'Idea analysis': t('outliers.breakdown.tabIdea', 'Idea analysis'),
+    'Hook': t('outliers.breakdown.tabHook', 'Hook'),
+    'Storytelling format': t('outliers.breakdown.tabStorytelling', 'Storytelling format'),
+    'Visual layout': t('outliers.breakdown.tabVisual', 'Visual layout'),
+});
 
 const eyebrow: CSSProperties = {
     fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 12, lineHeight: 1,
@@ -27,16 +38,17 @@ const POLL_MS = 3000;
 /** Loader checklist from the Shorts Breakdown design. Steps are advanced on a
  *  timer (the queued job reports no granular progress) and hold on the last
  *  step until the poll reports completed. */
-const GEN_STEPS = [
-    'Pulling the transcript',
-    'Breaking down the hook',
-    'Analysing the idea',
-    'Mapping the story beats',
-    'Scoring the visual layout',
+const genStepLabels = (t: TFunction) => [
+    t('outliers.breakdown.stepTranscript', 'Pulling the transcript'),
+    t('outliers.breakdown.stepHook', 'Breaking down the hook'),
+    t('outliers.breakdown.stepIdea', 'Analysing the idea'),
+    t('outliers.breakdown.stepBeats', 'Mapping the story beats'),
+    t('outliers.breakdown.stepVisual', 'Scoring the visual layout'),
 ];
 const STEP_MS = 3500;
 
 export default function OutlierBreakdown() {
+    const { t } = useTranslation();
     const { platform = 'youtube', videoId = '' } = useParams();
     // Set when the search bar queued a background download for this video —
     // the page then polls the video in and can retry the download on failure.
@@ -74,7 +86,7 @@ export default function OutlierBreakdown() {
                 await fetchOutlierByUrl(platform as OutlierPlatform, ingestUrl);
                 setIngestNonce((n) => n + 1);
             } catch (e) {
-                setBreakdown({ status: 'failed', payload: null, error: e instanceof Error ? e.message : 'Could not start the download' });
+                setBreakdown({ status: 'failed', payload: null, error: e instanceof Error ? e.message : i18n.t('outliers.breakdown.downloadStartFailed', 'Could not start the download') });
             }
             return;
         }
@@ -84,7 +96,7 @@ export default function OutlierBreakdown() {
             stopPoll();
             pollRef.current = setInterval(poll, POLL_MS);
         } catch (e) {
-            setBreakdown({ status: 'failed', payload: null, error: e instanceof Error ? e.message : 'Could not start generation' });
+            setBreakdown({ status: 'failed', payload: null, error: e instanceof Error ? e.message : i18n.t('outliers.breakdown.generationStartFailed', 'Could not start generation') });
         }
     }, [platform, videoId, poll, video, ingestUrl]);
 
@@ -108,7 +120,7 @@ export default function OutlierBreakdown() {
                     timer = setTimeout(load, POLL_MS);
                     return;
                 }
-                setVideoError(e instanceof Error ? e.message : 'Video not found');
+                setVideoError(e instanceof Error ? e.message : i18n.t('outliers.breakdown.videoNotFound', 'Video not found'));
             }
         };
         load();
@@ -148,12 +160,12 @@ export default function OutlierBreakdown() {
         const id = video.channel_id;
         if (isCompetitor) {
             setIsCompetitor(false);
-            removeOutlierCompetitor(id).catch(() => { setIsCompetitor(true); toast.error('Failed to remove competitor'); });
+            removeOutlierCompetitor(id).catch(() => { setIsCompetitor(true); toast.error(t('outliers.breakdown.removeCompetitorFailed', 'Failed to remove competitor')); });
         } else {
             setIsCompetitor(true);
             addOutlierCompetitor(id)
-                .then(() => toast.success(`${video.channel?.channel_name ?? 'Channel'} added as competitor`))
-                .catch(() => { setIsCompetitor(false); toast.error('Failed to add competitor'); });
+                .then(() => toast.success(t('outliers.breakdown.competitorAdded', '{{channel}} added as competitor', { channel: video.channel?.channel_name ?? t('outliers.breakdown.channelFallback', 'Channel') })))
+                .catch(() => { setIsCompetitor(false); toast.error(t('outliers.breakdown.addCompetitorFailed', 'Failed to add competitor')); });
         }
     };
 
@@ -164,7 +176,7 @@ export default function OutlierBreakdown() {
             setSavedId(null);
             deleteSavedOutlier(id).catch(() => {
                 setSavedId(id);
-                toast.error('Failed to remove');
+                toast.error(t('outliers.breakdown.removeFailed', 'Failed to remove'));
             });
             return;
         }
@@ -198,9 +210,11 @@ export default function OutlierBreakdown() {
             });
             setSavedId(saved.id);
             setSaveOpen(false);
-            toast.success(tags.length ? `Saved with ${tags.length} tag${tags.length > 1 ? 's' : ''}` : 'Saved to library');
+            toast.success(tags.length
+                ? t('outliers.breakdown.savedWithTags', { count: tags.length, defaultValue_one: 'Saved with {{count}} tag', defaultValue_other: 'Saved with {{count}} tags' })
+                : t('outliers.breakdown.savedToLibrary', 'Saved to library'));
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Failed to save');
+            toast.error(e instanceof Error ? e.message : t('outliers.breakdown.saveFailed', 'Failed to save'));
         }
     };
 
@@ -214,20 +228,21 @@ export default function OutlierBreakdown() {
             setBreakdown(b);
             if (b.status === 'none') startGeneration();
             else if (b.status === 'pending' || b.status === 'processing') pollRef.current = setInterval(poll, POLL_MS);
-        }).catch(() => { if (!cancelled) setBreakdown({ status: 'failed', payload: null, error: 'Failed to load breakdown' }); });
+        }).catch(() => { if (!cancelled) setBreakdown({ status: 'failed', payload: null, error: i18n.t('outliers.breakdown.loadFailed', 'Failed to load breakdown') }); });
         return () => { cancelled = true; stopPoll(); };
     }, [video, platform, videoId, poll, startGeneration]);
 
     const payload = breakdown?.status === 'completed' ? breakdown.payload : null;
     const generating = !videoError && !payload && breakdown?.status !== 'failed';
-    const genSteps = ingestUrl ? ['Downloading the video', ...GEN_STEPS] : GEN_STEPS;
+    const baseSteps = genStepLabels(t);
+    const genSteps = ingestUrl ? [t('outliers.breakdown.stepDownload', 'Downloading the video'), ...baseSteps] : baseSteps;
 
     // Advance the loader checklist while the job runs (holds on the last step);
     // holds on "Downloading the video" until the video actually lands.
     useEffect(() => {
         if (!generating || (ingestUrl && !video)) return;
-        const t = setInterval(() => setStepIdx((i) => Math.min(i + 1, genSteps.length - 1)), STEP_MS);
-        return () => clearInterval(t);
+        const timer = setInterval(() => setStepIdx((i) => Math.min(i + 1, genSteps.length - 1)), STEP_MS);
+        return () => clearInterval(timer);
     }, [generating, ingestUrl, video, genSteps.length]);
 
     const isIG = platform === 'instagram';
@@ -265,38 +280,38 @@ export default function OutlierBreakdown() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 22 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <span style={{ ...eyebrow, color: 'var(--vm-red)' }}>Breakdown</span>
+                    <span style={{ ...eyebrow, color: 'var(--vm-red)' }}>{t('outliers.breakdown.eyebrow', 'Breakdown')}</span>
                     <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 34, letterSpacing: '-0.03em', lineHeight: 1, color: 'var(--ink-on-paper-1)' }}>
                         {video?.title || '…'}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-on-paper-3)' }}>
-                        {handle}{video ? ` · ${isShorts ? 'Short' : 'Long form'}` : ''}{durationLabel ? ` · ${durationLabel}` : ''}{video?.published_at ? ` · ${timeAgo(video.published_at)}` : ''}
+                        {handle}{video ? ` · ${isShorts ? t('outliers.breakdown.short', 'Short') : t('outliers.breakdown.longForm', 'Long form')}` : ''}{durationLabel ? ` · ${durationLabel}` : ''}{video?.published_at ? ` · ${timeAgo(video.published_at)}` : ''}
                     </span>
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, paddingTop: 22, flexShrink: 0 }}>
                     {mult != null && (
-                        <span style={pill('var(--vm-volt-tint-l)', 'var(--vm-volt-deep)')}>▲ {mult > 100 ? '>100' : mult.toFixed(1)}x avg</span>
+                        <span style={pill('var(--vm-volt-tint-l)', 'var(--vm-volt-deep)')}>▲ {t('outliers.breakdown.multAvg', '{{mult}}x avg', { mult: mult > 100 ? '>100' : mult.toFixed(1) })}</span>
                     )}
                     {video?.views != null && (
-                        <span style={pill('var(--paper-2)', 'var(--ink-on-paper-2)')}>{formatCompact(video.views)} views</span>
+                        <span style={pill('var(--paper-2)', 'var(--ink-on-paper-2)')}>{t('outliers.breakdown.views', '{{views}} views', { views: formatCompact(video.views) })}</span>
                     )}
                     {video?.views == null && video?.comment_count != null && (
-                        <span style={pill('var(--paper-2)', 'var(--ink-on-paper-2)')}>{formatCompact(video.comment_count)} comments</span>
+                        <span style={pill('var(--paper-2)', 'var(--ink-on-paper-2)')}>{t('outliers.breakdown.comments', '{{comments}} comments', { comments: formatCompact(video.comment_count) })}</span>
                     )}
                     {video?.outlier_score != null && (
-                        <span style={pill('var(--vm-red-tint-l)', 'var(--vm-red-deep)')}>⚡ {formatScore(video.outlier_score)} viral</span>
+                        <span style={pill('var(--vm-red-tint-l)', 'var(--vm-red-deep)')}>⚡ {t('outliers.breakdown.viral', '{{score}} viral', { score: formatScore(video.outlier_score) })}</span>
                     )}
                 </div>
             </div>
 
             {/* Tab bar */}
             <div style={{ display: 'flex', gap: 28, borderBottom: '1px solid var(--line-1)', marginBottom: 28 }}>
-                {TABS.map((t) => {
-                    const active = t === tab;
+                {TABS.map((name) => {
+                    const active = name === tab;
                     return (
                         <button
-                            key={t}
-                            onClick={() => setTab(t)}
+                            key={name}
+                            onClick={() => setTab(name)}
                             style={{
                                 appearance: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '13px 2px',
                                 fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 14,
@@ -304,7 +319,7 @@ export default function OutlierBreakdown() {
                                 borderBottom: `2px solid ${active ? 'var(--vm-red)' : 'transparent'}`,
                             }}
                         >
-                            {t}
+                            {tabLabels(t)[name]}
                         </button>
                     );
                 })}
@@ -321,7 +336,7 @@ export default function OutlierBreakdown() {
                         }}
                     >
                         <Bookmark size={13} fill={savedId != null ? '#fff' : 'none'} stroke="#fff" style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 6 }} />
-                        {savedId != null ? 'Saved to library ✓' : 'Save to library'}
+                        {savedId != null ? t('outliers.breakdown.savedToLibraryCheck', 'Saved to library ✓') : t('outliers.breakdown.saveToLibrary', 'Save to library')}
                     </button>
                     <button
                         onClick={copyTranscript}
@@ -333,7 +348,7 @@ export default function OutlierBreakdown() {
                             color: 'var(--ink-on-paper-1)', opacity: payload ? 1 : 0.5, whiteSpace: 'nowrap',
                         }}
                     >
-                        {copied ? 'Copied ✓' : 'Copy transcript'}
+                        {copied ? t('outliers.breakdown.copied', 'Copied ✓') : t('outliers.breakdown.copyTranscript', 'Copy transcript')}
                     </button>
                     <button
                         onClick={toggleCompetitor}
@@ -345,7 +360,7 @@ export default function OutlierBreakdown() {
                             color: 'var(--ink-on-paper-1)', opacity: video?.channel_id ? 1 : 0.5, whiteSpace: 'nowrap',
                         }}
                     >
-                        {isCompetitor ? 'Added as competitor ✓' : 'Add as competitor'}
+                        {isCompetitor ? t('outliers.breakdown.addedAsCompetitor', 'Added as competitor ✓') : t('outliers.breakdown.addAsCompetitor', 'Add as competitor')}
                     </button>
                 </div>
             </div>
@@ -363,10 +378,10 @@ export default function OutlierBreakdown() {
                         </>
                     ) : (
                         <div style={{ ...panelCard, textAlign: 'center', padding: 40 }}>
-                            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, color: 'var(--ink-on-paper-1)', marginBottom: 6 }}>Breakdown failed</div>
-                            <div style={{ fontSize: 13.5, color: 'var(--ink-on-paper-3)', marginBottom: 16 }}>{breakdown?.error || 'Something went wrong generating this breakdown.'}</div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, color: 'var(--ink-on-paper-1)', marginBottom: 6 }}>{t('outliers.breakdown.failedTitle', 'Breakdown failed')}</div>
+                            <div style={{ fontSize: 13.5, color: 'var(--ink-on-paper-3)', marginBottom: 16 }}>{breakdown?.error || t('outliers.breakdown.failedBody', 'Something went wrong generating this breakdown.')}</div>
                             <button onClick={startGeneration} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
-                                <RotateCcw size={14} /> Try again
+                                <RotateCcw size={14} /> {t('outliers.breakdown.tryAgain', 'Try again')}
                             </button>
                         </div>
                     )}
@@ -383,7 +398,7 @@ export default function OutlierBreakdown() {
                             target="_blank" rel="noopener noreferrer"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 12.5, fontWeight: 700, color: 'var(--vm-red)', textDecoration: 'none' }}
                         >
-                            Watch on {platform === 'youtube' ? 'YouTube' : platform === 'tiktok' ? 'TikTok' : 'Instagram'} <ExternalLink size={12} />
+                            {t('outliers.breakdown.watchOn', 'Watch on {{platform}}', { platform: platform === 'youtube' ? 'YouTube' : platform === 'tiktok' ? 'TikTok' : 'Instagram' })} <ExternalLink size={12} />
                         </a>
                     </div>
                 </div>
@@ -402,7 +417,7 @@ export default function OutlierBreakdown() {
 
 /** Full-page generation loader from the Shorts Breakdown design: ring spinner
  *  with a pulsing play glyph, current-step title + percent, and a checklist. */
-function GeneratingScreen({ stepIdx, steps = GEN_STEPS }: { stepIdx: number; steps?: string[] }) {
+function GeneratingScreen({ stepIdx, steps }: { stepIdx: number; steps: string[] }) {
     return (
         <div style={{ minHeight: 'calc(100vh - 160px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-body)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28, width: 340 }}>
@@ -453,19 +468,20 @@ function labelChip(label: string): CSSProperties {
 }
 
 function IdeaTab({ payload }: { payload: BreakdownPayload }) {
+    const { t } = useTranslation();
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', marginBottom: 2 }}>Why this idea works</span>
+            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', marginBottom: 2 }}>{t('outliers.breakdown.whyIdeaWorks', 'Why this idea works')}</span>
             <div style={{ ...panelCard, padding: '22px 24px' }}>
-                <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 8 }}>Topic</span>
+                <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 8 }}>{t('outliers.breakdown.topic', 'Topic')}</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em', color: 'var(--ink-on-paper-1)' }}>{payload.idea.topic}</span>
             </div>
             <div style={{ ...panelCard, padding: '22px 24px' }}>
-                <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 8 }}>Idea seed</span>
+                <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 8 }}>{t('outliers.breakdown.ideaSeed', 'Idea seed')}</span>
                 <span style={{ display: 'block', fontSize: 15, lineHeight: 1.55, color: 'var(--ink-on-paper-2)' }}>{payload.idea.idea_seed}</span>
             </div>
             <div style={{ ...panelCard, padding: '22px 24px', border: '1px solid var(--vm-red)', boxShadow: 'var(--hard-red)' }}>
-                <span style={{ ...eyebrow, color: 'var(--vm-red)', display: 'block', marginBottom: 8 }}>Unique angle</span>
+                <span style={{ ...eyebrow, color: 'var(--vm-red)', display: 'block', marginBottom: 8 }}>{t('outliers.breakdown.uniqueAngle', 'Unique angle')}</span>
                 <span style={{ display: 'block', fontSize: 15, lineHeight: 1.55, color: 'var(--ink-on-paper-2)' }}>{payload.idea.unique_angle}</span>
             </div>
         </div>
@@ -473,9 +489,10 @@ function IdeaTab({ payload }: { payload: BreakdownPayload }) {
 }
 
 function HookTab({ payload }: { payload: BreakdownPayload }) {
+    const { t } = useTranslation();
     return (
         <div>
-            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 18 }}>First 3 seconds, beat by beat</span>
+            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 18 }}>{t('outliers.breakdown.hookHeading', 'First 3 seconds, beat by beat')}</span>
             <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr', columnGap: 20 }}>
                 {payload.hook.map((beat, i) => {
                     const last = i === payload.hook.length - 1;
@@ -504,10 +521,11 @@ function beatBarColors(beat: BreakdownStructureBeat, index: number): { bg: strin
 }
 
 function StructureTab({ payload }: { payload: BreakdownPayload }) {
+    const { t } = useTranslation();
     const beats = payload.structure.beats;
     return (
         <div>
-            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 14 }}>Structure · {payload.structure.summary}</span>
+            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 14 }}>{t('outliers.breakdown.structureHeading', 'Structure · {{summary}}', { summary: payload.structure.summary })}</span>
             {/* Timeline bar — segments stay roughly duration-proportional but never
                 shrink below their label, and click-jump to their section below. */}
             <div style={{ display: 'flex', gap: 4, height: 44, borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 24 }}>
@@ -517,7 +535,7 @@ function StructureTab({ payload }: { payload: BreakdownPayload }) {
                         <button
                             key={i}
                             onClick={() => document.getElementById(`beat-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                            title={`Jump to ${b.title}`}
+                            title={t('outliers.breakdown.jumpTo', 'Jump to {{title}}', { title: b.title })}
                             style={{
                                 flex: `${Math.max(6, b.pct)} 1 auto`, minWidth: 'fit-content', border: 'none', cursor: 'pointer',
                                 background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 10px',
@@ -553,9 +571,10 @@ function StructureTab({ payload }: { payload: BreakdownPayload }) {
 }
 
 function VisualTab({ payload }: { payload: BreakdownPayload }) {
+    const { t } = useTranslation();
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)' }}>How the frame is built</span>
+            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)' }}>{t('outliers.breakdown.visualHeading', 'How the frame is built')}</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {payload.visual.map((v, i) => (
                     <div key={i} style={panelCard}>
@@ -569,9 +588,10 @@ function VisualTab({ payload }: { payload: BreakdownPayload }) {
 }
 
 function TranscriptTab({ payload }: { payload: BreakdownPayload }) {
+    const { t } = useTranslation();
     return (
         <div>
-            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 18 }}>Full transcript · annotated</span>
+            <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 18 }}>{t('outliers.breakdown.transcriptHeading', 'Full transcript · annotated')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {payload.transcript.map((line, i) => (
                     <div key={i} style={{ display: 'grid', gridTemplateColumns: '56px 1fr', gap: 16, alignItems: 'baseline' }}>
@@ -590,6 +610,7 @@ function TranscriptTab({ payload }: { payload: BreakdownPayload }) {
 function VideoEmbed({ video, platform, videoId, isShorts }: { video: OutlierVideo | null; platform: string; videoId: string; isShorts: boolean }) {
     // Click-to-play: show a full-res poster (the embed players serve a soft,
     // low-res poster at rail width) and only mount the iframe on demand.
+    const { t } = useTranslation();
     const [playing, setPlaying] = useState(false);
     // Instagram plays natively from CaptAPI's CDN URL (its iframe embed is refused
     // for most creator accounts). URLs are signed + short-lived → refresh on play.
@@ -655,7 +676,7 @@ function VideoEmbed({ video, platform, videoId, isShorts }: { video: OutlierVide
                 ) : playing ? (
                     <iframe
                         src={embedSrc}
-                        title={video?.title || 'Video'}
+                        title={video?.title || t('outliers.breakdown.videoFallback', 'Video')}
                         style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -665,7 +686,7 @@ function VideoEmbed({ video, platform, videoId, isShorts }: { video: OutlierVide
                     <button
                         onClick={play}
                         disabled={refreshing}
-                        aria-label="Play video"
+                        aria-label={t('outliers.breakdown.playVideo', 'Play video')}
                         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
                     >
                         {poster}

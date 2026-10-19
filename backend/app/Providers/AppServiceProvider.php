@@ -40,6 +40,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Passport enables the OAuth device flow (and its routes) by default.
+        // MCP clients use authorization code + PKCE only, and the device
+        // approval screen would sit outside the consent-screen access gate.
+        // Set here, before Passport boots and registers its routes.
+        \Laravel\Passport\Passport::$deviceCodeGrantEnabled = false;
+
         // Resolve Passport's OAuth approve route to our subclass so the MCP
         // consent screen can downgrade a connection to read-only. Laravel
         // resolves route controllers through the container, so this binding
@@ -55,6 +61,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Every URL we generate (emailed verification links included) uses
+        // APP_URL, never the request's Host header — a forged Host would
+        // otherwise point a genuine email at an attacker's domain.
+        \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
+
         // Register observer for VideoTranscription
         VideoTranscription::observe(VideoTranscriptionObserver::class);
 
@@ -86,6 +97,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->configureMcpRateLimiters();
+        $this->configurePublishRateLimiters();
         $this->configureMcpOAuth();
 
         // Centralised outbound-email logging. Lets us trace in production whether
@@ -115,11 +127,41 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Per-platform publish throughput caps (config/publishing.php), used by
+     * the RateLimited job middleware on PublishYouTubeJob / PublishToTikTokJob
+     * so a spike on one platform cannot starve the others. 0 means uncapped.
+     */
+    private function configurePublishRateLimiters(): void
+    {
+        foreach (['youtube', 'tiktok'] as $platform) {
+            RateLimiter::for("publish-{$platform}", function () use ($platform) {
+                $perMinute = (int) config("publishing.{$platform}_per_minute");
+
+                return $perMinute > 0 ? Limit::perMinute($perMinute) : Limit::none();
+            });
+        }
+    }
+
+    /**
      * Named rate limiters for the MCP server and API key endpoints. Limits
      * come from config/mcp.php so they are tunable via .env without a deploy.
      */
     private function configureMcpRateLimiters(): void
     {
+        // Sign-in endpoints (login, reset, verify): 5/min per address+IP stops
+        // guessing one account's password, 30/min per IP stops spraying many.
+        RateLimiter::for('auth', fn (Request $request) => [
+            Limit::perMinute(5)->by('auth:'.strtolower((string) $request->input('email')).'|'.$request->ip()),
+            Limit::perMinute(30)->by('auth-ip:'.$request->ip()),
+        ]);
+
+        // Endpoints that send email (forgot password, resend verification,
+        // register): 3/min per address stops mail-bombing one inbox.
+        RateLimiter::for('auth-mail', fn (Request $request) => [
+            Limit::perMinute(3)->by('auth-mail:'.strtolower((string) $request->input('email'))),
+            Limit::perHour(30)->by('auth-mail-ip:'.$request->ip()),
+        ]);
+
         $limits = fn (string $key): int => (int) config("mcp.rate_limits.{$key}");
 
         RateLimiter::for('mcp-key-rotate', function (Request $request) use ($limits) {

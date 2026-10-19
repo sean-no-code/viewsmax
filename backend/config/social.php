@@ -19,7 +19,14 @@
 
 $frontend = env('FRONTEND_URL', env('APP_URL'));
 
+// One Graph API version for every Meta platform (Facebook + Instagram share
+// the same release cycle; Threads has its own v1.0 API). Meta sunsets each
+// version ~2 years after release, so bump this env when a new one ships.
+$metaGraphVersion = env('META_GRAPH_API_VERSION', 'v25.0');
+
 return [
+
+    'meta_graph_version' => $metaGraphVersion,
 
     // Default callback path on the frontend. The frontend may override per-call.
     'default_redirect_uri' => $frontend ? rtrim($frontend, '/').'/social/callback' : null,
@@ -40,9 +47,14 @@ return [
         'facebook' => [
             'label' => 'Facebook',
             'enabled' => env('FACEBOOK_ENABLED', true),
+            // Limited release pending Meta App Review: configured and live, but
+            // only promotional customers may connect it — everyone else sees
+            // "Coming soon". Restricted in production by default; set
+            // FACEBOOK_PROMO_ONLY=false to open it to all users.
+            'promo_only' => env('FACEBOOK_PROMO_ONLY', env('APP_ENV') === 'production'),
             'client_id' => env('FACEBOOK_CLIENT_ID'),
             'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-            'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v21.0'),
+            'graph_version' => env('FACEBOOK_GRAPH_VERSION', $metaGraphVersion),
             // Publishing to a Page requires these scopes + a Page selection.
             'scopes' => [
                 'public_profile',
@@ -54,14 +66,21 @@ return [
 
         'instagram' => [
             'label' => 'Instagram',
+            // Kill switch for everybody. INSTAGRAM_ENABLED=false hides the
+            // platform outright (Connections shows "Coming soon", create_post
+            // omits it) regardless of promo_only below.
             'enabled' => env('INSTAGRAM_ENABLED', true),
+            // Limited release pending Meta App Review: live, but only
+            // promotional customers may connect it. Restricted in production by
+            // default; set INSTAGRAM_PROMO_ONLY=false once approved.
+            'promo_only' => env('INSTAGRAM_PROMO_ONLY', env('APP_ENV') === 'production'),
             // "Instagram API with Instagram Login" — connects directly to an
             // Instagram professional account (no Facebook Page). Uses the
             // Instagram app id/secret from the Instagram product settings,
             // NOT the Facebook app credentials.
             'client_id' => env('INSTAGRAM_CLIENT_ID'),
             'client_secret' => env('INSTAGRAM_CLIENT_SECRET'),
-            'graph_version' => env('INSTAGRAM_GRAPH_VERSION', 'v21.0'),
+            'graph_version' => env('INSTAGRAM_GRAPH_VERSION', $metaGraphVersion),
             // Content-views/reach tracking for IG links. Off until Meta App Review
             // grants the insights scope; flipping it on adds the scope to the
             // connect flow (existing accounts must reconnect) and turns on the
@@ -78,6 +97,9 @@ return [
         'threads' => [
             'label' => 'Threads',
             'enabled' => env('THREADS_ENABLED', true),
+            // Limited release alongside the other two Meta platforms; set
+            // THREADS_PROMO_ONLY=false to open it to all users.
+            'promo_only' => env('THREADS_PROMO_ONLY', env('APP_ENV') === 'production'),
             'client_id' => env('THREADS_CLIENT_ID'),
             'client_secret' => env('THREADS_CLIENT_SECRET'),
             'api_version' => env('THREADS_API_VERSION', 'v1.0'),

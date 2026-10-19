@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import i18n from "i18next";
 import type { PlanTier } from "@/lib/api-service";
 import {
   findCurrentPlan,
@@ -6,6 +7,7 @@ import {
   formatLimit,
   sortPlansByPrice,
   PLAN_INCLUDES,
+  planIncludes,
 } from "@/lib/plan-helpers";
 
 const tier = (over: Partial<PlanTier>): PlanTier => ({
@@ -65,14 +67,14 @@ describe("decidePlanCta", () => {
 
 describe("formatLimit", () => {
   it("renders unlimited for null", () => {
-    expect(formatLimit(null, "offer")).toBe("Unlimited offers");
-    expect(formatLimit(null, "channel")).toBe("Unlimited channels");
+    expect(formatLimit(i18n.t, null, "offer")).toBe("Unlimited offers");
+    expect(formatLimit(i18n.t, null, "channel")).toBe("Unlimited channels");
   });
 
   it("pluralizes correctly", () => {
-    expect(formatLimit(1, "offer")).toBe("1 offer");
-    expect(formatLimit(5, "offer")).toBe("5 offers");
-    expect(formatLimit(0, "post")).toBe("0 posts");
+    expect(formatLimit(i18n.t, 1, "offer")).toBe("1 offer");
+    expect(formatLimit(i18n.t, 5, "offer")).toBe("5 offers");
+    expect(formatLimit(i18n.t, 0, "post")).toBe("0 posts");
   });
 });
 
@@ -97,5 +99,9 @@ describe("PLAN_INCLUDES", () => {
   it("has no commas, because Checkout splits the features URL param on them", () => {
     expect(PLAN_INCLUDES.length).toBeGreaterThan(0);
     for (const line of PLAN_INCLUDES) expect(line).not.toContain(",");
+  });
+
+  it("matches its translatable version in English", () => {
+    expect(planIncludes(i18n.t)).toEqual([...PLAN_INCLUDES]);
   });
 });

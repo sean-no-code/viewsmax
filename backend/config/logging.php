@@ -54,14 +54,22 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single,error_file')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'single,error_file,sentry')),
+            // If you add 'error_slack' to LOG_STACK, put it last: its NullHandler
+            // fallback swallows records and stops the ones after it.
             'ignore_exceptions' => false,
             'permission' => 0777, // Set permissions to 777
         ],
 
         'split' => [
             'driver' => 'stack',
-            'channels' => ['info_file', 'error_file', 'error_slack'], // Split logs: info to laravel.log, errors to error.log
+            // info -> laravel.log, errors -> error.log + Sentry + Slack.
+            // ORDER MATTERS: a stack is ONE Monolog logger whose handlers run in
+            // this order, and 'error_slack' falls back to a NullHandler when no
+            // webhook is set (dev, test). NullHandler::handle() returns true for
+            // every record, which STOPS propagation — anything listed after it
+            // silently never runs. Keep 'error_slack' last.
+            'channels' => ['info_file', 'error_file', 'sentry', 'error_slack'],
             'ignore_exceptions' => false,
             'permission' => 0777,
         ],
@@ -74,7 +82,8 @@ return [
         // still bubble to Slack via error_slack.
         'mail' => [
             'driver' => 'stack',
-            'channels' => ['mail_file', 'error_slack'],
+            // 'error_slack' stays last — see the note on the "split" channel.
+            'channels' => ['mail_file', 'sentry', 'error_slack'],
             'ignore_exceptions' => false,
             'permission' => 0777,
         ],
@@ -82,9 +91,26 @@ return [
         // "Follow us" on the connect page (App\Services\Social\FollowUs): one
         // line per follow attempt in storage/logs/follow-us.log.
         // FOLLOW_US_LOG_ENABLED=false silences it.
+        // Anthropic usage per user (App\Support\AnthropicRateLimit): one line
+        // per allowed or limited AI action in storage/logs/ai-usage.log.
+        // AI_USAGE_LOG_ENABLED=false silences it.
+        'ai_usage' => [
+            'driver' => 'stack',
+            'channels' => env('AI_USAGE_LOG_ENABLED', true) ? ['ai_usage_file', 'sentry'] : ['sentry'],
+            'ignore_exceptions' => false,
+        ],
+        'ai_usage_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai-usage.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'follow_us' => [
             'driver' => 'stack',
-            'channels' => env('FOLLOW_US_LOG_ENABLED', true) ? ['follow_us_file'] : ['null'],
+            'channels' => env('FOLLOW_US_LOG_ENABLED', true) ? ['follow_us_file', 'sentry'] : ['sentry'],
             'ignore_exceptions' => false,
         ],
 
@@ -95,7 +121,7 @@ return [
         // silences it.
         'post_failures' => [
             'driver' => 'stack',
-            'channels' => env('POST_FAILURE_LOG_ENABLED', true) ? ['post_failures_file'] : ['null'],
+            'channels' => env('POST_FAILURE_LOG_ENABLED', true) ? ['post_failures_file', 'sentry'] : ['sentry'],
             'ignore_exceptions' => false,
         ],
         'post_failures_file' => [
@@ -121,7 +147,7 @@ return [
         // FREE_TRIAL_LOG_ENABLED=false silences it.
         'free_trial' => [
             'driver' => 'stack',
-            'channels' => env('FREE_TRIAL_LOG_ENABLED', true) ? ['free_trial_file'] : ['null'],
+            'channels' => env('FREE_TRIAL_LOG_ENABLED', true) ? ['free_trial_file', 'sentry'] : ['sentry'],
             'ignore_exceptions' => false,
         ],
         'free_trial_file' => [
@@ -140,7 +166,7 @@ return [
         // silences it.
         'queue_heartbeat' => [
             'driver' => 'stack',
-            'channels' => env('QUEUE_HEARTBEAT_LOG_ENABLED', true) ? ['queue_heartbeat_file'] : ['null'],
+            'channels' => env('QUEUE_HEARTBEAT_LOG_ENABLED', true) ? ['queue_heartbeat_file', 'sentry'] : ['sentry'],
             'ignore_exceptions' => false,
         ],
         'queue_heartbeat_file' => [
@@ -196,6 +222,28 @@ return [
             'emoji' => env('LOG_SLACK_EMOJI', ':warning:'),
             'level' => env('LOG_SLACK_LEVEL', 'error'),
             'replace_placeholders' => true,
+        ],
+
+        // Sentry as a LOG channel, so an error-level log alerts even when
+        // nothing threw: `Log::error('X failed', ['error' => $e->getMessage()])`
+        // becomes a Sentry issue. Only report()ed and uncaught exceptions reach
+        // Sentry on their own (Integration::handles() in bootstrap/app.php), and
+        // a catch block that merely logs used to reach nobody but error.log.
+        //
+        // report_exceptions=false makes this handler SKIP any record whose
+        // context carries an 'exception' object. That is deliberate: Laravel's
+        // exception handler logs reported exceptions that way, so without it
+        // every failure would bill Sentry twice. The flip side: a log line that
+        // passes the exception OBJECT reaches Sentry only through report(), so
+        // call report($e) whenever you pass 'exception' => $e.
+        //
+        // Safe without a DSN: Sentry's HttpTransport::send() skips the event
+        // before any network call, so dev and test are unaffected.
+        'sentry' => [
+            'driver' => 'sentry',
+            'level' => env('LOG_SENTRY_LEVEL', 'error'),
+            'report_exceptions' => false,
+            'bubble' => true,
         ],
 
         'single' => [

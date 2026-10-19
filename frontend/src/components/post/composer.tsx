@@ -2,6 +2,8 @@
 // Platform catalog (with real caption limits), composer state hook, avatars,
 // media tiles, live per-platform feed preview, and the over-limit counter chip.
 import { useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Icon } from "@/components/analytics/primitives";
 import { BrandIcon, hasBrandIcon } from "@/components/post/brand-icons";
 import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type GoogleBusinessOptions, type Post, type PostMediaItem } from "@/lib/api-service";
@@ -24,13 +26,20 @@ export const PLATFORMS: Platform[] = [
   { id: "instagram", name: "Instagram", glyph: "IG", handle: "@creator.lab", accent: "#E1306C", limit: 2200, followers: "96.4K", kind: "Reel / Post" },
   { id: "x", name: "X", glyph: "X", handle: "@creatorlab", accent: "#0A0A0C", limit: 280, followers: "54.1K", kind: "Post" },
   { id: "linkedin", name: "LinkedIn", glyph: "in", handle: "Creator Lab", accent: "#0A66C2", limit: 3000, followers: "12.3K", kind: "Post" },
-  { id: "facebook", name: "Facebook", glyph: "f", handle: "Creator Lab", accent: "#1877F2", limit: 5000, followers: "38.0K", kind: "Post" },
+  { id: "facebook", name: "Facebook", glyph: "f", handle: "Creator Lab", accent: "#1877F2", limit: 63206, followers: "38.0K", kind: "Post" },
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
   // Google's docs give no limit; 1,500 is what third-party API docs report.
   { id: "google_business", name: "Google Business", glyph: "G", handle: "Corner Bakery", accent: "#4285F4", limit: 1500, followers: "", kind: "Update" },
 ];
 export const PMAP: Record<string, Platform> = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
+
+// Display label for a catalog `kind` ("Shorts" is YouTube's product name and stays as is).
+const kindLabel = (t: TFunction, kind: string): string =>
+  kind === "Video" ? t("post.preview.kindVideo", "Video")
+  : kind === "Reel / Post" ? t("post.preview.kindReelPost", "Reel / Post")
+  : kind === "Post" ? t("post.preview.kindPost", "Post")
+  : kind;
 
 // What each platform's API can actually publish in this codebase. Drives the
 // Media/Text post-type selector: a "text" post only offers text-capable
@@ -95,6 +104,7 @@ function makeMedia(type: "image" | "video", extra: Partial<MediaItem> = {}): Med
 
 /* ---------------- Composer state hook ---------------- */
 export function usePostComposer() {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
   // Multi-account platforms: which connected account ids publish per platform.
   // A platform with entries here is selected iff its list is non-empty. All
@@ -126,7 +136,7 @@ export function usePostComposer() {
     branded_content: false,
     auto_add_music: false,
   });
-  const patchTiktok = (p: Partial<TikTokOptions>) => setTiktok((t) => ({ ...t, ...p }));
+  const patchTiktok = (p: Partial<TikTokOptions>) => setTiktok((cur) => ({ ...cur, ...p }));
   // Once the privacy level is set explicitly — by the user, or hydrated from a
   // saved post — we stop auto-defaulting it when creator-info loads.
   const privacyTouched = useRef(false);
@@ -171,7 +181,7 @@ export function usePostComposer() {
     const res = await viewsMaxApi.uploadPostMedia(file, "image");
     setCoverUploading(false);
     if (res.success && res.data) setCover(res.data);
-    else setCoverError(res.error || "Cover upload failed.");
+    else setCoverError(res.error || t("post.composer.coverUploadFailed", "Cover upload failed."));
     return res;
   };
   const removeCover = () => { setCover(null); setCoverError(null); };
@@ -197,14 +207,14 @@ export function usePostComposer() {
       // account no longer permits, so the dropdown re-prompts.
       const opts = res.data.privacy_level_options || [];
       if (opts.length) {
-        setTiktok((t) => (t.privacy_level && !opts.includes(t.privacy_level) ? { ...t, privacy_level: "" } : t));
+        setTiktok((cur) => (cur.privacy_level && !opts.includes(cur.privacy_level) ? { ...cur, privacy_level: "" } : cur));
       }
     } else if (res.code === "creator_cannot_post") {
       // Stop the attempt and surface TikTok's reason, per Required UX 1(b).
       setCreatorInfo(null);
-      setCreatorCannotPost(res.error || "You can't post to TikTok right now — try again later.");
+      setCreatorCannotPost(res.error || t("post.composer.tiktokCannotPost", "You can't post to TikTok right now — try again later."));
     } else {
-      setCreatorInfoError(res.error || "Couldn't load TikTok options.");
+      setCreatorInfoError(res.error || t("post.composer.tiktokOptionsFailed", "Couldn't load TikTok options."));
     }
   };
 
@@ -258,14 +268,14 @@ export function usePostComposer() {
   const status = useMemo(() => {
     const m: Record<string, PlatformStatus> = {};
     for (const p of PLATFORMS) {
-      const t = textFor(p.id);
+      const text = textFor(p.id);
       if (p.id === "x") {
         // X: URLs weigh 23 chars and `---` lines split the caption into a
         // thread — the chip shows the longest segment; any bad segment flags it.
-        const thread = xThreadStatus(t);
+        const thread = xThreadStatus(text);
         m[p.id] = { len: thread.maxLen, limit: p.limit, over: thread.invalid, thread };
       } else {
-        const len = platformLength(p.id, t);
+        const len = platformLength(p.id, text);
         m[p.id] = { len, limit: p.limit, over: len > p.limit };
       }
     }
@@ -291,7 +301,7 @@ export function usePostComposer() {
         x.id === id
           ? res.success && res.data
             ? { ...x, uploading: false, progress: 100, url: res.data.url, path: res.data.path }
-            : { ...x, uploading: false, error: res.error || "Upload failed" }
+            : { ...x, uploading: false, error: res.error || t("post.composer.uploadFailedShort", "Upload failed") }
           : x
       )
     );
@@ -327,7 +337,7 @@ export function usePostComposer() {
   // Re-run the upload for a failed item using the file we kept locally.
   const retryMedia = (id: number) => {
     const item = media.find((x) => x.id === id);
-    if (!item?.file) return Promise.resolve({ success: false, error: "Nothing to retry — re-select the file." });
+    if (!item?.file) return Promise.resolve({ success: false, error: t("post.composer.nothingToRetry", "Nothing to retry — re-select the file.") });
     return runUpload(id, item.file, item.type);
   };
 
@@ -356,10 +366,10 @@ export function usePostComposer() {
   // per-platform caption overrides + TikTok options; scheduled_at -> mode/date/time.
   const hydrate = (post: Post) => {
     const targets = post.targets ?? [];
-    setSelected([...new Set(targets.map((t) => t.platform))]);
+    setSelected([...new Set(targets.map((tg) => tg.platform))]);
     const acct: Record<string, number[]> = {};
-    for (const t of targets) {
-      if (t.social_account_id) (acct[t.platform] ??= []).push(t.social_account_id);
+    for (const tg of targets) {
+      if (tg.social_account_id) (acct[tg.platform] ??= []).push(tg.social_account_id);
     }
     setAccountSel(acct);
     setCaption(post.caption ?? "");
@@ -367,7 +377,7 @@ export function usePostComposer() {
     setShortenLinks(!!post.shorten_links);
 
     const ov: Record<string, string> = {};
-    for (const t of targets) if (t.caption_override) ov[t.platform] = t.caption_override;
+    for (const tg of targets) if (tg.caption_override) ov[tg.platform] = tg.caption_override;
     setOverrides(ov);
 
     const seededMedia = post.media ?? [];
@@ -390,7 +400,7 @@ export function usePostComposer() {
       setMode("now");
     }
 
-    const tt = targets.find((t) => t.platform === "tiktok");
+    const tt = targets.find((tg) => tg.platform === "tiktok");
     if (tt?.options) {
       const opts = tt.options as Partial<TikTokOptions>;
       // A saved post already carries its chosen privacy — respect it.
@@ -398,13 +408,13 @@ export function usePostComposer() {
       setTiktok((cur) => ({ ...cur, ...opts }));
     }
 
-    const yt = targets.find((t) => t.platform === "youtube");
+    const yt = targets.find((tg) => tg.platform === "youtube");
     if (yt?.options) setYoutube((cur) => ({ ...cur, ...(yt.options as Partial<YouTubeOptions>) }));
 
-    const gbp = targets.find((t) => t.platform === "google_business");
+    const gbp = targets.find((tg) => tg.platform === "google_business");
     if (gbp?.options) setGoogleBusiness((cur) => ({ ...cur, ...(gbp.options as Partial<GoogleBusinessOptions>) }));
 
-    const li = targets.find((t) => t.platform === "linkedin");
+    const li = targets.find((tg) => tg.platform === "linkedin");
     if (li?.options) setLinkedin((cur) => ({ ...cur, ...(li.options as Partial<LinkedInOptions>) }));
     // Drafts saved before the generic comments system stored a LinkedIn-only
     // first_comment option — surface it as the first composed comment.
@@ -416,7 +426,7 @@ export function usePostComposer() {
     // Restore the custom cover: prefer the YouTube thumbnail object, fall back to
     // the Instagram cover_url. TikTok's cover-frame time is stored in ms.
     const ytThumb = (yt?.options as Record<string, unknown> | undefined)?.thumbnail as PostMediaItem | undefined;
-    const igCover = (targets.find((t) => t.platform === "instagram")?.options as Record<string, unknown> | undefined)?.cover_url as string | undefined;
+    const igCover = (targets.find((tg) => tg.platform === "instagram")?.options as Record<string, unknown> | undefined)?.cover_url as string | undefined;
     if (ytThumb?.url) setCover(ytThumb);
     else if (igCover) setCover({ type: "image", url: igCover });
 
@@ -507,6 +517,7 @@ export function MediaTile({ item, size = 72, onRemove, onRetry, onDownload, idx,
   item: MediaItem; size?: number; onRemove?: () => void; onRetry?: () => void; onDownload?: () => void; idx: number; total: number;
   draggable?: boolean; onDragStart?: () => void; onDragEnter?: () => void; onDragEnd?: () => void; onDragOver?: (e: DragEvent) => void; dragging?: boolean;
 }) {
+  const { t } = useTranslation();
   const src = item.preview || resolveMediaUrl(item.url);  // prefer instant local preview
   const showImage = item.type === "image" && src;
   const showVideo = item.type === "video" && src;
@@ -543,26 +554,26 @@ export function MediaTile({ item, size = 72, onRemove, onRetry, onDownload, idx,
       {/* failed: clear state + inline retry */}
       {item.error && (
         <span style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center", background: "rgba(255,31,61,.32)", color: "#fff", fontFamily: "var(--font-mono)", fontSize: 8, fontWeight: 700, padding: 4, textAlign: "center" }}>
-          <span>FAILED</span>
+          <span>{t("post.composer.tileFailed", "FAILED")}</span>
           {onRetry && (
-            <button onClick={onRetry} title="Retry upload" style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "rgba(255,255,255,.92)", color: "var(--vm-red-deep)", border: "none", borderRadius: 999, padding: "2px 7px", fontFamily: "var(--font-mono)", fontSize: 8.5, fontWeight: 800, cursor: "pointer" }}>
-              <Icon name="rotate-cw" size={9} stroke="var(--vm-red-deep)" /> RETRY
+            <button onClick={onRetry} title={t("post.composer.retryUpload", "Retry upload")} style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "rgba(255,255,255,.92)", color: "var(--vm-red-deep)", border: "none", borderRadius: 999, padding: "2px 7px", fontFamily: "var(--font-mono)", fontSize: 8.5, fontWeight: 800, cursor: "pointer" }}>
+              <Icon name="rotate-cw" size={9} stroke="var(--vm-red-deep)" /> {t("post.composer.tileRetry", "RETRY")}
             </button>
           )}
         </span>
       )}
       {!item.uploading && !item.error && (
         <span style={{ position: "absolute", left: 5, bottom: 5, fontFamily: "var(--font-mono)", fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.45)", padding: "1px 5px", borderRadius: 999, textTransform: "uppercase", letterSpacing: ".04em" }}>
-          {item.type === "video" ? "video" : `${idx + 1}/${total}`}
+          {item.type === "video" ? t("post.composer.tileVideo", "video") : `${idx + 1}/${total}`}
         </span>
       )}
       {onDownload && ready && (item.url || item.preview) && (
-        <button onClick={onDownload} title="Download" style={{ position: "absolute", top: 4, left: 4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.62)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>
+        <button onClick={onDownload} title={t("post.composer.download", "Download")} style={{ position: "absolute", top: 4, left: 4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.62)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>
           <Icon name="download" size={11} stroke="#fff" />
         </button>
       )}
       {onRemove && (
-        <button onClick={onRemove} title="Remove" style={{ position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.62)", color: "#fff", cursor: "pointer", fontSize: 11, lineHeight: 1, display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>✕</button>
+        <button onClick={onRemove} title={t("post.composer.remove", "Remove")} style={{ position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.62)", color: "#fff", cursor: "pointer", fontSize: 11, lineHeight: 1, display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>✕</button>
       )}
     </div>
   );
@@ -714,6 +725,7 @@ function GoogleBusinessPreview({ name, text, media, o }: { name: string; text: s
 }
 
 export function PostPreview({ id, text, media, compact, handle, googleBusiness }: { id: string; text: string; media: MediaItem[]; compact?: boolean; handle?: string; googleBusiness?: GoogleBusinessOptions }) {
+  const { t } = useTranslation();
   // `handle` overrides the catalog placeholder with the real connected account,
   // so the preview names the profile the post is actually going to.
   const p = handle ? { ...PMAP[id], handle } : PMAP[id];
@@ -756,7 +768,7 @@ export function PostPreview({ id, text, media, compact, handle, googleBusiness }
             {p.handle.startsWith("@") ? p.handle.replace("@", "") : p.handle}
             <span style={{ width: 13, height: 13, borderRadius: "50%", background: p.accent, display: "inline-grid", placeItems: "center", color: "#fff", fontSize: 8, fontWeight: 900 }}>✓</span>
           </div>
-          <div style={{ fontSize: 11, color: "var(--ink-on-paper-3)", fontFamily: "var(--font-mono)" }}>{p.handle} · {p.kind}</div>
+          <div style={{ fontSize: 11, color: "var(--ink-on-paper-3)", fontFamily: "var(--font-mono)" }}>{p.handle} · {kindLabel(t, p.kind)}</div>
         </div>
         <span style={{ color: "var(--ink-on-paper-3)", fontWeight: 800, letterSpacing: 1 }}>···</span>
       </div>
@@ -788,15 +800,15 @@ export function PostPreview({ id, text, media, compact, handle, googleBusiness }
           )}
           {media.length > 1 && (
             <>
-              <button onClick={goPrev} title="Previous slide" style={{ position: "absolute", top: "50%", left: 8, transform: "translateY(-50%)", width: 30, height: 30, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.5)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>
+              <button onClick={goPrev} title={t("post.preview.previousSlide", "Previous slide")} style={{ position: "absolute", top: "50%", left: 8, transform: "translateY(-50%)", width: 30, height: 30, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.5)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>
                 <Icon name="chevron-left" size={17} stroke="#fff" />
               </button>
-              <button onClick={goNext} title="Next slide" style={{ position: "absolute", top: "50%", right: 8, transform: "translateY(-50%)", width: 30, height: 30, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.5)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>
+              <button onClick={goNext} title={t("post.preview.nextSlide", "Next slide")} style={{ position: "absolute", top: "50%", right: 8, transform: "translateY(-50%)", width: 30, height: 30, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.5)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", backdropFilter: "blur(2px)" }}>
                 <Icon name="chevron-right" size={17} stroke="#fff" />
               </button>
               <span style={{ position: "absolute", bottom: 9, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                 {media.slice(0, 8).map((m, i) => (
-                  <button key={m.id} onClick={() => setSlide(i)} title={`Slide ${i + 1}`} style={{ width: i === active ? 7 : 6, height: i === active ? 7 : 6, padding: 0, borderRadius: "50%", border: "none", cursor: "pointer", background: i === active ? "#fff" : "rgba(255,255,255,.5)" }} />
+                  <button key={m.id} onClick={() => setSlide(i)} title={t("post.preview.slideN", "Slide {{n}}", { n: i + 1 })} style={{ width: i === active ? 7 : 6, height: i === active ? 7 : 6, padding: 0, borderRadius: "50%", border: "none", cursor: "pointer", background: i === active ? "#fff" : "rgba(255,255,255,.5)" }} />
                 ))}
                 {media.length > 8 && <span style={{ color: "rgba(255,255,255,.75)", fontFamily: "var(--font-mono)", fontSize: 9, fontWeight: 700, marginLeft: 2 }}>+{media.length - 8}</span>}
               </span>
@@ -813,7 +825,7 @@ export function PostPreview({ id, text, media, compact, handle, googleBusiness }
       {captionAfter && shown && (
         <div style={{ padding: "0 14px 13px", fontSize: compact ? 12 : 13, lineHeight: 1.45, color: "var(--ink-on-paper-1)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
           <span style={{ fontWeight: 700 }}>{p.handle.replace("@", "")}</span>{" "}
-          {(compact ? [...shown].slice(0, 120).join("") : shown)}{(over || (compact && [...shown].length > 120)) && <span style={{ color: "var(--ink-on-paper-3)" }}> …more</span>}
+          {(compact ? [...shown].slice(0, 120).join("") : shown)}{(over || (compact && [...shown].length > 120)) && <span style={{ color: "var(--ink-on-paper-3)" }}> {t("post.preview.more", "…more")}</span>}
         </div>
       )}
     </div>

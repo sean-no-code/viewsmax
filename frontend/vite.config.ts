@@ -2,6 +2,7 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { AGENT_LIST, briefPath, buildAgentMarkdown } from "./src/lib/agent-pages";
 import { MCP_MD_PATH, buildMcpMarkdown } from "./src/lib/mcp-page";
 
@@ -26,6 +27,10 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
+  // Source maps go to Sentry only from CI builds that have the token (see
+  // .github/workflows/main.yml). They're "hidden" (no sourceMappingURL comment)
+  // and deleted from dist/ after upload, so the site never serves them.
+  const uploadSourceMaps = Boolean(env.SENTRY_AUTH_TOKEN);
 
   return {
     base: '/',
@@ -52,7 +57,16 @@ export default defineConfig(({ mode }) => {
       markdownPages(env),
       mode === 'development' &&
       componentTagger(),
+      uploadSourceMaps &&
+      sentryVitePlugin({
+        org: env.SENTRY_ORG,
+        project: env.SENTRY_PROJECT,
+        authToken: env.SENTRY_AUTH_TOKEN,
+        sourcemaps: { filesToDeleteAfterUpload: ["./dist/**/*.map"] },
+        telemetry: false,
+      }),
     ].filter(Boolean),
+    build: uploadSourceMaps ? { sourcemap: "hidden" as const } : undefined,
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

@@ -2,13 +2,21 @@
 
 namespace App\Services;
 
+use App\Exceptions\MediaReadException;
 use App\Exceptions\TikTokCreatorUnavailableException;
 use App\Exceptions\TikTokPublishException;
+use App\Exceptions\TikTokUploadInterruptedException;
+use App\Exceptions\TransientPublishException;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
+use App\Support\BoundedMediaStream;
 use Exception;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * TikTok Content Posting API client.
@@ -38,7 +46,48 @@ class TikTokPublishService
     // well within TikTok's 5–64 MB per-chunk range while keeping memory bounded.
     private const UPLOAD_CHUNK = 8 * 1024 * 1024; // 8 MB
 
+    // Publish calls retry a connection error, a 429 or a 5xx a few times with
+    // a short pause so one TikTok blip cannot fail the post
+    // for good. 3 attempts × the 30 s default HTTP timeout + 2 pauses = 100 s
+    // per call, well under PublishToTikTokJob's $timeout.
+    private const RETRY_TIMES = 3;
+
+    private const RETRY_DELAY_MS = 5000;
+
+    // One chunk PUT must also fit the retry budget inside the job timeout
+    // (3 × 30 s + 2 × 5 s = 100 s). This path is only used where TikTok
+    // cannot pull from our storage, so 8 MB in 30 s is plenty.
+    private const CHUNK_TIMEOUT = 30;
+
+    // Content-Types TikTok accepts on a chunk PUT; the header must match the
+    // file, so a .mov sent as video/mp4 is rejected.
+    private const CHUNK_MIMES = ['video/mp4', 'video/quicktime', 'video/webm'];
+
+    // Error codes that mean the token is dead or lacks the publish scopes:
+    // every later post would fail the same way until the user reconnects.
+    private const AUTH_CODES = ['access_token_invalid', 'scope_not_authorized', 'scope_permission_missed'];
+
+    public const REAUTH_MESSAGE = 'TikTok no longer accepts this account\'s authorization — reconnect the account and post again.';
+
     public function __construct(private SocialProviderManager $providers) {}
+
+    /**
+     * A request that retries transient failures only. A 4xx is TikTok's real
+     * answer (bad params, unaudited client, creator can't post) and is never
+     * retried. `throw: false` keeps the final response flowing into the
+     * callers' existing status/body inspection instead of surfacing as a
+     * RequestException, so the inbox fallback and error mapping are unchanged.
+     */
+    private static function retrying(): PendingRequest
+    {
+        return Http::retry(self::RETRY_TIMES, self::RETRY_DELAY_MS, fn (Throwable $e) => self::isTransient($e), throw: false);
+    }
+
+    private static function isTransient(Throwable $e): bool
+    {
+        return $e instanceof ConnectionException
+            || ($e instanceof RequestException && ($e->response->status() === 429 || $e->response->serverError()));
+    }
 
     /**
      * A live access token for the account, refreshing it first if needed. Multi-
@@ -123,6 +172,16 @@ class TikTokPublishService
 
         $data = $response->json('data', []);
 
+        // The @handle only arrives here (user.info.basic has display_name, not
+        // username) and the composer queries this before every post, so keep
+        // it on the account for building post URLs later.
+        if (! empty($data['creator_username']) && $account->exists
+            && $account->meta('creator_username') !== $data['creator_username']) {
+            $account->forceFill(['metadata' => array_merge($account->metadata ?? [], [
+                'creator_username' => $data['creator_username'],
+            ])])->save();
+        }
+
         return [
             'creator_nickname' => $data['creator_nickname'] ?? null,
             'creator_username' => $data['creator_username'] ?? null,
@@ -158,7 +217,8 @@ class TikTokPublishService
             'brand_content_toggle' => (bool) ($options['branded_content'] ?? false),
         ];
         // Custom cover frame (ms into the video) when the composer set one.
-        if (! empty($options['video_cover_timestamp_ms'])) {
+        // 0 (the first frame) is a real choice, so only null means "unset".
+        if (($options['video_cover_timestamp_ms'] ?? null) !== null) {
             $postInfo['video_cover_timestamp_ms'] = (int) $options['video_cover_timestamp_ms'];
         }
 
@@ -195,10 +255,16 @@ class TikTokPublishService
      * post — we then fall back to Upload-to-Inbox so the creator can finish
      * publishing inside the TikTok app.
      *
+     * $onInit runs as soon as TikTok has accepted the init, with the same
+     * array this method returns (minus the upload events): the job persists the
+     * publish_id there, so a worker killed mid-upload polls that id on its next
+     * attempt instead of starting a second post.
+     *
      * @param  resource  $stream  readable stream of the video file
+     * @param  string  $mime  the stored file's type; TikTok rejects a chunk whose Content-Type does not match the bytes
      * @return array{publish_id: string, mode: string, log: array}  mode = direct|inbox
      */
-    public function publishVideoFromStream(SocialAccount $account, string $caption, $stream, int $videoSize, array $options): array
+    public function publishVideoFromStream(SocialAccount $account, string $caption, $stream, int $videoSize, array $options, string $mime = 'video/mp4', ?callable $onInit = null): array
     {
         if ($videoSize <= 0) {
             throw new Exception('The video file is empty.');
@@ -239,34 +305,93 @@ class TikTokPublishService
             $log[] = $this->event('init:inbox', $init['status'], $init['body']);
         }
 
-        if (! $init['ok'] && ($rateMsg = $this->rateLimitMessage($init['code']))) {
-            throw new TikTokPublishException($rateMsg, ['log' => $log, 'mode' => $mode]);
-        }
         if (! $init['ok']) {
-            Log::error('TikTok init failed', ['mode' => $mode, 'status' => $init['status'], 'response' => $init['body']]);
-            throw new TikTokPublishException('TikTok rejected the post: '.$init['body'], ['log' => $log, 'mode' => $mode]);
+            $this->rejectInit($account, $init, 'TikTok rejected the post', $log, $mode);
         }
+
+        $result = ['publish_id' => $init['publish_id'], 'upload_url' => $init['upload_url'], 'mode' => $mode, 'log' => $log];
+        if ($onInit) {
+            $onInit($result);
+        }
+
+        // Bound every read: a stalled R2 read or a file shorter than the size
+        // we declared to TikTok fails with a re-upload message instead of
+        // running the job into its timeout.
+        $reader = new BoundedMediaStream($stream, $videoSize);
+        $mime = in_array($mime, self::CHUNK_MIMES, true) ? $mime : 'video/mp4';
 
         for ($i = 0; $i < $totalChunks; $i++) {
             $isLast = $i === $totalChunks - 1;
             $start = $chunkSize * $i;
             $thisSize = $isLast ? ($videoSize - $start) : $chunkSize;
-            $bytes = $this->readExact($stream, $thisSize);
-            $len = strlen($bytes);
-            if ($len === 0) {
-                throw new TikTokPublishException('Unexpected end of video file while uploading.', ['log' => $log, 'mode' => $mode]);
+            try {
+                $bytes = $this->readExact($reader, $thisSize);
+                $len = strlen($bytes);
+                $range = "{$start}-".($start + $len - 1)."/{$videoSize}";
+                $upload = $this->uploadVideoChunk($init['upload_url'], $bytes, $start, $start + $len - 1, $videoSize, $mime);
+            } catch (MediaReadException|ConnectionException $e) {
+                // Not TikTok's verdict: the init is already accepted and earlier
+                // chunks may have landed, so the caller polls instead of failing.
+                // The audit log so far rides along.
+                throw new TikTokUploadInterruptedException($e->getMessage(), ['log' => $log, 'mode' => $mode]);
             }
-            $range = "{$start}-".($start + $len - 1)."/{$videoSize}";
-            $upload = $this->uploadVideoChunk($init['upload_url'], $bytes, $start, $start + $len - 1, $videoSize);
             $log[] = $this->event("upload:{$i}", $upload['status'], $upload['body'], ['range' => $range]);
 
             if (! $upload['ok']) {
-                Log::error('TikTok chunk upload failed', ['range' => $range, 'status' => $upload['status'], 'response' => $upload['body']]);
-                throw new TikTokPublishException('Uploading the video to TikTok failed (HTTP '.$upload['status'].').', ['log' => $log, 'mode' => $mode]);
+                $this->rejectUpload($account, $upload, $range, $log, $mode);
             }
         }
 
         return ['publish_id' => $init['publish_id'], 'mode' => $mode, 'log' => $log];
+    }
+
+    /**
+     * An init TikTok refused: a dead token flags the account for reconnect,
+     * anything else becomes the mapped user-facing message. Never returns.
+     */
+    private function rejectInit(SocialAccount $account, array $init, string $what, array $log, string $mode): never
+    {
+        $context = ['log' => $log, 'mode' => $mode];
+        if ($this->flagReauth($account, $init['code'])) {
+            throw new TikTokPublishException(self::REAUTH_MESSAGE, $context);
+        }
+
+        Log::error('TikTok init failed', ['mode' => $mode, 'status' => $init['status'], 'response' => $init['body']]);
+        throw new TikTokPublishException(self::rejection($what, $init['code'], $init['status']), $context);
+    }
+
+    /**
+     * A chunk PUT TikTok answered with a non-2xx: that IS its verdict (unlike
+     * a connection error), so the post fails. Never returns.
+     */
+    private function rejectUpload(SocialAccount $account, array $upload, string $range, array $log, string $mode): never
+    {
+        $context = ['log' => $log, 'mode' => $mode];
+        if ($this->flagReauth($account, $upload['code'])) {
+            throw new TikTokPublishException(self::REAUTH_MESSAGE, $context);
+        }
+
+        Log::error('TikTok chunk upload failed', ['range' => $range, 'status' => $upload['status'], 'response' => $upload['body']]);
+        $reason = $upload['code'] ? self::rejection('TikTok rejected the upload', $upload['code'], $upload['status'])
+            : 'Uploading the video to TikTok failed (HTTP '.$upload['status'].').';
+        throw new TikTokPublishException($reason, $context);
+    }
+
+    /**
+     * Mark the account needs_reauth when TikTok says the token is invalid or
+     * lacks the publish scopes. Without this every later scheduled post fails
+     * the same way with nothing telling the user to reconnect.
+     */
+    private function flagReauth(SocialAccount $account, ?string $code): bool
+    {
+        if (! in_array($code, self::AUTH_CODES, true)) {
+            return false;
+        }
+
+        Log::warning('TikTok rejected the token; account needs reconnect', ['account_id' => $account->id, 'code' => $code]);
+        $account->markNeedsReauth(self::REAUTH_MESSAGE);
+
+        return true;
     }
 
     /**
@@ -312,12 +437,8 @@ class TikTokPublishService
             $log[] = $this->event('init:inbox', $init['status'], $init['body']);
         }
 
-        if (! $init['ok'] && ($rateMsg = $this->rateLimitMessage($init['code']))) {
-            throw new TikTokPublishException($rateMsg, ['log' => $log, 'mode' => $mode]);
-        }
         if (! $init['ok']) {
-            Log::error('TikTok pull-from-url init failed', ['mode' => $mode, 'status' => $init['status'], 'response' => $init['body']]);
-            throw new TikTokPublishException('TikTok rejected the post: '.$init['body'], ['log' => $log, 'mode' => $mode]);
+            $this->rejectInit($account, $init, 'TikTok rejected the post', $log, $mode);
         }
 
         return ['publish_id' => $init['publish_id'], 'mode' => $mode, 'log' => $log];
@@ -343,7 +464,8 @@ class TikTokPublishService
             'brand_content_toggle' => (bool) ($options['branded_content'] ?? false),
         ];
         // Custom cover frame (ms into the video) when the composer set one.
-        if (! empty($options['video_cover_timestamp_ms'])) {
+        // 0 (the first frame) is a real choice, so only null means "unset".
+        if (($options['video_cover_timestamp_ms'] ?? null) !== null) {
             $postInfo['video_cover_timestamp_ms'] = (int) $options['video_cover_timestamp_ms'];
         }
 
@@ -414,12 +536,8 @@ class TikTokPublishService
             $log[] = $this->event('init:photo:inbox', $init['status'], $init['body']);
         }
 
-        if (! $init['ok'] && ($rateMsg = $this->rateLimitMessage($init['code']))) {
-            throw new TikTokPublishException($rateMsg, ['log' => $log, 'mode' => $mode]);
-        }
         if (! $init['ok']) {
-            Log::error('TikTok photo init failed', ['mode' => $mode, 'status' => $init['status'], 'response' => $init['body']]);
-            throw new TikTokPublishException('TikTok rejected the slideshow: '.$init['body'], ['log' => $log, 'mode' => $mode]);
+            $this->rejectInit($account, $init, 'TikTok rejected the slideshow', $log, $mode);
         }
 
         return ['publish_id' => $init['publish_id'], 'mode' => $mode, 'log' => $log];
@@ -457,18 +575,6 @@ class TikTokPublishService
     }
 
     /**
-     * Map TikTok's "creator can't post right now" init error codes to an
-     * actionable, user-facing message (rate limit / restricted account).
-     * Returns null for any other code so the generic handler takes over.
-     */
-    private function rateLimitMessage(?string $code): ?string
-    {
-        return in_array($code, TikTokCreatorUnavailableException::CODES, true)
-            ? self::cannotPostMessage($code)
-            : null;
-    }
-
-    /**
      * The user-facing wording for each "creator can't post right now" code.
      * Required UX 1(b) asks that the user be prompted to try again later, so
      * every variant says so.
@@ -484,6 +590,73 @@ class TikTokPublishService
     }
 
     /**
+     * Plain-English reason for a TikTok error code — the init `error.code`s
+     * and the `fail_reason` values of a FAILED status share one vocabulary.
+     * Null when the code is unknown.
+     */
+    public static function errorMessage(string $code): ?string
+    {
+        return match ($code) {
+            'rate_limit_exceeded' => "TikTok's API rate limit was hit — try again later.",
+            'file_format_check_failed' => "the video's file format is not supported — check TikTok's video specifications.",
+            'duration_check_failed' => "the video's length is outside what this account can post — check the duration.",
+            'frame_rate_check_failed' => "the video's frame rate is not supported — check TikTok's video specifications.",
+            'picture_size_check_failed' => 'the media size is not supported — images up to 1080px on the shorter side, videos at least 360px on both sides.',
+            'video_pull_failed' => 'TikTok could not download the video from our server — try again.',
+            'photo_pull_failed' => 'TikTok could not download one of the images from our server — try again.',
+            'url_ownership_unverified' => "TikTok only pulls media from a domain verified in its developer portal, and this media URL's domain is not — contact support.",
+            'privacy_level_option_mismatch' => 'the chosen privacy level is not available for this account — pick another privacy option.',
+            'unaudited_client_can_only_post_to_private_accounts' => 'this app is not yet approved by TikTok for public posting — choose the private ("Only me") privacy level.',
+            'app_version_check_failed' => 'the TikTok app on your phone needs updating before it can receive uploads.',
+            'spam_risk_text' => 'TikTok flagged the caption as possible spam — edit the text and try again.',
+            'spam_risk_too_many_pending_share' => 'TikTok allows at most 5 pending posts in any 24 hours — finish or discard them in the TikTok app and try again later.',
+            'invalid_file_upload' => "the uploaded file does not meet TikTok's specifications.",
+            'invalid_params' => 'TikTok rejected the request parameters — check the caption and settings.',
+            'internal_error', 'internal' => 'TikTok had a problem on its servers — try again later.',
+            default => in_array($code, TikTokCreatorUnavailableException::CODES, true) ? self::cannotPostMessage($code)
+                : (str_starts_with($code, 'spam_risk') ? 'TikTok flagged the post as possible spam.' : null),
+        };
+    }
+
+    /**
+     * "<what>: <reason>" for a rejected init or a FAILED status, falling back
+     * to the bare code (never the raw JSON body) when it is unknown. The
+     * creator-cannot-post codes keep their standalone "try again later" line.
+     */
+    public static function rejection(string $what, ?string $code, int $status = 0): string
+    {
+        if ($code === null || $code === '') {
+            return $status > 0 ? "{$what} (HTTP {$status})." : "{$what}.";
+        }
+        if (in_array($code, TikTokCreatorUnavailableException::CODES, true)) {
+            return self::cannotPostMessage($code);
+        }
+
+        return "{$what}: ".(self::errorMessage($code) ?? $code);
+    }
+
+    /**
+     * Where the post lives on TikTok. Photo publish ids start with `p_`
+     * (p_pub_…, p_inbox_…) and live under /photo/ — TikTok answers 403 for
+     * /video/ on them. Until moderation hands out the public post id the
+     * profile URL is the best link we have; null when we know no @handle.
+     */
+    public static function postUrl(SocialAccount $account, ?string $publishId, ?string $postId): ?string
+    {
+        $handle = $account->meta('creator_username') ?: $account->username;
+        if (! $handle) {
+            return null;
+        }
+
+        $profile = 'https://www.tiktok.com/@'.rawurlencode(ltrim($handle, '@'));
+        if (! $postId) {
+            return $profile;
+        }
+
+        return $profile.(str_starts_with((string) $publishId, 'p_') ? '/photo/' : '/video/').$postId;
+    }
+
+    /**
      * POST a publish init request and normalize the result.
      *
      * FILE_UPLOAD (video) inits return an upload_url to PUT chunks to;
@@ -495,7 +668,7 @@ class TikTokPublishService
      */
     private function initRequest(string $token, string $endpoint, array $body, bool $requireUploadUrl = true): array
     {
-        $response = Http::withToken($token)
+        $response = self::retrying()->withToken($token)
             ->contentType('application/json; charset=UTF-8')
             ->post(self::BASE.$endpoint, $body);
 
@@ -519,16 +692,17 @@ class TikTokPublishService
      * URL is pre-signed — it must NOT carry the OAuth bearer token. Returns the
      * normalized result (does not throw) so the caller can record the response.
      *
-     * @return array{ok: bool, status: int, body: string}
+     * @return array{ok: bool, status: int, body: string, code: ?string}
      */
-    public function uploadVideoChunk(string $uploadUrl, string $bytes, int $start, int $end, int $total): array
+    public function uploadVideoChunk(string $uploadUrl, string $bytes, int $start, int $end, int $total, string $mime = 'video/mp4'): array
     {
-        $response = Http::timeout(120)
+        // A chunk PUT carries its Content-Range, so re-sending it is safe.
+        $response = self::retrying()->timeout(self::CHUNK_TIMEOUT)
             ->withHeaders([
-                'Content-Type' => 'video/mp4',
+                'Content-Type' => $mime,
                 'Content-Range' => "bytes {$start}-{$end}/{$total}",
             ])
-            ->withBody($bytes, 'video/mp4')
+            ->withBody($bytes, $mime)
             ->put($uploadUrl);
 
         Log::info('TikTok chunk upload response', ['range' => "{$start}-{$end}/{$total}", 'status' => $response->status(), 'body' => $response->body()]);
@@ -537,22 +711,20 @@ class TikTokPublishService
             'ok' => $response->successful(),
             'status' => $response->status(),
             'body' => $response->body(),
+            'code' => $response->json('error.code'),
         ];
     }
 
     /**
-     * Read exactly $len bytes from the stream (or until EOF).
-     *
-     * @param  resource  $stream
+     * Read exactly $len bytes from the bounded stream. The stream throws
+     * MediaReadException on a stall or when the file ends before the declared
+     * size, so a short return here is impossible.
      */
-    private function readExact($stream, int $len): string
+    private function readExact(BoundedMediaStream $stream, int $len): string
     {
         $buf = '';
-        while ($len > 0 && ! feof($stream)) {
-            $chunk = fread($stream, (int) min(1024 * 1024, $len));
-            if ($chunk === false || $chunk === '') {
-                break;
-            }
+        while ($len > 0) {
+            $chunk = $stream->read((int) min(1024 * 1024, $len));
             $buf .= $chunk;
             $len -= strlen($chunk);
         }
@@ -564,20 +736,33 @@ class TikTokPublishService
      * Fetch the processing status of a publish_id.
      * status: PROCESSING_DOWNLOAD | PROCESSING_UPLOAD | SEND_TO_USER_INBOX |
      *         PUBLISH_COMPLETE | FAILED
+     *
+     * Only a dead token is a real failure here (TikTokPublishException, account
+     * flagged for reconnect). Anything else — 5xx, 429, a connection error,
+     * even an odd 4xx — is a TransientPublishException: the post may already
+     * be live, so the caller keeps the target pending and asks again.
      */
     public function fetchStatus(SocialAccount $account, string $publishId): array
     {
         $token = $this->freshToken($account);
 
-        $response = Http::withToken($token)
-            ->contentType('application/json; charset=UTF-8')
-            ->post(self::BASE.'/post/publish/status/fetch/', [
-                'publish_id' => $publishId,
-            ]);
+        try {
+            $response = self::retrying()->withToken($token)
+                ->contentType('application/json; charset=UTF-8')
+                ->post(self::BASE.'/post/publish/status/fetch/', [
+                    'publish_id' => $publishId,
+                ]);
+        } catch (ConnectionException $e) {
+            throw new TransientPublishException('Could not reach TikTok to check the post status — checking again.');
+        }
 
         if (! $response->successful()) {
-            Log::error('TikTok status fetch failed', ['response' => $response->body()]);
-            throw new Exception('Failed to fetch TikTok publish status.');
+            if ($this->flagReauth($account, $response->json('error.code'))) {
+                throw new TikTokPublishException(self::REAUTH_MESSAGE);
+            }
+
+            Log::warning('TikTok status fetch failed; will poll again', ['status' => $response->status(), 'response' => $response->body()]);
+            throw new TransientPublishException('TikTok could not report the post status (HTTP '.$response->status().') — checking again.');
         }
 
         return $response->json('data', []);

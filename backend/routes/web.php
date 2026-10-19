@@ -8,9 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// API host root: send people to the app. (This replaced Laravel's stock
+// welcome page, the only thing the backend ever used Vite/npm for.)
+Route::get('/', fn () => redirect()->away(rtrim((string) config('app.frontend_url'), '/')));
 
 // OAuth 2.1 discovery for the MCP server: protected-resource metadata,
 // authorization-server metadata, and Dynamic Client Registration. Well-known
@@ -60,7 +60,7 @@ Route::post('/login', function (Request $request) {
     $request->session()->regenerate();
 
     return redirect()->intended('/');
-});
+})->middleware('throttle:auth');
 
 // End the browser session (the consent screen and setup pages run on the
 // 'web' guard; the SPA's own sign-out doesn't touch it).

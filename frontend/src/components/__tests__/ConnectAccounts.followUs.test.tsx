@@ -24,7 +24,7 @@ vi.mock("@/components/post/useAccountDirectory", () => ({ refreshAccountDirector
 import ConnectAccounts from "@/components/ConnectAccounts";
 
 const platform = (name: string, follow_us: string | null = null) => ({
-  platform: name, label: name, enabled: true, configured: true, uses_oauth: true, follow_us,
+  platform: name, label: name, enabled: true, configured: true, available: true, uses_oauth: true, follow_us,
 });
 
 // "Follow us" appears only where the backend has an account to follow (X,

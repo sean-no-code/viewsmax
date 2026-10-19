@@ -115,7 +115,7 @@ export function AppSidebar() {
 
   // An expired promotional customer can only reach Billing until they subscribe.
   const navigationItems: NavItem[] = isAccessExpired(user)
-    ? [{ title: "Billing", url: "/dashboard/billing", icon: Crown, isProFeature: false }]
+    ? [{ title: t("layout.sidebar.billing", "Billing"), url: "/dashboard/billing", icon: Crown, isProFeature: false }]
     : baseItems;
 
   const isActive = (path: string) => currentPath === path;
@@ -141,7 +141,11 @@ export function AppSidebar() {
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>{currentPath.startsWith('/dashboard/outliers') ? 'Outliers' : 'Dashboard'}</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {currentPath.startsWith('/dashboard/outliers')
+              ? t("layout.sidebar.groupOutliers", "Outliers")
+              : t("layout.sidebar.groupDashboard", "Dashboard")}
+          </SidebarGroupLabel>
 
           <SidebarGroupContent>
             <SidebarMenu>
@@ -176,11 +180,13 @@ export function AppSidebar() {
                           {item.subItems.map((sub) => (
                             <SidebarMenuSubItem key={sub.title}>
                               <SidebarMenuSubButton asChild isActive={isActive(sub.url)}>
+                                {/* The span gets the button's truncate rule: long translated labels end in "…" instead of wrapping over the next row. */}
                                 <NavLink
                                   to={sub.url}
                                   end
+                                  title={sub.i18nKey ? t(sub.i18nKey, sub.title) : sub.title}
                                 >
-                                  {sub.i18nKey ? t(sub.i18nKey, sub.title) : sub.title}
+                                  <span>{sub.i18nKey ? t(sub.i18nKey, sub.title) : sub.title}</span>
                                 </NavLink>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>

@@ -482,7 +482,7 @@ class McpServerTest extends TestCase
     {
         Storage::fake('public');
         config(['filesystems.media_disk' => 'public', 'mcp.rate_limits.upload_media_per_hour' => 1]);
-        Http::fake(['example.com/*' => Http::response('bytes', 200, ['Content-Type' => 'image/png'])]);
+        Http::fake(['example.com/*' => Http::response($this->pngBytes(), 200, ['Content-Type' => 'image/png'])]);
 
         $key = $this->mcpKey(User::factory()->create());
 
@@ -497,7 +497,7 @@ class McpServerTest extends TestCase
     {
         Storage::fake('public');
         config(['filesystems.media_disk' => 'public']);
-        Http::fake(['example.com/*' => Http::response('bytes', 200, ['Content-Type' => 'image/png'])]);
+        Http::fake(['example.com/*' => Http::response($this->pngBytes(), 200, ['Content-Type' => 'image/png'])]);
         $key = $this->mcpKey(User::factory()->create());
 
         // Reproduce the production failure: the file cache store throwing from
@@ -514,15 +514,21 @@ class McpServerTest extends TestCase
         });
         RateLimiter::swap($broken);
         Log::spy();
+        \Illuminate\Support\Facades\Exceptions::fake();
 
         $json = $this->toolJson($this->callTool($key, 'upload_media', ['url' => 'https://example.com/a.png']));
 
         $this->assertArrayHasKey('url', $json);
-        Log::shouldHaveReceived('warning')
+        Log::shouldHaveReceived('error')
             ->withArgs(fn (string $message, array $context) => $message === 'MCP hourly limit unavailable; allowing call'
-                && $context['tool'] === 'upload_media'
-                && $context['exception'] instanceof \ErrorException)
+                && $context['tool'] === 'upload_media')
             ->once();
+
+        // Failing open is the right call, but it silently disables every tool's
+        // rate limit — so it has to reach Sentry, not just the log.
+        \Illuminate\Support\Facades\Exceptions::assertReported(
+            fn (\ErrorException $e) => str_contains($e->getMessage(), 'Failed to open stream')
+        );
     }
 
     public function test_mcp_is_rate_limited_per_token(): void
@@ -1258,11 +1264,17 @@ class McpServerTest extends TestCase
         $this->assertToolError($this->callTool($key, 'list_posts'), 'Video not found');
     }
 
+    /** A real 1×1 PNG: upload_media types files by their bytes, not the header. */
+    private function pngBytes(): string
+    {
+        return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
+    }
+
     public function test_upload_media_downloads_and_stores_file(): void
     {
         Storage::fake('public');
         config(['filesystems.media_disk' => 'public']);
-        Http::fake(['example.com/*' => Http::response('fake-image-bytes', 200, ['Content-Type' => 'image/png'])]);
+        Http::fake(['example.com/*' => Http::response($this->pngBytes(), 200, ['Content-Type' => 'image/png'])]);
 
         $key = $this->mcpKey(User::factory()->create());
 
@@ -1276,18 +1288,47 @@ class McpServerTest extends TestCase
         Storage::disk('public')->assertExists($data['path']);
     }
 
-    public function test_upload_media_says_the_link_could_not_be_reached(): void
+    public function test_upload_media_accepts_an_image_served_as_octet_stream(): void
     {
-        // A link that can't be reached (DNS failure, site down) is about the
-        // link, not a "video provider" that took too long.
-        Http::fake(['example.com/*' => fn () => throw new \Illuminate\Http\Client\ConnectionException('cURL error 6: Could not resolve host: example.com')]);
+        // S3/R2 objects uploaded without a type are served as binary/octet-stream.
+        Storage::fake('public');
+        config(['filesystems.media_disk' => 'public']);
+        Http::fake(['bucket.example/*' => Http::response($this->pngBytes(), 200, ['Content-Type' => 'binary/octet-stream'])]);
+
+        $key = $this->mcpKey(User::factory()->create());
+
+        $data = $this->toolJson($this->callTool($key, 'upload_media', ['url' => 'https://bucket.example/pic']));
+
+        $this->assertSame('image', $data['type']);
+        $this->assertStringEndsWith('.png', $data['path']);
+        Storage::disk('public')->assertExists($data['path']);
+    }
+
+    public function test_upload_media_rejects_a_file_whose_bytes_are_not_media(): void
+    {
+        Storage::fake('public');
+        config(['filesystems.media_disk' => 'public']);
+        Http::fake(['example.com/*' => Http::response('<html><script>alert(1)</script></html>', 200, ['Content-Type' => 'image/png'])]);
 
         $key = $this->mcpKey(User::factory()->create());
 
         $this->assertToolError(
             $this->callTool($key, 'upload_media', ['url' => 'https://example.com/pic.png']),
-            "Couldn't reach example.com to download the file"
+            'not a supported image or video',
         );
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_upload_media_refuses_internal_addresses(): void
+    {
+        Http::fake();
+        $key = $this->mcpKey(User::factory()->create());
+
+        foreach (['http://169.254.169.254/latest/meta-data/', 'http://127.0.0.1:8000/storage/x.png', 'http://10.0.0.5/x.png'] as $url) {
+            $this->assertToolError($this->callTool($key, 'upload_media', ['url' => $url]), 'public');
+        }
+
+        Http::assertNothingSent();
     }
 
     /**

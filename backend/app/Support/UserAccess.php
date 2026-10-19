@@ -9,7 +9,7 @@ use App\Models\User;
  * entry point so the rules and the wording can't drift apart:
  *
  *  - REST API   EnsureAccessActive   -> 403 with the denial as JSON
- *  - MCP        SafeCallTool         -> isError tool result (HTTP 200)
+ *  - MCP        SafeCallTool         -> plain tool result (HTTP 200, not isError)
  *  - Web        EnsureWebAccess      -> redirect to the denial's url
  *  - Console    call denial() directly before acting for a user
  *

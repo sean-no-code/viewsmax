@@ -6,6 +6,7 @@
 // deliberately relaxes the server-side rule from the index-table conventions.
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Icon } from "@/components/analytics/primitives";
 
 export type FilterField =
@@ -92,6 +93,7 @@ export function FiltersPanel({ fields, filters }: {
   fields: FilterField[];
   filters: ReturnType<typeof useUrlFilters>;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(filters.activeCount > 0);
   const { values, set, clear, activeCount } = filters;
   return (
@@ -100,14 +102,14 @@ export function FiltersPanel({ fields, filters }: {
         <button onClick={() => setOpen((o) => !o)}
           style={{ display: "inline-flex", alignItems: "center", gap: 8, background: open ? "var(--ink-on-paper-1)" : "var(--paper-0)", color: open ? "#fff" : "var(--ink-on-paper-1)", border: "1px solid " + (open ? "var(--ink-on-paper-1)" : "var(--line-1)"), borderRadius: 999, padding: "8px 15px", cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "var(--font-body)" }}>
           <Icon name="filter" size={14} stroke={open ? "#fff" : "var(--ink-on-paper-1)"} />
-          Filters
+          {t("offers.filters.toggle", "Filters")}
           {activeCount > 0 && (
             <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 11, background: "var(--vm-red)", color: "#fff", borderRadius: 999, minWidth: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>{activeCount}</span>
           )}
           <Icon name={open ? "chevron-up" : "chevron-down"} size={13} stroke={open ? "#fff" : "var(--ink-on-paper-3)"} />
         </button>
         {activeCount > 0 && (
-          <button onClick={clear} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "var(--font-body)" }}>Clear all</button>
+          <button onClick={clear} style={{ background: "none", border: "none", color: "var(--vm-red)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "var(--font-body)" }}>{t("offers.filters.clearAll", "Clear all")}</button>
         )}
       </div>
       {open && (
@@ -136,15 +138,15 @@ export function FiltersPanel({ fields, filters }: {
               {f.kind === "daterange" && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <input type="date" value={values[`${f.key}_from`] ?? ""} onChange={(e) => set(`${f.key}_from`, e.target.value)} style={{ ...input, fontFamily: "var(--font-mono)", fontSize: 12 }} />
-                  <span style={{ color: "var(--ink-on-paper-3)", fontSize: 12 }}>to</span>
+                  <span style={{ color: "var(--ink-on-paper-3)", fontSize: 12 }}>{t("offers.filters.dateTo", "to")}</span>
                   <input type="date" value={values[`${f.key}_to`] ?? ""} onChange={(e) => set(`${f.key}_to`, e.target.value)} style={{ ...input, fontFamily: "var(--font-mono)", fontSize: 12 }} />
                 </div>
               )}
               {f.kind === "minmax" && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="number" placeholder="min" value={values[`${f.key}_min`] ?? ""} onChange={(e) => set(`${f.key}_min`, e.target.value)} style={{ ...input, width: 90, fontFamily: "var(--font-mono)", fontSize: 12 }} />
-                  <span style={{ color: "var(--ink-on-paper-3)", fontSize: 12 }}>to</span>
-                  <input type="number" placeholder="max" value={values[`${f.key}_max`] ?? ""} onChange={(e) => set(`${f.key}_max`, e.target.value)} style={{ ...input, width: 90, fontFamily: "var(--font-mono)", fontSize: 12 }} />
+                  <input type="number" placeholder={t("offers.filters.min", "min")} value={values[`${f.key}_min`] ?? ""} onChange={(e) => set(`${f.key}_min`, e.target.value)} style={{ ...input, width: 90, fontFamily: "var(--font-mono)", fontSize: 12 }} />
+                  <span style={{ color: "var(--ink-on-paper-3)", fontSize: 12 }}>{t("offers.filters.rangeTo", "to")}</span>
+                  <input type="number" placeholder={t("offers.filters.max", "max")} value={values[`${f.key}_max`] ?? ""} onChange={(e) => set(`${f.key}_max`, e.target.value)} style={{ ...input, width: 90, fontFamily: "var(--font-mono)", fontSize: 12 }} />
                 </div>
               )}
             </div>

@@ -1,7 +1,6 @@
-# Build context exclusions. The Dockerfile runs `composer install` and
-# `npm install && npm run build` itself, so host-side dependency trees must
-# never be copied in: macOS node_modules carries darwin-only binaries and
-# symlinks that break `vite build` inside the Linux image.
+# Build context exclusions. The Dockerfile runs `composer install` itself, so
+# host-side dependency trees must never be copied in (macOS builds carry
+# darwin-only binaries). The backend has no npm toolchain since 2026-10-11.
 node_modules
 vendor
 public/build

@@ -20,7 +20,7 @@ class WebConnectController extends Controller
 
     public function start(Request $request, string $platform)
     {
-        if (! $this->providers->supports($platform) || ! $this->providers->isConfigured($platform)) {
+        if (! $this->providers->supports($platform) || ! $this->providers->isAvailableTo($request->user(), $platform)) {
             return redirect()->route('register.setup')->with('error', ucfirst($platform).' is not available right now.');
         }
 

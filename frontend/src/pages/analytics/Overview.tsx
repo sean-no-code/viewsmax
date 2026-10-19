@@ -3,6 +3,8 @@
 // channel. Fed by the real tracking API.
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { CARD } from "@/components/analytics/primitives";
 import { Empty } from "@/components/analytics/shared";
 import { FilterBar, type Opt } from "@/components/analytics/FilterBar";
@@ -15,22 +17,28 @@ import type { TrackingTimeseriesPoint } from "@/lib/api-service";
 
 type Gran = "daily" | "weekly" | "monthly";
 
-const RANGE_OPTS: Opt[] = [
-  { id: "7d", label: "Last 7 days" },
-  { id: "28d", label: "Last 28 days" },
-  { id: "90d", label: "Last 90 days" },
+const rangeOpts = (t: TFunction): Opt[] => [
+  { id: "7d", label: t("analytics.overview.rangeLast7Days", "Last 7 days") },
+  { id: "28d", label: t("analytics.overview.rangeLast28Days", "Last 28 days") },
+  { id: "90d", label: t("analytics.overview.rangeLast90Days", "Last 90 days") },
 ];
+// Same ranges, as used mid-sentence ("Conversion events · last 28 days").
+const rangeInline = (t: TFunction): Record<Range, string> => ({
+  "7d": t("analytics.overview.rangeLast7DaysInline", "last 7 days"),
+  "28d": t("analytics.overview.rangeLast28DaysInline", "last 28 days"),
+  "90d": t("analytics.overview.rangeLast90DaysInline", "last 90 days"),
+});
 const RANGE_LIST: Range[] = ["7d", "28d", "90d"];
-const GRAN_OPTS: Opt[] = [
-  { id: "daily", label: "Daily" },
-  { id: "weekly", label: "Weekly" },
-  { id: "monthly", label: "Monthly" },
+const granOpts = (t: TFunction): Opt[] => [
+  { id: "daily", label: t("analytics.overview.granDaily", "Daily") },
+  { id: "weekly", label: t("analytics.overview.granWeekly", "Weekly") },
+  { id: "monthly", label: t("analytics.overview.granMonthly", "Monthly") },
 ];
-const EVENT_OPTS: Opt[] = [
-  { id: "all", label: "All events" },
-  { id: "sales", label: "Sales" },
-  { id: "calls", label: "Call bookings" },
-  { id: "emails", label: "Email signups" },
+const eventOpts = (t: TFunction): Opt[] => [
+  { id: "all", label: t("analytics.overview.eventAll", "All events") },
+  { id: "sales", label: t("analytics.overview.eventSales", "Sales") },
+  { id: "calls", label: t("analytics.overview.eventCalls", "Call bookings") },
+  { id: "emails", label: t("analytics.overview.eventEmails", "Email signups") },
 ];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -96,6 +104,7 @@ function MetricStrip({ cells }: { cells: { label: string; value: string; delta: 
 }
 
 export default function AnalyticsOverview() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [range, setRange] = useState<Range>("28d");
   const [gran, setGran] = useState<Gran>("daily");
@@ -132,50 +141,50 @@ export default function AnalyticsOverview() {
 
   if (loading || !model) return <AnalyticsShell><AnalyticsLoading /></AnalyticsShell>;
 
-  const t = totalsFromLinks(scoped);
+  const totals = totalsFromLinks(scoped);
   const chartPoints = bucket(points, gran);
   const revUp = deltas?.revenue ?? null;
   const selectedPage = page !== "all" ? model.pages.find((p) => p.id === page) : null;
-  const domain = (selectedPage?.url || model.pages[0]?.url || "All sites").split("/")[0];
+  const domain = (selectedPage?.url || model.pages[0]?.url || t("analytics.overview.allSites", "All sites")).split("/")[0];
 
-  const siteOpts: Opt[] = [{ id: "all", label: "All offers" }, ...model.pages.map((p) => ({ id: p.id, label: p.url || p.name }))];
-  const channelOpts: Opt[] = [{ id: "all", label: "All channels" }, ...model.platforms.map((p) => ({ id: p.id, label: p.name }))];
-  const linkOpts: Opt[] = [{ id: "all", label: "All links" }, ...model.links.filter((l) => page === "all" || l.page === page).map((l) => ({ id: l.id, label: l.label }))];
+  const siteOpts: Opt[] = [{ id: "all", label: t("analytics.overview.allOffers", "All offers") }, ...model.pages.map((p) => ({ id: p.id, label: p.url || p.name }))];
+  const channelOpts: Opt[] = [{ id: "all", label: t("analytics.overview.allChannels", "All channels") }, ...model.platforms.map((p) => ({ id: p.id, label: p.name }))];
+  const linkOpts: Opt[] = [{ id: "all", label: t("analytics.overview.allLinks", "All links") }, ...model.links.filter((l) => page === "all" || l.page === page).map((l) => ({ id: l.id, label: l.label }))];
 
   const cells = [
-    { label: "Visitors", value: fmtFull(t.visitors), delta: null as number | null },
-    { label: "Content Views", value: t.viewsSince > 0 ? fmtNum(t.viewsSince) : "—", delta: null as number | null },
-    { label: "Clicks", value: fmtFull(t.clicks), delta: deltas?.clicks ?? null },
-    { label: "Revenue", value: fmtMoney(t.rev), delta: deltas?.revenue ?? null },
-    { label: "Conv. rate", value: t.viewCr == null ? "—" : fmtPct(t.viewCr), delta: null as number | null },
-    { label: "Revenue/click", value: fmtMoney(t.epc, 2), delta: deltas?.epc ?? null },
+    { label: t("analytics.overview.metricVisitors", "Visitors"), value: fmtFull(totals.visitors), delta: null as number | null },
+    { label: t("analytics.overview.metricContentViews", "Content Views"), value: totals.viewsSince > 0 ? fmtNum(totals.viewsSince) : "—", delta: null as number | null },
+    { label: t("analytics.overview.metricClicks", "Clicks"), value: fmtFull(totals.clicks), delta: deltas?.clicks ?? null },
+    { label: t("analytics.overview.metricRevenue", "Revenue"), value: fmtMoney(totals.rev), delta: deltas?.revenue ?? null },
+    { label: t("analytics.overview.metricConvRate", "Conv. rate"), value: totals.viewCr == null ? "—" : fmtPct(totals.viewCr), delta: null as number | null },
+    { label: t("analytics.overview.metricRevenuePerClick", "Revenue/click"), value: fmtMoney(totals.epc, 2), delta: deltas?.epc ?? null },
   ];
 
   return (
     <AnalyticsShell>
       <div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26, letterSpacing: "-.03em", color: "var(--ink-on-paper-1)", margin: 0 }}>Revenue growth</h1>
+          <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26, letterSpacing: "-.03em", color: "var(--ink-on-paper-1)", margin: 0 }}>{t("analytics.overview.title", "Revenue growth")}</h1>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-on-paper-3)" }}>{domain}</span>
         </div>
         <p style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--ink-on-paper-2)", margin: "6px 0 0", maxWidth: 780, lineHeight: 1.5 }}>
-          Filter by channel, event or link up top. A unified metric strip, the revenue trend, and a conversion-events breakdown by content or channel.
+          {t("analytics.overview.intro", "Filter by channel, event or link up top. A unified metric strip, the revenue trend, and a conversion-events breakdown by content or channel.")}
         </p>
       </div>
 
       {model.pages.length === 0 ? (
         <div style={{ ...CARD, padding: 48 }}>
-          <Empty label="No tracked offers yet. Add one under Offers to start attributing revenue." />
+          <Empty label={t("analytics.overview.empty", "No tracked offers yet. Add one under Offers to start attributing revenue.")} />
         </div>
       ) : (
         <>
           <FilterBar
             site={page} siteOptions={siteOpts} onSite={(id) => { setPage(id); setLink("all"); }}
             channel={channel} channelOptions={channelOpts} onChannel={setChannel}
-            convEvent={convEvent} eventOptions={EVENT_OPTS} onEvent={setConvEvent}
+            convEvent={convEvent} eventOptions={eventOpts(t)} onEvent={setConvEvent}
             link={link} linkOptions={linkOpts} onLink={setLink}
-            range={range} rangeOptions={RANGE_OPTS} onRange={(id) => setRange(id as Range)} onPrev={() => stepRange(-1)} onNext={() => stepRange(1)}
-            gran={gran} granOptions={GRAN_OPTS} onGran={(id) => setGran(id as Gran)}
+            range={range} rangeOptions={rangeOpts(t)} onRange={(id) => setRange(id as Range)} onPrev={() => stepRange(-1)} onNext={() => stepRange(1)}
+            gran={gran} granOptions={granOpts(t)} onGran={(id) => setGran(id as Gran)}
             onRefresh={refresh} refreshing={refreshing}
           />
 
@@ -183,10 +192,12 @@ export default function AnalyticsOverview() {
 
           <div style={{ ...CARD, borderRadius: 18, padding: "16px 18px 10px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--ink-on-paper-1)" }}>Revenue</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, color: "var(--ink-on-paper-1)" }}>{t("analytics.overview.revenueChartTitle", "Revenue")}</div>
               {revUp != null && (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: revUp >= 0 ? "var(--vm-volt-tint-l)" : "var(--vm-red-tint-l)", color: revUp >= 0 ? "var(--vm-volt-deep)" : "var(--vm-red-deep)", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 11.5, padding: "5px 11px", borderRadius: 999 }}>
-                  {revUp >= 0 ? "▲ Up" : "▼ Down"} {Math.abs(revUp)}%
+                  {revUp >= 0
+                    ? t("analytics.overview.revenueUp", "▲ Up {{pct}}%", { pct: Math.abs(revUp) })
+                    : t("analytics.overview.revenueDown", "▼ Down {{pct}}%", { pct: Math.abs(revUp) })}
                 </span>
               )}
             </div>
@@ -198,7 +209,7 @@ export default function AnalyticsOverview() {
 
           <ConversionEventsTable
             links={tableLinks}
-            rangeLabel={RANGE_OPTS.find((o) => o.id === range)?.label.toLowerCase() ?? "this period"}
+            rangeLabel={rangeInline(t)[range] ?? t("analytics.overview.thisPeriod", "this period")}
             onOpenContent={(id) => navigate(`/dashboard/monetization/links/${id}`)}
           />
         </>

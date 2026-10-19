@@ -177,6 +177,30 @@ class SubscriptionLifecycleTest extends TestCase
         $this->assertSame(0, $user->fresh()->balanceInt);
     }
 
+    public function test_expiry_job_leaves_the_plan_alone_when_stripe_cannot_be_reached(): void
+    {
+        // Stripe is the authority on whether the subscription is really dead.
+        // A failed lookup is not a "no" — treating it as one expires a paying
+        // customer and zeroes their credits because an API call failed.
+        \Illuminate\Support\Facades\Exceptions::fake();
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->subDays(2), 'sub_unverifiable');
+        $user->deposit(500);
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('getSubscription')->andThrow(new \Exception('Stripe API is down'));
+        });
+
+        Artisan::call('subscriptions:process-expired');
+
+        $this->assertSame('active', $this->pivot($user, $plan)->status);   // untouched
+        $this->assertSame(500, $user->fresh()->balanceInt);                // credits kept
+        \Illuminate\Support\Facades\Exceptions::assertReported(
+            fn (\Exception $e) => $e->getMessage() === 'Stripe API is down'
+        );
+    }
+
     public function test_expiry_job_leaves_subscriptions_within_the_grace_window_alone(): void
     {
         $user = User::factory()->create();

@@ -4,6 +4,7 @@
 // later, when a user picks a Beehiiv placement for a tracking link.
 import { useEffect, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Modal, Field, TextInput } from "@/components/analytics/Modal";
 import { viewsMaxApi, type BeehiivConnectionStatus } from "@/lib/api-service";
 
@@ -11,6 +12,7 @@ const primaryBtn: CSSProperties = { padding: "8px 16px", borderRadius: 10, borde
 const ghostBtn: CSSProperties = { padding: "8px 16px", borderRadius: 10, border: "1px solid var(--line-1)", background: "var(--paper-0)", color: "var(--ink-on-paper-1)", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "var(--font-body)" };
 
 export function BeehiivIntegration({ onChange }: { onChange?: (s: BeehiivConnectionStatus) => void }) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<BeehiivConnectionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -29,7 +31,7 @@ export function BeehiivIntegration({ onChange }: { onChange?: (s: BeehiivConnect
 
   const connect = async () => {
     const key = apiKey.trim();
-    if (!key) { toast.error("Paste your Beehiiv API key."); return; }
+    if (!key) { toast.error(t("settings.beehiiv.pasteKey", "Paste your Beehiiv API key.")); return; }
     setSaving(true);
     const res = await viewsMaxApi.connectBeehiiv(key);
     setSaving(false);
@@ -38,22 +40,24 @@ export function BeehiivIntegration({ onChange }: { onChange?: (s: BeehiivConnect
       onChange?.(res.data);
       setOpen(false);
       setApiKey("");
-      toast.success(`Beehiiv connected${res.data.publication_name ? ` — ${res.data.publication_name}` : ""}.`);
+      toast.success(res.data.publication_name
+        ? t("settings.beehiiv.connectedToastNamed", "Beehiiv connected — {{name}}.", { name: res.data.publication_name })
+        : t("settings.beehiiv.connectedToast", "Beehiiv connected."));
     } else {
-      toast.error(res.error || "Couldn't connect Beehiiv.");
+      toast.error(res.error || t("settings.beehiiv.connectFailed", "Couldn't connect Beehiiv."));
     }
   };
 
   const disconnect = async () => {
-    if (!window.confirm("Disconnect Beehiiv? Your stored API key will be removed.")) return;
+    if (!window.confirm(t("settings.beehiiv.disconnectConfirm", "Disconnect Beehiiv? Your stored API key will be removed."))) return;
     const res = await viewsMaxApi.disconnectBeehiiv();
     if (res.success) {
       const next = { connected: false };
       setStatus(next);
       onChange?.(next);
-      toast.success("Beehiiv disconnected.");
+      toast.success(t("settings.beehiiv.disconnectedToast", "Beehiiv disconnected."));
     } else {
-      toast.error(res.error || "Couldn't disconnect.");
+      toast.error(res.error || t("settings.beehiiv.disconnectFailed", "Couldn't disconnect."));
     }
   };
 
@@ -65,35 +69,37 @@ export function BeehiivIntegration({ onChange }: { onChange?: (s: BeehiivConnect
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-on-paper-1)" }}>Beehiiv</div>
           <div style={{ fontSize: 13, color: connected ? "var(--up)" : "var(--ink-on-paper-3)", marginTop: 2 }}>
-            {loading ? "Checking…"
+            {loading ? t("settings.beehiiv.checking", "Checking…")
               : connected
-                ? `Connected${status?.publication_name ? ` — ${status.publication_name}` : ""}${status?.key_hint ? ` · ${status.key_hint}` : ""}`
+                ? `${status?.publication_name
+                    ? t("settings.beehiiv.connectedNamed", "Connected — {{name}}", { name: status.publication_name })
+                    : t("settings.beehiiv.connected", "Connected")}${status?.key_hint ? ` · ${status.key_hint}` : ""}`
                 : ""}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {connected ? (
             <>
-              <button onClick={() => setOpen(true)} style={ghostBtn}>Update key</button>
-              <button onClick={disconnect} style={ghostBtn}>Disconnect</button>
+              <button onClick={() => setOpen(true)} style={ghostBtn}>{t("settings.beehiiv.updateKey", "Update key")}</button>
+              <button onClick={disconnect} style={ghostBtn}>{t("settings.beehiiv.disconnect", "Disconnect")}</button>
             </>
           ) : (
-            <button onClick={() => setOpen(true)} disabled={loading} style={primaryBtn}>Connect Beehiiv</button>
+            <button onClick={() => setOpen(true)} disabled={loading} style={primaryBtn}>{t("settings.beehiiv.connectButton", "Connect Beehiiv")}</button>
           )}
         </div>
       </div>
 
       {open && (
-        <Modal title="Connect Beehiiv" sub="We store your key encrypted and use it only to read your post view counts." onClose={() => setOpen(false)}>
-          <Field label="Beehiiv API key" hint="beehiiv → Settings → API">
-            <TextInput type="password" autoFocus placeholder="Paste your API key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") connect(); }} />
+        <Modal title={t("settings.beehiiv.modalTitle", "Connect Beehiiv")} sub={t("settings.beehiiv.modalSub", "We store your key encrypted and use it only to read your post view counts.")} onClose={() => setOpen(false)}>
+          <Field label={t("settings.beehiiv.keyLabel", "Beehiiv API key")} hint={t("settings.beehiiv.keyHint", "beehiiv → Settings → API")}>
+            <TextInput type="password" autoFocus placeholder={t("settings.beehiiv.keyPlaceholder", "Paste your API key")} value={apiKey} onChange={(e) => setApiKey(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") connect(); }} />
           </Field>
           <div style={{ fontSize: 12, color: "var(--ink-on-paper-3)", marginTop: -4, marginBottom: 4, lineHeight: 1.5 }}>
-            Create a key in beehiiv under Settings → Integrations → API. We validate it with beehiiv before saving; it's never shown again.
+            {t("settings.beehiiv.keyHelp", "Create a key in beehiiv under Settings → Integrations → API. We validate it with beehiiv before saving; it's never shown again.")}
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
-            <button onClick={() => setOpen(false)} style={ghostBtn}>Cancel</button>
-            <button onClick={connect} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? "Validating…" : "Connect"}</button>
+            <button onClick={() => setOpen(false)} style={ghostBtn}>{t("settings.beehiiv.cancel", "Cancel")}</button>
+            <button onClick={connect} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? t("settings.beehiiv.validating", "Validating…") : t("settings.beehiiv.connect", "Connect")}</button>
           </div>
         </Modal>
       )}

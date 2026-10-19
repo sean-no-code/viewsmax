@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AGENT_LIST, MCP_ENDPOINT, MCP_TOOLS } from "@/lib/agent-pages";
 import { STATIC_PAGE_SEO } from "@/lib/static-page-seo";
+import { LOCALIZED_PAGES, sitemapLocalizedPages } from "@/lib/locale-seo";
 import {
   CAPABILITIES,
   CLIENT_MATRIX,
@@ -76,10 +77,10 @@ describe("MCP_PAGE_SEO", () => {
 });
 
 describe("discoverability files", () => {
-  it("sitemap lists the page and its markdown twin", () => {
-    const sitemap = pub("sitemap-pages.xml");
-    expect(sitemap).toContain(`<loc>https://viewsmax.com${MCP_PATH}</loc>`);
-    expect(sitemap).toContain(`<loc>https://viewsmax.com${MCP_MD_PATH}</loc>`);
+  it("sitemap lists the page (written at build, with its translations) and its markdown twin", () => {
+    expect(LOCALIZED_PAGES).toContain(MCP_PATH);
+    expect(sitemapLocalizedPages()).toContain(`<loc>https://viewsmax.com${MCP_PATH}</loc>`);
+    expect(pub("sitemap-pages.xml")).toContain(`<loc>https://viewsmax.com${MCP_MD_PATH}</loc>`);
   });
 
   it("llms.txt points AI crawlers at the markdown twin and every agent guide", () => {

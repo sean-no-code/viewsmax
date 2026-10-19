@@ -1,6 +1,7 @@
 /** Countries for the outliers filter (ISO 3166-1 alpha-2, matching channels.country
  *  on the backend — YouTube's snippet.country). Popular creator markets are pinned
  *  to the top of the dropdown; the rest are alphabetical. */
+import i18n from 'i18next';
 
 export interface CountryOption {
     code: string;
@@ -76,8 +77,34 @@ export const COUNTRIES: CountryOption[] = [
 
 const NAME_BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c.name]));
 
+const uiLanguage = () => i18n.resolvedLanguage || 'en';
+
+// Country names in the UI language come from the browser (Intl.DisplayNames);
+// English keeps the list's own names. `english` stays for search.
+function localName(code: string, lang: string): string {
+    if (lang.startsWith('en')) return NAME_BY_CODE.get(code) ?? code;
+    try {
+        return new Intl.DisplayNames([lang], { type: 'region' }).of(code) ?? NAME_BY_CODE.get(code) ?? code;
+    } catch {
+        return NAME_BY_CODE.get(code) ?? code;
+    }
+}
+
 export function countryName(code: string): string {
-    return NAME_BY_CODE.get(code) ?? code;
+    return localName(code, uiLanguage());
+}
+
+export interface LocalizedCountry extends CountryOption {
+    english: string;
+}
+
+/** COUNTRIES in the UI language: popular markets first, the rest by local name. */
+export function localizedCountries(lang = uiLanguage()): LocalizedCountry[] {
+    const local = (c: CountryOption) => ({ ...c, name: localName(c.code, lang), english: c.name });
+    return [
+        ...POPULAR.map(local),
+        ...REST.map(local).sort((a, b) => a.name.localeCompare(b.name, lang)),
+    ];
 }
 
 /** 'US' → 🇺🇸 via regional-indicator symbols. */

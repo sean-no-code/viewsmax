@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ImportChannelVideosJob;
 use App\Models\Channel;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -24,19 +25,10 @@ class YouTubeOAuthController extends Controller
         // Store tokens for the authenticated user
         $user = Auth::user();
 
-        // Debug logging
-        Log::info('YouTube OAuth exchange debug', [
-            'user' => $user ? $user->id : 'null',
-            'auth_guard' => Auth::getDefaultDriver(),
-            'request_headers' => $request->headers->all(),
-            'bearer_token' => $request->bearerToken(),
-        ]);
-
         if (! $user) {
-            Log::error('No authenticated user found during YouTube OAuth exchange', [
-                'bearer_token' => $request->bearerToken(),
-                'authorization_header' => $request->header('Authorization'),
-                'all_headers' => $request->headers->all(),
+            // Never log the bearer token or headers: they are live credentials.
+            Log::warning('No authenticated user found during YouTube OAuth exchange', [
+                'has_bearer' => $request->bearerToken() !== null,
             ]);
 
             return response()->json([
@@ -145,19 +137,9 @@ class YouTubeOAuthController extends Controller
                     $this->mirrorIntoSocialAccounts($user, $channel, $tokenData);
                 }
 
-                // Fetch and import videos after channel creation
-                try {
-                    $channelService->fetchAndImportChannelVideos(
-                        $channel,
-                        $tokenData['access_token']
-                    );
-                } catch (\Exception $videoError) {
-                    // Log but don't fail the OAuth exchange if video fetching fails
-                    Log::warning('Failed to fetch videos during OAuth exchange', [
-                        'channel_id' => $channel->id,
-                        'error' => $videoError->getMessage(),
-                    ]);
-                }
+                // Off the request: the import waits on the YouTube API, and a
+                // failure there must not fail the connect.
+                ImportChannelVideosJob::dispatch($channel->id);
 
             } catch (\Exception $e) {
                 Log::error('Failed to fetch/store channel data', [
@@ -193,7 +175,7 @@ class YouTubeOAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to exchange authorization code',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -348,7 +330,7 @@ class YouTubeOAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to refresh access token',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }
@@ -392,7 +374,7 @@ class YouTubeOAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to check OAuth status',
-                'error' => $e->getMessage(),
+                'error' => \App\Support\UserSafeError::detail($e),
             ], 500);
         }
     }

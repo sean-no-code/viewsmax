@@ -11,6 +11,7 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\SocialPostTarget;
 use App\Models\User;
+use App\Services\Social\Providers\XProvider;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -141,6 +142,24 @@ class PublishToXThreadTest extends TestCase
         $this->assertArrayNotHasKey('media', $requests[1]);
     }
 
+    public function test_media_on_an_internal_address_is_never_fetched(): void
+    {
+        // create_post accepts any media URL; publishing must not let it reach the EC2 metadata service.
+        $this->fakeTweetSequence([
+            'api.twitter.com/2/media/upload*' => Http::response(['data' => ['id' => 'm1']]),
+        ]);
+        $user = User::factory()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, 'one', [
+            ['type' => 'image', 'url' => 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'],
+        ]);
+
+        $this->runJob($target);
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '169.254.169.254'));
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+    }
+
     public function test_resume_skips_already_published_segments(): void
     {
         $this->fakeTweetSequence([
@@ -269,5 +288,98 @@ class PublishToXThreadTest extends TestCase
         $this->assertSame('t1', $target->remote_post_id);
         $this->assertCount(2, $this->tweetRequests());
         $this->assertSame(['t1', 't2'], data_get($target->response, 'tweet_ids'));
+    }
+
+    /**
+     * A mid-thread 429 keeps the resume state and — once the queue gives up —
+     * leaves the friendly rate-limit message on the target rather than X's
+     * "Too Many Requests" body.
+     */
+    public function test_rate_limit_mid_thread_resumes_later_and_fails_with_a_readable_message(): void
+    {
+        $calls = 0;
+        Http::fake([
+            'api.twitter.com/2/tweets' => function () use (&$calls) {
+                $calls++;
+
+                return $calls === 1
+                    ? Http::response(['data' => ['id' => 't1']])
+                    : Http::response('{"title":"Too Many Requests","detail":"Too Many Requests","status":429}', 429);
+            },
+        ]);
+        $user = User::factory()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, "one\n---\ntwo\n---\nthree");
+
+        try {
+            $this->runJob($target);
+            $this->fail('Expected a TransientPublishException for the queue to retry.');
+        } catch (TransientPublishException $e) {
+            $this->assertSame(XProvider::RATE_LIMIT_MESSAGE.' (tweet 2 of 3)', $e->getMessage());
+        }
+
+        $target->refresh();
+        $this->assertNotSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame(['t1'], data_get($target->meta, 'x_thread.tweet_ids'));
+
+        (new PublishToXJob($target->id))->failed($e);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame('X rate limit reached, please try again later', $target->error);
+        // Resume state survives so a manual retry continues from tweet 2.
+        $this->assertSame(['t1'], data_get($target->meta, 'x_thread.tweet_ids'));
+    }
+
+    /** A mapped rejection mid-thread names the tweet it stopped at. */
+    public function test_mapped_rejection_mid_thread_names_the_position(): void
+    {
+        $calls = 0;
+        Http::fake([
+            'api.twitter.com/2/tweets' => function () use (&$calls) {
+                $calls++;
+
+                return $calls === 1
+                    ? Http::response(['data' => ['id' => 't1']])
+                    : Http::response('{"detail":"You are not allowed to create a Tweet with duplicate content.","title":"Forbidden","status":403}', 403);
+            },
+        ]);
+        $user = User::factory()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, "one\n---\ntwo\n---\nthree");
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame('You are not allowed to create a post with duplicate content (tweet 2 of 3)', $target->error);
+        $this->assertTrue((bool) data_get($target->meta, 'x_thread.partial'));
+    }
+
+    /** A token that dies mid-thread flags the account and keeps the progress. */
+    public function test_401_mid_thread_marks_needs_reauth_and_keeps_progress(): void
+    {
+        $calls = 0;
+        Http::fake([
+            'api.twitter.com/2/tweets' => function () use (&$calls) {
+                $calls++;
+
+                return $calls === 1
+                    ? Http::response(['data' => ['id' => 't1']])
+                    : Http::response('{"title":"Unauthorized","status":401}', 401);
+            },
+        ]);
+        $user = User::factory()->create();
+        $account = $this->connectX($user);
+        $target = $this->makeTarget($user, "one\n---\ntwo");
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame('X authorization expired or was revoked — reconnect the account.', $target->error);
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->fresh()->status);
+        $this->assertSame(['t1'], data_get($target->meta, 'x_thread.tweet_ids'));
+        $this->assertTrue((bool) data_get($target->meta, 'x_thread.partial'));
     }
 }

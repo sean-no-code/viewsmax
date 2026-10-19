@@ -3,10 +3,12 @@
 // from the last daily run, or simply no snapshot yet.
 import { Link } from "react-router-dom";
 import { AlertTriangle, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { dataAlerts } from "@/lib/analytics-performance";
 import type { Account } from "@/lib/analytics-performance";
 
 export function DataAlerts({ accounts }: { accounts: Account[] }) {
+  const { t } = useTranslation();
   const alerts = dataAlerts(accounts);
   if (!alerts.length) return null;
   return (
@@ -28,7 +30,7 @@ export function DataAlerts({ accounts }: { accounts: Account[] }) {
             <Icon size={15} style={{ flexShrink: 0, marginTop: 2, color: warn ? "#9A6700" : "var(--ink-on-paper-3)" }} />
             <span style={{ minWidth: 0 }}>
               {al.text}
-              {al.action === "connections" && <> <Link to="/dashboard/connections" style={{ fontWeight: 600, color: "var(--vm-red-deep)" }}>Open Connections</Link></>}
+              {al.action === "connections" && <> <Link to="/dashboard/connections" style={{ fontWeight: 600, color: "var(--vm-red-deep)" }}>{t("analytics.performance.alerts.openConnections", "Open Connections")}</Link></>}
             </span>
           </div>
         );

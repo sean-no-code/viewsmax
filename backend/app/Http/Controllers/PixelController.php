@@ -40,6 +40,7 @@ class PixelController extends Controller
             'utm_term' => 'nullable|string',
             'utm_content' => 'nullable|string',
         ]);
+        $this->dropNonHttpReferrer($request);
 
         $trk = $request->input('trk');
         $visitorUuid = $request->input('visitor_id');
@@ -125,6 +126,7 @@ class PixelController extends Controller
             'referrer' => 'nullable|string',
             'utm_source' => 'nullable|string',
         ]);
+        $this->dropNonHttpReferrer($request);
 
         $user = User::where('public_id', $request->input('public_id'))->first();
         if (! $user) {
@@ -210,6 +212,7 @@ class PixelController extends Controller
             'utm_term' => 'nullable|string',
             'utm_content' => 'nullable|string',
         ]);
+        $this->dropNonHttpReferrer($request);
 
         $visitorUuid = $request->input('visitor_id');
         $currentUrl = $request->input('current_url');
@@ -388,5 +391,18 @@ class PixelController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * The referrer is attacker-controlled (this endpoint is public) and is
+     * later rendered as a link in the owner's dashboard: anything that isn't
+     * an http(s) URL (javascript:, data:, ...) is dropped, not stored.
+     */
+    private function dropNonHttpReferrer(Request $request): void
+    {
+        $referrer = $request->input('referrer');
+        if ($referrer !== null && ! preg_match('#^https?://#i', trim((string) $referrer))) {
+            $request->merge(['referrer' => null]);
+        }
     }
 }

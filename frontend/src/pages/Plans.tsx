@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
 import { toast } from "sonner";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { checkoutTerms } from "@/lib/access";
 import {
 	AlertDialog,
@@ -22,10 +24,9 @@ import {
 import {
 	findCurrentPlan,
 	decidePlanCta,
-	formatLimit,
 	sortPlansByPrice,
 	iconForPlan,
-	PLAN_INCLUDES,
+	planIncludes,
 	type PlanCta,
 } from "@/lib/plan-helpers";
 
@@ -43,15 +44,30 @@ const getInitialSubscription = (): { subscriptionId: string; details?: { status?
 	return null;
 };
 
-const ctaLabel: Record<PlanCta, string> = {
-	subscribe: "Start Free Trial",
-	current: "Current Plan",
-	upgrade: "Upgrade",
-	downgrade: "Downgrade",
-};
+const ctaLabels = (t: TFunction): Record<PlanCta, string> => ({
+	subscribe: t("billing.plans.ctaStartTrial", "Start Free Trial"),
+	current: t("billing.plans.ctaCurrent", "Current Plan"),
+	upgrade: t("billing.plans.ctaUpgrade", "Upgrade"),
+	downgrade: t("billing.plans.ctaDowngrade", "Downgrade"),
+});
+
+// Plan limit lines (null = unlimited), with real plurals per language.
+const limitLines = (t: TFunction, plan: PlanTier): string[] => [
+	plan.max_channels === null
+		? t("billing.plans.unlimitedChannels", "Unlimited channels")
+		: t("billing.plans.channelCount", { count: plan.max_channels, defaultValue_one: "{{count}} channel", defaultValue_other: "{{count}} channels" }),
+	plan.max_offers === null
+		? t("billing.plans.unlimitedOffers", "Unlimited offers")
+		: t("billing.plans.offerCount", { count: plan.max_offers, defaultValue_one: "{{count}} offer", defaultValue_other: "{{count}} offers" }),
+	plan.max_posts_per_month === null
+		? t("billing.plans.unlimitedPostsPerMonth", "Unlimited posts/mo")
+		: t("billing.plans.postsPerMonthCount", { count: plan.max_posts_per_month, defaultValue_one: "{{count}} post/mo", defaultValue_other: "{{count}} posts/mo" }),
+];
 
 
 const Plans = () => {
+	const { t } = useTranslation();
+	const ctaLabel = ctaLabels(t);
 	const navigate = useNavigate();
 	const { user } = useAuth();
 	// Free window closed: subscribing now charges today, so don't promise a trial.
@@ -100,12 +116,12 @@ const Plans = () => {
 				const paid = result.data.filter((p) => Number(p.price) > 0);
 				setPlans(sortPlansByPrice(paid));
 			} else {
-				toast.error(result.error || "Failed to load plans");
+				toast.error(result.error || t("billing.plans.loadFailed", "Failed to load plans"));
 			}
 			setPlansLoading(false);
 		})();
 		return () => { cancelled = true; };
-	}, []);
+	}, [t]);
 
 	// Load + cache the current subscription (mirrors the prior behaviour).
 	useEffect(() => {
@@ -201,11 +217,11 @@ const Plans = () => {
 			if (res.success && res.data?.url) {
 				window.location.href = res.data.url;
 			} else {
-				toast.error(res.error || "Couldn't open the billing portal.");
+				toast.error(res.error || t("billing.plans.portalFailed", "Couldn't open the billing portal."));
 				setOpeningPortal(false);
 			}
 		} catch {
-			toast.error("Couldn't open the billing portal.");
+			toast.error(t("billing.plans.portalFailed", "Couldn't open the billing portal."));
 			setOpeningPortal(false);
 		}
 	};
@@ -219,12 +235,12 @@ const Plans = () => {
 		try {
 			const result = await viewsMaxApi.changePlan(priceId);
 			if (result.success) {
-				toast.success("Plan change requested — it'll update once Stripe confirms.");
+				toast.success(t("billing.plans.changeRequested", "Plan change requested — it'll update once Stripe confirms."));
 				// Give the webhook a moment, then refresh the current plan.
 				setTimeout(() => window.dispatchEvent(new CustomEvent("subscriptionUpdated")), 1500);
 			} else {
 				// e.g. "The Starter plan allows 1 offer(s), but you have 3. Please delete…"
-				toast.error(result.error || "Failed to change plan");
+				toast.error(result.error || t("billing.plans.changeFailed", "Failed to change plan"));
 			}
 		} finally {
 			setChangingPriceId(null);
@@ -238,7 +254,7 @@ const Plans = () => {
 				plan: plan.display_name,
 				price: String(Math.round(Number(plan.price))),
 				period: "month",
-				description: plan.description ?? "Monthly Subscription",
+				description: plan.description ?? t("billing.plans.monthlySubscription", "Monthly Subscription"),
 			});
 			if (plan.features?.length) params.set("features", plan.features.join(","));
 			if (plan.stripe_price_id) params.set("price_id", plan.stripe_price_id);
@@ -259,7 +275,7 @@ const Plans = () => {
 	};
 
 	const handleCancelSubscription = async () => {
-		if (!active?.subscriptionId) { toast.error("No active subscription found"); return; }
+		if (!active?.subscriptionId) { toast.error(t("billing.plans.noActiveSubscription", "No active subscription found")); return; }
 		let expiresAt = active?.expires_at || active?.details?.billing_info?.next_billing_time;
 		setIsCancelling(true);
 		try {
@@ -287,15 +303,15 @@ const Plans = () => {
 				window.dispatchEvent(new CustomEvent("subscriptionUpdated"));
 				toast.success(
 					formattedExpiry
-						? `Subscription cancelled successfully. You'll have access until ${formattedExpiry}.`
-						: "Subscription cancelled successfully."
+						? t("billing.plans.cancelledUntil", "Subscription cancelled successfully. You'll have access until {{date}}.", { date: formattedExpiry })
+						: t("billing.plans.cancelled", "Subscription cancelled successfully.")
 				);
 			} else {
-				toast.error(result.error || "Failed to cancel subscription. Please try again.");
+				toast.error(result.error || t("billing.plans.cancelFailed", "Failed to cancel subscription. Please try again."));
 			}
 		} catch (error) {
 			console.error("Cancel subscription error:", error);
-			toast.error("An unexpected error occurred. Please try again.");
+			toast.error(t("billing.plans.unexpectedError", "An unexpected error occurred. Please try again."));
 		} finally {
 			setIsCancelling(false);
 			setShowCancelDialog(false);
@@ -309,13 +325,13 @@ const Plans = () => {
 			<div className="container mx-auto px-4 py-12">
 				<div className="text-center mb-8">
 					<h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-						{isActive ? "Manage Your Plan" : "Choose Your Growth Plan"}
+						{isActive ? t("billing.plans.manageTitle", "Manage Your Plan") : t("billing.plans.chooseTitle", "Choose Your Growth Plan")}
 					</h1>
 					{!isActive && (
 						<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
 							{trialUsed
-								? "Your free trial has ended. Pick the tier that fits how you grow."
-								: "7-day free trial at $0, then pick the tier that fits how you grow."}
+								? t("billing.plans.trialEndedIntro", "Your free trial has ended. Pick the tier that fits how you grow.")
+								: t("billing.plans.trialIntro", "7-day free trial at $0, then pick the tier that fits how you grow.")}
 						</p>
 					)}
 				</div>
@@ -325,20 +341,20 @@ const Plans = () => {
 						<div className="flex items-start gap-3">
 							<AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
 							<div className="flex-1">
-								<p className="font-semibold text-foreground">Your last payment failed</p>
+								<p className="font-semibold text-foreground">{t("billing.plans.pastDueTitle", "Your last payment failed")}</p>
 								<p className="text-sm text-muted-foreground mt-0.5">
-									Update your payment method to settle the outstanding invoice and restore full access.
+									{t("billing.plans.pastDueBody", "Update your payment method to settle the outstanding invoice and restore full access.")}
 								</p>
 							</div>
 							<Button size="sm" variant="cta" disabled={openingPortal} onClick={openBillingPortal}>
-								{openingPortal ? "Opening…" : "Update payment method"}
+								{openingPortal ? t("billing.plans.opening", "Opening…") : t("billing.plans.updatePayment", "Update payment method")}
 							</Button>
 						</div>
 					</div>
 				)}
 
 				{plansLoading ? (
-					<p className="text-center text-muted-foreground">Loading plans…</p>
+					<p className="text-center text-muted-foreground">{t("billing.plans.loading", "Loading plans…")}</p>
 				) : (
 					<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto items-stretch">
 						{plans.map((plan) => {
@@ -357,7 +373,7 @@ const Plans = () => {
 										<div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
 											<Badge className="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
 												<CheckCircle2 className="w-3 h-3 mr-1" />
-												Current Plan
+												{t("billing.plans.currentBadge", "Current Plan")}
 											</Badge>
 										</div>
 									)}
@@ -376,25 +392,19 @@ const Plans = () => {
 											<span className="text-4xl font-bold text-foreground">
 												${Math.round(Number(plan.price))}
 											</span>
-											<span className="text-muted-foreground">/{plan.billing_cycle === "yearly" ? "yr" : "mo"}</span>
+											<span className="text-muted-foreground">{plan.billing_cycle === "yearly" ? t("billing.plans.perYear", "/yr") : t("billing.plans.perMonth", "/mo")}</span>
 										</div>
 									</CardHeader>
 
 									<CardContent className="flex flex-col flex-1 space-y-6">
 										<ul className="space-y-3">
-											<li className="flex items-center gap-3">
-												<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-												<span className="text-muted-foreground">{formatLimit(plan.max_channels, "channel")}</span>
-											</li>
-											<li className="flex items-center gap-3">
-												<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-												<span className="text-muted-foreground">{formatLimit(plan.max_offers, "offer")}</span>
-											</li>
-											<li className="flex items-center gap-3">
-												<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-												<span className="text-muted-foreground">{formatLimit(plan.max_posts_per_month, "post")}/mo</span>
-											</li>
-											{PLAN_INCLUDES.map((f) => (
+											{limitLines(t, plan).map((line, i) => (
+												<li key={`limit-${i}`} className="flex items-center gap-3">
+													<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+													<span className="text-muted-foreground">{line}</span>
+												</li>
+											))}
+											{planIncludes(t).map((f) => (
 												<li key={f} className="flex items-start gap-3">
 													<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
 													<span className="text-muted-foreground">{f}</span>
@@ -411,7 +421,7 @@ const Plans = () => {
 													disabled={busy || !plan.stripe_price_id}
 													onClick={() => handlePlanCta(plan, cta)}
 												>
-													{busy ? "Processing…" : cta === "subscribe" && trialUsed ? "Subscribe" : ctaLabel[cta]}
+													{busy ? t("billing.plans.processing", "Processing…") : cta === "subscribe" && trialUsed ? t("billing.plans.ctaSubscribe", "Subscribe") : ctaLabel[cta]}
 													{!busy && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
 												</Button>
 											)}
@@ -422,8 +432,12 @@ const Plans = () => {
 														<div className="flex items-start gap-3">
 															<AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
 															<p className="text-sm text-orange-700 dark:text-orange-300">
-																Cancelled — access until{" "}
-																<strong>{formatExpiry(active?.expires_at || active?.details?.billing_info?.next_billing_time) || "your billing period ends"}</strong>.
+																<Trans
+																	i18nKey="billing.plans.cancelledAccessUntil"
+																	defaults="Cancelled — access until <0>{{date}}</0>."
+																	values={{ date: formatExpiry(active?.expires_at || active?.details?.billing_info?.next_billing_time) || t("billing.plans.billingPeriodEnds", "your billing period ends") }}
+																	components={[<strong key="date" />]}
+																/>
 															</p>
 														</div>
 													</div>
@@ -432,30 +446,30 @@ const Plans = () => {
 														{expiryLabel && (
 															<p className="text-sm text-center text-muted-foreground mb-2">
 																{isTrialing
-																	? <>Free trial · ends <strong className="text-foreground">{expiryLabel}</strong></>
-																	: <>Renews <strong className="text-foreground">{expiryLabel}</strong></>}
+																	? <Trans i18nKey="billing.plans.trialEnds" defaults="Free trial · ends <0>{{date}}</0>" values={{ date: expiryLabel }} components={[<strong key="date" className="text-foreground" />]} />
+																	: <Trans i18nKey="billing.plans.renews" defaults="Renews <0>{{date}}</0>" values={{ date: expiryLabel }} components={[<strong key="date" className="text-foreground" />]} />}
 															</p>
 														)}
 														<AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
 														<AlertDialogTrigger asChild>
 															<Button variant="ghost" size="sm" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isCancelling}>
-																{isCancelling ? "Cancelling..." : "Cancel Subscription"}
+																{isCancelling ? t("billing.plans.cancelling", "Cancelling...") : t("billing.plans.cancelSubscription", "Cancel Subscription")}
 															</Button>
 														</AlertDialogTrigger>
 														<AlertDialogContent>
 															<AlertDialogHeader>
 																<AlertDialogTitle className="flex items-center gap-2">
 																	<AlertTriangle className="w-5 h-5 text-destructive" />
-																	Are you sure you want to cancel?
+																	{t("billing.plans.cancelConfirmTitle", "Are you sure you want to cancel?")}
 																</AlertDialogTitle>
 																<AlertDialogDescription className="space-y-3">
-																	<p>You'll keep access to {plan.display_name} until your billing period ends, then move to the Free plan.</p>
+																	<p>{t("billing.plans.cancelConfirmBody", "You'll keep access to {{plan}} until your billing period ends, then move to the Free plan.", { plan: plan.display_name })}</p>
 																</AlertDialogDescription>
 															</AlertDialogHeader>
 															<AlertDialogFooter>
-																<AlertDialogCancel disabled={isCancelling}>Keep Subscription</AlertDialogCancel>
+																<AlertDialogCancel disabled={isCancelling}>{t("billing.plans.keepSubscription", "Keep Subscription")}</AlertDialogCancel>
 																<AlertDialogAction onClick={handleCancelSubscription} disabled={isCancelling} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-																	{isCancelling ? "Cancelling..." : "Yes, Cancel"}
+																	{isCancelling ? t("billing.plans.cancelling", "Cancelling...") : t("billing.plans.yesCancel", "Yes, Cancel")}
 																</AlertDialogAction>
 															</AlertDialogFooter>
 														</AlertDialogContent>
@@ -473,9 +487,9 @@ const Plans = () => {
 
 				<div className="text-center mt-12">
 					<div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-						<div className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /><span>Cancel anytime</span></div>
-						<div className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /><span>Upgrades & downgrades are prorated</span></div>
-						<div className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /><span>30-day money back</span></div>
+						<div className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /><span>{t("billing.plans.cancelAnytime", "Cancel anytime")}</span></div>
+						<div className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /><span>{t("billing.plans.prorated", "Upgrades & downgrades are prorated")}</span></div>
+						<div className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500" /><span>{t("billing.plans.moneyBack", "30-day money back")}</span></div>
 					</div>
 				</div>
 			</div>
@@ -487,28 +501,31 @@ const Plans = () => {
 						<AlertDialogTitle className="flex items-center gap-2">
 							{pendingChange?.cta === "downgrade" && <AlertTriangle className="w-5 h-5 text-orange-500" />}
 							{pendingChange?.cta === "downgrade"
-								? `Downgrade to ${pendingChange?.plan.display_name}?`
-								: `Upgrade to ${pendingChange?.plan.display_name}?`}
+								? t("billing.plans.downgradeTitle", "Downgrade to {{plan}}?", { plan: pendingChange?.plan.display_name })
+								: t("billing.plans.upgradeTitle", "Upgrade to {{plan}}?", { plan: pendingChange?.plan.display_name })}
 						</AlertDialogTitle>
 						<AlertDialogDescription className="space-y-3">
 							{pendingChange?.cta === "downgrade" ? (
 								<p>
-									You'll switch to {pendingChange?.plan.display_name} (${pendingChange ? Math.round(Number(pendingChange.plan.price)) : 0}/mo) now.
-									Stripe applies a prorated credit toward your next invoice, and your plan limits drop to the new tier — if you're
-									over the new offer cap you'll be asked to delete offers first.
+									{t("billing.plans.downgradeBody", "You'll switch to {{plan}} (${{price}}/mo) now. Stripe applies a prorated credit toward your next invoice, and your plan limits drop to the new tier — if you're over the new offer cap you'll be asked to delete offers first.", {
+										plan: pendingChange?.plan.display_name,
+										price: pendingChange ? Math.round(Number(pendingChange.plan.price)) : 0,
+									})}
 								</p>
 							) : (
 								<p>
-									You'll move to {pendingChange?.plan.display_name} (${pendingChange ? Math.round(Number(pendingChange.plan.price)) : 0}/mo) right away.
-									Stripe charges a prorated amount for the rest of this billing period.
+									{t("billing.plans.upgradeBody", "You'll move to {{plan}} (${{price}}/mo) right away. Stripe charges a prorated amount for the rest of this billing period.", {
+										plan: pendingChange?.plan.display_name,
+										price: pendingChange ? Math.round(Number(pendingChange.plan.price)) : 0,
+									})}
 								</p>
 							)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Keep current plan</AlertDialogCancel>
+						<AlertDialogCancel>{t("billing.plans.keepCurrentPlan", "Keep current plan")}</AlertDialogCancel>
 						<AlertDialogAction onClick={confirmChangePlan}>
-							{pendingChange?.cta === "downgrade" ? "Yes, downgrade" : "Yes, upgrade"}
+							{pendingChange?.cta === "downgrade" ? t("billing.plans.yesDowngrade", "Yes, downgrade") : t("billing.plans.yesUpgrade", "Yes, upgrade")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

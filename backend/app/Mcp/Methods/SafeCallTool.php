@@ -37,11 +37,13 @@ class SafeCallTool extends CallTool
     public function handle(JsonRpcRequest $request, ServerContext $context)
     {
         // A user who can't use ViewsMax right now (unverified email, trial
-        // over — see UserAccess) gets that answer from every tools/call as an
-        // HTTP 200 tool result the AI can relay; initialize and tools/list
-        // still work so the connector stays attached.
+        // over — see UserAccess) gets that answer from every tools/call as a
+        // plain tool result the AI can relay. Not isError: the tool didn't
+        // fail, the account needs action, and clients count isError results
+        // as connector failures. initialize and tools/list still work so the
+        // connector stays attached.
         if (($user = request()->user()) && ($denial = UserAccess::denial($user))) {
-            return JsonRpcResponse::create($request->id, ToolResult::error($denial->message));
+            return JsonRpcResponse::create($request->id, ToolResult::text($denial->message));
         }
 
         try {

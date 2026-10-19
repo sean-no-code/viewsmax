@@ -112,69 +112,17 @@ class YouTubeProvider extends GoogleOAuthProvider
         return $out;
     }
 
+    /** Why the legacy SocialPost path no longer uploads to YouTube. */
+    public const USE_POSTS_API = 'YouTube uploads are no longer made from the social posts API, which had to hold the whole video in memory. Create the post through the posts API (POST /api/posts with an uploaded video) instead.';
+
+    /**
+     * Retired. This path downloaded the whole video into worker
+     * memory before the PUT; the Post pipeline (PublishYouTubeJob) streams it
+     * from the media disk through YouTubePublishService in resumable chunks,
+     * and no client of this endpoint sends YouTube targets any more.
+     */
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
     {
-        $video = $this->firstVideoUrl($post);
-        if (! $video) {
-            return PublishResult::failure('YouTube requires a video to publish.');
-        }
-
-        $content = trim((string) $post->content);
-        if ($titleError = \App\Services\Social\CaptionRules::titleError('youtube', $content)) {
-            return PublishResult::failure($titleError);
-        }
-        $title = mb_substr($content, 0, 95);
-
-        $metadata = [
-            'snippet' => [
-                'title' => $title,
-                'description' => $content,
-                'categoryId' => '22', // People & Blogs
-            ],
-            'status' => [
-                'privacyStatus' => 'private', // safe default; user can flip to public
-                'selfDeclaredMadeForKids' => false,
-            ],
-        ];
-
-        // 1. Initiate a resumable upload session.
-        $init = Http::withToken($account->access_token)
-            ->withHeaders([
-                'X-Upload-Content-Type' => 'video/*',
-                'Content-Type' => 'application/json; charset=UTF-8',
-            ])
-            ->post('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', $metadata);
-
-        if (! $init->successful()) {
-            return PublishResult::failure('YouTube upload init failed: '.$init->body(), $init->json() ?? []);
-        }
-
-        $uploadUrl = $init->header('Location');
-        if (! $uploadUrl) {
-            return PublishResult::failure('YouTube did not return a resumable upload URL.');
-        }
-
-        // 2. Stream the source video into the upload session.
-        $binary = Http::timeout(600)->get($video);
-        if (! $binary->successful()) {
-            return PublishResult::failure('Could not download source video for YouTube upload.');
-        }
-
-        $upload = Http::withToken($account->access_token)
-            ->timeout(600)
-            ->withBody($binary->body(), 'video/*')
-            ->put($uploadUrl);
-
-        if (! $upload->successful()) {
-            return PublishResult::failure('YouTube upload failed: '.$upload->body(), $upload->json() ?? []);
-        }
-
-        $videoId = $upload->json('id');
-
-        return PublishResult::success(
-            $videoId,
-            $videoId ? "https://www.youtube.com/watch?v={$videoId}" : null,
-            $upload->json()
-        );
+        return PublishResult::failure(self::USE_POSTS_API);
     }
 }

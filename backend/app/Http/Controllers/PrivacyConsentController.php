@@ -91,7 +91,7 @@ class PrivacyConsentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to check privacy consent status',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -232,7 +232,7 @@ class PrivacyConsentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to record privacy consent',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -280,7 +280,7 @@ class PrivacyConsentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to withdraw privacy consent',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }

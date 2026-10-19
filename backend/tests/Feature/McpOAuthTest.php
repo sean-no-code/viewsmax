@@ -457,7 +457,7 @@ class McpOAuthTest extends TestCase
         $this->withHeaders($headers)
             ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/call', 'params' => ['name' => 'list_connected_accounts', 'arguments' => []]])
             ->assertOk()
-            ->assertJsonPath('result.isError', true)
+            ->assertJsonPath('result.isError', false)
             ->assertJsonPath('result.content.0.text', \App\Support\UserAccess::denial($user->fresh())->message);
     }
 

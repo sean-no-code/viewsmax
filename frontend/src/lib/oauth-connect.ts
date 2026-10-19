@@ -4,6 +4,7 @@
 // { type: 'OAUTH_SUCCESS', provider, code } message (see OAuthCallback.tsx),
 // which we exchange for a stored connection via the backend.
 
+import i18n from "i18next";
 import { viewsMaxApi, type Connection, type OAuthProvider } from "@/lib/api-service";
 import { isMockApi } from "@/lib/mock-api";
 
@@ -115,7 +116,7 @@ const waitForCallback = (popup: Window, provider: OAuthProvider): Promise<{ code
       if (popup.closed) {
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
-        reject(new Error("Connection window was closed before finishing."));
+        reject(new Error(i18n.t("connections.errors.windowClosed", "Connection window was closed before finishing.")));
       }
     }, 1000);
 
@@ -131,7 +132,7 @@ const waitForCallback = (popup: Window, provider: OAuthProvider): Promise<{ code
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
         popup.close();
-        reject(new Error(data.error || "Authorization failed."));
+        reject(new Error(data.error || i18n.t("connections.errors.authFailed", "Authorization failed.")));
       }
     };
 
@@ -146,13 +147,13 @@ export const connectProvider = async (provider: OAuthProvider): Promise<Connecti
   if (isMockApi()) {
     const result = await viewsMaxApi.exchangeOAuthCode(provider, "mock-code", REDIRECT_URI);
     if (!result.success || !result.data) {
-      throw new Error(result.error || "Failed to connect account.");
+      throw new Error(result.error || i18n.t("connections.errors.connectFailed", "Failed to connect account."));
     }
     return result.data.connection;
   }
 
   if (!isProviderConfigured(provider)) {
-    throw new Error(`${PROVIDER_CONFIG[provider].label} isn't configured yet.`);
+    throw new Error(i18n.t("connections.errors.notConfigured", "{{platform}} isn't configured yet.", { platform: PROVIDER_CONFIG[provider].label }));
   }
 
   const state = `${provider}_${Date.now()}`;
@@ -175,14 +176,14 @@ export const connectProvider = async (provider: OAuthProvider): Promise<Connecti
   );
 
   if (!popup) {
-    throw new Error("Popup blocked. Please allow popups for this site and try again.");
+    throw new Error(i18n.t("connections.errors.popupBlocked", "Popup blocked. Please allow popups for this site and try again."));
   }
 
   const { code } = await waitForCallback(popup, provider);
 
   const result = await viewsMaxApi.exchangeOAuthCode(provider, code, REDIRECT_URI, codeVerifier);
   if (!result.success || !result.data) {
-    throw new Error(result.error || "Failed to connect account.");
+    throw new Error(result.error || i18n.t("connections.errors.connectFailed", "Failed to connect account."));
   }
 
   return result.data.connection;
@@ -202,7 +203,7 @@ const waitForCallbackByState = (popup: Window, expectedState: string): Promise<{
       if (popup.closed) {
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
-        reject(new Error("Connection window was closed before finishing."));
+        reject(new Error(i18n.t("connections.errors.windowClosed", "Connection window was closed before finishing.")));
       }
     }, 1000);
 
@@ -221,7 +222,7 @@ const waitForCallbackByState = (popup: Window, expectedState: string): Promise<{
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
         popup.close();
-        reject(new Error(data.error || "Authorization failed."));
+        reject(new Error(data.error || i18n.t("connections.errors.authFailed", "Authorization failed.")));
       }
     };
 
@@ -240,13 +241,13 @@ export const connectSocialPlatform = async (platform: string, followUs = false) 
     "width=500,height=700,scrollbars=yes,resizable=yes,location=yes"
   );
   if (!popup) {
-    throw new Error("Popup blocked. Please allow popups for this site and try again.");
+    throw new Error(i18n.t("connections.errors.popupBlocked", "Popup blocked. Please allow popups for this site and try again."));
   }
 
   const urlRes = await viewsMaxApi.getSocialAuthUrl(platform, REDIRECT_URI, followUs);
   if (!urlRes.success || !urlRes.data) {
     popup.close();
-    throw new Error(urlRes.error || `${platform} isn't configured yet.`);
+    throw new Error(urlRes.error || i18n.t("connections.errors.notConfigured", "{{platform}} isn't configured yet.", { platform }));
   }
 
   const { authorization_url, state, redirect_uri } = urlRes.data;
@@ -258,7 +259,7 @@ export const connectSocialPlatform = async (platform: string, followUs = false) 
   // An empty array is a truthy value but means nothing was actually connected
   // (e.g. an Instagram login with no Business account linked to a Page).
   if (!result.success || !result.data || result.data.length === 0) {
-    throw new Error(result.error || "No account was connected. Check the platform's requirements and try again.");
+    throw new Error(result.error || i18n.t("connections.errors.noAccount", "No account was connected. Check the platform's requirements and try again."));
   }
 
   return result.data;

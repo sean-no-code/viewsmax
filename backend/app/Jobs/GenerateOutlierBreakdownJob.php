@@ -12,12 +12,17 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches the video's transcript (CaptAPI) and asks Claude for a structured
  * breakdown (idea / hook / structure / visual layout / annotated transcript),
  * storing the result on the outlier_breakdowns row for the video.
+ *
+ * Every failure is report()ed, not just logged: the exception handler sends
+ * it to Sentry and the error log/Slack, and the platform + video id ride along
+ * via Context so the alert says which breakdown broke.
  */
 class GenerateOutlierBreakdownJob implements ShouldQueue
 {
@@ -42,6 +47,7 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
             return;
         }
 
+        Context::add(['platform' => $this->platform, 'video_id' => $this->videoId]);
         $breakdown->update(['status' => OutlierBreakdown::STATUS_PROCESSING]);
 
         try {
@@ -81,17 +87,35 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
                 'error' => null,
             ]);
         } catch (\Throwable $e) {
-            Log::error('GenerateOutlierBreakdownJob failed', [
-                'platform' => $this->platform,
-                'video_id' => $this->videoId,
-                'error' => $e->getMessage(),
-            ]);
+            report($e);
 
             $breakdown->update([
                 'status' => OutlierBreakdown::STATUS_FAILED,
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Failures handle() never sees — a dependency that can't be built (e.g. a
+     * missing API key), a timeout, a killed worker — would otherwise leave the
+     * row pending and the page spinning. Mark it failed so a retry requeues it.
+     */
+    public function failed(\Throwable $e): void
+    {
+        Log::error('GenerateOutlierBreakdownJob crashed', [
+            'platform' => $this->platform,
+            'video_id' => $this->videoId,
+            'error' => $e->getMessage(),
+        ]);
+
+        OutlierBreakdown::where('platform', $this->platform)
+            ->where('video_id', $this->videoId)
+            ->where('status', '!=', OutlierBreakdown::STATUS_COMPLETED)
+            ->update([
+                'status' => OutlierBreakdown::STATUS_FAILED,
+                'error' => 'Breakdown generation failed. Try again in a few minutes.',
+            ]);
     }
 
     /**

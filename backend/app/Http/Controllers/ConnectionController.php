@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\OAuthConnectionService;
+use App\Services\Social\SocialProviderManager;
 use App\Services\TikTokPublishService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -57,6 +58,19 @@ class ConnectionController extends Controller
             return response()->json(['message' => 'Unsupported provider.'], 422);
         }
 
+        // Limited release (config/social → promo_only) applies here too: this
+        // store is older than the /api/social one, but the platform is the same,
+        // so a code posted straight at it must not slip the gate. Only the
+        // audience rule, not isAvailableTo() — this path authenticates with
+        // config('services.meta.*'), a different credential pair, so it must not
+        // pick up a check against the social store's client_id/secret.
+        if (app(SocialProviderManager::class)->promoOnly($provider) && ! $request->user()->isPromotional()) {
+            return response()->json([
+                'success' => false,
+                'message' => ucfirst($provider).' is not available on your account yet.',
+            ], 503);
+        }
+
         $validator = Validator::make($request->all(), [
             'code' => 'required|string',
             'redirect_uri' => 'required|string|url',
@@ -94,7 +108,7 @@ class ConnectionController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to connect '.$provider.'. '.$e->getMessage(),
+                'message' => 'Failed to connect '.$provider.\App\Support\UserSafeError::withDetail('. ', $e),
             ], 422);
         }
     }
@@ -131,7 +145,7 @@ class ConnectionController extends Controller
 
             return response()->json([
                 'code' => 'creator_cannot_post',
-                'message' => $e->getMessage(),
+                'message' => \App\Support\UserSafeError::detail($e),
             ], 422);
         } catch (\Exception $e) {
             Log::error('TikTok creator info failed', [
@@ -139,7 +153,7 @@ class ConnectionController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => $e->getMessage()], 422);
+            return response()->json(['message' => \App\Support\UserSafeError::detail($e)], 422);
         }
     }
 

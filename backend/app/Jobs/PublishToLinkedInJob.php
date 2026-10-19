@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
@@ -86,6 +87,10 @@ class PublishToLinkedInJob implements ShouldQueue
             }
 
             $this->markFailed($target, $result->error ?: 'LinkedIn publish failed.');
+        } catch (TransientPublishException $e) {
+            // Nothing was created (the provider only throws before POST
+            // /rest/posts succeeds) — rethrow so the queue retries.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('LinkedIn publish job error', [
                 'post_target_id' => $target->id,

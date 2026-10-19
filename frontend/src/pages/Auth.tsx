@@ -10,9 +10,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Check, X, Mail } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { viewsMaxApi } from "@/lib/api-service";
+import LanguageMenu from "@/components/LanguageMenu";
+import { Trans, useTranslation } from "react-i18next";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
   const { user, setAuthData } = useAuth();
@@ -44,9 +47,9 @@ const Auth = () => {
     setResendCooldown(45);
     const result = await viewsMaxApi.resendVerification(targetEmail);
     if (result.success) {
-      toast.success("Verification email sent. Check your inbox.");
+      toast.success(t("auth.verification.sent", "Verification email sent. Check your inbox."));
     } else {
-      toast.error(result.error || "Couldn't resend the email. Try again shortly.");
+      toast.error(result.error || t("auth.verification.resendFailed", "Couldn't resend the email. Try again shortly."));
     }
   };
 
@@ -89,7 +92,7 @@ const Auth = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotPasswordEmail) {
-      toast.error("Please enter your email");
+      toast.error(t("auth.errors.emailRequired", "Please enter your email"));
       return;
     }
 
@@ -98,15 +101,15 @@ const Auth = () => {
       const result = await viewsMaxApi.forgotPassword(forgotPasswordEmail);
 
       if (result.success) {
-        toast.success("Password reset email sent! Check your inbox.");
+        toast.success(t("auth.forgotPassword.sent", "Password reset email sent! Check your inbox."));
         setShowForgotPassword(false);
         setForgotPasswordEmail("");
       } else {
-        toast.error(result.error || "Failed to send reset email. Please try again.");
+        toast.error(result.error || t("auth.forgotPassword.failed", "Failed to send reset email. Please try again."));
       }
     } catch (error) {
       console.error('Forgot password error:', error);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(t("auth.errors.unexpected", "An unexpected error occurred. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +153,7 @@ const Auth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toast.error("Please fill in all fields");
+      toast.error(t("auth.errors.fillAllFields", "Please fill in all fields"));
       return;
     }
 
@@ -159,17 +162,17 @@ const Auth = () => {
       const result = await viewsMaxApi.login(email, password);
       if (result.success && result.data) {
         await completeAuth(result.data);
-        toast.success("Successfully signed in!");
+        toast.success(t("auth.login.success", "Successfully signed in!"));
       } else if (result.error && /not_verified|not verified/i.test(result.error)) {
         // Account exists but the email hasn't been confirmed yet.
         setUnverifiedEmail(email);
-        toast.error("Please verify your email first. We can resend the link below.");
+        toast.error(t("auth.login.verifyFirst", "Please verify your email first. We can resend the link below."));
       } else {
-        toast.error(result.error || "Invalid email or password. Please check your credentials.");
+        toast.error(result.error || t("auth.login.invalidCredentials", "Invalid email or password. Please check your credentials."));
       }
     } catch (error) {
       console.error('Sign in error:', error);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(t("auth.errors.unexpected", "An unexpected error occurred. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -178,18 +181,18 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !name || !password || !confirmPassword) {
-      toast.error("Please fill in all fields");
+      toast.error(t("auth.errors.fillAllFields", "Please fill in all fields"));
       return;
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords don't match");
+      toast.error(t("auth.errors.passwordMismatch", "Passwords don't match"));
       return;
     }
 
     const validation = validatePassword(password);
     if (!validation.isValid) {
-      toast.error("Password must meet all requirements");
+      toast.error(t("auth.errors.passwordRequirements", "Password must meet all requirements"));
       return;
     }
 
@@ -202,61 +205,66 @@ const Auth = () => {
         setPendingEmail(email);
         setSignupComplete(true);
         setResendCooldown(45);
-        toast.success("Account created! Check your email to confirm.");
+        toast.success(t("auth.signup.success", "Account created! Check your email to confirm."));
       } else {
         if (result.error && result.error.includes("already exists")) {
-          toast.error("An account with this email already exists. Try signing in instead.");
+          toast.error(t("auth.signup.alreadyExists", "An account with this email already exists. Try signing in instead."));
         } else {
-          toast.error(result.error || "Failed to create account. Please try again.");
+          toast.error(result.error || t("auth.signup.failed", "Failed to create account. Please try again."));
         }
       }
     } catch (error) {
       console.error('Sign up error:', error);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(t("auth.errors.unexpected", "An unexpected error occurred. Please try again."));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4 pb-4 pt-16 sm:p-4">
+      {/* No account yet, so the choice is only saved in this browser. The extra top
+          padding on phones keeps the tall sign-up card clear of it. */}
+      <div className="absolute top-4 right-4">
+        <LanguageMenu />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Welcome</CardTitle>
+          <CardTitle className="text-2xl text-center">{t("auth.header.title", "Welcome")}</CardTitle>
           <CardDescription className="text-center">
-            Sign in to your account or create a new one
+            {t("auth.header.description", "Sign in to your account or create a new one")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue={initialTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="signin">{t("auth.tabs.signIn", "Sign In")}</TabsTrigger>
+              <TabsTrigger value="signup">{t("auth.tabs.signUp", "Sign Up")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="signin">
               {!showForgotPassword ? (
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t("auth.login.email", "Email")}</Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email"
+                      placeholder={t("auth.form.emailPlaceholder", "Enter your email")}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">{t("auth.login.password", "Password")}</Label>
                     <div className="relative">
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter your password"
+                        placeholder={t("auth.login.passwordPlaceholder", "Enter your password")}
                         required
                       />
                       <Button
@@ -271,12 +279,12 @@ const Auth = () => {
                     </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
+                    {isLoading ? t("auth.login.submitting", "Signing in...") : t("auth.login.submit", "Sign In")}
                   </Button>
                   {unverifiedEmail && (
                     <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
                       <p className="mb-2">
-                        Your email isn't verified yet. Check your inbox or resend the link.
+                        {t("auth.login.unverifiedNotice", "Your email isn't verified yet. Check your inbox or resend the link.")}
                       </p>
                       <Button
                         type="button"
@@ -286,7 +294,9 @@ const Auth = () => {
                         disabled={resendCooldown > 0}
                         onClick={() => handleResendVerification(unverifiedEmail)}
                       >
-                        {resendCooldown > 0 ? `Resend email (${resendCooldown}s)` : "Resend verification email"}
+                        {resendCooldown > 0
+                          ? t("auth.verification.resendCooldown", "Resend email ({{seconds}}s)", { seconds: resendCooldown })
+                          : t("auth.verification.resendButton", "Resend verification email")}
                       </Button>
                     </div>
                   )}
@@ -298,25 +308,25 @@ const Auth = () => {
                       onClick={() => setShowForgotPassword(true)}
                       className="text-sm text-muted-foreground"
                     >
-                      Forgot your password?
+                      {t("auth.login.forgotPassword", "Forgot your password?")}
                     </Button>
                   </div>
                 </form>
               ) : (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="forgot-email">Email</Label>
+                    <Label htmlFor="forgot-email">{t("auth.forgotPassword.email", "Email")}</Label>
                     <Input
                       id="forgot-email"
                       type="email"
                       value={forgotPasswordEmail}
                       onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                      placeholder="Enter your email"
+                      placeholder={t("auth.form.emailPlaceholder", "Enter your email")}
                       required
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Sending..." : "Send Reset Email"}
+                    {isLoading ? t("auth.forgotPassword.submitting", "Sending...") : t("auth.forgotPassword.submit", "Send Reset Email")}
                   </Button>
                   <div className="text-center">
                     <Button
@@ -326,7 +336,7 @@ const Auth = () => {
                       onClick={() => setShowForgotPassword(false)}
                       className="text-sm text-muted-foreground"
                     >
-                      Back to sign in
+                      {t("auth.forgotPassword.backToSignIn", "Back to sign in")}
                     </Button>
                   </div>
                 </form>
@@ -340,11 +350,14 @@ const Auth = () => {
                     <Mail className="h-6 w-6 text-primary" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-lg font-semibold">Check your email</h3>
+                    <h3 className="text-lg font-semibold">{t("auth.signup.checkEmail.title", "Check your email")}</h3>
                     <p className="text-sm text-muted-foreground">
-                      We sent a confirmation link to{" "}
-                      <span className="font-medium text-foreground">{pendingEmail}</span>.
-                      Click it to verify your account and continue setup.
+                      <Trans
+                        i18nKey="auth.signup.checkEmail.description"
+                        defaults="We sent a confirmation link to <0>{{email}}</0>. Click it to verify your account and continue setup."
+                        values={{ email: pendingEmail }}
+                        components={[<span className="font-medium text-foreground" />]}
+                      />
                     </p>
                   </div>
                   <Button
@@ -354,7 +367,9 @@ const Auth = () => {
                     disabled={resendCooldown > 0}
                     onClick={() => handleResendVerification(pendingEmail)}
                   >
-                    {resendCooldown > 0 ? `Resend email (${resendCooldown}s)` : "Resend email"}
+                    {resendCooldown > 0
+                      ? t("auth.verification.resendCooldown", "Resend email ({{seconds}}s)", { seconds: resendCooldown })
+                      : t("auth.signup.checkEmail.resend", "Resend email")}
                   </Button>
                   <Button
                     type="button"
@@ -366,45 +381,45 @@ const Auth = () => {
                       setPendingEmail("");
                     }}
                   >
-                    Back to sign up
+                    {t("auth.signup.checkEmail.backToSignUp", "Back to sign up")}
                   </Button>
                 </div>
               ) : (
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Name</Label>
+                  <Label htmlFor="signup-name">{t("auth.signup.name", "Name")}</Label>
                   <Input
                     id="signup-name"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
+                    placeholder={t("auth.signup.namePlaceholder", "Enter your name")}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email">{t("auth.signup.email", "Email")}</Label>
                   <Input
                     id="signup-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder={t("auth.form.emailPlaceholder", "Enter your email")}
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    We'll email you a link to confirm your address, so use one you can open.
+                    {t("auth.signup.emailHint", "We'll email you a link to confirm your address, so use one you can open.")}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                  <Label htmlFor="signup-password">{t("auth.signup.password", "Password")}</Label>
                   <div className="relative">
                     <Input
                       id="signup-password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Create a password"
+                      placeholder={t("auth.signup.passwordPlaceholder", "Create a password")}
                       required
                       className={`${password && !passwordValidation.isValid
                           ? 'border-red-500 focus-visible:ring-red-500'
@@ -432,7 +447,7 @@ const Auth = () => {
                         ) : (
                           <X className="w-4 h-4" />
                         )}
-                        <span>At least 8 characters</span>
+                        <span>{t("auth.signup.rules.minLength", "At least 8 characters")}</span>
                       </div>
                       <div className={`flex items-center gap-2 ${passwordValidation.hasUpperCase ? 'text-green-600' : 'text-red-500'
                         }`}>
@@ -441,7 +456,7 @@ const Auth = () => {
                         ) : (
                           <X className="w-4 h-4" />
                         )}
-                        <span>At least one uppercase letter</span>
+                        <span>{t("auth.signup.rules.uppercase", "At least one uppercase letter")}</span>
                       </div>
                       <div className={`flex items-center gap-2 ${passwordValidation.hasLowerCase ? 'text-green-600' : 'text-red-500'
                         }`}>
@@ -450,7 +465,7 @@ const Auth = () => {
                         ) : (
                           <X className="w-4 h-4" />
                         )}
-                        <span>At least one lowercase letter</span>
+                        <span>{t("auth.signup.rules.lowercase", "At least one lowercase letter")}</span>
                       </div>
                       <div className={`flex items-center gap-2 ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-500'
                         }`}>
@@ -459,20 +474,20 @@ const Auth = () => {
                         ) : (
                           <X className="w-4 h-4" />
                         )}
-                        <span>At least one special character</span>
+                        <span>{t("auth.signup.rules.specialChar", "At least one special character")}</span>
                       </div>
                     </div>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Label htmlFor="confirm-password">{t("auth.signup.confirmPassword", "Confirm Password")}</Label>
                   <div className="relative">
                     <Input
                       id="confirm-password"
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm your password"
+                      placeholder={t("auth.signup.confirmPasswordPlaceholder", "Confirm your password")}
                       required
                       minLength={6}
                     />
@@ -497,11 +512,11 @@ const Auth = () => {
                     htmlFor="join-list"
                     className="text-sm font-normal cursor-pointer"
                   >
-                    Join the list. Grow faster every week.
+                    {t("auth.signup.joinList", "Join the list. Grow faster every week.")}
                   </Label>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Sign Up"}
+                  {isLoading ? t("auth.signup.submitting", "Creating account...") : t("auth.signup.submit", "Sign Up")}
                 </Button>
               </form>
               )}

@@ -12,14 +12,16 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Context;
 
 /**
  * Downloads a pasted video URL into the outliers DB in the background (Instagram
  * scrapes can take minutes), then chains straight into breakdown generation so
  * the breakdown page's spinner rolls from "downloading" into "analysing".
  * Failures are recorded on the video's outlier_breakdowns row — the page polls
- * that row, so the error surfaces there.
+ * that row, so the error surfaces there — and report()ed, so the exception
+ * handler sends them to Sentry/the error log with the platform + video id in
+ * Context. A provider outage or a mis-restricted API key is not a user error.
  *
  * Dispatch through dispatchTracked(): the video has no row until the download
  * lands, so a poller (the get_outlier tool) can't tell "still downloading"
@@ -72,16 +74,14 @@ class IngestOutlierByUrlJob implements ShouldQueue
 
     private function ingest(YouTubeChannelService $youtube, CaptApiOutlierService $captApiOutliers): void
     {
+        Context::add(['platform' => $this->platform, 'video_id' => $this->videoId]);
+
         try {
             $this->platform === 'youtube'
                 ? $youtube->ingestOutlierByUrl($this->url)
                 : $captApiOutliers->fetchAndStore($this->platform, $this->url);
         } catch (\Throwable $e) {
-            Log::warning('IngestOutlierByUrlJob failed', [
-                'platform' => $this->platform,
-                'video_id' => $this->videoId,
-                'error' => $e->getMessage(),
-            ]);
+            report($e);
 
             OutlierBreakdown::updateOrCreate(
                 ['platform' => $this->platform, 'video_id' => $this->videoId],

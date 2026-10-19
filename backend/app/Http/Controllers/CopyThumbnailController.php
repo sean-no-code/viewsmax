@@ -48,7 +48,7 @@ class CopyThumbnailController extends Controller
             'resolution_width' => 'nullable|integer|min:256|max:2048',
             'resolution_height' => 'nullable|integer|min:256|max:2048',
             'dw_pose_enabled' => 'nullable|boolean',
-            'ai_model_id' => 'required|exists:ai_models,id', // Required for trigger word and model characteristics
+            'ai_model_id' => ['required', \Illuminate\Validation\Rule::exists('ai_models', 'id')->where('user_id', Auth::id())], // Required for trigger word and model characteristics
             'negative_prompt_id' => 'nullable|exists:prompts,id',
             'style_prompt_id' => 'nullable|exists:prompts,id',
             'general_prompt_id' => 'nullable|exists:prompts,id',
@@ -90,7 +90,7 @@ class CopyThumbnailController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid or malformed image URL',
-                    'details' => $e->getMessage()
+                    'details' => \App\Support\UserSafeError::detail($e)
                 ], 400);
             }
         }
@@ -120,7 +120,7 @@ class CopyThumbnailController extends Controller
         // Handle file upload
         if ($request->hasFile('source_image')) {
             $file = $request->file('source_image');
-            $filename = 'source_'.Auth::id().'_'.time().'.'.$file->getClientOriginalExtension();
+            $filename = 'source_'.Auth::id().'_'.time().'.'.$file->extension();
             $path = $file->storeAs('copy-thumbnails/'.Auth::id().'/sources', $filename, 'public');
         }
         // Handle URL input
@@ -159,7 +159,7 @@ class CopyThumbnailController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to download image from URL: '.$e->getMessage(),
+                    'message' => \App\Support\UserSafeError::withDetail('Failed to download image from URL: ', $e),
                 ], 400);
             }
         }

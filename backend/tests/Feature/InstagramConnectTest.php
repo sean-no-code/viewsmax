@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Social\Providers\InstagramProvider;
+use App\Services\Social\SocialConnectException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -83,6 +84,9 @@ class InstagramConnectTest extends TestCase
         $this->assertSame('long-lived', $account->access_token);
         $this->assertNotNull($account->token_expires_at);
         $this->assertTrue($account->token_expires_at->gt(now()->addDays(50)));
+
+        // Profile lookups go through the shared Meta Graph version (config/social.php).
+        Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://graph.instagram.com/v25.0/me'));
     }
 
     /**
@@ -95,7 +99,7 @@ class InstagramConnectTest extends TestCase
     {
         Http::fake([
             'api.instagram.com/oauth/access_token' => Http::response([
-                'data' => [['access_token' => 'short-lived', 'user_id' => 'ig-1', 'permissions' => 'instagram_business_basic']],
+                'data' => [['access_token' => 'short-lived', 'user_id' => 'ig-1', 'permissions' => 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_comments']],
             ], 200),
             'graph.instagram.com/access_token*' => Http::response(['access_token' => 'long-lived', 'expires_in' => 5184000], 200),
             'graph.instagram.com/*' => Http::response(['user_id' => 'ig-1', 'username' => 'viewsmax'], 200),
@@ -109,6 +113,60 @@ class InstagramConnectTest extends TestCase
         $account = SocialAccount::sole();
         $this->assertSame('ig-1', $account->platform_account_id);
         $this->assertSame('long-lived', $account->access_token);
+    }
+
+    /**
+     * A user who unticks "publish content" on the consent screen still gets a
+     * token; storing it meant every later post failed with a raw (#200)/190
+     * body. The connect itself must fail and name what to re-tick.
+     */
+    public function test_unticked_publish_permission_fails_the_connect_naming_it(): void
+    {
+        Http::fake([
+            'api.instagram.com/oauth/access_token' => Http::response([
+                'access_token' => 'short-lived',
+                'user_id' => 'ig-1',
+                'permissions' => ['instagram_business_basic', 'instagram_business_manage_comments'],
+            ], 200),
+            'graph.instagram.com/*' => Http::response(['access_token' => 'long-lived', 'expires_in' => 5184000], 200),
+        ]);
+
+        try {
+            (new InstagramProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+            $this->fail('expected the connect to fail');
+        } catch (SocialConnectException $e) {
+            $this->assertStringContainsString('instagram_business_content_publish', $e->getMessage());
+            $this->assertStringNotContainsString('instagram_business_basic', $e->getMessage());
+            $this->assertStringContainsStringIgnoringCase('reconnect', $e->getMessage());
+        }
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'graph.instagram.com/access_token'));
+        $this->assertSame(0, SocialAccount::count());
+    }
+
+    public function test_declining_the_optional_insights_scope_still_connects(): void
+    {
+        // The insights scope is only requested behind the reach flag and never
+        // blocks publishing, so it must not be treated as required.
+        config(['social.platforms.instagram.scopes' => [
+            'instagram_business_basic',
+            'instagram_business_content_publish',
+            'instagram_business_manage_comments',
+            'instagram_business_manage_insights',
+        ]]);
+        Http::fake([
+            'api.instagram.com/oauth/access_token' => Http::response([
+                'access_token' => 'short-lived',
+                'user_id' => 'ig-1',
+                'permissions' => ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_comments'],
+            ], 200),
+            'graph.instagram.com/access_token*' => Http::response(['access_token' => 'long-lived', 'expires_in' => 5184000], 200),
+            'graph.instagram.com/*' => Http::response(['user_id' => 'ig-1', 'username' => 'viewsmax'], 200),
+        ]);
+
+        (new InstagramProvider)->connectFromCode(User::factory()->create(), 'code', 'https://app/cb');
+
+        $this->assertSame('connected', SocialAccount::sole()->status);
     }
 
     public function test_missing_short_lived_token_fails_before_long_lived_exchange(): void

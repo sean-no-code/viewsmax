@@ -22,10 +22,12 @@ class PlanController extends Controller
                 'data' => $plans
             ]);
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plans',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -46,7 +48,7 @@ class PlanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Plan not found',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 404);
         }
     }

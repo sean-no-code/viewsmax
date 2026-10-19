@@ -19,6 +19,7 @@ tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
 
 viewsmax-plugin/
+infra/
 tasks/
 
 .claude/worktrees/

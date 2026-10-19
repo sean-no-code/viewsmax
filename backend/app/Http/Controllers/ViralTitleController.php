@@ -42,7 +42,7 @@ class ViralTitleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve viral titles',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -91,7 +91,7 @@ class ViralTitleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create viral title: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to create viral title: ', $e)
             ], 500);
         }
     }
@@ -151,7 +151,7 @@ class ViralTitleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update viral title: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to update viral title: ', $e)
             ], 500);
         }
     }
@@ -175,7 +175,7 @@ class ViralTitleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete viral title: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to delete viral title: ', $e)
             ], 500);
         }
     }

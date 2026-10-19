@@ -6,12 +6,14 @@ import { viewsMaxApi } from "@/lib/api-service";
 import ConnectAccounts from "@/components/ConnectAccounts";
 import TrialCheckout from "@/components/onboarding/TrialCheckout";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 type Step = "connect" | "trial";
 
-const STEPS: { key: Step; label: string }[] = [
-  { key: "connect", label: "Connect accounts" },
-  { key: "trial", label: "Choose your plan" },
+const stepList = (t: TFunction): { key: Step; label: string }[] => [
+  { key: "connect", label: t("onboarding.steps.connect", "Connect accounts") },
+  { key: "trial", label: t("onboarding.steps.trial", "Choose your plan") },
 ];
 
 const pillStyle: React.CSSProperties = {
@@ -28,6 +30,7 @@ const pillStyle: React.CSSProperties = {
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, refreshUser, signOut } = useAuth();
   const [step, setStep] = useState<Step>("connect");
   const [hasConnection, setHasConnection] = useState((user?.connections_count ?? 0) > 0);
@@ -70,7 +73,7 @@ const Onboarding = () => {
       navigate("/dashboard/post", { replace: true });
     } else {
       setFinishing(false);
-      toast.error(result.error || "Couldn't finish setup. Please try again.");
+      toast.error(result.error || t("onboarding.errors.finishFailed", "Couldn't finish setup. Please try again."));
     }
   };
 
@@ -93,7 +96,8 @@ const Onboarding = () => {
     await finishOnboarding();
   };
 
-  const steps = promoOnly ? STEPS.filter((s) => s.key !== "trial") : STEPS;
+  const allSteps = stepList(t);
+  const steps = promoOnly ? allSteps.filter((s) => s.key !== "trial") : allSteps;
   const currentIndex = steps.findIndex((s) => s.key === step);
 
   if (finishing) {
@@ -101,13 +105,13 @@ const Onboarding = () => {
       <div style={{ minHeight: "100vh", background: "var(--paper-1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center" }}>
           <Loader2 className="animate-spin" size={32} style={{ color: "var(--vm-red)", margin: "0 auto" }} />
-          <p style={{ marginTop: 12, color: "var(--ink-on-paper-3)" }}>Setting up your account…</p>
+          <p style={{ marginTop: 12, color: "var(--ink-on-paper-3)" }}>{t("onboarding.finishing", "Setting up your account…")}</p>
         </div>
       </div>
     );
   }
 
-  const title = step === "trial" ? "Choose your plan" : "Set up your account";
+  const title = step === "trial" ? t("onboarding.title.trial", "Choose your plan") : t("onboarding.title.setup", "Set up your account");
 
   return (
     <div className="onboarding-wizard" style={{ minHeight: "100vh", background: "var(--paper-1)", color: "var(--ink-on-paper-1)", fontFamily: "var(--font-body)", padding: "28px clamp(16px, 5vw, 40px) 64px" }}>
@@ -124,7 +128,7 @@ const Onboarding = () => {
             {title}
           </h1>
           <a onClick={signOut} style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0, color: "var(--ink-on-paper-3)", cursor: "pointer" }}>
-            Log out
+            {t("onboarding.logOut", "Log out")}
           </a>
         </div>
 
@@ -166,21 +170,21 @@ const Onboarding = () => {
 
         {step === "connect" && (
           <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: "var(--r-lg)", padding: "clamp(18px, 5vw, 32px)" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, letterSpacing: "-.01em" }}>Connect your accounts</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 19, letterSpacing: "-.01em" }}>{t("onboarding.connect.title", "Connect your accounts")}</div>
             <div style={{ fontSize: 13, color: "var(--ink-on-paper-3)", marginTop: 2 }}>
-              Connect at least one platform so we can analyze your content. You can always add more later.
+              {t("onboarding.connect.description", "Connect at least one platform so we can analyze your content. You can always add more later.")}
             </div>
             <div style={{ margin: "24px 0" }}>
               <ConnectAccounts mode="onboarding" onAnyConnected={() => setHasConnection(true)} />
             </div>
             <button className="ow-pill" style={{ ...pillStyle, width: "100%" }} disabled={!hasConnection} onClick={handleConnectContinue}>
-              Continue
+              {t("onboarding.connect.continue", "Continue")}
             </button>
             <button
               onClick={skipConnect}
               style={{ width: "100%", marginTop: 12, background: "transparent", border: "none", color: "var(--ink-on-paper-3)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
-              Skip for now
+              {t("onboarding.connect.skip", "Skip for now")}
             </button>
           </div>
         )}

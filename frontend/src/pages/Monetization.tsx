@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Copy, Check, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { viewsMaxApi } from "@/lib/api-service";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -56,6 +57,7 @@ interface Video {
 }
 
 const Monetization = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [isLoadingChannels, setIsLoadingChannels] = useState(true);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
@@ -98,11 +100,11 @@ const Monetization = () => {
       }
     } catch (error) {
       console.error('Failed to fetch backend channels:', error);
-      toast.error('Failed to load channels');
+      toast.error(t('monetization.toast.loadChannelsFailed', 'Failed to load channels'));
     } finally {
       setIsLoadingChannels(false);
     }
-  }, [user, selectedChannel]);
+  }, [user, selectedChannel, t]);
 
   // Load videos for selected channel
   const loadVideos = useCallback(async () => {
@@ -125,7 +127,7 @@ const Monetization = () => {
       }
 
       if (!token) {
-        toast.error('Authentication required');
+        toast.error(t('monetization.toast.authRequired', 'Authentication required'));
         return;
       }
 
@@ -139,17 +141,17 @@ const Monetization = () => {
         }));
         setVideos(videosWithLinks);
       } else {
-        toast.error(response.error || 'Failed to load videos');
+        toast.error(response.error || t('monetization.toast.loadVideosFailed', 'Failed to load videos'));
         setVideos([]);
       }
     } catch (error) {
       console.error('Error loading videos:', error);
-      toast.error('Failed to load videos');
+      toast.error(t('monetization.toast.loadVideosFailed', 'Failed to load videos'));
       setVideos([]);
     } finally {
       setIsLoadingVideos(false);
     }
-  }, [selectedChannel]);
+  }, [selectedChannel, t]);
 
   useEffect(() => {
     fetchBackendChannels();
@@ -162,7 +164,7 @@ const Monetization = () => {
   const handleCopyLink = (link: string) => {
     navigator.clipboard.writeText(link);
     setCopiedLink(link);
-    toast.success('Link copied to clipboard');
+    toast.success(t('monetization.toast.linkCopied', 'Link copied to clipboard'));
     setTimeout(() => setCopiedLink(null), 2000);
   };
 
@@ -172,7 +174,7 @@ const Monetization = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading channels...</p>
+            <p className="text-muted-foreground">{t("monetization.loadingChannels", "Loading channels...")}</p>
           </div>
         </div>
       </div>
@@ -184,17 +186,17 @@ const Monetization = () => {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Monetization</CardTitle>
+            <CardTitle className="text-lg">{t("monetization.title", "Monetization")}</CardTitle>
             <CardDescription>
-              Track conversions and manage monetization links for your videos
+              {t("monetization.description", "Track conversions and manage monetization links for your videos")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
               <DollarSign className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No channels found</p>
+              <p className="text-muted-foreground">{t("monetization.noChannels", "No channels found")}</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Connect your YouTube channel to get started
+                {t("monetization.connectChannel", "Connect your YouTube channel to get started")}
               </p>
             </div>
           </CardContent>
@@ -207,14 +209,14 @@ const Monetization = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader className="p-4">
-          <CardTitle className="text-lg">Monetization</CardTitle>
+          <CardTitle className="text-lg">{t("monetization.title", "Monetization")}</CardTitle>
           <CardDescription>
-            Track conversions and manage monetization links for your videos
+            {t("monetization.description", "Track conversions and manage monetization links for your videos")}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="mb-6">
-            <label className="text-sm font-medium mb-2 block">Select Channel</label>
+            <label className="text-sm font-medium mb-2 block">{t("monetization.selectChannelLabel", "Select Channel")}</label>
             <Select
               value={selectedChannel?.id.toString() || ""}
               onValueChange={(value) => {
@@ -223,7 +225,7 @@ const Monetization = () => {
               }}
             >
               <SelectTrigger className="w-full max-w-md">
-                <SelectValue placeholder="Select a channel" />
+                <SelectValue placeholder={t("monetization.selectChannelPlaceholder", "Select a channel")} />
               </SelectTrigger>
               <SelectContent>
                 {backendChannels.map((channel) => (
@@ -239,22 +241,22 @@ const Monetization = () => {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading videos...</p>
+                <p className="text-muted-foreground">{t("monetization.loadingVideos", "Loading videos...")}</p>
               </div>
             </div>
           ) : videos.length === 0 ? (
             <div className="text-center py-8">
               <DollarSign className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No videos found</p>
+              <p className="text-muted-foreground">{t("monetization.noVideos", "No videos found")}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[72px] px-3">Thumbnail</TableHead>
-                  <TableHead className="px-3">Title</TableHead>
-                  <TableHead className="px-3">Unique Link</TableHead>
-                  <TableHead className="text-right px-3">Conversions</TableHead>
+                  <TableHead className="w-[72px] px-3">{t("monetization.table.thumbnail", "Thumbnail")}</TableHead>
+                  <TableHead className="px-3">{t("monetization.table.title", "Title")}</TableHead>
+                  <TableHead className="px-3">{t("monetization.table.uniqueLink", "Unique Link")}</TableHead>
+                  <TableHead className="text-right px-3">{t("monetization.table.conversions", "Conversions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

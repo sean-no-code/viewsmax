@@ -2,7 +2,8 @@
 
 namespace App\Mcp\Tools;
 
-use Illuminate\Support\Facades\Http;
+use App\Support\SafeHttp;
+use App\Support\UnsafeUrlException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -27,6 +28,7 @@ class UploadMedia extends ViewsMaxTool
         'image/gif' => ['image', 'gif'],
         'video/mp4' => ['video', 'mp4'],
         'video/quicktime' => ['video', 'mov'],
+        'video/x-m4v' => ['video', 'mp4'], // how libmagic reads some phone-exported mp4s
     ];
 
     public function name(): string
@@ -57,28 +59,20 @@ class UploadMedia extends ViewsMaxTool
 
         $maxBytes = ((int) config('mcp.upload_max_mb', 100)) * 1024 * 1024;
 
+        // SafeHttp: public addresses only (no EC2 metadata / private network),
+        // redirects re-checked, download aborted once it passes the cap.
         try {
-            $response = Http::timeout(120)->withOptions(['stream' => false])->get($validated['url']);
-        } catch (\Illuminate\Http\Client\ConnectionException) {
-            $host = parse_url($validated['url'], PHP_URL_HOST) ?: 'the link';
-
-            return ToolResult::error("Couldn't reach {$host} to download the file. Check the link, or try again in a minute.");
+            $body = SafeHttp::get($validated['url'], $maxBytes, 120)['body'];
+        } catch (UnsafeUrlException $e) {
+            return ToolResult::error($e->getMessage());
         }
 
-        if (! $response->successful()) {
-            return ToolResult::error("Could not download the file (HTTP {$response->status()}).");
-        }
-
-        $mime = strtolower(trim(explode(';', $response->header('Content-Type'))[0]));
+        // Type the file by its bytes: the header can lie, and S3/R2 objects
+        // stored without a type arrive as binary/octet-stream. Never echo the
+        // header back — it would describe whatever the URL really pointed at.
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($body) ?: '';
         if (! isset(self::SUPPORTED_MIMES[$mime])) {
-            return ToolResult::error(
-                "Unsupported content type '{$mime}'. Supported: " . implode(', ', array_keys(self::SUPPORTED_MIMES)) . '.'
-            );
-        }
-
-        $body = $response->body();
-        if (strlen($body) > $maxBytes) {
-            return ToolResult::error('File exceeds the ' . config('mcp.upload_max_mb', 100) . 'MB upload limit.');
+            return ToolResult::error('That file is not a supported image or video (jpeg, png, webp, gif, mp4, mov).');
         }
 
         [$type, $extension] = self::SUPPORTED_MIMES[$mime];

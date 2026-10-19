@@ -1,0 +1,240 @@
+{
+  "seo": {
+    "title": "ViewsMax — Gere mais clientes com o seu conteúdo",
+    "description": "O ViewsMax ajuda criadores e profissionais de marketing a gerar mais leads com o seu conteúdo. Agende posts em todas as redes e veja qual conteúdo vende."
+  },
+  "nav": {
+    "features": "Recursos",
+    "channels": "Canais",
+    "pricing": "Preços",
+    "freeTools": "Ferramentas",
+    "aiAgents": "Agentes de IA",
+    "resources": "Materiais",
+    "logIn": "Entrar",
+    "start": "Comece por $0",
+    "language": "Idioma"
+  },
+  "resources": {
+    "api": {
+      "label": "Documentação da API",
+      "desc": "Referência da API REST e especificação OpenAPI"
+    },
+    "mcp": {
+      "label": "Instalar MCP",
+      "desc": "O servidor MCP do ViewsMax: endereço, autenticação e 26 ferramentas"
+    },
+    "cli": {
+      "label": "Configurar CLI",
+      "desc": "Use o ViewsMax no Claude Code"
+    },
+    "blog": {
+      "label": "Blog",
+      "desc": "Táticas de crescimento e novidades do produto"
+    },
+    "support": {
+      "label": "Suporte",
+      "desc": "Entre no nosso Discord para ajuda e novidades"
+    },
+    "github": {
+      "label": "GitHub",
+      "desc": "Exemplos, SDKs e issues do ViewsMax"
+    }
+  },
+  "freeTools": {
+    "youtube": {
+      "label": "Transcrição do YouTube",
+      "desc": "Baixe e copie a transcrição de qualquer vídeo do YouTube"
+    },
+    "tiktok": {
+      "label": "Transcrição do TikTok",
+      "desc": "Converta qualquer vídeo do TikTok em texto"
+    },
+    "instagram": {
+      "label": "Transcrição do Instagram",
+      "desc": "Transforme Reels e vídeos em texto"
+    },
+    "thumbnail": {
+      "label": "Prévia de thumbnail",
+      "desc": "Veja sua thumbnail na página inicial do YouTube"
+    },
+    "revenue": {
+      "label": "Calculadora de receita",
+      "desc": "Estime seus ganhos no YouTube"
+    }
+  },
+  "agentCards": {
+    "claude": "Um único conector para todos os apps do Claude",
+    "claude-cowork": "O mesmo conector do Claude, usado pelo agente de desktop",
+    "claude-code": "Um comando no terminal, login via OAuth",
+    "chatgpt": "Conector personalizado no modo desenvolvedor",
+    "codex": "Dois comandos na CLI do Codex",
+    "cursor": "Configuração MCP com uma chave de API",
+    "openclaw": "Skill do ViewsMax com uma chave de API",
+    "hermes": "Servidor MCP no config.yaml, login via OAuth"
+  },
+  "footer": {
+    "tagline": "Crie conteúdo que vende.",
+    "product": "Produto",
+    "scheduler": "Agendador",
+    "salesTracking": "Rastreamento de vendas",
+    "analytics": "Análises",
+    "company": "Empresa",
+    "about": "Sobre",
+    "careers": "Carreiras",
+    "contact": "Contato",
+    "affiliates": "Afiliados",
+    "copyright": "© 2026 ViewsMax. Sem afiliação com as plataformas sociais exibidas.",
+    "privacy": "Privacidade",
+    "terms": "Termos"
+  },
+  "hero": {
+    "headline": [
+      "Construa uma máquina de conteúdo",
+      "que gera receita."
+    ],
+    "sub": "Encontre conteúdos vencedores, publique em todas as plataformas e acompanhe o que converte (com suporte humano do Sean).",
+    "connectPlaceholder": "Conecte suas redes sociais",
+    "connect": "Conectar",
+    "noCard": "Sem cartão de crédito"
+  },
+  "demos": {
+    "tabsLabel": "Demonstrações dos recursos",
+    "demoAlt": "demonstração",
+    "play": "Assistir à demonstração",
+    "comingSoon": "Vídeo de demonstração em breve",
+    "tryFree": "Teste grátis",
+    "outliers": {
+      "label": "Outliers",
+      "title": "Encontre outliers que valem a pena copiar",
+      "desc": "Pesquise milhões de vídeos no YouTube, TikTok e Instagram para encontrar posts com desempenho muito acima da média do canal — depois entenda por que funcionaram e recrie-os para o seu nicho."
+    },
+    "tracking": {
+      "label": "Rastreamento",
+      "title": "Veja quais posts geram vendas",
+      "desc": "Cada clique e cada conversão são ligados ao post e à plataforma exatos de onde vieram, para você saber qual conteúdo realmente gera receita — não só visualizações."
+    },
+    "scheduling": {
+      "label": "Agendamento",
+      "title": "Publique em todo lugar com um só calendário",
+      "desc": "Crie uma vez e publique no YouTube, TikTok, Instagram, X, LinkedIn e Threads no seu cronograma — o ViewsMax publica por você no horário que você escolher."
+    }
+  },
+  "features": {
+    "eyebrow": "O CICLO NO PILOTO AUTOMÁTICO",
+    "title": "Publique em todo lugar. Acompanhe cada venda.",
+    "sub": "Um calendário para agendar tudo e um painel que mostra o que realmente dá dinheiro.",
+    "items": [
+      {
+        "t": "Agende em todos os canais",
+        "d": "Planeje e publique automaticamente no Instagram, TikTok, X, YouTube, LinkedIn e mais a partir de um só calendário. Configure uma vez e o ViewsMax publica no horário ideal, sem você precisar fazer nada."
+      },
+      {
+        "t": "Acompanhe o que realmente vende",
+        "d": "Cada post é ligado a receita real, não a curtidas. Veja exatamente qual conteúdo e qual canal colocaram dinheiro na sua conta — sem métricas de vaidade."
+      },
+      {
+        "t": "Aposte no que funciona",
+        "d": "O ViewsMax identifica seus posts que mais faturam e diz o que agendar em seguida, para que cada semana venda mais do que a anterior — automaticamente."
+      }
+    ]
+  },
+  "channels": {
+    "eyebrow": "TODOS OS CANAIS QUE IMPORTAM PARA VOCÊ",
+    "title": "Publique nos canais que suportamos.",
+    "sub": "Conecte uma vez e depois agende, publique automaticamente e acompanhe as vendas de todos em um só lugar."
+  },
+  "monetize": {
+    "eyebrow": "ATRIBUIÇÃO, NÃO MÉTRICAS DE VAIDADE",
+    "title": [
+      "Saiba exatamente qual post fez a",
+      "venda."
+    ],
+    "body": "O ViewsMax conecta cada canal à sua receita, para você parar de adivinhar. Veja qual plataforma, qual post e qual horário realmente geram vendas — e deixe os vencedores rodarem no piloto automático.",
+    "rows": [
+      "Agende um mês de conteúdo em minutos",
+      "Ligue cada post às vendas que ele gerou",
+      "Republique automaticamente seus posts que mais vendem"
+    ],
+    "topSellers": "Ver meus campeões de venda",
+    "example": "Ver um exemplo"
+  },
+  "mock": {
+    "pill": "Seu {{post}} gerou {{amount}} em vendas",
+    "pillPost": "Reel de terça",
+    "topPost": "MELHOR POST",
+    "thumbAlt": "Thumbnail do melhor post",
+    "play": "Assistir ao vídeo",
+    "postTitle": "Reel de bastidores",
+    "postMeta": "Publicado automaticamente ter 18h · 128 mil de alcance",
+    "salesLabel": "Vendas deste post",
+    "orders": "312 pedidos",
+    "conv": "4,1% conv.",
+    "scheduleMore": "Agendar mais como este"
+  },
+  "pricing": {
+    "eyebrow": "PREÇOS",
+    "title": "Grátis para começar. Barato para crescer.",
+    "sub": "Agende em todos os canais, acompanhe cada venda e escolha o plano que cresce com você.",
+    "popular": "POPULAR",
+    "perMonth": "/mês",
+    "talkToUs": "Fale com a gente",
+    "tiers": {
+      "Starter": {
+        "blurb": "Lance sua primeira oferta.",
+        "feats": [
+          "5 canais",
+          "1 oferta",
+          "400 posts/mês"
+        ]
+      },
+      "Creator": {
+        "blurb": "Para marcas que vendem.",
+        "feats": [
+          "30 canais",
+          "5 ofertas",
+          "Posts ilimitados/mês"
+        ]
+      },
+      "Pro": {
+        "blurb": "Escale todos os canais.",
+        "feats": [
+          "Canais ilimitados",
+          "10 ofertas",
+          "Posts ilimitados/mês"
+        ]
+      },
+      "Agency": {
+        "blurb": "Para equipes e agências.",
+        "feats": [
+          "Canais ilimitados",
+          "Ofertas ilimitadas",
+          "Posts ilimitados/mês"
+        ]
+      }
+    },
+    "includes": [
+      "Várias contas por plataforma",
+      "Marcas (grupos de contas)",
+      "Links rastreados e atribuição de receita",
+      "Pesquisa de outliers com análises de IA",
+      "Boosts: repost e promoção automáticos",
+      "Servidor MCP e API para agentes de IA",
+      "Cadeias de comentários e threads no X",
+      "Rastreamento de alcance no Beehiiv",
+      "Suporte humano"
+    ]
+  },
+  "cta": {
+    "title": [
+      "Crie conteúdo",
+      "que vende."
+    ],
+    "body": "Publique em todo lugar, acompanhe o que vende e aumente sua receita sem esforço. Grátis para começar — sem cartão de crédito."
+  },
+  "cookie": {
+    "message": "Usamos cookies para melhorar sua experiência de navegação e analisar nosso tráfego. Ao clicar em \"Aceitar\", você concorda com o uso de cookies.",
+    "learnMore": "Saiba mais",
+    "decline": "Recusar",
+    "accept": "Aceitar"
+  }
+}

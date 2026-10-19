@@ -11,7 +11,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "vite";
 import { AGENT_LIST, briefPath, buildAgentJsonLd, buildAgentMarkdown } from "../src/lib/agent-pages";
-import { MCP_MD_PATH, MCP_PAGE_SEO, MCP_PATH, buildMcpJsonLd, buildMcpMarkdown } from "../src/lib/mcp-page";
+import { MCP_MD_PATH, MCP_PATH, buildMcpJsonLd, buildMcpMarkdown, mcpContent } from "../src/lib/mcp-page";
+import { HOME_LOCALES, localizedPath } from "../src/pages/landing/locales";
+import { hreflangLinks } from "../src/lib/locale-seo";
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = join(rootDir, "dist");
@@ -32,6 +34,7 @@ const cleanHead = (html: string) =>
     .replace(/\s*<meta property="og:[^"]*"[^>]*>/gi, "")
     .replace(/\s*<meta name="twitter:[^"]*"[^>]*>/gi, "")
     .replace(/\s*<link rel="canonical"[^>]*>/gi, "")
+    .replace(/\s*<link rel="alternate" hreflang[^>]*>/gi, "") // homepage-only, added by prerender-seo.ts
     .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/gi, "");
 
 const shell = cleanHead(readFileSync(join(distDir, "index.html"), "utf8"));
@@ -42,7 +45,15 @@ interface Seo {
   keywords: string;
 }
 
-function writeRoute(path: string, { title, description, keywords }: Seo, jsonLd: Record<string, unknown>[]) {
+// Translated pages (/mcp and /ru/mcp, ...) also carry their language: <html lang>,
+// og:locale and the hreflang set naming every version.
+interface Locale {
+  htmlLang: string;
+  ogLocale: string;
+  hreflang: string;
+}
+
+function writeRoute(path: string, { title, description, keywords }: Seo, jsonLd: Record<string, unknown>[], locale?: Locale) {
   const url = `${ORIGIN}${path}`;
   const head =
     `\n  <meta name="description" content="${esc(description)}" />` +
@@ -57,11 +68,13 @@ function writeRoute(path: string, { title, description, keywords }: Seo, jsonLd:
     `\n  <meta name="twitter:title" content="${esc(title)}" />` +
     `\n  <meta name="twitter:description" content="${esc(description)}" />` +
     `\n  <meta name="twitter:image" content="${OG_IMAGE}" />` +
+    (locale ? `\n  <meta property="og:locale" content="${locale.ogLocale}" />` + locale.hreflang : "") +
     jsonLd.map((d) => `\n  <script type="application/ld+json">${JSON.stringify(d)}</script>`).join("");
 
-  const html = shell
+  let html = shell
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`)
     .replace("</head>", `${head}\n</head>`);
+  if (locale) html = html.replace('<html lang="en">', `<html lang="${locale.htmlLang}">`);
 
   const outDir = join(distDir, path.replace(/^\//, ""));
   mkdirSync(outDir, { recursive: true });
@@ -81,5 +94,11 @@ for (const a of AGENT_LIST) {
   writeMd(briefPath(a), buildAgentMarkdown(a, env));
 }
 
-writeRoute(MCP_PATH, MCP_PAGE_SEO, buildMcpJsonLd());
+// /mcp in every homepage language. The markdown twin below stays English.
+const mcpHreflang = hreflangLinks(MCP_PATH);
+for (const l of HOME_LOCALES) {
+  const path = localizedPath(l, MCP_PATH);
+  const content = mcpContent(l.code, l.htmlLang);
+  writeRoute(path, content.seo, buildMcpJsonLd(content, path, l.path), { htmlLang: l.htmlLang, ogLocale: l.ogLocale, hreflang: mcpHreflang });
+}
 writeMd(MCP_MD_PATH, buildMcpMarkdown());

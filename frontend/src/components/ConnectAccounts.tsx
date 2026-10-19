@@ -31,6 +31,7 @@ import {
 } from "@/lib/oauth-connect";
 import { isMockApi } from "@/lib/mock-api";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface ConnectAccountsProps {
   mode: "onboarding" | "settings";
@@ -68,6 +69,7 @@ const labelFor = (key: string): string =>
   (PROVIDER_CONFIG as Record<string, { label: string }>)[key]?.label || PMAP[key]?.name || key;
 
 const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
+  const { t } = useTranslation();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [platforms, setPlatforms] = useState<SocialPlatformInfo[]>([]);
@@ -120,9 +122,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     return socialAcct(e.key)?.avatar_url || null;
   };
 
+  // Connectable by THIS user: the backend's `available` folds credentials in
+  // with the limited-release audience (Facebook/Instagram/Threads are
+  // promotional-customer-only for now). Falls back to `configured` so a
+  // frontend deployed ahead of the backend keeps working.
   const isConfigured = (e: ProviderEntry): boolean => {
     if (e.system === "legacy") return isProviderConfigured(e.key as OAuthProvider) || isMockApi();
-    return platforms.find((p) => p.platform === e.key)?.configured ?? true;
+    const p = platforms.find((p) => p.platform === e.key);
+    return p?.available ?? p?.configured ?? true;
   };
 
   // Our handle on a platform that offers "Follow us" (X, Bluesky), else null.
@@ -143,10 +150,10 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
       else await connectSocialPlatform(e.key, wantsFollow(e.key));
       await loadAll();
       refreshAccountDirectory();
-      toast.success(`${labelFor(e.key)} connected!`);
+      toast.success(t("connections.accounts.connectedToast", "{{platform}} connected!", { platform: labelFor(e.key) }));
       onAnyConnected?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to connect account.");
+      toast.error(err instanceof Error ? err.message : t("connections.accounts.connectFailed", "Failed to connect account."));
     } finally {
       setBusyKey(null);
     }
@@ -154,14 +161,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
 
   const handleBlueskyConnect = async () => {
     if (!blueskyId.trim() || !blueskyPassword.trim()) {
-      toast.error("Enter your Bluesky handle and an app password.");
+      toast.error(t("connections.bluesky.missingFields", "Enter your Bluesky handle and an app password."));
       return;
     }
     setBusyKey("bluesky");
     const res = await viewsMaxApi.connectBlueskyAccount(blueskyId.trim(), blueskyPassword.trim(), wantsFollow("bluesky"));
     setBusyKey(null);
     if (!res.success) {
-      toast.error(res.error || "Failed to connect Bluesky.");
+      toast.error(res.error || t("connections.bluesky.connectFailed", "Failed to connect Bluesky."));
       return;
     }
     setBlueskyOpen(false);
@@ -169,7 +176,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     setBlueskyPassword("");
     await loadAll();
     refreshAccountDirectory();
-    toast.success("Bluesky connected!");
+    toast.success(t("connections.bluesky.connected", "Bluesky connected!"));
     onAnyConnected?.();
   };
 
@@ -179,9 +186,9 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     if (result.success) {
       await loadAll();
       refreshAccountDirectory();
-      toast.success(`${labelFor(e.key)} account disconnected.`);
+      toast.success(t("connections.accounts.accountDisconnectedToast", "{{platform}} account disconnected.", { platform: labelFor(e.key) }));
     } else {
-      toast.error(result.error || "Failed to disconnect.");
+      toast.error(result.error || t("connections.accounts.disconnectFailed", "Failed to disconnect."));
     }
     setBusyKey(null);
   };
@@ -195,9 +202,9 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     if (result.success) {
       await loadAll();
       refreshAccountDirectory();
-      toast.success(`${labelFor(e.key)} disconnected.`);
+      toast.success(t("connections.accounts.disconnectedToast", "{{platform}} disconnected.", { platform: labelFor(e.key) }));
     } else {
-      toast.error(result.error || "Failed to disconnect.");
+      toast.error(result.error || t("connections.accounts.disconnectFailed", "Failed to disconnect."));
     }
     setBusyKey(null);
   };
@@ -235,14 +242,19 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     <p className="truncate font-medium">{labelFor(entry.key)}</p>
                     {accts.length === 0 && (
                       <p className="truncate text-sm text-muted-foreground">
-                        {configured ? "Not connected" : "Coming soon"}
+                        {configured ? t("connections.accounts.notConnected", "Not connected") : t("connections.accounts.comingSoon", "Coming soon")}
                       </p>
                     )}
                   </div>
                 </div>
-                <Button size="sm" className="shrink-0" disabled={!configured || isBusy} onClick={() => handleConnect(entry)}>
-                  {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? "Add account" : "Connect"}
-                </Button>
+                {/* Nothing to click on a platform the user can't connect yet:
+                    "Coming soon" says it, a greyed-out Connect only invites a
+                    click that does nothing. */}
+                {configured && (
+                  <Button size="sm" className="shrink-0" disabled={isBusy} onClick={() => handleConnect(entry)}>
+                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? t("connections.accounts.addAccount", "Add account") : t("connections.accounts.connect", "Connect")}
+                  </Button>
+                )}
               </div>
               {follow && (
                 <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
@@ -250,7 +262,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     checked={!noFollow[entry.key]}
                     onCheckedChange={(checked) => setNoFollow((prev) => ({ ...prev, [entry.key]: checked !== true }))}
                   />
-                  Follow us (@{follow}) when you connect
+                  {t("connections.accounts.followUs", "Follow us (@{{handle}}) when you connect", { handle: follow })}
                 </label>
               )}
               {accts.length > 0 && (
@@ -262,10 +274,10 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                       <div key={a.id} className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-1.5">
                         <div className="flex min-w-0 items-center gap-2">
                           <PAvatar id={entry.key} size={28} avatarUrl={a.avatar_url} />
-                          <span className="truncate text-sm">{a.name || (a.username ? `@${a.username}` : `Account ${a.id}`)}</span>
+                          <span className="truncate text-sm">{a.name || (a.username ? `@${a.username}` : t("connections.accounts.accountFallback", "Account {{id}}", { id: a.id }))}</span>
                           {stale ? (
                             <span className="flex items-center gap-1 text-xs text-amber-600">
-                              <AlertTriangle className="h-3 w-3" /> expired
+                              <AlertTriangle className="h-3 w-3" /> {t("connections.accounts.expired", "expired")}
                             </span>
                           ) : (
                             <Check className="h-3.5 w-3.5 text-green-600" />
@@ -275,7 +287,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                           {stale && (
                             <Button size="sm" disabled={rowBusy || isBusy} onClick={() => handleConnect(entry)}>
                               <RefreshCw className="h-4 w-4" />
-                              <span className="ml-1">Reconnect</span>
+                              <span className="ml-1">{t("connections.accounts.reconnect", "Reconnect")}</span>
                             </Button>
                           )}
                           {mode === "settings" && (
@@ -321,7 +333,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                 {broken ? (
                   <p className="flex items-center gap-1 text-sm text-amber-600">
                     <AlertTriangle className="h-3 w-3" />
-                    Authorization expired — reconnect to keep posting
+                    {t("connections.accounts.authExpired", "Authorization expired — reconnect to keep posting")}
                   </p>
                 ) : connected ? (
                   <p className="flex items-center gap-1 text-sm text-green-600">
@@ -330,7 +342,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                   </p>
                 ) : (
                   <p className="truncate text-sm text-muted-foreground">
-                    {configured ? "Not connected" : "Coming soon"}
+                    {configured ? t("connections.accounts.notConnected", "Not connected") : t("connections.accounts.comingSoon", "Coming soon")}
                   </p>
                 )}
               </div>
@@ -340,7 +352,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
               <div className="flex items-center gap-2">
                 <Button size="sm" className="shrink-0" disabled={isBusy} onClick={() => handleConnect(entry)}>
                   {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  <span className="ml-1">Reconnect</span>
+                  <span className="ml-1">{t("connections.accounts.reconnect", "Reconnect")}</span>
                 </Button>
                 {mode === "settings" && (
                   <Button variant="outline" size="sm" disabled={isBusy} onClick={() => handleDisconnect(entry)}>
@@ -357,22 +369,22 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                   onClick={() => handleDisconnect(entry)}
                 >
                   {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <XIcon className="h-4 w-4" />}
-                  <span className="ml-1">Disconnect</span>
+                  <span className="ml-1">{t("connections.accounts.disconnect", "Disconnect")}</span>
                 </Button>
               ) : (
                 <span className="flex items-center gap-1 text-sm font-medium text-green-600">
-                  <Check className="h-4 w-4" /> Connected
+                  <Check className="h-4 w-4" /> {t("connections.accounts.connected", "Connected")}
                 </span>
               )
-            ) : (
+            ) : configured ? (
               <Button
                 size="sm"
-                disabled={!configured || isBusy}
+                disabled={isBusy}
                 onClick={() => handleConnect(entry)}
               >
-                {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Connect"}
+                {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("connections.accounts.connect", "Connect")}
               </Button>
-            )}
+            ) : null}
           </div>
         );
       })}
@@ -387,11 +399,9 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
       <Dialog open={blueskyOpen} onOpenChange={setBlueskyOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Connect Bluesky</DialogTitle>
+            <DialogTitle>{t("connections.bluesky.title", "Connect Bluesky")}</DialogTitle>
             <DialogDescription>
-              Enter your handle and an app password. Create one under
-              Settings&nbsp;→&nbsp;Privacy and security&nbsp;→&nbsp;App passwords on bsky.app —
-              never your main account password.
+              {t("connections.bluesky.description", "Enter your handle and an app password. Create one under Settings\u00a0→\u00a0Privacy and security\u00a0→\u00a0App passwords on bsky.app — never your main account password.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -402,16 +412,16 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
               autoFocus
             />
             <Input
-              placeholder="app password (xxxx-xxxx-xxxx-xxxx)"
+              placeholder={t("connections.bluesky.passwordPlaceholder", "app password (xxxx-xxxx-xxxx-xxxx)")}
               type="password"
               value={blueskyPassword}
               onChange={(e) => setBlueskyPassword(e.target.value)}
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBlueskyOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setBlueskyOpen(false)}>{t("connections.bluesky.cancel", "Cancel")}</Button>
             <Button disabled={busyKey === "bluesky"} onClick={handleBlueskyConnect}>
-              {busyKey === "bluesky" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Connect"}
+              {busyKey === "bluesky" ? <Loader2 className="h-4 w-4 animate-spin" /> : t("connections.bluesky.connect", "Connect")}
             </Button>
           </DialogFooter>
         </DialogContent>

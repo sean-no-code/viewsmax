@@ -315,4 +315,80 @@ class PublishToTikTokJobTest extends TestCase
             ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
         );
     }
+
+    /**
+     * A cover at second 0 (the first frame) is a real choice: it must reach
+     * TikTok as video_cover_timestamp_ms = 0, not be dropped as "unset" so
+     * TikTok auto-picks a frame. Only null means unset.
+     */
+    public function test_cover_timestamp_of_zero_is_sent_and_null_is_not(): void
+    {
+        Http::fake([
+            'open.tiktokapis.com/*' => Http::response(['data' => ['publish_id' => 'pub-x']], 200),
+        ]);
+
+        $service = app(TikTokPublishService::class);
+        $service->publishVideoFromUrl($this->looseAccount(), 'Clip', 'https://app.example/media/download/x', ['video_cover_timestamp_ms' => 0]);
+        $service->publishVideoFromUrl($this->looseAccount(), 'Clip', 'https://app.example/media/download/x', ['video_cover_timestamp_ms' => null]);
+
+        $sent = collect(Http::recorded())->map(fn ($pair) => $pair[0]->data()['post_info'] ?? []);
+        $this->assertSame(0, $sent[0]['video_cover_timestamp_ms'] ?? 'missing');
+        $this->assertArrayNotHasKey('video_cover_timestamp_ms', $sent[1]);
+    }
+
+    /**
+     * TikTok expects the chunk Content-Type to match the file, so a .mov
+     * (video/quicktime) must not be labelled video/mp4. The stored mime is
+     * passed through; anything TikTok does not list falls back to mp4.
+     */
+    public function test_chunk_put_carries_the_stored_video_mime(): void
+    {
+        Http::fake([
+            'open.tiktokapis.com/*/post/publish/video/init/' => Http::response([
+                'data' => ['publish_id' => 'pub-v', 'upload_url' => 'https://upload.example/put'],
+            ], 200),
+            'upload.example/*' => Http::response('', 201),
+        ]);
+
+        foreach (['video/quicktime' => 'video/quicktime', 'application/octet-stream' => 'video/mp4'] as $stored => $expected) {
+            $stream = fopen('php://temp', 'r+');
+            fwrite($stream, 'fake-video-bytes');
+            rewind($stream);
+            app(TikTokPublishService::class)->publishVideoFromStream($this->looseAccount(), 'Clip', $stream, 16, [], $stored);
+            fclose($stream);
+
+            $put = collect(Http::recorded())->map(fn ($pair) => $pair[0])->last(fn ($r) => $r->method() === 'PUT');
+            $this->assertSame($expected, $put->header('Content-Type')[0] ?? null, "stored mime {$stored}");
+        }
+    }
+
+    /**
+     * The job hands the media item's stored mime to the chunk upload.
+     */
+    public function test_job_passes_the_media_mime_to_the_chunk_upload(): void
+    {
+        config(['services.tiktok.video_pull_from_url' => false, 'filesystems.media_disk' => 'r2test']);
+        Storage::fake('r2test');
+        Storage::disk('r2test')->put('posts/1/clip.mov', 'fake-video-bytes');
+
+        $user = User::factory()->create();
+        $this->tiktokAccount($user);
+        $post = Post::create([
+            'user_id' => $user->id,
+            'caption' => 'Clip',
+            'media' => [['type' => 'video', 'path' => 'posts/1/clip.mov', 'disk' => 'r2test', 'mime' => 'video/quicktime']],
+            'status' => Post::STATUS_POSTED,
+        ]);
+        $target = $post->targets()->create(['platform' => 'tiktok', 'status' => PostTarget::STATUS_PENDING]);
+
+        Http::fake([
+            '*/post/publish/video/init/' => Http::response(['data' => ['publish_id' => 'v_1', 'upload_url' => 'https://upload.tiktok.test/x']], 200),
+            'upload.tiktok.test/*' => Http::response('', 201),
+        ]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->refresh()->status, (string) $target->error);
+        Http::assertSent(fn ($r) => $r->method() === 'PUT' && ($r->header('Content-Type')[0] ?? null) === 'video/quicktime');
+    }
 }

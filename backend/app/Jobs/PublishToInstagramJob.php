@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\Log;
  * /api/social/instagram → a Facebook Page → its linked IG business account), so
  * this job bridges the legacy Post/PostTarget flow to the fully-featured
  * InstagramProvider (Graph API create-container → publish, polling video
- * containers until processed). Reels can take a while, hence the long timeout.
+ * containers until processed). Reels can take a while, hence the long timeout;
+ * the provider's polling budget (8 min) stays under it.
  */
 class PublishToInstagramJob implements ShouldQueue
 {
@@ -88,6 +90,10 @@ class PublishToInstagramJob implements ShouldQueue
             }
 
             $this->markFailed($target, $result->error ?: 'Instagram publish failed.');
+        } catch (TransientPublishException $e) {
+            // Meta hiccup (5xx/429, "unknown error", 2207082): nothing was
+            // published, so rethrow and let $tries/$backoff retry the post.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Instagram publish job error', [
                 'post_target_id' => $target->id,

@@ -48,9 +48,44 @@ export function xWeightedLength(text: string): number {
   return length;
 }
 
-/** Per-platform effective length: X is URL-weighted, everything else plain. */
+// Intl.Segmenter is ES2022 (not in this tsconfig's lib) and missing from
+// older Safari, so feature-detect it and fall back to code points.
+type GraphemeSegmenter = { segment(text: string): Iterable<unknown> };
+const graphemeSegmenter: GraphemeSegmenter | null = (() => {
+  const Segmenter = (Intl as unknown as {
+    Segmenter?: new (locale: undefined, options: { granularity: "grapheme" }) => GraphemeSegmenter;
+  }).Segmenter;
+  return Segmenter ? new Segmenter(undefined, { granularity: "grapheme" }) : null;
+})();
+
+/**
+ * Grapheme count — what Bluesky's 300 limit counts, so an emoji ZWJ sequence
+ * or a letter plus combining mark is one unit. Mirrors CaptionRules::lengthFor.
+ */
+export function graphemeLength(text: string): number {
+  const normalized = normalize(text);
+  if (!graphemeSegmenter) return [...normalized].length;
+  let n = 0;
+  for (const _ of graphemeSegmenter.segment(normalized)) n++;
+  return n;
+}
+
+/**
+ * Per-platform effective length: X is URL-weighted, Threads is counted in
+ * UTF-8 bytes (Meta's rule for its 500 limit), Bluesky counts graphemes,
+ * everything else plain.
+ */
 export function platformLength(id: string, text: string): number {
-  return id === "x" ? xWeightedLength(text) : plainLength(text);
+  switch (id) {
+    case "x":
+      return xWeightedLength(text);
+    case "bluesky":
+      return graphemeLength(text);
+    case "threads":
+      return new TextEncoder().encode(normalize(text)).length;
+    default:
+      return plainLength(text);
+  }
 }
 
 /** Split an X caption into trimmed thread segments on `---` lines. */

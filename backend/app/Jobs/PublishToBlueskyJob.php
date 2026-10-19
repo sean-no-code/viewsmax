@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
@@ -16,7 +17,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Bluesky session JWTs live about an hour, so every run refreshes the session
  * via ensureFreshToken before posting. Text + up to 4 images; the provider has
- * no video path yet, so video posts fail fast with a clear note.
+ * no video path yet, so video posts fail fast with a clear note. A transient
+ * provider error (429/5xx/network) propagates so the queue retries; a definite
+ * rejection marks the target failed.
  */
 class PublishToBlueskyJob implements ShouldQueue
 {
@@ -83,6 +86,9 @@ class PublishToBlueskyJob implements ShouldQueue
                     'error' => null,
                     'meta' => array_merge($target->meta ?? [], array_filter([
                         'url' => $result->remotePostUrl,
+                        // The record's cid, alongside the uri in platform_post_id:
+                        // replies reference the post by both.
+                        'cid' => $result->response['cid'] ?? null,
                     ])),
                 ])->save();
 
@@ -90,6 +96,10 @@ class PublishToBlueskyJob implements ShouldQueue
             }
 
             $this->markFailed($target, $result->error ?: 'Bluesky publish failed.');
+        } catch (TransientPublishException $e) {
+            // Rate limit / outage / network before or at createRecord — nothing
+            // is live, so let the queue retry with $tries / $backoff.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Bluesky publish job error', [
                 'post_target_id' => $target->id,

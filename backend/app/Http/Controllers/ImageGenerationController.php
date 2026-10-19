@@ -419,7 +419,7 @@ class ImageGenerationController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create image generation request: ' . $e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to create image generation request: ', $e),
             ], 500);
         }
     }

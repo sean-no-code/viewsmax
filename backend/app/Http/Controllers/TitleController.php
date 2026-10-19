@@ -49,7 +49,7 @@ class TitleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create title: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to create title: ', $e)
             ], 500);
         }
     }
@@ -127,7 +127,7 @@ class TitleController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve titles',
-                'error' => $e->getMessage()
+                'error' => \App\Support\UserSafeError::detail($e)
             ], 500);
         }
     }
@@ -167,7 +167,7 @@ class TitleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to search titles: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to search titles: ', $e)
             ], 500);
         }
     }
@@ -208,7 +208,7 @@ class TitleController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to generate titles: ' . $e->getMessage()
+                'message' => \App\Support\UserSafeError::withDetail('Failed to generate titles: ', $e)
             ], 500);
         }
     }

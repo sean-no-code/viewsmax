@@ -12,6 +12,7 @@ use App\Services\AnthropicService;
 use App\Services\CaptApiOutlierService;
 use App\Services\CaptApiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -158,6 +159,64 @@ class OutlierBreakdownTest extends TestCase
         Queue::assertPushed(GenerateOutlierBreakdownJob::class, 1);
     }
 
+    public function test_repasting_a_link_requeues_a_breakdown_stuck_in_processing(): void
+    {
+        Queue::fake();
+        $this->makeVideo();
+        $stuck = OutlierBreakdown::create([
+            'platform' => 'youtube', 'video_id' => 'abc123xyz',
+            'status' => OutlierBreakdown::STATUS_PROCESSING,
+        ]);
+        // Its job is gone (queue cleared / worker killed) — nothing will ever finish it.
+        $stuck->forceFill(['updated_at' => now()->subMinutes(OutlierBreakdown::STALE_MINUTES + 1)])->saveQuietly();
+
+        $this->withHeaders($this->authHeaders())
+            ->postJson('/api/outliers/fetch', ['platform' => 'youtube', 'url' => 'https://youtu.be/abc123xyz'])
+            ->assertOk();
+
+        Queue::assertPushed(GenerateOutlierBreakdownJob::class, 1);
+        $this->assertSame(OutlierBreakdown::STATUS_PENDING, $stuck->fresh()->status);
+    }
+
+    public function test_repasting_a_link_leaves_a_running_breakdown_alone(): void
+    {
+        Queue::fake();
+        $this->makeVideo();
+        OutlierBreakdown::create([
+            'platform' => 'youtube', 'video_id' => 'abc123xyz',
+            'status' => OutlierBreakdown::STATUS_PROCESSING,
+        ]);
+
+        $this->withHeaders($this->authHeaders())
+            ->postJson('/api/outliers/fetch', ['platform' => 'youtube', 'url' => 'https://youtu.be/abc123xyz'])
+            ->assertOk();
+
+        Queue::assertNotPushed(GenerateOutlierBreakdownJob::class);
+    }
+
+    public function test_job_that_crashes_outside_handle_marks_the_breakdown_failed(): void
+    {
+        $breakdown = OutlierBreakdown::create([
+            'platform' => 'youtube', 'video_id' => 'abc123xyz',
+            'status' => OutlierBreakdown::STATUS_PENDING,
+        ]);
+
+        // What the worker calls when handle()'s dependencies can't be built (e.g. no API key).
+        (new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'))
+            ->failed(new \TypeError('Cannot assign null to property App\Services\AnthropicService::$apiKey of type string'));
+
+        $breakdown->refresh();
+        $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
+        $this->assertStringNotContainsString('AnthropicService', $breakdown->error);
+    }
+
+    public function test_anthropic_service_builds_without_an_api_key(): void
+    {
+        config(['services.anthropic.api_key' => null]);
+
+        $this->assertInstanceOf(AnthropicService::class, new AnthropicService());
+    }
+
     public function test_job_generates_and_stores_payload(): void
     {
         $this->makeVideo();
@@ -199,6 +258,7 @@ class OutlierBreakdownTest extends TestCase
 
     public function test_job_marks_failed_when_transcript_unavailable(): void
     {
+        Exceptions::fake();
         $this->makeVideo();
         $breakdown = OutlierBreakdown::create([
             'platform' => 'youtube', 'video_id' => 'abc123xyz',
@@ -219,6 +279,10 @@ class OutlierBreakdownTest extends TestCase
         $breakdown->refresh();
         $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
         $this->assertStringContainsString('transcript', strtolower($breakdown->error));
+
+        // The failure must reach the exception handler (Sentry, error log, Slack),
+        // not just the row — a swallowed exception is how failures went unnoticed.
+        Exceptions::assertReported(fn (\RuntimeException $e) => str_contains($e->getMessage(), 'transcript'));
     }
 
     // ---- TikTok: transcript URL must carry the creator's @handle ----

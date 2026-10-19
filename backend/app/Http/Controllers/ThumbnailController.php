@@ -215,7 +215,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve thumbnails: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to retrieve thumbnails: ', $e),
             ], 500);
         }
     }
@@ -228,7 +228,7 @@ class ThumbnailController extends Controller
         $request->validate([
             'description' => 'required|string|max:1000',
             'number_of_thumbnails' => 'sometimes|integer|min:1|max:10',
-            'ai_model_id' => 'sometimes|integer|exists:ai_models,id',
+            'ai_model_id' => ['sometimes', 'integer', \Illuminate\Validation\Rule::exists('ai_models', 'id')->where('user_id', Auth::id())],
             'service' => 'sometimes|string|in:openai,gemini,flux,flux2',
         ]);
 
@@ -251,7 +251,7 @@ class ThumbnailController extends Controller
             // If ai_model_id is provided, get the AI model and extract trigger word
             $triggerWord = null;
             if ($request->ai_model_id) {
-                $aiModel = AiModel::find($request->ai_model_id);
+                $aiModel = AiModel::forUser(Auth::id())->find($request->ai_model_id);
                 if ($aiModel) {
                     $triggerWord = $aiModel->triggerWord();
 
@@ -363,7 +363,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to start thumbnail generation: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to start thumbnail generation: ', $e),
             ], 500);
         }
     }
@@ -384,48 +384,22 @@ class ThumbnailController extends Controller
             'resolution_width' => 'nullable|integer|min:256|max:2048',
             'resolution_height' => 'nullable|integer|min:256|max:2048',
             'dw_pose_enabled' => 'nullable|boolean',
-            'ai_model_id' => 'nullable|exists:ai_models,id',
+            'ai_model_id' => ['nullable', \Illuminate\Validation\Rule::exists('ai_models', 'id')->where('user_id', Auth::id())],
             'negative_prompt_id' => 'nullable|exists:prompts,id',
             'style_prompt_id' => 'nullable|exists:prompts,id',
             'general_prompt_id' => 'nullable|exists:prompts,id',
         ]);
 
-        // Additional validation for source_image_url - check if accessible
-        if ($request->has('source_image_url')) {
-            $url = $request->input('source_image_url');
-
+        // Download a URL source once, up front, through SafeHttp (public
+        // addresses only, re-checked on every redirect) and only accept a real
+        // image — before any credits are spent. The extension comes from the
+        // detected image type, never from the URL.
+        $downloaded = null;
+        if ($request->has('source_image_url') && ! $request->hasFile($imageField)) {
             try {
-                $response = \Illuminate\Support\Facades\Http::timeout(10)->head($url);
-
-                if (! $response->successful()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Image URL is not accessible',
-                        'details' => "HTTP {$response->status()}: The provided URL returned an error status.",
-                    ], 400);
-                }
-
-                $contentType = $response->header('Content-Type');
-                if ($contentType && ! str_starts_with($contentType, 'image/')) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'URL does not point to an image',
-                        'details' => "Content-Type: {$contentType}",
-                    ], 400);
-                }
-
-            } catch (\Illuminate\Http\Client\ConnectionException $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot connect to image URL',
-                    'details' => 'The URL is unreachable or the server is not responding.',
-                ], 400);
-            } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid or malformed image URL',
-                    'details' => $e->getMessage(),
-                ], 400);
+                $downloaded = \App\Support\UploadedImage::fromUrl((string) $request->input('source_image_url'));
+            } catch (\App\Support\UnsafeUrlException $e) {
+                return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 400);
             }
         }
 
@@ -455,7 +429,7 @@ class ThumbnailController extends Controller
         // Handle reference image upload (per-request override of user's default)
         if ($request->hasFile('reference_image')) {
             $refFile = $request->file('reference_image');
-            $refFilename = 'reference_'.Auth::id().'_'.time().'.'.$refFile->getClientOriginalExtension();
+            $refFilename = 'reference_'.Auth::id().'_'.time().'.'.$refFile->extension();
             $referencePath = $refFile->storeAs('copy-thumbnails/'.Auth::id().'/references', $refFilename, 'public');
             Log::info('Reference image uploaded', ['path' => $referencePath]);
         }
@@ -463,46 +437,14 @@ class ThumbnailController extends Controller
         // Handle file upload (supports both 'source_image' and 'base_image' field names)
         if ($request->hasFile($imageField)) {
             $file = $request->file($imageField);
-            $filename = 'source_'.Auth::id().'_'.time().'.'.$file->getClientOriginalExtension();
+            $filename = 'source_'.Auth::id().'_'.time().'.'.$file->extension();
             $path = $file->storeAs('copy-thumbnails/'.Auth::id().'/sources', $filename, 'public');
         }
         // Handle URL input
-        elseif ($request->has('source_image_url')) {
-            $sourceUrl = $request->input('source_image_url');
-
-            try {
-                $imageContent = file_get_contents($sourceUrl);
-
-                if ($imageContent === false) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to download image from URL',
-                    ], 400);
-                }
-
-                $extension = pathinfo(parse_url($sourceUrl, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'png';
-                $filename = 'source_'.Auth::id().'_'.time().'.'.$extension;
-                $path = 'copy-thumbnails/'.Auth::id().'/sources/'.$filename;
-
-                Storage::disk('public')->put($path, $imageContent);
-
-                Log::info('Downloaded image from URL', [
-                    'url' => $sourceUrl,
-                    'path' => $path,
-                    'size' => strlen($imageContent),
-                ]);
-
-            } catch (\Exception $e) {
-                Log::error('Failed to download image from URL', [
-                    'url' => $sourceUrl,
-                    'error' => $e->getMessage(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to download image from URL: '.$e->getMessage(),
-                ], 400);
-            }
+        elseif ($downloaded) {
+            $sourceUrl = (string) $request->input('source_image_url');
+            $path = 'copy-thumbnails/'.Auth::id().'/sources/source_'.Auth::id().'_'.time().'.'.$downloaded['extension'];
+            Storage::disk('public')->put($path, $downloaded['body']);
         }
 
         if (! $path) {
@@ -649,7 +591,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve thumbnail: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to retrieve thumbnail: ', $e),
             ], 500);
         }
     }
@@ -698,7 +640,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update thumbnail: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to update thumbnail: ', $e),
             ], 500);
         }
     }
@@ -967,7 +909,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete thumbnail: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to delete thumbnail: ', $e),
             ], 500);
         }
     }
@@ -999,7 +941,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to enhance description: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to enhance description: ', $e),
             ], 500);
         }
     }
@@ -1071,7 +1013,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve thumbnail status: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to retrieve thumbnail status: ', $e),
             ], 500);
         }
     }
@@ -1108,7 +1050,7 @@ class ThumbnailController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to download thumbnail: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to download thumbnail: ', $e),
             ], 500);
         }
     }

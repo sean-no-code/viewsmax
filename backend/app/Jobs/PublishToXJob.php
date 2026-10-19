@@ -7,6 +7,7 @@ use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
 use App\Models\SocialPost;
+use App\Services\Social\Providers\XProvider;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -148,8 +149,17 @@ class PublishToXJob implements ShouldQueue
     public function failed(?\Throwable $e): void
     {
         $target = PostTarget::find($this->postTargetId);
-        if ($target && ! in_array($target->status, [PostTarget::STATUS_PUBLISHED, PostTarget::STATUS_FAILED], true)) {
-            $this->markFailed($target, $e?->getMessage() ?: 'X publishing failed.');
+        if (! $target || in_array($target->status, [PostTarget::STATUS_PUBLISHED, PostTarget::STATUS_FAILED], true)) {
+            return;
         }
+
+        // A rate limit that never cleared must not leave X's "Too Many
+        // Requests" body on the target. XProvider's transient
+        // exception and Laravel's RequestException both carry the HTTP status
+        // as the exception code. Thread progress in meta is left alone so a
+        // manual retry still resumes.
+        $this->markFailed($target, $e?->getCode() === 429
+            ? XProvider::RATE_LIMIT_MESSAGE
+            : ($e?->getMessage() ?: 'X publishing failed.'));
     }
 }

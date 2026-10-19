@@ -104,7 +104,7 @@ class DefaultImageController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload image: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to upload image: ', $e),
             ], 500);
         }
     }
@@ -152,7 +152,7 @@ class DefaultImageController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to remove image: '.$e->getMessage(),
+                'message' => \App\Support\UserSafeError::withDetail('Failed to remove image: ', $e),
             ], 500);
         }
     }

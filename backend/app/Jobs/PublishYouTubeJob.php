@@ -2,12 +2,15 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
+use App\Jobs\Concerns\RecordsPublishStep;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Services\Social\CaptionRules;
 use App\Services\YouTubePublishService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,17 +22,42 @@ use Illuminate\Support\Facades\Storage;
 class PublishYouTubeJob implements ShouldQueue
 {
     use Queueable;
+    use RecordsPublishStep;
     use ResolvesTargetAccount;
 
-    // Large uploads can run long; give the job room but keep retries low since
-    // a partial upload shouldn't be blindly repeated.
+    // Large uploads can run long; give the job room. A retry never repeats
+    // sent bytes: the resumable session URI is kept on the target and probed
+    // first, so a transient failure (or a kill on $timeout) resumes from the
+    // offset Google committed.
     public $timeout = 700;
 
     public $tries = 3;
 
+    public $backoff = 30;
+
     private const ALLOWED_PRIVACY = ['public', 'unlisted', 'private'];
 
+    /** What each recorded step (see RecordsPublishStep) was doing, for the timeout message. */
+    private const STEP_LABELS = [
+        'token' => 'refreshing the YouTube access token',
+        'session-init' => 'opening the YouTube upload session',
+        'probe' => 'checking the YouTube upload session',
+        'upload' => 'uploading the video to YouTube',
+        'thumbnail' => 'setting the YouTube thumbnail',
+    ];
+
     public function __construct(public int $postTargetId) {}
+
+    /**
+     * Cap how many YouTube publishes start per minute (config/publishing.php,
+     * limiter registered in AppServiceProvider) so a YouTube spike cannot
+     * starve the other platforms' jobs. Over the cap the job is released until
+     * the window resets.
+     */
+    public function middleware(): array
+    {
+        return [new RateLimited('publish-youtube')];
+    }
 
     public function handle(YouTubePublishService $youtube): void
     {
@@ -81,9 +109,11 @@ class PublishYouTubeJob implements ShouldQueue
 
         $caption = $target->caption_override ?: $post->caption ?: '';
         $options = $target->options ?? [];
+        // Private is the safe default when the composer didn't choose (the
+        // MCP tool requires an explicit value); the legacy path agrees.
         $privacy = in_array($options['privacy_status'] ?? null, self::ALLOWED_PRIVACY, true)
             ? $options['privacy_status']
-            : 'public';
+            : 'private';
 
         // Posts saved before the publish-time title check could still be empty.
         if ($titleError = CaptionRules::titleError('youtube', $caption)) {
@@ -100,12 +130,19 @@ class PublishYouTubeJob implements ShouldQueue
         ];
 
         try {
+            // Each outbound call is preceded by a persisted step marker so a
+            // job killed on $timeout can still say where it stalled (failed()).
+            $this->recordStep($target, 'token');
             $accessToken = $youtube->freshAccessToken($account);
             $size = Storage::disk($disk)->size($path);
             $stream = Storage::disk($disk)->readStream($path);
 
             try {
-                $result = $youtube->uploadVideo($accessToken, $stream, $size, $snippet, $privacy);
+                $result = $youtube->uploadVideo(
+                    $accessToken, $stream, $size, $snippet, $privacy,
+                    fn (string $step, ?string $uploadUrl = null) => $this->recordUploadStep($target, $step, $uploadUrl),
+                    $target->meta['upload_url'] ?? null
+                );
             } finally {
                 if (is_resource($stream)) {
                     fclose($stream);
@@ -113,15 +150,20 @@ class PublishYouTubeJob implements ShouldQueue
             }
 
             // Custom thumbnail is best-effort: the video is already live, so a
-            // rejected thumbnail (e.g. channel not eligible) must not fail the target.
-            $thumbnailSet = $this->applyThumbnail($youtube, $target, $accessToken, $result['video_id'], $options);
+            // rejected thumbnail (e.g. channel not eligible) must not fail the
+            // target — but the user must still learn the cover was dropped.
+            $thumbnailError = $this->applyThumbnail($youtube, $target, $accessToken, $result['video_id'], $options);
 
             $meta = $target->meta ?? [];
+            unset($meta['upload_url'], $meta['warning']);
             $meta['video_id'] = $result['video_id'];
             $meta['video_url'] = $result['video_url'];
             $meta['privacy_status'] = $privacy;
-            if ($thumbnailSet !== null) {
-                $meta['thumbnail_set'] = $thumbnailSet;
+            if (! empty($options['thumbnail']['path'])) {
+                $meta['thumbnail_set'] = $thumbnailError === null;
+            }
+            if ($thumbnailError !== null) {
+                $meta['warning'] = 'We uploaded your video but could not set the thumbnail: '.$thumbnailError;
             }
 
             $target->forceFill([
@@ -131,21 +173,42 @@ class PublishYouTubeJob implements ShouldQueue
                 'meta' => $meta,
                 'error' => null,
             ])->save();
+        } catch (TransientPublishException $e) {
+            // The session URI is already on the target — rethrow so the queue
+            // retries and the next attempt resumes from the committed offset.
+            Log::warning('YouTube publish job will retry', ['post_target_id' => $target->id, 'error' => $e->getMessage()]);
+
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('YouTube publish job error', [
                 'post_target_id' => $target->id,
                 'error' => $e->getMessage(),
             ]);
+            YouTubePublishService::flagReauthIfExpired($account, $e);
             $this->markFailed($target, $e->getMessage());
         }
     }
 
     /**
-     * Upload a custom thumbnail for the video from the per-target options, if one
-     * was set. Returns true/false when a thumbnail was attempted, or null when no
-     * thumbnail was configured. Never throws — a thumbnail failure is non-fatal.
+     * Step marker plus, for the upload step, the resumable session URI: it
+     * must be on the target before the first byte goes out, or a retry could
+     * never find the session and would upload the video again.
      */
-    private function applyThumbnail(YouTubePublishService $youtube, PostTarget $target, string $accessToken, ?string $videoId, array $options): ?bool
+    private function recordUploadStep(PostTarget $target, string $step, ?string $uploadUrl): void
+    {
+        if ($uploadUrl !== null) {
+            $target->meta = array_replace($target->meta ?? [], ['upload_url' => $uploadUrl]);
+        }
+        $this->recordStep($target, $step);
+    }
+
+    /**
+     * Upload a custom thumbnail for the video from the per-target options, if one
+     * was set. Returns the reason when the thumbnail could not be set, or null
+     * when it was (or none was configured). Never throws — a thumbnail failure
+     * is non-fatal, the job stores the reason as a warning on the target.
+     */
+    private function applyThumbnail(YouTubePublishService $youtube, PostTarget $target, string $accessToken, ?string $videoId, array $options): ?string
     {
         $thumb = $options['thumbnail'] ?? null;
         if (! $videoId || ! is_array($thumb) || empty($thumb['path'])) {
@@ -157,21 +220,22 @@ class PublishYouTubeJob implements ShouldQueue
         if (! Storage::disk($disk)->exists($path)) {
             Log::warning('YouTube thumbnail file missing', ['post_target_id' => $target->id, 'path' => $path]);
 
-            return false;
+            return 'the thumbnail file could not be found.';
         }
 
+        $this->recordStep($target, 'thumbnail');
         $stream = Storage::disk($disk)->readStream($path);
         try {
             $youtube->setThumbnail($accessToken, $videoId, $stream, $thumb['mime'] ?? 'image/jpeg');
 
-            return true;
+            return null;
         } catch (\Throwable $e) {
             Log::warning('YouTube thumbnail set failed (non-fatal)', [
                 'post_target_id' => $target->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return false;
+            return $e->getMessage();
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
@@ -179,21 +243,36 @@ class PublishYouTubeJob implements ShouldQueue
         }
     }
 
+    /**
+     * A definitive failure also forgets the upload session: a manual Retry
+     * after the user fixes the post (new file, new title) must start afresh,
+     * not resume a session that carries the old metadata.
+     */
     private function markFailed(PostTarget $target, string $message): void
     {
+        $meta = $target->meta ?? [];
+        unset($meta['upload_url']);
+
         $target->forceFill([
             'status' => PostTarget::STATUS_FAILED,
             'error' => $message,
+            'meta' => $meta,
         ])->save();
     }
 
     /**
-     * Called when retries are exhausted.
+     * Called when retries are exhausted. A job killed on $timeout never reached
+     * handle()'s catch block, so name the step it was in from the marker.
      */
     public function failed(?\Throwable $e): void
     {
         $target = PostTarget::find($this->postTargetId);
         if ($target && ! in_array($target->status, [PostTarget::STATUS_PUBLISHED, PostTarget::STATUS_FAILED], true)) {
+            if ($step = $this->timedOutStep($e, $target)) {
+                $this->markFailed($target, 'Timed out while '.(self::STEP_LABELS[$step] ?? $step).'.');
+
+                return;
+            }
             $this->markFailed($target, $e?->getMessage() ?: 'YouTube upload failed.');
         }
     }

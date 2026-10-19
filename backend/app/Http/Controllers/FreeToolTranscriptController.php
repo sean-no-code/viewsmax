@@ -23,9 +23,11 @@ class FreeToolTranscriptController extends Controller
         try {
             $result = $captApi->getTranscript($validated['platform'], $validated['url']);
         } catch (\InvalidArgumentException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 422);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 502);
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
+            return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 502);
         }
 
         $t = $result['transcript'];
