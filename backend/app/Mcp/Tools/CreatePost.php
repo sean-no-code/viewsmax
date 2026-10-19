@@ -58,7 +58,7 @@ class CreatePost extends ViewsMaxTool
      * privacy_status goes out public, so the AI has to ask first.
      */
     public const YOUTUBE_PRIVACY_RULE = 'Ask the user which YouTube privacy_status to use (public, '
-        . 'unlisted, or private) and wait for their answer; without it the video is public.';
+        . 'unlisted, or private) and wait for their answer; without it the video is uploaded as private.';
 
     public static function privacyRules(): string
     {
