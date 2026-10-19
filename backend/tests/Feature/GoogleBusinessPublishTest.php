@@ -349,6 +349,22 @@ class GoogleBusinessPublishTest extends TestCase
         }
     }
 
+    public function test_event_and_offer_titles_are_limited_to_58_characters(): void
+    {
+        // Google's own post form caps the title at 58 characters.
+        $account = $this->account();
+        $post = fn (string $title) => $this->withHeaders($this->auth($this->user))->postJson('/api/posts', [
+            'caption' => 'Draft',
+            'targets' => [['platform' => 'google_business', 'social_account_id' => $account->id]],
+            'status' => Post::STATUS_DRAFT,
+            'options' => ['google_business' => ['topic_type' => 'OFFER', 'event_title' => $title]],
+        ]);
+
+        $post(str_repeat('a', 59))->assertStatus(422)
+            ->assertJsonPath('message', 'A Google event or offer title can be at most 58 characters.');
+        $post(str_repeat('a', 58))->assertCreated();
+    }
+
     public function test_editing_only_the_options_saves_them_on_the_existing_targets(): void
     {
         // The AI's update_post may send just { options } to add the event

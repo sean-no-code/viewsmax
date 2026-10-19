@@ -76,7 +76,7 @@ class PostController extends Controller
      * @bodyParam options.google_business.topic_type string STANDARD (an update), EVENT or OFFER. Example: STANDARD
      * @bodyParam options.google_business.cta_type string Button: BOOK, ORDER, SHOP, LEARN_MORE, SIGN_UP or CALL. Empty = no button. Ignored on offers.
      * @bodyParam options.google_business.cta_url string Where the button goes; required for every button except CALL.
-     * @bodyParam options.google_business.event_title string Event or offer title; required for EVENT and OFFER.
+     * @bodyParam options.google_business.event_title string Event or offer title (max 58); required for EVENT and OFFER.
      * @bodyParam options.google_business.event_start string Start, business local time (YYYY-MM-DDTHH:MM); required for EVENT and OFFER. Example: 2026-11-01T18:00
      * @bodyParam options.google_business.event_end string End, business local time; required for EVENT and OFFER. Example: 2026-11-01T21:00
      * @bodyParam options.google_business.coupon_code string Offer code (OFFER only).
@@ -248,7 +248,8 @@ class PostController extends Controller
             'topic_type' => ['nullable', 'string', Rule::in(GoogleBusinessProvider::TOPIC_TYPES)],
             'cta_type' => ['nullable', 'string', Rule::in(GoogleBusinessProvider::CTA_TYPES)],
             'cta_url' => 'nullable|url|max:2048',
-            'event_title' => 'nullable|string',
+            // Google's post form caps titles at 58 characters.
+            'event_title' => 'nullable|string|max:58',
             'event_start' => 'nullable|date_format:Y-m-d\TH:i',
             'event_end' => 'nullable|date_format:Y-m-d\TH:i'.(blank($gbpInput['event_start'] ?? null) ? '' : '|after:event_start'),
             'coupon_code' => 'nullable|string',
@@ -256,6 +257,7 @@ class PostController extends Controller
             'terms' => 'nullable|string',
         ], [
             'event_end.after' => 'The Google event or offer must end after it starts.',
+            'event_title.max' => 'A Google event or offer title can be at most 58 characters.',
             'cta_url.url' => 'The Google button link must be a full web address, starting with https://.',
             'redeem_url.url' => "The Google offer's redeem link must be a full web address, starting with https://.",
             'event_start.date_format' => 'Google event and offer times look like 2026-11-06T18:00.',

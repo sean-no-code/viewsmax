@@ -79,7 +79,7 @@ class CreatePost extends ViewsMaxTool
         return in_array('google_business', self::availablePlatforms(), true)
             ? '; google_business: { topic_type: STANDARD|EVENT|OFFER, cta_type: '
                 . 'BOOK|ORDER|SHOP|LEARN_MORE|SIGN_UP|CALL (optional button, ignored on '
-                . 'offers), cta_url (required for every button except CALL), event_title, '
+                . 'offers), cta_url (required for every button except CALL), event_title (max 58), '
                 . 'event_start, event_end (required for EVENT and OFFER), coupon_code, '
                 . 'redeem_url, terms (OFFER only) }'
             : '';

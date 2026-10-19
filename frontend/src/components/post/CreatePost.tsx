@@ -1187,8 +1187,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     {gbpDated && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12, borderTop: "1px solid var(--line-1)", paddingTop: 12 }}>
                         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{gbp.topic_type === "EVENT" ? "Event title" : "Offer title"}</span>
-                          <input aria-label={`Google ${gbpKind} title`} value={gbp.event_title} onChange={(e) => c.patchGoogleBusiness({ event_title: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
+                          <span style={{ display: "flex", justifyContent: "space-between", maxWidth: 480, fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
+                            <span>{gbp.topic_type === "EVENT" ? "Event title" : "Offer title"}</span>
+                            <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{gbp.event_title.length}/58</span>
+                          </span>
+                          {/* Google's post form caps titles at 58 characters. */}
+                          <input aria-label={`Google ${gbpKind} title`} value={gbp.event_title} maxLength={58} onChange={(e) => c.patchGoogleBusiness({ event_title: e.target.value })} style={{ ...fieldBase, maxWidth: 480 }} />
                         </label>
                         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                           {([["event_start", "Starts"], ["event_end", "Ends"]] as const).map(([key, label]) => (

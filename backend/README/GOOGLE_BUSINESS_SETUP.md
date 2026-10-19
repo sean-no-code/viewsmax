@@ -42,7 +42,8 @@ long a post stays in `PROCESSING` before it is `LIVE`.
 
 - Every location the Google account manages is connected as its own account; locations
   Google marks as unable to take posts (`metadata.canOperateLocalPost = false`) are skipped.
-- Post types: **Update** (`STANDARD`), **Event**, **Offer**. Events and offers need a title,
+- Post types: **Update** (`STANDARD`), **Event**, **Offer**. Events and offers need a title
+  (at most 58 characters, as in Google's own post form),
   a start and an end, sent as the business's local wall-clock time
   (`options.google_business.event_start` / `event_end`, `YYYY-MM-DDTHH:MM`).
 - Button (`cta_type`): Book, Order online, Buy, Learn more, Sign up, Call now, or none.
