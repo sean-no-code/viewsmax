@@ -499,6 +499,17 @@ class GoogleBusinessPublishTest extends TestCase
         $this->assertSame(0, PostTarget::count());
     }
 
+    public function test_ai_rule_says_what_to_ask_not_what_it_must_never_do(): void
+    {
+        // Prohibitions ("never invent dates") were echoed to users as "dates,
+        // which I can't invent". The rule says what to ask for instead.
+        $rule = CreatePost::googleBusinessRule();
+
+        $this->assertStringContainsString('ask the user when it starts and ends', $rule);
+        $this->assertStringNotContainsString('never', strtolower($rule));
+        $this->assertStringNotContainsString('invent', strtolower($rule));
+    }
+
     public function test_it_stays_hidden_until_switched_on(): void
     {
         $this->assertContains('google_business', CreatePost::availablePlatforms());

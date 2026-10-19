@@ -69,8 +69,9 @@ class CreatePost extends ViewsMaxTool
                 . 'account; text alone is fine and only the first image is sent (no video). '
                 . 'Set options.google_business.topic_type to STANDARD (an update, default), '
                 . 'EVENT or OFFER. An event or offer needs event_title, event_start and '
-                . 'event_end (YYYY-MM-DDTHH:MM in the business\'s local time). Never invent '
-                . 'dates, links, coupon codes or terms: ask the user. '
+                . 'event_end (YYYY-MM-DDTHH:MM in the business\'s local time): when the user '
+                . 'hasn\'t said, ask the user when it starts and ends. Use the links, coupon '
+                . 'codes and terms the user gives. '
             : '';
     }
 
