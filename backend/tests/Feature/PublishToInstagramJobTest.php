@@ -125,6 +125,7 @@ class PublishToInstagramJobTest extends TestCase
         Http::fake([
             '*/media_publish' => Http::response(['id' => 'media-1']),
             '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::response(['status_code' => 'FINISHED']),
         ]);
         $user = User::factory()->create();
         $this->connectInstagram($user);

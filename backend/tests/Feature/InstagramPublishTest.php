@@ -235,6 +235,7 @@ class InstagramPublishTest extends TestCase
         Http::fake([
             '*/media_publish' => Http::response(['error' => ['message' => 'An unknown error occurred', 'type' => 'OAuthException', 'code' => 1]], 500),
             '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::response(['status_code' => 'FINISHED']),
         ]);
 
         $this->expectException(TransientPublishException::class);
@@ -247,6 +248,7 @@ class InstagramPublishTest extends TestCase
         Http::fake([
             '*/media_publish' => Http::response(['error' => ['message' => 'Application request limit reached', 'type' => 'OAuthException', 'code' => 9, 'error_subcode' => 2207042]], 400),
             '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::response(['status_code' => 'FINISHED']),
         ]);
         $account = $this->account();
 
@@ -256,13 +258,16 @@ class InstagramPublishTest extends TestCase
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
     }
 
-    /* ---------------- carousel ---------------- */
+    /* ---------------- single image ---------------- */
 
-    public function test_single_media_still_publishes_one_container_with_the_caption(): void
+    public function test_a_single_image_waits_for_its_container_before_publishing(): void
     {
         Http::fake([
             '*/media_publish' => Http::response(['id' => 'media-1']),
             '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::sequence()
+                ->push(['status_code' => 'IN_PROGRESS'])
+                ->push(['status_code' => 'FINISHED']),
         ]);
 
         $result = (new InstagramProvider)->publish($this->account(), $this->socialPost([['type' => 'image', 'url' => 'https://cdn.example/a.jpg']]));
@@ -270,6 +275,41 @@ class InstagramPublishTest extends TestCase
         $this->assertTrue($result->success, (string) $result->error);
         $this->assertSame([
             ['POST', 'ig-1/media', ['caption' => 'A caption', 'image_url' => 'https://cdn.example/a.jpg']],
+            ['GET', 'container-1', []],
+            ['GET', 'container-1', []],
+            ['POST', 'ig-1/media_publish', ['creation_id' => 'container-1']],
+        ], $this->sent());
+    }
+
+    public function test_media_not_ready_on_publish_is_handed_to_the_queue(): void
+    {
+        Http::fake([
+            '*/media_publish' => Http::response(['error' => ['message' => 'Media ID is not available', 'type' => 'OAuthException', 'code' => 9007, 'error_subcode' => 2207027]], 400),
+            '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::response(['status_code' => 'FINISHED']),
+        ]);
+
+        $this->expectException(TransientPublishException::class);
+
+        (new InstagramProvider)->publish($this->account(), $this->socialPost([['type' => 'image', 'url' => 'https://cdn.example/a.jpg']]));
+    }
+
+    /* ---------------- carousel ---------------- */
+
+    public function test_single_media_still_publishes_one_container_with_the_caption(): void
+    {
+        Http::fake([
+            '*/media_publish' => Http::response(['id' => 'media-1']),
+            '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::response(['status_code' => 'FINISHED']),
+        ]);
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost([['type' => 'image', 'url' => 'https://cdn.example/a.jpg']]));
+
+        $this->assertTrue($result->success, (string) $result->error);
+        $this->assertSame([
+            ['POST', 'ig-1/media', ['caption' => 'A caption', 'image_url' => 'https://cdn.example/a.jpg']],
+            ['GET', 'container-1', []],
             ['POST', 'ig-1/media_publish', ['creation_id' => 'container-1']],
         ], $this->sent());
     }

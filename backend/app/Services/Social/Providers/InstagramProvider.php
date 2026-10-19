@@ -64,6 +64,8 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
     public const ERRORS = [
         // retry
         2207082 => [MetaGraphOutcome::RETRY, 'Instagram could not process this video. If you attached audio to a video that has no sound track, set the original video volume to 0 and try again'],
+        // media not ready yet: publishing too soon after creating the container
+        2207027 => [MetaGraphOutcome::RETRY, 'Instagram is still processing the media, please try again in a moment'],
         // checkpoint — before the 2207051 fragment below
         'You cannot access the app till you log in to' => [MetaGraphOutcome::CHECKPOINT, MetaGraphErrors::MESSAGE_CHECKPOINT],
         'Session key is malformed' => [MetaGraphOutcome::CHECKPOINT, MetaGraphErrors::MESSAGE_CHECKPOINT],
@@ -75,7 +77,6 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         2207050 => [MetaGraphOutcome::FAIL, 'Instagram user is restricted'],
         '"error_subcode":2207051' => [MetaGraphOutcome::FAIL, 'Instagram blocked your request'],
         2207001 => [MetaGraphOutcome::FAIL, 'Instagram detected that your post is spam, please try again with different content'],
-        2207027 => [MetaGraphOutcome::FAIL, 'Unknown error, please try again later or contact support'],
         // rate limits (not a reconnect, even though Meta sends them as OAuthException)
         2207042 => [MetaGraphOutcome::FAIL, 'You have reached the maximum of 25 posts per day, allowed for your account'],
         'Page request limit reached' => [MetaGraphOutcome::FAIL, 'Instagram posting for today is limited, please try again tomorrow'],
@@ -352,8 +353,10 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
                 'cover_url' => $video ? ($post->cover_url ?? null) : null,
             ]), $log);
 
-            // 2. Video containers must finish processing before publishing.
-            if ($video && is_string($creationId) && ($failure = $this->waitForContainer($account, $creationId, $log))) {
+            // 2. The container must be FINISHED before publishing. Images finish
+            // once Instagram has fetched them, which can still take seconds;
+            // publishing earlier is rejected with 2207027.
+            if (is_string($creationId) && ($failure = $this->waitForContainer($account, $creationId, $log))) {
                 return $failure;
             }
         }
