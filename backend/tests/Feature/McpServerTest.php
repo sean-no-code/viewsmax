@@ -1276,6 +1276,20 @@ class McpServerTest extends TestCase
         Storage::disk('public')->assertExists($data['path']);
     }
 
+    public function test_upload_media_says_the_link_could_not_be_reached(): void
+    {
+        // A link that can't be reached (DNS failure, site down) is about the
+        // link, not a "video provider" that took too long.
+        Http::fake(['example.com/*' => fn () => throw new \Illuminate\Http\Client\ConnectionException('cURL error 6: Could not resolve host: example.com')]);
+
+        $key = $this->mcpKey(User::factory()->create());
+
+        $this->assertToolError(
+            $this->callTool($key, 'upload_media', ['url' => 'https://example.com/pic.png']),
+            "Couldn't reach example.com to download the file"
+        );
+    }
+
     /**
      * Streamable HTTP clients may GET the endpoint (server-push stream) or
      * DELETE it (end session); we offer neither, so both get a plain 405 —

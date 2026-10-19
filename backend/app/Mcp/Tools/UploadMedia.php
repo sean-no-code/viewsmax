@@ -57,7 +57,13 @@ class UploadMedia extends ViewsMaxTool
 
         $maxBytes = ((int) config('mcp.upload_max_mb', 100)) * 1024 * 1024;
 
-        $response = Http::timeout(120)->withOptions(['stream' => false])->get($validated['url']);
+        try {
+            $response = Http::timeout(120)->withOptions(['stream' => false])->get($validated['url']);
+        } catch (\Illuminate\Http\Client\ConnectionException) {
+            $host = parse_url($validated['url'], PHP_URL_HOST) ?: 'the link';
+
+            return ToolResult::error("Couldn't reach {$host} to download the file. Check the link, or try again in a minute.");
+        }
 
         if (! $response->successful()) {
             return ToolResult::error("Could not download the file (HTTP {$response->status()}).");
