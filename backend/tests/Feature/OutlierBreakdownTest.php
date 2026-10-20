@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\TranscriptUnavailableException;
 use App\Jobs\GenerateOutlierBreakdownJob;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierChannel;
@@ -283,6 +284,35 @@ class OutlierBreakdownTest extends TestCase
         // The failure must reach the exception handler (Sentry, error log, Slack),
         // not just the row — a swallowed exception is how failures went unnoticed.
         Exceptions::assertReported(fn (\RuntimeException $e) => str_contains($e->getMessage(), 'transcript'));
+    }
+
+    public function test_job_marks_failed_without_reporting_when_the_video_has_no_transcript(): void
+    {
+        Exceptions::fake();
+        $this->makeVideo();
+        $breakdown = OutlierBreakdown::create([
+            'platform' => 'youtube', 'video_id' => 'abc123xyz',
+            'status' => OutlierBreakdown::STATUS_PENDING,
+        ]);
+
+        $this->mock(CaptApiService::class, function ($mock) {
+            $mock->shouldReceive('getTranscript')
+                ->once()
+                ->andThrow(new TranscriptUnavailableException('Transcript not available for this video'));
+        });
+        $this->mock(AnthropicService::class, function ($mock) {
+            $mock->shouldNotReceive('generateOutlierBreakdown');
+        });
+
+        app()->call([new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'), 'handle']);
+
+        $breakdown->refresh();
+        $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
+        $this->assertSame('Transcript not available for this video', $breakdown->error);
+
+        // A video with no captions is the provider's answer, not our bug: the row
+        // carries the message for the user, and Sentry is left alone.
+        Exceptions::assertNothingReported();
     }
 
     // ---- TikTok: transcript URL must carry the creator's @handle ----

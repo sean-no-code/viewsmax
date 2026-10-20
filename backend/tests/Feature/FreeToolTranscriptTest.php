@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\TranscriptUnavailableException;
+use App\Services\CaptApiService;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -102,11 +106,74 @@ class FreeToolTranscriptTest extends TestCase
 
     public function test_returns_502_on_provider_failure(): void
     {
-        Http::fake(['api.captapi.com/*' => Http::response(['success' => false, 'error' => 'Not found'], 404)]);
+        Http::fake(['api.captapi.com/*' => Http::response(['success' => false, 'error' => 'Upstream exploded'], 500)]);
 
         $this->postJson('/api/free-tools/transcript', ['platform' => 'youtube', 'url' => self::YT])
             ->assertStatus(502);
 
         $this->assertDatabaseCount('transcripts', 0, 'outlier_db');
+    }
+
+    public function test_missing_transcript_is_a_404_with_the_provider_message_and_is_not_reported(): void
+    {
+        config(['app.debug' => false]);
+        // CaptAPI's shape for a video with no captions: HTTP 404, error object.
+        Http::fake(['api.captapi.com/*' => Http::response([
+            'success' => false,
+            'error' => ['code' => 'TRANSCRIPT_NOT_FOUND', 'message' => 'Transcript not available for this video'],
+        ], 404)]);
+
+        $reported = [];
+        $this->app->make(ExceptionHandler::class)->reportable(function (\Throwable $e) use (&$reported) {
+            $reported[] = $e;
+
+            return false;
+        });
+
+        $this->postJson('/api/free-tools/transcript', ['platform' => 'youtube', 'url' => self::YT])
+            ->assertStatus(404)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Transcript not available for this video');
+
+        $this->assertSame([], $reported, 'A video with no transcript is not our bug and must not be reported to Sentry.');
+        $this->assertDatabaseCount('transcripts', 0, 'outlier_db');
+    }
+
+    public function test_missing_transcript_without_a_provider_message_gets_a_default(): void
+    {
+        config(['app.debug' => false]);
+        Http::fake(['api.captapi.com/*' => Http::response(['success' => false], 404)]);
+
+        $this->postJson('/api/free-tools/transcript', ['platform' => 'youtube', 'url' => self::YT])
+            ->assertStatus(404)
+            ->assertJsonPath('message', TranscriptUnavailableException::DEFAULT_MESSAGE);
+    }
+
+    public function test_provider_timeout_is_a_504_with_a_retry_message_and_is_not_reported(): void
+    {
+        config(['app.debug' => false]);
+        Http::fake(['api.captapi.com/*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
+
+        $reported = [];
+        $this->app->make(ExceptionHandler::class)->reportable(function (\Throwable $e) use (&$reported) {
+            $reported[] = $e;
+
+            return false;
+        });
+
+        $this->postJson('/api/free-tools/transcript', ['platform' => 'instagram', 'url' => 'https://www.instagram.com/reel/DeovNRbSn-e/'])
+            ->assertStatus(504)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'The video provider took too long to respond. Please try again in a minute.');
+
+        $this->assertSame([], $reported, 'A provider timeout must not be reported to Sentry.');
+        $this->assertDatabaseCount('transcripts', 0, 'outlier_db');
+    }
+
+    public function test_transcript_timeout_comes_from_config(): void
+    {
+        config(['services.captapi.transcript_timeout' => 123]);
+
+        $this->assertSame(123, (new \ReflectionProperty(CaptApiService::class, 'timeout'))->getValue(app(CaptApiService::class)));
     }
 }
