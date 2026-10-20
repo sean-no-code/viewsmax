@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Jobs\ClassifyOutlierVideoFormatsJob;
 use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
+use App\Models\SearchResult;
 use App\Models\SearchTerm;
 use App\Models\TermsDataFetch;
 use App\Models\User;
 use App\Services\YouTubeSearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -65,9 +67,16 @@ class OutlierSearchIngestTest extends TestCase
         $term = SearchTerm::create(['term' => 'ai']);
         TermsDataFetch::create(['term_id' => $term->id, 'status' => TermsDataFetch::STATUS_QUEUED]);
 
+        DB::connection('outlier_db')->enableQueryLog();
+
         app(YouTubeSearchService::class)->fetchAndProcess('ai', $term, $user);
 
         $this->assertSame(2, OutlierVideo::count());
+        $this->assertSame(['vidA', 'vidB'], SearchResult::where('term_id', $term->id)->orderBy('video_youtube_id')->pluck('video_youtube_id')->all());
+        // One insert for all saved ids, not one per video (Sentry flagged the per-row create as an N+1).
+        $inserts = collect(DB::connection('outlier_db')->getQueryLog())
+            ->filter(fn ($q) => str_starts_with(strtolower($q['query']), 'insert into "search_results"'));
+        $this->assertCount(1, $inserts);
         // Classification is NOT probed inline (keeps the search job fast) — it's queued for the saved ids.
         Queue::assertPushed(ClassifyOutlierVideoFormatsJob::class, function (ClassifyOutlierVideoFormatsJob $job) {
             return collect($job->videoIds)->sort()->values()->all() === ['vidA', 'vidB'];
