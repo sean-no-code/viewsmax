@@ -114,9 +114,11 @@ class YouTubeProvider extends GoogleOAuthProvider
     }
 
     /**
-     * Most recent uploads via the channel's uploads playlist ("UU" + channel
-     * id, newest first; 1 quota unit where search.list would cost 100). A
-     * channel with no uploads has no such playlist (404) — that's just empty.
+     * Most recent public uploads via the channel's uploads playlist ("UU" +
+     * channel id, newest first; 1 quota unit where search.list would cost
+     * 100). The owner's token lists private/unlisted videos too, so one page
+     * is fetched and filtered to public before the limit applies. A channel
+     * with no uploads has no such playlist (404) — that's just empty.
      */
     public function fetchRecentPosts(SocialAccount $account, int $limit): array
     {
@@ -129,9 +131,9 @@ class YouTubeProvider extends GoogleOAuthProvider
 
         $response = Http::withToken($account->access_token)
             ->get('https://www.googleapis.com/youtube/v3/playlistItems', [
-                'part' => 'snippet,contentDetails',
+                'part' => 'snippet,contentDetails,status',
                 'playlistId' => 'UU'.substr($channelId, 2),
-                'maxResults' => min(max($limit, 1), 50),
+                'maxResults' => 50,
             ]);
 
         if ($response->status() === 404) {
@@ -148,7 +150,7 @@ class YouTubeProvider extends GoogleOAuthProvider
         $out = [];
         foreach ($response->json('items') ?? [] as $item) {
             $id = data_get($item, 'contentDetails.videoId');
-            if (! $id) {
+            if (! $id || data_get($item, 'status.privacyStatus') !== 'public') {
                 continue;
             }
             $publishedAt = data_get($item, 'contentDetails.videoPublishedAt') ?? data_get($item, 'snippet.publishedAt');

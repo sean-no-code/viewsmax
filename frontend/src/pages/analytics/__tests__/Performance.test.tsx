@@ -85,12 +85,23 @@ describe("Performance page", () => {
     expect(cards.map((c) => c.getAttribute("aria-label"))).toEqual(["Thumbnail test results", "Channel audit", "A thread on retention"]);
     expect(within(cards[0]).getByRole("link", { name: "Thumbnail test results" })).toHaveAttribute("href", "https://youtu.be/a");
     expect(within(cards[0]).getByText("Views").nextSibling).toHaveTextContent("600"); // the sort key is the headline stat
+    // YouTube shows the video still (derived from the id) and an icon to open the post on the platform.
+    expect(cards[0].querySelector("img")).toHaveAttribute("src", "https://i.ytimg.com/vi/a/mqdefault.jpg");
+    expect(within(cards[0]).getByRole("link", { name: "Open on YouTube" })).toHaveAttribute("href", "https://youtu.be/a");
+    // X is text-first: the caption line says so and the preview panel carries the post text; no URL → no open icon.
+    expect(within(cards[2]).getByText("Text only, no media")).toBeInTheDocument();
+    expect(within(cards[2]).getByText("A thread on retention")).toBeInTheDocument();
+    expect(cards[2].querySelector("img")).toBeNull();
+    expect(within(cards[2]).queryByRole("link", { name: /Open on/ })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "List" }));
     const table = screen.getByRole("table", { name: "Posts" });
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(4);
     expect(within(rows[3]).getAllByRole("cell")[3]).toHaveTextContent("–"); // no views on X → no rate
+    expect(rows[1].querySelector("img")).toHaveAttribute("src", "https://i.ytimg.com/vi/a/mqdefault.jpg");
+    expect(within(rows[1]).getByRole("link", { name: "Open on YouTube" })).toHaveAttribute("href", "https://youtu.be/a");
+    expect(rows[3].querySelector("img")).toBeNull();
     expect(screen.getByTestId("search")).toHaveTextContent("layout=list");
   });
 

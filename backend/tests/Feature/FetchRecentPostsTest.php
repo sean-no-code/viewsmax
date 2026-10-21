@@ -35,20 +35,24 @@ class FetchRecentPostsTest extends TestCase
         ]);
     }
 
-    public function test_youtube_lists_the_uploads_playlist(): void
+    public function test_youtube_lists_the_public_uploads_only(): void
     {
         Http::fake([
             'www.googleapis.com/youtube/v3/playlistItems*' => Http::response(['items' => [
-                ['snippet' => ['title' => 'Newest', 'publishedAt' => '2026-10-02T09:00:00Z'], 'contentDetails' => ['videoId' => 'v2', 'videoPublishedAt' => '2026-10-02T10:00:00Z']],
-                ['snippet' => ['title' => 'Older', 'publishedAt' => '2026-09-01T09:00:00Z'], 'contentDetails' => ['videoId' => 'v1']],
+                ['snippet' => ['title' => 'Draft', 'publishedAt' => '2026-10-03T09:00:00Z'], 'contentDetails' => ['videoId' => 'v3'], 'status' => ['privacyStatus' => 'private']],
+                ['snippet' => ['title' => 'Newest', 'publishedAt' => '2026-10-02T09:00:00Z'], 'contentDetails' => ['videoId' => 'v2', 'videoPublishedAt' => '2026-10-02T10:00:00Z'], 'status' => ['privacyStatus' => 'public']],
+                ['snippet' => ['title' => 'Hidden', 'publishedAt' => '2026-09-15T09:00:00Z'], 'contentDetails' => ['videoId' => 'v15'], 'status' => ['privacyStatus' => 'unlisted']],
+                ['snippet' => ['title' => 'Older', 'publishedAt' => '2026-09-01T09:00:00Z'], 'contentDetails' => ['videoId' => 'v1'], 'status' => ['privacyStatus' => 'public']],
             ]]),
         ]);
         $account = $this->account('youtube', ['platform_account_id' => 'UCabc', 'metadata' => ['channel_id' => 'UCabc']]);
 
         $posts = (new YouTubeProvider)->fetchRecentPosts($account, 10);
 
+        // One full page (private/unlisted get filtered out, so more than $limit is asked for).
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/youtube/v3/playlistItems')
-            && $r['playlistId'] === 'UUabc' && (int) $r['maxResults'] === 10
+            && $r['playlistId'] === 'UUabc' && (int) $r['maxResults'] === 50
+            && str_contains($r['part'], 'status')
             && $r->hasHeader('Authorization', 'Bearer tok'));
         $this->assertSame(['v2', 'v1'], array_column($posts, 'remote_post_id'));
         $this->assertSame('https://www.youtube.com/watch?v=v2', $posts[0]['url']);

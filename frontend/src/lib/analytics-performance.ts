@@ -16,6 +16,8 @@ export interface Network {
   color: string;
   /** Brand colour for the small platform badge. */
   badge: string;
+  /** Text-first network: posts have no media, so the caption IS the post. */
+  text?: boolean;
 }
 
 const NETWORK_LIST: Network[] = [
@@ -23,10 +25,10 @@ const NETWORK_LIST: Network[] = [
   { id: "tiktok", name: "TikTok", color: "var(--data-indigo)", badge: "#111111" },
   { id: "instagram", name: "Instagram", color: "var(--data-pink)", badge: "#E1306C" },
   { id: "linkedin", name: "LinkedIn", color: "var(--data-blue)", badge: "#0A66C2" },
-  { id: "x", name: "X", color: "var(--ink-on-paper-2)", badge: "#000000" },
-  { id: "threads", name: "Threads", color: "var(--data-violet)", badge: "#000000" },
+  { id: "x", name: "X", color: "var(--ink-on-paper-2)", badge: "#000000", text: true },
+  { id: "threads", name: "Threads", color: "var(--data-violet)", badge: "#000000", text: true },
   { id: "facebook", name: "Facebook", color: "var(--data-teal)", badge: "#1877F2" },
-  { id: "bluesky", name: "Bluesky", color: "var(--data-amber)", badge: "#0085FF" },
+  { id: "bluesky", name: "Bluesky", color: "var(--data-amber)", badge: "#0085FF", text: true },
   { id: "google_business", name: "Google Business", color: "var(--data-blue)", badge: "#4285F4" },
 ];
 export const NETWORKS: Record<string, Network> = Object.fromEntries(NETWORK_LIST.map((n) => [n.id, n]));
@@ -162,6 +164,8 @@ export interface PostStat {
   net: Network;
   caption: string;
   url: string | null;
+  /** Preview image when the platform has a predictable one (YouTube); null otherwise. */
+  thumbnail: string | null;
   date: Date;
   views: number;
   eng: number;
@@ -221,12 +225,17 @@ export function fromApi(data: PerformanceData): Performance {
     const eng = p.likes + p.comments + p.shares;
     return [{
       id: p.id, account, net: account.net, caption: p.caption || `${account.net.name} post`, url: p.url,
+      thumbnail: postThumbnail(p.platform, p.remote_post_id),
       date: new Date(p.published_at), views: p.views, eng, rate: p.views > 0 ? eng / p.views : null,
       likes: p.likes, comments: p.comments, shares: p.shares,
     }];
   });
   return { accounts, hist: { dates, L: Math.floor(dates.length / 2), acc }, posts };
 }
+
+/** YouTube serves a public still for every video id; nothing is stored for other platforms. */
+export const postThumbnail = (platform: string, remoteId: string): string | null =>
+  platform === "youtube" && remoteId ? `https://i.ytimg.com/vi/${encodeURIComponent(remoteId)}/mqdefault.jpg` : null;
 
 export const selectedAccounts = (accounts: Account[], sel: string[]) => accounts.filter((a) => sel.includes(a.id));
 /** Networks with at least one selected account, in canonical order. */
