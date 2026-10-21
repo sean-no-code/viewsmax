@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Check, X, Mail } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { viewsMaxApi } from "@/lib/api-service";
+import LanguageMenu from "@/components/LanguageMenu";
 import { Trans, useTranslation } from "react-i18next";
 
 const Auth = () => {
@@ -221,7 +222,12 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4 pb-4 pt-16 sm:p-4">
+      {/* No account yet, so the choice is only saved in this browser. The extra top
+          padding on phones keeps the tall sign-up card clear of it. */}
+      <div className="absolute top-4 right-4">
+        <LanguageMenu />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl text-center">{t("auth.header.title", "Welcome")}</CardTitle>

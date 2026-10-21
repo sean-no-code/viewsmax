@@ -3,9 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import * as Sentry from "@sentry/react";
+import AppErrorFallback from "@/components/AppErrorFallback";
 import { useEffect } from "react";
 import Index from "./pages/Index";
-import { HOME_LOCALES } from "./pages/landing/locales";
+import { HOME_LOCALES, localizedPath } from "./pages/landing/locales";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -95,7 +97,12 @@ const ParamRedirect = ({ base }: { base: string }) => {
   return <Navigate to={id ? `${base}/${id}` : base} replace />;
 };
 
+// Names page-load/navigation traces by route pattern (/dashboard/post/:id),
+// not by the literal URL. A plain <Routes> when Sentry isn't running.
+const SentryRoutes = Sentry.wrapReactRouterRouting(Routes);
+
 const App = () => (
+  <Sentry.ErrorBoundary fallback={<AppErrorFallback />}>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -104,7 +111,7 @@ const App = () => (
         <AuthProvider>
           <UserCreditsProvider>
             <UserRoleProvider>
-              <Routes>
+              <SentryRoutes>
                 <Route path="/" element={<Index />} />
                 {HOME_LOCALES.filter((l) => l.path !== "/").map((l) => (
                   <Route key={l.code} path={l.path} element={<Index locale={l.code} />} />
@@ -114,6 +121,9 @@ const App = () => (
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/ai" element={<ConnectAI />} />
                 <Route path="/mcp" element={<McpLanding />} />
+                {HOME_LOCALES.filter((l) => l.path !== "/").map((l) => (
+                  <Route key={`mcp-${l.code}`} path={localizedPath(l, "/mcp")} element={<McpLanding locale={l.code} />} />
+                ))}
                 {/* Per-agent setup guides: /claude, /chatgpt, /cursor, ... (src/lib/agent-pages.ts) */}
                 {AGENT_LIST.map((a) => (
                   <Route key={a.key} path={a.slug} element={<AgentPage agent={a.key} />} />
@@ -261,13 +271,14 @@ const App = () => (
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
-              </Routes>
+              </SentryRoutes>
             </UserRoleProvider>
           </UserCreditsProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </Sentry.ErrorBoundary>
 );
 
 export default App;

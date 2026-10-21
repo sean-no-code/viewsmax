@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { PLATFORM_LIST, HUB_SEO, buildJsonLd } from "../src/lib/transcript-tools";
 import { STATIC_PAGE_SEO } from "../src/lib/static-page-seo";
 import { HOME_LOCALES } from "../src/pages/landing/locales";
+import { SITEMAP_MARKER, hreflangLinks, sitemapLocalizedPages } from "../src/lib/locale-seo";
 
 const distDir = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 const ORIGIN = "https://viewsmax.com";
@@ -46,9 +47,7 @@ interface Route {
 }
 
 // Every homepage lists every other one (search engines ignore one-way hreflang).
-const HREFLANG =
-  HOME_LOCALES.map((l) => `\n  <link rel="alternate" hreflang="${l.htmlLang}" href="${ORIGIN}${l.path}" />`).join("") +
-  `\n  <link rel="alternate" hreflang="x-default" href="${ORIGIN}/" />`;
+const HREFLANG = hreflangLinks("/");
 
 const routes: Route[] = [
   { path: "/free-tools", ...HUB_SEO, jsonLd: [] },
@@ -65,7 +64,17 @@ const routes: Route[] = [
   ...HOME_LOCALES.filter((l) => l.path !== "/").map((l) => ({
     path: l.path,
     ...l.copy.seo,
-    jsonLd: [],
+    // The English homepage's SoftwareApplication block lives in index.html;
+    // each translation describes itself in its own language.
+    jsonLd: [{
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: l.copy.seo.title,
+      description: l.copy.seo.description,
+      url: `${ORIGIN}${l.path}`,
+      inLanguage: l.htmlLang,
+      isPartOf: { "@type": "WebSite", name: "ViewsMax", url: `${ORIGIN}/` },
+    }],
     htmlLang: l.htmlLang,
     ogLocale: l.ogLocale,
   })),
@@ -106,3 +115,12 @@ for (const r of routes) {
 const indexFile = join(distDir, "index.html");
 writeFileSync(indexFile, readFileSync(indexFile, "utf8").replace("</head>", `${HREFLANG}\n</head>`));
 console.log("prerendered hreflang /");
+
+// The translated pages' sitemap entries (every language of / and /mcp), with
+// their hreflang alternates, go where public/sitemap-pages.xml has the marker.
+// Fail the build rather than ship a sitemap without them.
+const sitemapFile = join(distDir, "sitemap-pages.xml");
+const sitemap = readFileSync(sitemapFile, "utf8");
+if (!sitemap.includes(SITEMAP_MARKER)) throw new Error(`sitemap-pages.xml: no ${SITEMAP_MARKER}`);
+writeFileSync(sitemapFile, sitemap.replace(SITEMAP_MARKER, () => sitemapLocalizedPages()));
+console.log("prerendered sitemap translated pages");

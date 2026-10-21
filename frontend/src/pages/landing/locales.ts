@@ -1,4 +1,5 @@
-// Localized homepages: `/` plus one path per language. App.tsx routes each
+// Localized public pages: the homepage at `/` plus one path per language, and
+// translated pages under the same prefix (/mcp -> /ru/mcp). App.tsx routes each
 // path, and the postbuild prerender bakes each into dist/<path>/index.html with
 // its own <html lang>, head tags, hreflang links and body.
 // Copy lives in copy/<code>.json; en.json is the source and its shape is the
@@ -45,8 +46,18 @@ export const DEFAULT_HOME = HOME_LOCALES[0];
 
 export const homeLocale = (code?: string) => HOME_LOCALES.find((l) => l.code === code) ?? DEFAULT_HOME;
 
-// Set by ViewsMaxLanding. Null on other public pages that share the nav/footer
-// (/ai, /mcp, ...): they are English-only and show no language picker.
+/** A page's address in a language: localizedPath(ru, "/mcp") -> "/ru/mcp", localizedPath(ru, "/") -> "/ru". */
+export const localizedPath = (locale: HomeLocale, page = "/") =>
+  page === "/" ? locale.path : locale.path === "/" ? page : `${locale.path}${page}`;
+
+// Which translated page is showing ("/" or "/mcp"), so the language picker can
+// switch to the same page in another language.
+export const PagePathContext = createContext("/");
+export const usePagePath = () => useContext(PagePathContext);
+
+// Set by the translated pages (ViewsMaxLanding, McpLanding). Null on public pages
+// that share the nav/footer but are English-only (/ai, the agent guides, ...):
+// they show no language picker.
 export const HomeLocaleContext = createContext<HomeLocale | null>(null);
 
 export const useHomeLocale = () => useContext(HomeLocaleContext);

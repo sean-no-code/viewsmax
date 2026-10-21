@@ -280,11 +280,19 @@
                   </span>
                   <span style="font:500 11px var(--font-mono);color:var(--ink-on-paper-3);flex-shrink:0">{{ p.date }}</span>
                 </div>
-                <div style="font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:39px;text-wrap:pretty">{{ p.caption }}</div>
+                <div style="font-size:14px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:39px;text-wrap:pretty;color:{{ p.capColor }}">{{ p.caption }}</div>
               </div>
-              <div style="margin:0 16px;aspect-ratio:16/10;border-radius:10px;background:repeating-linear-gradient(135deg,var(--paper-2) 0 10px,var(--paper-3) 10px 11px);display:flex;align-items:flex-end;padding:8px">
-                <span style="font:500 11px var(--font-mono);color:var(--ink-on-paper-2);background:var(--paper-0);padding:3px 7px;border-radius:5px">{{ p.type }}</span>
-              </div>
+              <sc-if value="{{ p.hasMedia }}" hint-placeholder-val="{{ true }}">
+                <div style="margin:0 16px;aspect-ratio:16/10;border-radius:10px;background:repeating-linear-gradient(135deg,var(--paper-2) 0 10px,var(--paper-3) 10px 11px);display:flex;align-items:flex-end;padding:8px">
+                  <span style="font:500 11px var(--font-mono);color:var(--ink-on-paper-2);background:var(--paper-0);padding:3px 7px;border-radius:5px">{{ p.type }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ p.textOnly }}" hint-placeholder-val="{{ false }}">
+                <div style="margin:0 16px;aspect-ratio:16/10;border-radius:10px;background:var(--paper-1);border:1px solid var(--line-1);padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow:hidden;box-sizing:border-box">
+                  <div style="font-size:13px;line-height:1.45;color:var(--ink-on-paper-1);display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty;white-space:pre-line">{{ p.body }}</div>
+                  <span style="margin-top:auto;align-self:flex-start;font:500 11px var(--font-mono);color:var(--ink-on-paper-2);background:var(--paper-0);border:1px solid var(--line-1);padding:3px 7px;border-radius:5px">{{ p.type }}</span>
+                </div>
+              </sc-if>
               <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;font-size:13px;font-variant-numeric:tabular-nums">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:1px solid var(--line-1)">
                   <span style="font-weight:600">{{ p.primaryLabel }}</span>
@@ -308,9 +316,10 @@
             <sc-for list="{{ posts }}" as="p" hint-placeholder-count="8">
               <div style="display:grid;grid-template-columns:minmax(0,3fr) repeat(5,minmax(0,1fr));gap:12px;padding:12px 20px;font-size:14px;border-bottom:1px solid var(--line-1);align-items:center;font-variant-numeric:tabular-nums">
                 <span style="display:flex;align-items:center;gap:12px;min-width:0">
-                  <span style="width:56px;height:36px;flex-shrink:0;border-radius:6px;border-left:3px solid {{ p.color }};background:repeating-linear-gradient(135deg,var(--paper-2) 0 8px,var(--paper-3) 8px 9px)"></span>
+                  <sc-if value="{{ p.hasMedia }}" hint-placeholder-val="{{ true }}"><span style="width:56px;height:36px;flex-shrink:0;border-radius:6px;border-left:3px solid {{ p.color }};background:repeating-linear-gradient(135deg,var(--paper-2) 0 8px,var(--paper-3) 8px 9px)"></span></sc-if>
+                  <sc-if value="{{ p.textOnly }}" hint-placeholder-val="{{ false }}"><span style="width:56px;height:36px;flex-shrink:0;box-sizing:border-box;border-radius:6px;border:1px solid var(--line-1);border-left:3px solid {{ p.color }};background:var(--paper-1);padding:4px 5px;font-size:6.5px;line-height:1.3;color:var(--ink-on-paper-2);overflow:hidden">{{ p.body }}</span></sc-if>
                   <span style="display:flex;flex-direction:column;min-width:0;gap:2px">
-                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.caption }}</span>
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.listCaption }}</span>
                     <span style="font-size:12px;color:var(--ink-on-paper-3)">{{ p.net }} {{ p.handle }} · {{ p.type }}</span>
                   </span>
                 </span>
@@ -358,14 +367,14 @@ const CAPTIONS = [
   ['li1', 'Document', 'Our Q3 creator report: what grew, what stalled, what we cut'],
   ['tt1', 'Short video', 'Replying to every comment for a week changed this'],
   ['ig1', 'Carousel', '7 title formulas we use on every upload'],
-  ['x1', 'Thread', 'A thread on retention graphs and the 30-second cliff'],
+  ['x1', 'Thread', 'A thread on retention graphs and the 30-second cliff', 'A thread on retention graphs and the 30-second cliff 🧵\n\nMost videos lose 30–40% of viewers before the 30-second mark. We looked at 212 of our uploads to find out why, and the pattern was the same every time: the intro promised something the first scene didn’t deliver. Here’s what we changed.'],
   ['yt1', 'Video', 'Full channel audit: 10K to 100K in one year'],
   ['ig2', 'Image', 'New studio setup is finally done'],
   ['tt1', 'Short video', 'POV: your first video hits 1M views'],
-  ['x2', 'Post', 'Upload issues are fixed. Thanks for your patience.'],
+  ['x2', 'Post', 'Upload issues are fixed. Thanks for your patience.', 'Upload issues are fixed. Thanks for your patience. If a scheduled post failed between 9:00 and 11:40 UTC, it has been retried automatically. Still seeing an error? Reply here or message us and we’ll look into your account directly.'],
   ['li1', 'Text', 'Hiring our first full-time editor. What we look for.'],
   ['yt2', 'Short', 'One lighting change, twice the watch time'],
-  ['x1', 'Post', 'Hot take: posting daily is not the reason you are growing'],
+  ['x1', 'Post', 'Hot take: posting daily is not the reason you are growing', 'Hot take: posting daily is not the reason you are growing. Every channel we audited that “grew from daily posting” also improved click-through and retention in the same window. Frequency gave them more at-bats. Packaging is what turned those at-bats into views.'],
   ['ig2', 'Reel', 'Recording a whole week of content in one afternoon'],
   ['tt1', 'Short video', 'Things I would never do as a new creator'],
   ['yt1', 'Video', 'We let our audience pick every video for a month']
@@ -513,18 +522,18 @@ class Component extends DCLogic {
     // Posts
     const pr = rng(99 + a0 * 7 + L);
     const count = Math.min(CAPTIONS.length, Math.max(4, Math.round(L * 0.6)));
-    let posts = CAPTIONS.slice(0, count).map(([aid, type, caption], i) => {
+    let posts = CAPTIONS.slice(0, count).map(([aid, type, caption, body], i) => {
       const a = ACCOUNTS.find(z => z.id === aid);
       const imp = Math.round(a.imp * 1000 * (0.4 + pr() * 2.2)), rate = 0.015 + pr() * 0.09, eng = Math.round(imp * rate);
       const comments = Math.round(eng * (0.05 + pr() * 0.08)), shares = Math.round(eng * (0.04 + pr() * 0.1)), saves = Math.round(eng * (0.03 + pr() * 0.08));
       const off = Math.min(L - 1, Math.floor(i * L / count + pr() * (L / count)));
-      return { aid, a, type, caption, imp, eng, rate: eng / imp, likes: eng - comments - shares - saves, comments, shares, saves, off, d: HIST.dates[a1 - off] };
+      return { aid, a, type, caption, body, imp, eng, rate: eng / imp, likes: eng - comments - shares - saves, comments, shares, saves, off, d: HIST.dates[a1 - off] };
     }).filter(p => sel.includes(p.aid));
     const key = { rate: 'rate', eng: 'eng', imp: 'imp', shares: 'shares', date: 'off' }[sort];
     posts.sort((p, q) => sort === 'date' ? p.off - q.off : q[key] - p[key]);
     const primary = { rate: ['Engagement rate', p => (p.rate * 100).toFixed(1) + '%'], eng: ['Engagements', p => fmt(p.eng)], imp: ['Impressions', p => fmt(p.imp)], shares: ['Shares', p => fmt(p.shares)], date: ['Engagement rate', p => (p.rate * 100).toFixed(1) + '%'] }[sort];
     const statDefs = [['Impressions', 'imp'], ['Engagements', 'eng'], ['Likes', 'likes'], ['Comments', 'comments'], ['Shares', 'shares'], ['Saves', 'saves']].filter(([l]) => l !== primary[0]).slice(0, 5);
-    const postsOut = posts.map(p => ({ ...who(p.a, ACCOUNTS.indexOf(p.a)), net: NET[p.a.net].name, handle: p.a.handle, color: NET[p.a.net].color, type: p.type, caption: p.caption, date: dLabel(p.d) + yr(p.d), imp: fmt(p.imp), eng: fmt(p.eng), rate: (p.rate * 100).toFixed(1) + '%', shares: fmt(p.shares), primaryLabel: primary[0], primaryValue: primary[1](p), stats: statDefs.map(([l, k]) => ({ l, v: fmt(p[k]) })) }));
+    const postsOut = posts.map(p => ({ ...who(p.a, ACCOUNTS.indexOf(p.a)), net: NET[p.a.net].name, handle: p.a.handle, color: NET[p.a.net].color, type: p.type, caption: p.body ? 'Text only, no media' : p.caption, capColor: p.body ? 'var(--ink-on-paper-3)' : 'var(--ink-on-paper-1)', listCaption: p.body || p.caption, body: p.body || '', hasMedia: !p.body, textOnly: !!p.body, date: dLabel(p.d) + yr(p.d), imp: fmt(p.imp), eng: fmt(p.eng), rate: (p.rate * 100).toFixed(1) + '%', shares: fmt(p.shares), primaryLabel: primary[0], primaryValue: primary[1](p), stats: statDefs.map(([l, k]) => ({ l, v: fmt(p[k]) })) }));
 
     const isProfile = tab === 'profile';
     return {
@@ -550,4 +559,3 @@ class Component extends DCLogic {
 </script>
 </body>
 </html>
-

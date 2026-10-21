@@ -28,7 +28,9 @@ class SendFreeTrialReminders extends Command
         }
 
         $hoursBefore = (int) config('free_trial.reminder.hours_before', 24);
-        $billingUrl = rtrim((string) config('app.frontend_url'), '/').'/dashboard/billing';
+        $frontend = rtrim((string) config('app.frontend_url'), '/');
+        $billingUrl = $frontend.'/dashboard/billing';
+        $feedbackUrl = $frontend.'/dashboard/feature-requests';
 
         // Verified users whose window closes within the reminder window, not
         // yet reminded, and with no live plan: a card added during the window
@@ -50,6 +52,7 @@ class SendFreeTrialReminders extends Command
                     name: $user->name ?: 'there',
                     endsAt: $user->promo_expires_at->format('F j, Y \a\t g:ia T'),
                     billingUrl: $billingUrl,
+                    feedbackUrl: $feedbackUrl,
                 ));
 
                 // Stamp only after a successful send so a failure is retried next run.

@@ -475,11 +475,19 @@ class YouTubeSearchService
 
                 if ($saved) {
                     $savedIds[] = $videoId;
-                    SearchResult::create([
-                        'term_id'          => $searchTerm->id,
-                        'video_youtube_id' => $videoId,
-                    ]);
                 }
+            }
+
+            // One insert for every saved id rather than a create() per video
+            // (Sentry flagged the per-row insert as an N+1 on this job).
+            if ($savedIds !== []) {
+                $now = now();
+                SearchResult::insert(array_map(fn (string $videoId) => [
+                    'term_id'          => $searchTerm->id,
+                    'video_youtube_id' => $videoId,
+                    'created_at'       => $now,
+                    'updated_at'       => $now,
+                ], $savedIds));
             }
 
             Log::info("finished outliers for each video");

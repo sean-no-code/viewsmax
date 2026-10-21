@@ -29,7 +29,7 @@ class SocialAccountController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => $this->manager->catalog(),
+            'data' => $this->manager->catalog(Auth::user()),
         ]);
     }
 
@@ -135,6 +135,13 @@ class SocialAccountController extends Controller
             ], 422);
         }
 
+        if (! $this->manager->isAvailableTo(Auth::user(), $platform)) {
+            return response()->json([
+                'success' => false,
+                'message' => ucfirst($platform).' is not available on your account yet.',
+            ], 503);
+        }
+
         try {
             $accounts = $this->connect->connectWithCredentials(Auth::user(), $platform, $request->all(), $request->boolean('follow_us'));
         } catch (SocialConnectException $e) {
@@ -228,6 +235,17 @@ class SocialAccountController extends Controller
             $response = response()->json([
                 'success' => false,
                 'message' => ucfirst($platform).' is not configured. Add its API credentials to the environment.',
+            ], 503);
+
+            return false;
+        }
+
+        // Limited release: live, but not for this account yet. The connect
+        // screen already shows it as "Coming soon"; refuse the direct call too.
+        if (! $this->manager->isAvailableTo(Auth::user(), $platform)) {
+            $response = response()->json([
+                'success' => false,
+                'message' => ucfirst($platform).' is not available on your account yet.',
             ], 503);
 
             return false;

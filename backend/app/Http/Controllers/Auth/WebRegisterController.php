@@ -118,12 +118,12 @@ class WebRegisterController extends Controller
     public function setup(Request $request, SocialProviderManager $providers)
     {
         $user = $request->user();
-        $postable = CreatePost::availablePlatforms();
+        $postable = CreatePost::availablePlatforms($user);
         $accounts = $user->socialAccounts()->get()->groupBy('platform');
 
         // YouTube, X, Instagram and Facebook first; the rest keep catalog order.
         $priority = array_flip(['youtube', 'x', 'instagram', 'facebook']);
-        $platforms = collect($providers->catalog())
+        $platforms = collect($providers->catalog($user))
             ->filter(fn (array $p) => in_array($p['platform'], $postable, true))
             ->map(fn (array $p) => $p + ['accounts' => $accounts->get($p['platform'], collect())])
             ->sortBy(fn (array $p, int $i) => ($priority[$p['platform']] ?? 100) * 100 + $i)

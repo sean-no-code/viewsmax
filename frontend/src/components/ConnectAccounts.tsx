@@ -122,9 +122,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     return socialAcct(e.key)?.avatar_url || null;
   };
 
+  // Connectable by THIS user: the backend's `available` folds credentials in
+  // with the limited-release audience (Facebook/Instagram/Threads are
+  // promotional-customer-only for now). Falls back to `configured` so a
+  // frontend deployed ahead of the backend keeps working.
   const isConfigured = (e: ProviderEntry): boolean => {
     if (e.system === "legacy") return isProviderConfigured(e.key as OAuthProvider) || isMockApi();
-    return platforms.find((p) => p.platform === e.key)?.configured ?? true;
+    const p = platforms.find((p) => p.platform === e.key);
+    return p?.available ?? p?.configured ?? true;
   };
 
   // Our handle on a platform that offers "Follow us" (X, Bluesky), else null.
@@ -242,9 +247,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     )}
                   </div>
                 </div>
-                <Button size="sm" className="shrink-0" disabled={!configured || isBusy} onClick={() => handleConnect(entry)}>
-                  {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? t("connections.accounts.addAccount", "Add account") : t("connections.accounts.connect", "Connect")}
-                </Button>
+                {/* Nothing to click on a platform the user can't connect yet:
+                    "Coming soon" says it, a greyed-out Connect only invites a
+                    click that does nothing. */}
+                {configured && (
+                  <Button size="sm" className="shrink-0" disabled={isBusy} onClick={() => handleConnect(entry)}>
+                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? t("connections.accounts.addAccount", "Add account") : t("connections.accounts.connect", "Connect")}
+                  </Button>
+                )}
               </div>
               {follow && (
                 <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
@@ -366,15 +376,15 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                   <Check className="h-4 w-4" /> {t("connections.accounts.connected", "Connected")}
                 </span>
               )
-            ) : (
+            ) : configured ? (
               <Button
                 size="sm"
-                disabled={!configured || isBusy}
+                disabled={isBusy}
                 onClick={() => handleConnect(entry)}
               >
                 {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("connections.accounts.connect", "Connect")}
               </Button>
-            )}
+            ) : null}
           </div>
         );
       })}

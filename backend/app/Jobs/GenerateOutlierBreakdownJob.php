@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TranscriptUnavailableException;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
 use App\Services\AnthropicService;
@@ -12,12 +13,19 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches the video's transcript (CaptAPI) and asks Claude for a structured
  * breakdown (idea / hook / structure / visual layout / annotated transcript),
  * storing the result on the outlier_breakdowns row for the video.
+ *
+ * Every failure is report()ed, not just logged: the exception handler sends
+ * it to Sentry and the error log/Slack, and the platform + video id ride along
+ * via Context so the alert says which breakdown broke. The one exception is a
+ * video with no transcript (TranscriptUnavailableException): that is the
+ * provider's answer, stored on the row for the user and not reported.
  */
 class GenerateOutlierBreakdownJob implements ShouldQueue
 {
@@ -42,6 +50,7 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
             return;
         }
 
+        Context::add(['platform' => $this->platform, 'video_id' => $this->videoId]);
         $breakdown->update(['status' => OutlierBreakdown::STATUS_PROCESSING]);
 
         try {
@@ -80,12 +89,20 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
                 'payload' => $payload,
                 'error' => null,
             ]);
-        } catch (\Throwable $e) {
-            Log::error('GenerateOutlierBreakdownJob failed', [
+        } catch (TranscriptUnavailableException $e) {
+            // No captions for this video: the provider's answer, not a bug. The
+            // row carries the message for the user; Sentry is left alone.
+            Log::info('GenerateOutlierBreakdownJob: no transcript for video', [
                 'platform' => $this->platform,
                 'video_id' => $this->videoId,
+            ]);
+
+            $breakdown->update([
+                'status' => OutlierBreakdown::STATUS_FAILED,
                 'error' => $e->getMessage(),
             ]);
+        } catch (\Throwable $e) {
+            report($e);
 
             $breakdown->update([
                 'status' => OutlierBreakdown::STATUS_FAILED,

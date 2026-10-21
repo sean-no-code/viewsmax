@@ -51,7 +51,11 @@ final class AnthropicRateLimit
             RateLimiter::hit($key, self::DECAY_SECONDS);
             Log::channel('ai_usage')->info('allowed', ['user_id' => $user->id, 'action' => $action, 'remaining' => RateLimiter::remaining($key, $max)]);
         } catch (Throwable $e) {
-            Log::warning('Anthropic rate limit unavailable; allowing call', ['user_id' => $user->id, 'action' => $action, 'exception' => $e]);
+            // Deliberately fail open — a cache outage must not block every AI
+            // action. But report it: while this is firing, per-user AI spend
+            // limits are not being enforced at all.
+            report($e);
+            Log::channel('ai_usage')->error('limit unavailable; allowing call', ['user_id' => $user->id, 'action' => $action, 'error' => $e->getMessage()]);
         }
 
         return null;

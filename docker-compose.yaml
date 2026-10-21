@@ -32,9 +32,6 @@ x-backend: &backend
     - ./backend:/var/www/html
     - backend_vendor:/var/www/html/vendor
     - backend_storage:/var/www/html/storage
-    # Compiled Blade assets. Built into the image but gitignored, so without
-    # this the bind mount hides them and `/` fails with "Vite manifest not found".
-    - backend_public_build:/var/www/html/public/build
   depends_on:
     postgres:
       condition: service_healthy
@@ -122,7 +119,6 @@ volumes:
   postgres_data:
   backend_vendor:
   backend_storage:
-  backend_public_build:
   frontend_node_modules:
 
 networks:

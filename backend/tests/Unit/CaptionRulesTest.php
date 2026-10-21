@@ -13,6 +13,8 @@ class CaptionRulesTest extends TestCase
     {
         $this->assertSame(280, CaptionRules::limit('x'));
         $this->assertSame(3000, CaptionRules::limit('linkedin'));
+        // Facebook's real Page post maximum; 5000 used to reject long posts Facebook accepts.
+        $this->assertSame(63206, CaptionRules::limit('facebook'));
         $this->assertSame(500, CaptionRules::limit('threads'));
         $this->assertSame(2200, CaptionRules::limit('tiktok'));
         $this->assertNull(CaptionRules::limit('myspace'));
@@ -26,6 +28,31 @@ class CaptionRulesTest extends TestCase
         $this->assertSame(0, CaptionRules::plainLength(''));
         // Emoji is one code point in plain counting (matches frontend [...t].length).
         $this->assertSame(1, CaptionRules::plainLength('😀'));
+    }
+
+    /* ---------------- per-platform length ---------------- */
+
+    public function test_length_for_threads_counts_utf8_bytes(): void
+    {
+        $this->assertSame(4, CaptionRules::lengthFor('threads', '😀'));
+        $this->assertSame(3, CaptionRules::lengthFor('threads', '“'));
+        $this->assertSame(2, CaptionRules::lengthFor('threads', 'é'));
+        $this->assertSame(5, CaptionRules::lengthFor('threads', 'hello'));
+        // CRLF normalises to one byte, like every other platform.
+        $this->assertSame(3, CaptionRules::lengthFor('threads', "a\r\nb"));
+    }
+
+    public function test_length_for_other_platforms_counts_code_points(): void
+    {
+        $this->assertSame(1, CaptionRules::lengthFor('instagram', '😀'));
+        $this->assertSame(1, CaptionRules::lengthFor('linkedin', '“'));
+    }
+
+    public function test_caption_error_uses_bytes_for_threads(): void
+    {
+        $this->assertNull(CaptionRules::captionError('threads', str_repeat('a', 496).'😀'));
+        $this->assertSame("Caption is 1 character over Threads's 500 limit.", CaptionRules::captionError('threads', str_repeat('a', 497).'😀'));
+        $this->assertNull(CaptionRules::captionError('instagram', str_repeat('😀', 2200)));
     }
 
     /* ---------------- t.co-aware X length ---------------- */

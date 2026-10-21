@@ -48,4 +48,12 @@ void i18n
     returnEmptyString: false,
   });
 
+// Keep <html lang> on the UI language (screen readers, hyphenation). The
+// homepages set their own on mount, after this.
+const setHtmlLang = (lng?: string) => {
+  if (lng && typeof document !== "undefined") document.documentElement.lang = lng;
+};
+setHtmlLang(i18n.resolvedLanguage); // init above already ran
+i18n.on("languageChanged", setHtmlLang);
+
 export default i18n;

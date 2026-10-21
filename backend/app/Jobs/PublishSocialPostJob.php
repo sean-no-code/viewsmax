@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
 use App\Models\SocialAccount;
 use App\Models\SocialPostTarget;
 use App\Services\Social\SocialProviderManager;
@@ -13,10 +14,20 @@ use Throwable;
 /**
  * Publishes a single post to a single connected account. One job per target so
  * a failure (or retry) on one platform never blocks the others.
+ *
+ * Double-publish guard: the create call's outcome can be lost (worker killed,
+ * timeout, exception after the platform accepted the post) and LinkedIn /
+ * Bluesky give no way to ask whether it went out. So the target is stamped
+ * "attempted" in its `response` column BEFORE publish(); a later attempt that
+ * finds the stamp stops instead of creating the post again. Only a manual
+ * retry (SocialPostController::retry) clears it.
  */
 class PublishSocialPostJob implements ShouldQueue
 {
     use Queueable;
+
+    /** `response` key stamped before the create call; see the class docblock. */
+    public const ATTEMPT_MARKER = 'publish_attempted_at';
 
     public int $tries = 3;
 
@@ -46,6 +57,14 @@ class PublishSocialPostJob implements ShouldQueue
             return;
         }
 
+        if (data_get($target->response, self::ATTEMPT_MARKER)) {
+            $label = config("social.platforms.{$target->platform}.label", ucfirst($target->platform));
+            $this->failTarget($target, "This post may have already been published to {$label}; check the account before retrying.");
+            $post->syncStatusFromTargets();
+
+            return;
+        }
+
         $target->update(['status' => SocialPostTarget::STATUS_PUBLISHING]);
 
         try {
@@ -59,6 +78,8 @@ class PublishSocialPostJob implements ShouldQueue
 
                 return;
             }
+
+            $target->update(['response' => array_merge($target->response ?? [], [self::ATTEMPT_MARKER => now()->toIso8601String()])]);
 
             $result = $provider->publish($account, $post);
 
@@ -76,6 +97,13 @@ class PublishSocialPostJob implements ShouldQueue
             } else {
                 $this->failTarget($target, $result->error ?? 'Unknown publishing error.', $result->response);
             }
+        } catch (TransientPublishException $e) {
+            // The platform answered 429/5xx, so nothing was created: drop the
+            // guard and let the queue retry the create.
+            $target->response = self::withoutMarker($target->response);
+            $this->failTarget($target, $e->getMessage());
+
+            throw $e;
         } catch (Throwable $e) {
             Log::error('PublishSocialPostJob failed', [
                 'target_id' => $target->id,
@@ -111,5 +139,15 @@ class PublishSocialPostJob implements ShouldQueue
             'error' => mb_substr($error, 0, 1000),
             'response' => $response ?: $target->response,
         ]);
+    }
+
+    /**
+     * The target's response without the double-publish guard.
+     */
+    public static function withoutMarker(?array $response): ?array
+    {
+        unset($response[self::ATTEMPT_MARKER]);
+
+        return $response ?: null;
     }
 }

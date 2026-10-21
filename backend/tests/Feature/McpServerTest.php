@@ -519,15 +519,21 @@ class McpServerTest extends TestCase
         });
         RateLimiter::swap($broken);
         Log::spy();
+        \Illuminate\Support\Facades\Exceptions::fake();
 
         $json = $this->toolJson($this->callTool($key, 'upload_media', ['url' => 'https://example.com/a.png']));
 
         $this->assertArrayHasKey('url', $json);
-        Log::shouldHaveReceived('warning')
+        Log::shouldHaveReceived('error')
             ->withArgs(fn (string $message, array $context) => $message === 'MCP hourly limit unavailable; allowing call'
-                && $context['tool'] === 'upload_media'
-                && $context['exception'] instanceof \ErrorException)
+                && $context['tool'] === 'upload_media')
             ->once();
+
+        // Failing open is the right call, but it silently disables every tool's
+        // rate limit — so it has to reach Sentry, not just the log.
+        \Illuminate\Support\Facades\Exceptions::assertReported(
+            fn (\ErrorException $e) => str_contains($e->getMessage(), 'Failed to open stream')
+        );
     }
 
     public function test_mcp_is_rate_limited_per_token(): void

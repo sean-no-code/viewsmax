@@ -21,7 +21,7 @@ import InstagramTranscript from "@/pages/free-tools/InstagramTranscript";
 import AgentPage from "@/components/agents/AgentPage";
 import { AGENT_LIST } from "@/lib/agent-pages";
 import { MCP_PATH } from "@/lib/mcp-page";
-import { HOME_LOCALES } from "@/pages/landing/locales";
+import { HOME_LOCALES, localizedPath } from "@/pages/landing/locales";
 
 // Every public content route in App.tsx (not /auth — a login form has nothing
 // to read). Each needs a dist/<path>/index.html written by
@@ -34,6 +34,7 @@ const PAGES: Record<string, ReactElement> = {
   "/terms": <Terms />,
   "/ai": <ConnectAI />,
   [MCP_PATH]: <McpLanding />,
+  ...Object.fromEntries(HOME_LOCALES.filter((l) => l.path !== "/").map((l) => [localizedPath(l, MCP_PATH), <McpLanding locale={l.code} />])),
   "/youtube-monetization-calculator": <RevenueCalculator />,
   "/thumbnail-preview": <ThumbnailPreview />,
   "/free-tools": <FreeToolsHub />,

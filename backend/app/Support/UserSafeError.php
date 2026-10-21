@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Exceptions\TranscriptUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
+use Stripe\Exception\CardException;
 
 /**
  * Decides whether an exception message may be shown to end users.
@@ -15,13 +17,20 @@ use Illuminate\Http\Client\ConnectionException;
  */
 class UserSafeError
 {
+    /** Exact classes whose message was written for end users. */
+    private const SAFE_CLASSES = [
+        \RuntimeException::class,
+        \InvalidArgumentException::class,
+        TranscriptUnavailableException::class,
+    ];
+
     public static function message(\Throwable $e, string $fallback): string
     {
         if ($e instanceof ConnectionException) {
             return 'The video provider took too long to respond. Please try again in a minute.';
         }
 
-        $safe = in_array(get_class($e), [\RuntimeException::class, \InvalidArgumentException::class], true);
+        $safe = in_array(get_class($e), self::SAFE_CLASSES, true);
 
         return $safe && $e->getMessage() !== '' ? $e->getMessage() : $fallback;
     }
@@ -38,8 +47,8 @@ class UserSafeError
         }
 
         // Stripe card errors ("Your card was declined.") are written for customers.
-        $safe = in_array(get_class($e), [\RuntimeException::class, \InvalidArgumentException::class], true)
-            || $e instanceof \Stripe\Exception\CardException;
+        $safe = in_array(get_class($e), self::SAFE_CLASSES, true)
+            || $e instanceof CardException;
 
         return $safe && $e->getMessage() !== '' ? $e->getMessage() : null;
     }
@@ -55,6 +64,6 @@ class UserSafeError
     public static function isSafe(\Throwable $e): bool
     {
         return $e instanceof ConnectionException
-            || in_array(get_class($e), [\RuntimeException::class, \InvalidArgumentException::class], true);
+            || in_array(get_class($e), self::SAFE_CLASSES, true);
     }
 }

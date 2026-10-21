@@ -19,7 +19,8 @@ tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
 
 viewsmax-plugin/
-postiz-app/
+infra/
 tasks/
+features/
 
 .claude/worktrees/

@@ -2,13 +2,16 @@
 
 namespace App\Services\Social\Providers;
 
+use App\Exceptions\TransientPublishException;
 use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Contracts\SocialProviderInterface;
 use App\Services\Social\Data\OAuthResult;
+use App\Services\Social\SocialConnectException;
 use App\Support\SafeHttp;
 use App\Support\UnsafeUrlException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -39,6 +42,14 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
         $base = config("social.platforms.{$this->platform}", []);
 
         return $key === null ? $base : data_get($base, $key, $default);
+    }
+
+    /**
+     * User-facing platform name ("X", "LinkedIn") for error messages.
+     */
+    protected function label(): string
+    {
+        return (string) ($this->config('label') ?: ucfirst($this->platform));
     }
 
     protected function clientId(): string
@@ -96,6 +107,17 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
      * @return array<string, array{likes:int, comments:int, shares:int, views:int}>
      */
     public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
+    {
+        return [];
+    }
+
+    /**
+     * The account's most recent posts on the platform, newest first. Consumed
+     * by ImportRecentPostsJob on connect. Default: unsupported (empty).
+     *
+     * @return array<int, array{remote_post_id:string, url:?string, caption:string, published_at:?\Illuminate\Support\Carbon}>
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
     {
         return [];
     }
@@ -195,6 +217,13 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
     {
         $platformAccountId = $attributes['platform_account_id'] ?? null;
 
+        // A reconnect that omits refresh_token (LinkedIn, Google without a
+        // fresh consent) must not wipe the stored one — that forces a reconnect
+        // at the next expiry. Leave the column alone, like applyTokens() does.
+        if (empty($attributes['refresh_token'])) {
+            unset($attributes['refresh_token']);
+        }
+
         $account = SocialAccount::updateOrCreate(
             [
                 'user_id' => $user->id,
@@ -226,6 +255,128 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
         ]);
 
         return $account->refresh();
+    }
+
+    /**
+     * Fail a connect when the token response is missing a scope that publishing
+     * needs, so the user re-authorizes immediately instead of discovering the
+     * gap at publish time. Lenient on
+     * purpose: an empty $granted (provider reported no scopes) passes, and
+     * $required should only list what publishing really uses — optional extras
+     * (X follows.write, LinkedIn email) must not be in it.
+     *
+     * Token responses carry scopes space-separated (X) or comma-separated
+     * (LinkedIn); OAuthResult::fromArray already splits both.
+     *
+     * @param  array<int, string>  $granted  OAuthResult::$scopes
+     * @param  array<int, string>  $required
+     *
+     * @throws SocialConnectException
+     */
+    protected function assertGrantedScopes(array $granted, array $required, string $hint = ''): void
+    {
+        if ($granted === []) {
+            return;
+        }
+
+        $missing = array_values(array_diff($required, $granted));
+        if ($missing === []) {
+            return;
+        }
+
+        throw new SocialConnectException(sprintf(
+            'Not enough permissions were granted for %s: missing %s. %s',
+            $this->label(),
+            implode(', ', $missing),
+            $hint !== '' ? $hint : 'Reconnect and tick every box.'
+        ));
+    }
+
+    /**
+     * Publish-time 401 handler: when a provider call says the token
+     * is dead, flag the account for reconnect right away instead of leaving a
+     * failed target behind an account that still shows "Connected". Returns
+     * true when the account was flagged, so the caller returns a failure with
+     * the same message:
+     *
+     *     if ($this->failReauthIfUnauthorized($account, $response, 'publish')) {
+     *         return PublishResult::failure($account->fresh()->last_error);
+     *     }
+     *
+     * $alsoWhen lets a provider treat other bodies as revocation (e.g. a 403
+     * whose body says the token was revoked, Bluesky's ExpiredToken error).
+     *
+     * @param  (callable(Response): bool)|null  $alsoWhen
+     */
+    protected function failReauthIfUnauthorized(SocialAccount $account, Response $response, string $action, ?callable $alsoWhen = null): bool
+    {
+        if ($response->status() !== 401 && ! ($alsoWhen !== null && $alsoWhen($response))) {
+            return false;
+        }
+
+        Log::warning("[{$this->platform}] {$action} rejected the token; account needs reconnect", [
+            'account_id' => $account->id,
+            'status' => $response->status(),
+            'body' => $this->bodyExcerpt($response),
+        ]);
+
+        $account->markNeedsReauth($this->label().' authorization expired or was revoked — reconnect the account.');
+
+        return true;
+    }
+
+    /**
+     * Whether an HTTP status means "try again later" rather than "this post is
+     * wrong": rate limits and upstream errors.
+     */
+    public static function isTransientStatus(int $status): bool
+    {
+        return $status === 429 || $status >= 500;
+    }
+
+    /**
+     * Ask the queue to retry on a rate limit or upstream error. Call
+     * it on a failed response before building a PublishResult::failure; it is
+     * a no-op for every other status. The job must let the exception through
+     * ahead of its Throwable catch, the way PublishToXJob does:
+     *
+     *     } catch (TransientPublishException $e) {
+     *         throw $e; // queue retries with $tries / $backoff
+     *     } catch (\Throwable $e) {
+     *         ...mark the target failed...
+     *     }
+     *
+     * @throws TransientPublishException
+     */
+    protected function throwIfTransient(Response $response, string $action): void
+    {
+        $status = $response->status();
+        if (! static::isTransientStatus($status)) {
+            return;
+        }
+
+        Log::warning("[{$this->platform}] {$action} failed transiently; queue will retry", [
+            'status' => $status,
+            'body' => $this->bodyExcerpt($response),
+        ]);
+
+        throw new TransientPublishException($status === 429
+            ? "{$this->label()} rate limit hit during {$action} — retrying automatically."
+            : "{$this->label()} returned a temporary error during {$action} (HTTP {$status}) — retrying automatically.");
+    }
+
+    /**
+     * Short, token-free response body for logs.
+     */
+    protected function bodyExcerpt(Response $response, int $max = 300): string
+    {
+        $body = preg_replace(
+            ['/("?(?:access_token|refresh_token|accessJwt|refreshJwt|code)"?\s*[:=]\s*"?)[^"&\s,}]+/i', '/Bearer\s+\S+/i'],
+            ['$1[redacted]', 'Bearer [redacted]'],
+            (string) $response->body()
+        ) ?? '';
+
+        return mb_strimwidth($body, 0, $max, '…');
     }
 
     /**

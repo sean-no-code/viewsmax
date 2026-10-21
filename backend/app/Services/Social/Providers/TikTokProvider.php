@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * TikTok publishing via the Content Posting API (direct post, PULL_FROM_URL).
@@ -121,7 +123,7 @@ class TikTokProvider extends AbstractSocialProvider
         try {
             $account = $this->ensureFreshToken($account);
             $response = Http::withToken($account->access_token)
-                ->post('https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count', [
+                ->post('https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count,cover_image_url', [
                     'filters' => ['video_ids' => array_values(array_slice($remotePostIds, 0, 20))],
                 ]);
 
@@ -140,6 +142,8 @@ class TikTokProvider extends AbstractSocialProvider
                     'comments' => (int) ($v['comment_count'] ?? 0),
                     'shares' => (int) ($v['share_count'] ?? 0),
                     'views' => (int) ($v['view_count'] ?? 0),
+                    // Cover links expire within hours, so each day's metrics bring a fresh one.
+                    'thumbnail' => $v['cover_image_url'] ?? null,
                 ];
             }
 
@@ -153,92 +157,101 @@ class TikTokProvider extends AbstractSocialProvider
         }
     }
 
+    /**
+     * Latest videos via video/list, newest first. Requires the video.list scope
+     * (gated behind stats_enabled, like fetchPostMetrics). Empty when off/on failure.
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
+    {
+        if (! $this->config('stats_enabled')) {
+            return [];
+        }
+
+        try {
+            $account = $this->ensureFreshToken($account);
+            $response = Http::withToken($account->access_token)
+                ->post('https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,create_time,share_url,cover_image_url', [
+                    'max_count' => min(max($limit, 1), 20),
+                ]);
+
+            if (! $response->successful()) {
+                \Illuminate\Support\Facades\Log::warning('[TikTok] recent videos lookup failed', [
+                    'account_id' => $account->id, 'status' => $response->status(),
+                ]);
+
+                return [];
+            }
+
+            $out = [];
+            foreach ($response->json('data.videos') ?? [] as $v) {
+                $id = (string) ($v['id'] ?? '');
+                if ($id === '') {
+                    continue;
+                }
+                $out[] = [
+                    'remote_post_id' => $id,
+                    'url' => $v['share_url'] ?? null,
+                    'caption' => (string) (($v['title'] ?? '') !== '' ? $v['title'] : ($v['video_description'] ?? '')),
+                    'published_at' => ! empty($v['create_time']) ? Carbon::createFromTimestamp((int) $v['create_time']) : null,
+                    'thumbnail' => $v['cover_image_url'] ?? null,
+                ];
+            }
+
+            return array_slice($out, 0, $limit);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TikTok] recent videos lookup errored', [
+                'account_id' => $account->id, 'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
     public function ensureFreshToken(SocialAccount $account): SocialAccount
     {
         if ($account->hasValidToken() || empty($account->refresh_token)) {
             return $account;
         }
 
-        $response = Http::asForm()->post(self::TOKEN_URL, [
-            'client_key' => $this->clientId(),
-            'client_secret' => $this->clientSecret(),
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $account->refresh_token,
-        ]);
+        return $this->refreshingSafely($account, function (SocialAccount $account) {
+            $response = Http::asForm()->post(self::TOKEN_URL, [
+                'client_key' => $this->clientId(),
+                'client_secret' => $this->clientSecret(),
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $account->refresh_token,
+            ]);
 
-        if (! $response->successful()) {
-            $account->markNeedsReauth('TikTok token refresh failed.');
+            if (! $response->successful()) {
+                // Only a definitive rejection means the grant is dead; a 429/5xx
+                // must not brick the account (the daily refresh retries tomorrow).
+                if ($this->isDefinitiveAuthFailure($response->status())) {
+                    $account->markNeedsReauth('TikTok token refresh was rejected — reconnect the account.');
+                } else {
+                    Log::warning('TikTok token refresh failed transiently', [
+                        'account_id' => $account->id, 'status' => $response->status(),
+                    ]);
+                }
 
-            return $account;
-        }
+                return $account;
+            }
 
-        return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
+        });
     }
 
+    /** Where TikTok publishing lives now; see publish(). */
+    public const USE_POSTS_API = 'TikTok posts go through the posts API (POST /api/posts): it serves the media from our verified domain and carries your privacy and creator settings, which this legacy endpoint cannot.';
+
+    /**
+     * The legacy SocialPost path cannot publish to TikTok correctly: its media
+     * is a bare URL (TikTok only pulls from our verified domain, via a signed
+     * MediaProxy link that needs a storage path the legacy post never stored)
+     * and it carries no privacy or creator-info choice (it hard-coded
+     * SELF_ONLY). Rather than half-work, point the caller at the posts API,
+     * where PublishToTikTokJob + TikTokPublishService do it properly.
+     */
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
     {
-        $video = $this->firstVideoUrl($post);
-        $images = $this->mediaItems($post, 'image');
-        $caption = (string) $post->content;
-
-        if ($video) {
-            return $this->publishVideo($account, $video, $caption);
-        }
-
-        if (! empty($images)) {
-            return $this->publishPhotos($account, $images, $caption);
-        }
-
-        return PublishResult::failure('TikTok requires a video or photos to publish.');
-    }
-
-    protected function publishVideo(SocialAccount $account, string $videoUrl, string $caption): PublishResult
-    {
-        $response = Http::withToken($account->access_token)
-            ->post('https://open.tiktokapis.com/v2/post/publish/video/init/', [
-                'post_info' => [
-                    'title' => mb_substr($caption, 0, 2200),
-                    'privacy_level' => 'SELF_ONLY',
-                ],
-                'source_info' => [
-                    'source' => 'PULL_FROM_URL',
-                    'video_url' => $videoUrl,
-                ],
-            ]);
-
-        if (! $response->successful() || $response->json('error.code', 'ok') !== 'ok') {
-            return PublishResult::failure('TikTok video publish failed: '.$response->body(), $response->json() ?? []);
-        }
-
-        $publishId = $response->json('data.publish_id');
-
-        return PublishResult::success($publishId, null, $response->json());
-    }
-
-    protected function publishPhotos(SocialAccount $account, array $images, string $caption): PublishResult
-    {
-        $response = Http::withToken($account->access_token)
-            ->post('https://open.tiktokapis.com/v2/post/publish/content/init/', [
-                'post_info' => [
-                    'title' => mb_substr($caption, 0, 90),
-                    'description' => mb_substr($caption, 0, 2200),
-                    'privacy_level' => 'SELF_ONLY',
-                ],
-                'source_info' => [
-                    'source' => 'PULL_FROM_URL',
-                    'photo_cover_index' => 0,
-                    'photo_images' => array_map(fn ($i) => $i['url'], $images),
-                ],
-                'post_mode' => 'DIRECT_POST',
-                'media_type' => 'PHOTO',
-            ]);
-
-        if (! $response->successful() || $response->json('error.code', 'ok') !== 'ok') {
-            return PublishResult::failure('TikTok photo publish failed: '.$response->body(), $response->json() ?? []);
-        }
-
-        $publishId = $response->json('data.publish_id');
-
-        return PublishResult::success($publishId, null, $response->json());
+        return PublishResult::failure(self::USE_POSTS_API);
     }
 }

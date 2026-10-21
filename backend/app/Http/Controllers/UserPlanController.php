@@ -49,6 +49,8 @@ class UserPlanController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch current plan',
@@ -380,6 +382,8 @@ class UserPlanController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to cancel plan',
@@ -445,6 +449,8 @@ class UserPlanController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to cancel subscription',
@@ -464,6 +470,8 @@ class UserPlanController extends Controller
                 'data' => $plans,
             ]);
         } catch (\Exception $e) {
+            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
+            report($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch plan history',

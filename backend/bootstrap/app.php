@@ -36,6 +36,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:reconcile-stuck scheduled run failed'));
 
+        // TikTok hands out the public post id only after moderation, so a
+        // target can be published with no id/link; fill them in once they exist.
+        $schedule->command('posts:resolve-tiktok-ids')
+            ->everyTenMinutes()
+            ->withoutOverlapping(10)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:resolve-tiktok-ids scheduled run failed'));
+
         // Downgrade users whose paid subscription lapsed back to the free plan.
         $schedule->command('subscriptions:process-expired')
             ->daily()
@@ -171,7 +178,10 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*')) {
                 // Handle validation exceptions properly
                 if ($e instanceof \Illuminate\Validation\ValidationException) {
-                    // Log validation errors to both file and Slack
+                    // Log validation errors to both file and Slack. The
+                    // 'exception' key keeps them OUT of Sentry: the sentry log
+                    // channel skips records carrying an exception object, and a
+                    // user mistyping an email is not an issue to alert on.
                     \Illuminate\Support\Facades\Log::error('Validation Error (422)', [
                         'url' => $request->url(),
                         'method' => $request->method(),
@@ -183,6 +193,7 @@ return Application::configure(basePath: dirname(__DIR__))
                         'exception_message' => $e->getMessage(),
                         'exception_file' => $e->getFile(),
                         'exception_line' => $e->getLine(),
+                        'exception' => $e,
                     ]);
                     
                     return response()->json([
@@ -192,7 +203,11 @@ return Application::configure(basePath: dirname(__DIR__))
                     ], 422);
                 }
                 
-                // Log other exceptions
+                // Log other exceptions. The 'exception' key keeps this line out
+                // of Sentry — the exception itself already went there through
+                // Integration::handles(), which also honours what must not be
+                // reported (404s, 401s, validation), so logging it again here
+                // would bill a second event for every API error.
                 \Illuminate\Support\Facades\Log::error('API Error', [
                     'url' => $request->url(),
                     'method' => $request->method(),
@@ -204,6 +219,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'exception_file' => $e->getFile(),
                     'exception_line' => $e->getLine(),
                     'exception_trace' => $e->getTraceAsString(),
+                    'exception' => $e,
                 ]);
                 
                 // Resolve a valid integer HTTP status. Never use $e->getCode()

@@ -6,6 +6,20 @@
        (browsers stop sniffing after that), so it stays above every script. -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Opt out of browser auto-translate (Chrome's built-in Google Translate).
+       It replaces text nodes with <font> wrappers, so the text nodes React
+       still holds references to are no longer children of their parent; the
+       next render that touches those children dies with "Failed to execute
+       'insertBefore' on 'Node'" and takes out the whole app via the error
+       boundary. Buttons are the common victim (an icon next to a label that
+       swaps while loading). The app ships its own locales instead — see
+       src/i18n and the localized routes in src/pages/landing/locales.ts.
+       Keep this as a <meta>: the prerenderers in scripts/ find the opening
+       html tag below by exact string match to swap its lang attribute, so
+       adding translate="no" there would silently strip the lang and hreflang
+       tags from the localized pages. (Don't paste that tag into a comment
+       either - the replace takes the first match in the file.) -->
+  <meta name="google" content="notranslate" />
   <!-- Analytics / pixels are NOT inlined here. They load from src/lib/tracking.ts,
        driven by VITE_* env vars (see .env.example), and only on the configured
        production hostname — so this open-source tree ships with no tracking IDs. -->

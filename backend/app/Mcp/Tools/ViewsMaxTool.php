@@ -96,10 +96,13 @@ abstract class ViewsMaxTool extends Tool
 
             RateLimiter::hit($bucket, 3600);
         } catch (Throwable $e) {
-            Log::warning('MCP hourly limit unavailable; allowing call', [
+            // Fail open by design (see above), but report it: while this is
+            // firing, no MCP tool is rate limited.
+            report($e);
+            Log::error('MCP hourly limit unavailable; allowing call', [
                 'tool' => $this->name(),
                 'user_id' => $this->user()->id,
-                'exception' => $e,
+                'error' => $e->getMessage(),
             ]);
         }
 

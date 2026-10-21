@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * One scheduled "has it reached the like threshold yet?" check series for a
- * published target + feature. Postiz cadence: up to 3 runs, 6h apart, stop on
+ * published target + feature. Cadence: up to 3 runs, 6h apart, stop on
  * success. UNIQUE(post_target_id, feature) doubles as the dedupe ledger.
  */
 class BoostCheck extends Model

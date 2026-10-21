@@ -83,7 +83,7 @@ const todayStr = () => {
 /* ---------------- Follow-up comments ---------------- */
 // Extra messages posted after the post goes live: X reply threads, LinkedIn /
 // Instagram comments, Threads replies. Each comment can wait a delay after the
-// previous message in the chain (Postiz-style presets + custom minutes).
+// previous message in the chain (presets + custom minutes).
 const youtubeTitleMsg = (t: TFunction) =>
   t("post.composer.youtubeTitleMissing", "YouTube needs a title — add a caption, it's used as the video title.");
 

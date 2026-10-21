@@ -19,11 +19,14 @@ class KitService
 
     protected ?string $apiKey;
 
+    protected ?string $apiSecret;
+
     protected string $tagName;
 
     public function __construct()
     {
         $this->apiKey = config('services.kit.api_key');
+        $this->apiSecret = config('services.kit.api_secret');
         $this->tagName = config('services.kit.tag', 'viewsmax');
     }
 
@@ -85,6 +88,50 @@ class KitService
     }
 
     /**
+     * Create a tag that isn't in the account yet and return its id.
+     *
+     * Kit's v3 create-tag endpoint authenticates with the *secret* key, unlike
+     * GET /tags and /tags/{id}/subscribe which take the public api_key. Passing
+     * api_key here only ever returned an auth error, so a tag missing from the
+     * account could never be created and the subscribe was skipped — hence the
+     * explicit, actionable log when KIT_API_SECRET isn't set.
+     */
+    private function createTag(string $tagName): ?int
+    {
+        if (empty($this->apiSecret)) {
+            Log::error("Kit tag \"{$tagName}\" does not exist in the account and KIT_API_SECRET is not set, so it cannot be created. Add the tag in Kit, or set KIT_API_SECRET.");
+
+            return null;
+        }
+
+        $created = Http::acceptJson()->timeout(15)
+            ->post(self::BASE.'/tags', [
+                'api_secret' => $this->apiSecret,
+                'tag' => ['name' => $tagName],
+            ]);
+
+        if (! $created->successful()) {
+            Log::error("Kit tag create for \"{$tagName}\" failed ({$created->status()}): ".$created->body());
+
+            return null;
+        }
+
+        // One tag comes back as a single object; Kit answers with an array when
+        // asked for several. Accept both so a created tag is never thrown away.
+        $id = $created->json('id') ?? $created->json('0.id');
+
+        if (! $id) {
+            Log::error("Kit tag create for \"{$tagName}\" returned no id: ".$created->body());
+
+            return null;
+        }
+
+        Log::info("Created Kit tag \"{$tagName}\" (id {$id}).");
+
+        return (int) $id;
+    }
+
+    /**
      * Find a tag's id by name (creating the tag if it doesn't exist yet).
      * Cached per tag for a day; failures return null and are retried on the next
      * call. The cache is only an optimisation: if the store can't be used (e.g.
@@ -97,25 +144,19 @@ class KitService
             $response = Http::acceptJson()->timeout(15)
                 ->get(self::BASE.'/tags', ['api_key' => $this->apiKey]);
 
-            if ($response->successful()) {
-                foreach ($response->json('tags') ?? [] as $tag) {
-                    if (strcasecmp($tag['name'] ?? '', $tagName) === 0) {
-                        return (int) $tag['id'];
-                    }
+            if (! $response->successful()) {
+                Log::error("Kit tag list failed ({$response->status()}): ".$response->body());
+
+                return null;
+            }
+
+            foreach ($response->json('tags') ?? [] as $tag) {
+                if (strcasecmp($tag['name'] ?? '', $tagName) === 0) {
+                    return (int) $tag['id'];
                 }
             }
 
-            $created = Http::acceptJson()->timeout(15)
-                ->post(self::BASE.'/tags', [
-                    'api_key' => $this->apiKey,
-                    'tag' => ['name' => $tagName],
-                ]);
-
-            if ($created->successful() && $created->json('id')) {
-                return (int) $created->json('id');
-            }
-
-            return null;
+            return $this->createTag($tagName);
         };
 
         $key = 'kit.tag_id.'.Str::slug($tagName);

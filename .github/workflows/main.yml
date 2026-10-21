@@ -78,6 +78,12 @@ jobs:
         VITE_CLARITY_ID: ${{ secrets.VITE_CLARITY_ID }}
         VITE_REWARDFUL_ID: ${{ secrets.VITE_REWARDFUL_ID }}
         VITE_VIEWSMAX_TRACKER_USER: ${{ secrets.VITE_VIEWSMAX_TRACKER_USER }}
+        # Error reporting (src/lib/sentry.ts): the React project's DSN; blank = off.
+        VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+        # Source-map upload (vite.config.ts); without the token the build skips it.
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
