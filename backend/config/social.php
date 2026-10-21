@@ -48,8 +48,8 @@ return [
             'label' => 'Facebook',
             'enabled' => env('FACEBOOK_ENABLED', true),
             // Limited release pending Meta App Review: configured and live, but
-            // only promotional customers may connect it — everyone else sees
-            // "Coming soon". Restricted in production by default; set
+            // only promotional customers and admins may connect it — everyone
+            // else sees "Coming soon". Restricted in production by default; set
             // FACEBOOK_PROMO_ONLY=false to open it to all users.
             'promo_only' => env('FACEBOOK_PROMO_ONLY', env('APP_ENV') === 'production'),
             'client_id' => env('FACEBOOK_CLIENT_ID'),
@@ -71,8 +71,8 @@ return [
             // omits it) regardless of promo_only below.
             'enabled' => env('INSTAGRAM_ENABLED', true),
             // Limited release pending Meta App Review: live, but only
-            // promotional customers may connect it. Restricted in production by
-            // default; set INSTAGRAM_PROMO_ONLY=false once approved.
+            // promotional customers and admins may connect it. Restricted in
+            // production by default; set INSTAGRAM_PROMO_ONLY=false once approved.
             'promo_only' => env('INSTAGRAM_PROMO_ONLY', env('APP_ENV') === 'production'),
             // "Instagram API with Instagram Login" — connects directly to an
             // Instagram professional account (no Facebook Page). Uses the

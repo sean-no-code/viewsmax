@@ -104,11 +104,21 @@ class SocialProviderManager
 
     /**
      * Whether the platform is in limited release: configured and live, but only
-     * promotional customers may connect it (see config/social → promo_only).
+     * the limited-release audience may connect it (see config/social → promo_only).
      */
     public function promoOnly(string $platform): bool
     {
         return (bool) config('social.platforms.'.strtolower($platform).'.promo_only', false);
+    }
+
+    /**
+     * The limited-release audience: promotional customers and admins. Paying
+     * customers wait for the platform to open. A null user (console, queue,
+     * unauthenticated) is not in it.
+     */
+    public function inLimitedReleaseAudience(?User $user): bool
+    {
+        return $user !== null && ($user->isPromotional() || $user->isAdmin());
     }
 
     /**
@@ -123,7 +133,7 @@ class SocialProviderManager
             return false;
         }
 
-        return ! $this->promoOnly($platform) || (bool) $user?->isPromotional();
+        return ! $this->promoOnly($platform) || $this->inLimitedReleaseAudience($user);
     }
 
     /**
