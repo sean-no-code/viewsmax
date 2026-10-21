@@ -162,7 +162,7 @@ return [
             // scopes; flipping it on adds those scopes to the connect flow
             // (existing accounts must reconnect) and enables the follower + post
             // metric fetch. Mirrors the Instagram reach flag.
-            'stats_enabled' => env('TIKTOK_STATS_ENABLED', false),
+            'stats_enabled' => env('TIKTOK_STATS_ENABLED', true),
             'scopes' => array_values(array_filter([
                 'user.info.basic',
                 'video.publish',
