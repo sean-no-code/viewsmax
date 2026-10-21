@@ -130,6 +130,7 @@ class InstagramReachTest extends TestCase
     public function test_reach_disabled_stores_the_media_id_but_captures_no_baseline(): void
     {
         // Flag OFF: association still allowed, but no insights call and no baseline.
+        config(['social.platforms.instagram.reach_enabled' => false]);
         $this->publishedMedia('ig-media-9');
         Http::fake();
 
@@ -177,6 +178,7 @@ class InstagramReachTest extends TestCase
 
     public function test_refresh_command_leaves_instagram_links_untouched_when_flag_off(): void
     {
+        config(['social.platforms.instagram.reach_enabled' => false]);
         $account = $this->igAccount();
         $this->publishedMedia('ig-media-9', $account);
         $link = TrackingLink::create([

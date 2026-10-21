@@ -86,11 +86,13 @@ return [
             // connect flow (existing accounts must reconnect) and turns on the
             // baseline capture + daily refresh for instagram_media_id links.
             'reach_enabled' => env('INSTAGRAM_REACH_ENABLED', true),
+            // The insights scope follows the same flag with the same default:
+            // reach on without the scope means every metrics call is refused.
             'scopes' => array_values(array_filter([
                 'instagram_business_basic',
                 'instagram_business_content_publish',
                 'instagram_business_manage_comments',
-                env('INSTAGRAM_REACH_ENABLED', false) ? 'instagram_business_manage_insights' : null,
+                env('INSTAGRAM_REACH_ENABLED', true) ? 'instagram_business_manage_insights' : null,
             ])),
         ],
 
