@@ -6,19 +6,18 @@ use App\Models\PostMetricSnapshot;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
 use App\Models\SocialPostTarget;
+use App\Services\Social\PostMetricSnapshotter;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Snapshots per-post engagement daily so the Audience Growth "top posts" list
  * can rank by engagement (and derive a day-over-day delta). Gathers published
- * targets from BOTH posting stores, dedupes by (platform, remote_post_id),
- * fetches metrics per account via the provider, and upserts one row per post
- * per day. Posts whose platform can't return metrics are skipped, not zeroed.
- * A fetch failure is written to social_accounts.post_stats_error (cleared on
- * the next success) so the Analytics page can show it.
+ * targets from BOTH posting stores plus every post already in the snapshot
+ * table (the ones ImportRecentPostsJob pulled in from the platform on
+ * connect), dedupes by (platform, remote_post_id), and hands each account's
+ * posts to PostMetricSnapshotter, which fetches the metrics and upserts one
+ * row per post per day.
  */
 class RefreshPostMetrics extends Command
 {
@@ -26,7 +25,7 @@ class RefreshPostMetrics extends Command
 
     protected $description = 'Snapshot per-post engagement (likes/comments/shares/views) for audience-growth charts.';
 
-    public function handle(SocialProviderManager $manager): int
+    public function handle(SocialProviderManager $manager, PostMetricSnapshotter $snapshotter): int
     {
         $candidates = $this->gatherCandidates();
 
@@ -44,59 +43,10 @@ class RefreshPostMetrics extends Command
                 continue;
             }
 
-            try {
-                $provider = $manager->for($account->platform);
-                $account = $provider->ensureFreshToken($account);
-
-                // Chunk to the smallest per-platform cap so no ids get dropped.
-                $metrics = [];
-                foreach (array_chunk($group->pluck('remote_post_id')->all(), 20) as $chunk) {
-                    $metrics += $provider->fetchPostMetrics($account, $chunk);
-                }
-
-                foreach ($group as $c) {
-                    $m = $metrics[$c['remote_post_id']] ?? null;
-                    if ($m === null) {
-                        $skipped++;
-
-                        continue;
-                    }
-
-                    $likes = (int) ($m['likes'] ?? 0);
-                    $comments = (int) ($m['comments'] ?? 0);
-                    $shares = (int) ($m['shares'] ?? 0);
-                    $views = (int) ($m['views'] ?? 0);
-
-                    PostMetricSnapshot::updateOrCreate(
-                        [
-                            'platform' => $c['platform'],
-                            'remote_post_id' => $c['remote_post_id'],
-                            'snapshot_date' => now()->toDateString(),
-                        ],
-                        [
-                            'user_id' => $c['user_id'],
-                            'social_account_id' => $c['social_account_id'],
-                            'url' => $c['url'],
-                            'caption_excerpt' => Str::limit(trim((string) $c['caption']), 200, ''),
-                            'published_at' => $c['published_at'],
-                            'likes' => $likes,
-                            'comments' => $comments,
-                            'shares' => $shares,
-                            'views' => $views,
-                            'engagement_total' => $likes + $comments + $shares + $views,
-                        ],
-                    );
-                    $captured++;
-                }
-                $this->recordError($account, null);
-            } catch (\Throwable $e) {
-                $failed += $group->count();
-                $this->recordError($account, $e->getMessage());
-                Log::warning('Post metrics refresh failed', [
-                    'social_account_id' => $accountId,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $result = $snapshotter->snapshot($account, $group->values());
+            $captured += $result['captured'];
+            $skipped += $result['skipped'];
+            $failed += $result['failed'];
         }
 
         $this->info("Posts: {$candidates->count()}, captured {$captured}, skipped {$skipped}, failed {$failed}.");
@@ -104,19 +54,12 @@ class RefreshPostMetrics extends Command
         return ($failed > 0 && $captured === 0 && $skipped === 0) ? self::FAILURE : self::SUCCESS;
     }
 
-    /** Persist (or clear) why this run could not fetch post metrics for the account. */
-    private function recordError(SocialAccount $account, ?string $message): void
-    {
-        $message = $message === null ? null : Str::limit($message, 1000, '…');
-        if ($account->post_stats_error !== $message) {
-            $account->forceFill(['post_stats_error' => $message])->save();
-        }
-    }
-
     /**
-     * Published targets from both stores, normalized and deduped by
-     * (platform, remote_post_id). Only targets tied to a social account (so we
-     * have a token to fetch with) are included.
+     * Published targets from both stores, plus the latest snapshot of every
+     * post already tracked (imported from the platform on connect), normalized
+     * and deduped by (platform, remote_post_id) — target rows first so their
+     * caption/url win. Only posts tied to a social account (so we have a token
+     * to fetch with) are included.
      *
      * @return \Illuminate\Support\Collection<int, array>
      */
@@ -163,6 +106,26 @@ class RefreshPostMetrics extends Command
                     'url' => $t->remote_post_url,
                     'caption' => (string) ($t->post->content ?? ''),
                     'published_at' => $t->published_at,
+                ]);
+            });
+
+        $latestPerPost = PostMetricSnapshot::query()
+            ->selectRaw('max(id) as id')
+            ->whereNotNull('social_account_id')
+            ->groupBy('platform', 'remote_post_id');
+
+        PostMetricSnapshot::query()
+            ->whereIn('id', $latestPerPost)
+            ->get()
+            ->each(function (PostMetricSnapshot $row) use ($candidates) {
+                $candidates->push([
+                    'user_id' => $row->user_id,
+                    'social_account_id' => $row->social_account_id,
+                    'platform' => $row->platform,
+                    'remote_post_id' => (string) $row->remote_post_id,
+                    'url' => $row->url,
+                    'caption' => (string) ($row->caption_excerpt ?? ''),
+                    'published_at' => $row->published_at,
                 ]);
             });
 

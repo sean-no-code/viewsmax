@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ImportChannelVideosJob;
+use App\Jobs\ImportRecentPostsJob;
 use App\Models\Channel;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -208,6 +209,7 @@ class YouTubeOAuthController extends Controller
             && $existing->refresh_token
             && in_array(YouTubePublishService::UPLOAD_SCOPE, (array) $existing->scopes, true)) {
             $existing->update($profile);
+            ImportRecentPostsJob::dispatch($existing->id);
             Log::warning('YouTube grant without the upload scope; kept the existing publishing token', [
                 'user_id' => $user->id,
                 'social_account_id' => $existing->id,
@@ -228,7 +230,8 @@ class YouTubeOAuthController extends Controller
             $attrs['refresh_token'] = $tokenData['refresh_token'];
         }
 
-        SocialAccount::updateOrCreate($key, $attrs);
+        $account = SocialAccount::updateOrCreate($key, $attrs);
+        ImportRecentPostsJob::dispatch($account->id);
     }
 
     /**

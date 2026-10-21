@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -147,6 +148,55 @@ class TikTokProvider extends AbstractSocialProvider
             return $out;
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[TikTok] video metrics errored', [
+                'account_id' => $account->id, 'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * Latest videos via video/list, newest first. Requires the video.list scope
+     * (gated behind stats_enabled, like fetchPostMetrics). Empty when off/on failure.
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
+    {
+        if (! $this->config('stats_enabled')) {
+            return [];
+        }
+
+        try {
+            $account = $this->ensureFreshToken($account);
+            $response = Http::withToken($account->access_token)
+                ->post('https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,create_time,share_url', [
+                    'max_count' => min(max($limit, 1), 20),
+                ]);
+
+            if (! $response->successful()) {
+                \Illuminate\Support\Facades\Log::warning('[TikTok] recent videos lookup failed', [
+                    'account_id' => $account->id, 'status' => $response->status(),
+                ]);
+
+                return [];
+            }
+
+            $out = [];
+            foreach ($response->json('data.videos') ?? [] as $v) {
+                $id = (string) ($v['id'] ?? '');
+                if ($id === '') {
+                    continue;
+                }
+                $out[] = [
+                    'remote_post_id' => $id,
+                    'url' => $v['share_url'] ?? null,
+                    'caption' => (string) (($v['title'] ?? '') !== '' ? $v['title'] : ($v['video_description'] ?? '')),
+                    'published_at' => ! empty($v['create_time']) ? Carbon::createFromTimestamp((int) $v['create_time']) : null,
+                ];
+            }
+
+            return array_slice($out, 0, $limit);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TikTok] recent videos lookup errored', [
                 'account_id' => $account->id, 'error' => $e->getMessage(),
             ]);
 

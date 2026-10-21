@@ -12,6 +12,7 @@ use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
 use App\Services\Social\MetaGraphErrors;
 use App\Services\Social\SocialConnectException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -625,6 +626,46 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         }
 
         return $out;
+    }
+
+    /**
+     * Latest media via /me/media, newest first. Needs only
+     * instagram_business_basic — the insights scope is for the metrics, which
+     * fetchPostMetrics reads separately (and which the reach flag gates).
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
+    {
+        $account = $this->ensureFreshToken($account);
+
+        $response = Http::get($this->graphBase().'/me/media', [
+            'fields' => 'id,caption,permalink,timestamp',
+            'limit' => min(max($limit, 1), 100),
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $response->successful()) {
+            Log::warning('[Instagram] recent media lookup failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return [];
+        }
+
+        $out = [];
+        foreach ($response->json('data') ?? [] as $media) {
+            $id = (string) ($media['id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $out[] = [
+                'remote_post_id' => $id,
+                'url' => $media['permalink'] ?? null,
+                'caption' => (string) ($media['caption'] ?? ''),
+                'published_at' => ! empty($media['timestamp']) ? Carbon::parse($media['timestamp']) : null,
+            ];
+        }
+
+        return array_slice($out, 0, $limit);
     }
 
     /**

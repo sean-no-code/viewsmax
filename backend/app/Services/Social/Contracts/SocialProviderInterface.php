@@ -6,6 +6,7 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\PublishResult;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 interface SocialProviderInterface
@@ -72,4 +73,16 @@ interface SocialProviderInterface
      * @return array<string, array{likes:int, comments:int, shares:int, views:int}>
      */
     public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array;
+
+    /**
+     * The account's most recent posts on the platform (newest first, at most
+     * $limit), whether or not they were published through the app. Each entry
+     * is ['remote_post_id','url','caption','published_at' (Carbon|null)];
+     * metrics are not included — fetchPostMetrics() reads those. Consumed by
+     * ImportRecentPostsJob when a channel is connected. Empty when the
+     * platform doesn't expose a listing.
+     *
+     * @return array<int, array{remote_post_id:string, url:?string, caption:string, published_at:?Carbon}>
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array;
 }

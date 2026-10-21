@@ -114,6 +114,24 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Recent-posts analytics import (App\Jobs\ImportRecentPostsJob, queued
+        // on connect and by posts:import-recent): one line per account run —
+        // found/captured/skipped, or the error — in storage/logs/post-import.log.
+        // POST_IMPORT_LOG_ENABLED=false silences it.
+        'post_import' => [
+            'driver' => 'stack',
+            'channels' => env('POST_IMPORT_LOG_ENABLED', true) ? ['post_import_file', 'sentry'] : ['sentry'],
+            'ignore_exceptions' => false,
+        ],
+        'post_import_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/post-import.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         // Publish-failure notifications (App\Models\PostFailureNotification):
         // one line per recipient per failure episode — sent, skipped (with
         // reason) or failed — in storage/logs/post-failures.log. Mirrors the

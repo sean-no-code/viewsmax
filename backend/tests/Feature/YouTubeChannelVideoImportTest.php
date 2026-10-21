@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Jobs\ImportChannelVideosJob;
+use App\Jobs\ImportRecentPostsJob;
 use App\Models\Channel;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Video;
 use App\Services\YouTubeChannelService;
@@ -105,6 +107,10 @@ class YouTubeChannelVideoImportTest extends TestCase
         $channel = Channel::where('youtube_channel_id', 'UCmine')->sole();
         Queue::assertPushed(ImportChannelVideosJob::class, fn ($job) => $job->channelId === $channel->id);
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '/youtube/v3/search'));
+
+        // The mirrored social account gets its recent uploads pulled into analytics too.
+        $account = SocialAccount::where('platform', 'youtube')->where('platform_account_id', 'UCmine')->sole();
+        Queue::assertPushed(ImportRecentPostsJob::class, fn ($job) => $job->socialAccountId === $account->id);
     }
 
     public function test_the_job_imports_with_the_channels_stored_token(): void

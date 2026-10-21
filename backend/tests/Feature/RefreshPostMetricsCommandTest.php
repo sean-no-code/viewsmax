@@ -95,6 +95,44 @@ class RefreshPostMetricsCommandTest extends TestCase
         $this->app->instance(SocialProviderManager::class, $manager);
     }
 
+    public function test_posts_known_only_from_an_earlier_import_keep_being_refreshed(): void
+    {
+        $yt = $this->account('youtube');
+        // Pulled in by ImportRecentPostsJob on connect — no post target exists for it.
+        PostMetricSnapshot::create([
+            'user_id' => $this->user->id, 'social_account_id' => $yt->id, 'platform' => 'youtube',
+            'remote_post_id' => 'imported1', 'url' => 'https://yt/imported1', 'caption_excerpt' => 'Imported',
+            'published_at' => now()->subDays(10), 'likes' => 1, 'engagement_total' => 1,
+            'snapshot_date' => now()->subDay()->toDateString(),
+        ]);
+        $this->fakeManager(['imported1' => ['likes' => 5, 'comments' => 0, 'shares' => 0, 'views' => 100]]);
+
+        $this->artisan('posts:refresh-metrics')->assertExitCode(0);
+
+        $today = PostMetricSnapshot::where('remote_post_id', 'imported1')->where('snapshot_date', now()->toDateString())->sole();
+        $this->assertSame(105, $today->engagement_total);
+        $this->assertSame('https://yt/imported1', $today->url);
+        $this->assertSame('Imported', $today->caption_excerpt);
+        $this->assertSame($yt->id, $today->social_account_id);
+        $this->assertSame(2, PostMetricSnapshot::count());
+    }
+
+    public function test_the_post_stores_caption_wins_over_an_earlier_snapshots(): void
+    {
+        $yt = $this->account('youtube');
+        $this->socialTarget($yt, 'vid1');
+        PostMetricSnapshot::create([
+            'user_id' => $this->user->id, 'social_account_id' => $yt->id, 'platform' => 'youtube',
+            'remote_post_id' => 'vid1', 'caption_excerpt' => 'Stale title', 'snapshot_date' => now()->subDay()->toDateString(),
+        ]);
+        $this->fakeManager(['vid1' => ['likes' => 1, 'comments' => 0, 'shares' => 0, 'views' => 0]]);
+
+        $this->artisan('posts:refresh-metrics')->assertExitCode(0);
+
+        $today = PostMetricSnapshot::where('remote_post_id', 'vid1')->where('snapshot_date', now()->toDateString())->sole();
+        $this->assertSame('Social caption', $today->caption_excerpt);
+    }
+
     public function test_snapshots_engagement_across_both_stores(): void
     {
         $x = $this->account('x');

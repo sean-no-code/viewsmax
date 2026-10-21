@@ -112,6 +112,17 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
     }
 
     /**
+     * The account's most recent posts on the platform, newest first. Consumed
+     * by ImportRecentPostsJob on connect. Default: unsupported (empty).
+     *
+     * @return array<int, array{remote_post_id:string, url:?string, caption:string, published_at:?\Illuminate\Support\Carbon}>
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
+    {
+        return [];
+    }
+
+    /**
      * Serialize token refreshes per account and re-read state inside the
      * lock. Several publish jobs can hit an expired token at once; with
      * single-use rotating refresh tokens (X) the losers would burn a stale

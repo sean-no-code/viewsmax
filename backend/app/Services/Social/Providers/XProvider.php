@@ -16,6 +16,7 @@ use App\Services\Social\Data\PublishResult;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -310,6 +311,47 @@ class XProvider extends AbstractSocialProvider implements SupportsComments, Supp
         }
 
         return $out;
+    }
+
+    /**
+     * Latest original tweets (no retweets or replies) via users/:id/tweets,
+     * newest first. X's minimum page size is 5.
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
+    {
+        $account = $this->ensureFreshToken($account);
+
+        $response = Http::withToken($account->access_token)
+            ->get("https://api.twitter.com/2/users/{$account->platform_account_id}/tweets", [
+                'max_results' => min(max($limit, 5), 100),
+                'exclude' => 'retweets,replies',
+                'tweet.fields' => 'created_at',
+            ]);
+
+        if (! $response->successful()) {
+            Log::warning('X recent tweets lookup failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return [];
+        }
+
+        $handle = $account->username;
+        $out = [];
+        foreach ($response->json('data') ?? [] as $tweet) {
+            $id = (string) ($tweet['id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $out[] = [
+                'remote_post_id' => $id,
+                'url' => $handle ? "https://x.com/{$handle}/status/{$id}" : "https://x.com/i/status/{$id}",
+                'caption' => (string) ($tweet['text'] ?? ''),
+                'published_at' => ! empty($tweet['created_at']) ? Carbon::parse($tweet['created_at']) : null,
+            ];
+        }
+
+        return array_slice($out, 0, $limit);
     }
 
     /**

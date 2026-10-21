@@ -7,6 +7,7 @@ use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -110,6 +111,56 @@ class YouTubeProvider extends GoogleOAuthProvider
         }
 
         return $out;
+    }
+
+    /**
+     * Most recent uploads via the channel's uploads playlist ("UU" + channel
+     * id, newest first; 1 quota unit where search.list would cost 100). A
+     * channel with no uploads has no such playlist (404) — that's just empty.
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
+    {
+        $channelId = (string) ($account->meta('channel_id') ?? $account->platform_account_id);
+        if (! str_starts_with($channelId, 'UC')) {
+            return [];
+        }
+
+        $account = $this->ensureFreshToken($account);
+
+        $response = Http::withToken($account->access_token)
+            ->get('https://www.googleapis.com/youtube/v3/playlistItems', [
+                'part' => 'snippet,contentDetails',
+                'playlistId' => 'UU'.substr($channelId, 2),
+                'maxResults' => min(max($limit, 1), 50),
+            ]);
+
+        if ($response->status() === 404) {
+            return [];
+        }
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('[YouTube] recent uploads lookup failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return [];
+        }
+
+        $out = [];
+        foreach ($response->json('items') ?? [] as $item) {
+            $id = data_get($item, 'contentDetails.videoId');
+            if (! $id) {
+                continue;
+            }
+            $publishedAt = data_get($item, 'contentDetails.videoPublishedAt') ?? data_get($item, 'snippet.publishedAt');
+            $out[] = [
+                'remote_post_id' => (string) $id,
+                'url' => 'https://www.youtube.com/watch?v='.$id,
+                'caption' => (string) data_get($item, 'snippet.title', ''),
+                'published_at' => $publishedAt ? Carbon::parse($publishedAt) : null,
+            ];
+        }
+
+        return array_slice($out, 0, $limit);
     }
 
     /** Why the legacy SocialPost path no longer uploads to YouTube. */

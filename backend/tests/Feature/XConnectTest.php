@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ImportRecentPostsJob;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Social\Providers\XProvider;
 use App\Services\Social\SocialConnectException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -90,5 +92,24 @@ class XConnectTest extends TestCase
             ->assertJsonPath('success', false);
 
         $this->assertSame(0, SocialAccount::count());
+    }
+
+    public function test_a_successful_connect_queues_the_recent_posts_import(): void
+    {
+        Queue::fake();
+        $this->fakeExchange('tweet.read tweet.write users.read offline.access media.write');
+        $user = User::factory()->create();
+        $headers = ['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken, 'Accept' => 'application/json'];
+
+        $state = $this->withHeaders($headers)
+            ->getJson('/api/social/x/auth-url?redirect_uri=https://app.test/social/callback')
+            ->assertOk()->json('data.state');
+
+        $this->withHeaders($headers)
+            ->postJson('/api/social/x/exchange', ['code' => 'abc', 'state' => $state])
+            ->assertOk();
+
+        $account = SocialAccount::sole();
+        Queue::assertPushed(ImportRecentPostsJob::class, fn ($job) => $job->socialAccountId === $account->id);
     }
 }
