@@ -85,7 +85,7 @@ return [
             // grants the insights scope; flipping it on adds the scope to the
             // connect flow (existing accounts must reconnect) and turns on the
             // baseline capture + daily refresh for instagram_media_id links.
-            'reach_enabled' => env('INSTAGRAM_REACH_ENABLED', false),
+            'reach_enabled' => env('INSTAGRAM_REACH_ENABLED', true),
             'scopes' => array_values(array_filter([
                 'instagram_business_basic',
                 'instagram_business_content_publish',
