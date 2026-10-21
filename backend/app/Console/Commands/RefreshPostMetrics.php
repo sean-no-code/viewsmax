@@ -126,6 +126,7 @@ class RefreshPostMetrics extends Command
                     'url' => $row->url,
                     'caption' => (string) ($row->caption_excerpt ?? ''),
                     'published_at' => $row->published_at,
+                    'thumbnail' => $row->thumbnail_url,
                 ]);
             });
 

@@ -72,10 +72,10 @@ class ImportRecentPostsJobTest extends TestCase
     {
         $yt = $this->account('youtube');
         $this->fakeManager([
-            ['remote_post_id' => 'vid1', 'url' => 'https://yt/vid1', 'caption' => 'First video', 'published_at' => Carbon::parse('2026-10-01T10:00:00Z')],
-            ['remote_post_id' => 'vid2', 'url' => 'https://yt/vid2', 'caption' => 'Second video', 'published_at' => null],
+            ['remote_post_id' => 'vid1', 'url' => 'https://yt/vid1', 'caption' => 'First video', 'published_at' => Carbon::parse('2026-10-01T10:00:00Z'), 'thumbnail' => 'https://cdn/listed.jpg'],
+            ['remote_post_id' => 'vid2', 'url' => 'https://yt/vid2', 'caption' => 'Second video', 'published_at' => null, 'thumbnail' => 'https://cdn/vid2.jpg'],
         ], [
-            'vid1' => ['likes' => 5, 'comments' => 1, 'shares' => 0, 'views' => 1000],
+            'vid1' => ['likes' => 5, 'comments' => 1, 'shares' => 0, 'views' => 1000, 'thumbnail' => 'https://cdn/fresh.jpg'],
             'vid2' => ['likes' => 1, 'comments' => 0, 'shares' => 0, 'views' => 10],
         ]);
 
@@ -91,7 +91,10 @@ class ImportRecentPostsJobTest extends TestCase
         $this->assertSame('2026-10-01T10:00:00+00:00', $vid1->published_at->toIso8601String());
         $this->assertSame(now()->toDateString(), $vid1->snapshot_date);
         $this->assertSame(1006, $vid1->engagement_total);
-        $this->assertNull(PostMetricSnapshot::where('remote_post_id', 'vid2')->sole()->published_at);
+        $this->assertSame('https://cdn/fresh.jpg', $vid1->thumbnail_url); // the metrics' link beats the listing's
+        $vid2 = PostMetricSnapshot::where('remote_post_id', 'vid2')->sole();
+        $this->assertNull($vid2->published_at);
+        $this->assertSame('https://cdn/vid2.jpg', $vid2->thumbnail_url); // listing's link when the metrics carry none
         $this->assertNull($yt->fresh()->post_stats_error);
     }
 

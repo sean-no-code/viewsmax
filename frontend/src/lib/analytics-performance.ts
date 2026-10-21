@@ -225,7 +225,7 @@ export function fromApi(data: PerformanceData): Performance {
     const eng = p.likes + p.comments + p.shares;
     return [{
       id: p.id, account, net: account.net, caption: p.caption || `${account.net.name} post`, url: p.url,
-      thumbnail: postThumbnail(p.platform, p.remote_post_id),
+      thumbnail: p.thumbnail_url || postThumbnail(p.platform, p.remote_post_id),
       date: new Date(p.published_at), views: p.views, eng, rate: p.views > 0 ? eng / p.views : null,
       likes: p.likes, comments: p.comments, shares: p.shares,
     }];
@@ -233,7 +233,7 @@ export function fromApi(data: PerformanceData): Performance {
   return { accounts, hist: { dates, L: Math.floor(dates.length / 2), acc }, posts };
 }
 
-/** YouTube serves a public still for every video id; nothing is stored for other platforms. */
+/** YouTube serves a public still for every video id, so nothing needs storing for it. */
 export const postThumbnail = (platform: string, remoteId: string): string | null =>
   platform === "youtube" && remoteId ? `https://i.ytimg.com/vi/${encodeURIComponent(remoteId)}/mqdefault.jpg` : null;
 

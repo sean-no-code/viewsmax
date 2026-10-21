@@ -102,7 +102,7 @@ class FetchRecentPostsTest extends TestCase
         config(['social.platforms.tiktok.stats_enabled' => true]);
         Http::fake([
             'open.tiktokapis.com/v2/video/list/*' => Http::response(['data' => ['videos' => [
-                ['id' => '71', 'title' => 'Titled', 'video_description' => 'desc', 'create_time' => 1759400000, 'share_url' => 'https://tt/71'],
+                ['id' => '71', 'title' => 'Titled', 'video_description' => 'desc', 'create_time' => 1759400000, 'share_url' => 'https://tt/71', 'cover_image_url' => 'https://tt-cdn/71.jpg'],
                 ['id' => '70', 'title' => '', 'video_description' => 'Only a description', 'create_time' => 1759300000, 'share_url' => 'https://tt/70'],
             ]]]),
         ]);
@@ -110,13 +110,15 @@ class FetchRecentPostsTest extends TestCase
         $posts = (new TikTokProvider)->fetchRecentPosts($this->account('tiktok'), 10);
 
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/v2/video/list/')
-            && str_contains($r->url(), 'fields=id,title,video_description,create_time,share_url')
+            && str_contains($r->url(), 'fields=id,title,video_description,create_time,share_url,cover_image_url')
             && $r['max_count'] === 10);
         $this->assertSame(['71', '70'], array_column($posts, 'remote_post_id'));
         $this->assertSame('Titled', $posts[0]['caption']);
         $this->assertSame('Only a description', $posts[1]['caption']);
         $this->assertSame('https://tt/71', $posts[0]['url']);
         $this->assertSame(1759400000, $posts[0]['published_at']->getTimestamp());
+        $this->assertSame('https://tt-cdn/71.jpg', $posts[0]['thumbnail']);
+        $this->assertNull($posts[1]['thumbnail']);
     }
 
     public function test_tiktok_lists_nothing_while_stats_are_disabled(): void
@@ -132,21 +134,23 @@ class FetchRecentPostsTest extends TestCase
     {
         Http::fake([
             'graph.instagram.com/*/me/media*' => Http::response(['data' => [
-                ['id' => '55', 'caption' => 'Reel caption', 'permalink' => 'https://www.instagram.com/reel/abc/', 'timestamp' => '2026-10-04T08:00:00+0000'],
-                ['id' => '54', 'permalink' => 'https://www.instagram.com/p/def/', 'timestamp' => '2026-10-01T08:00:00+0000'],
+                ['id' => '55', 'caption' => 'Reel caption', 'permalink' => 'https://www.instagram.com/reel/abc/', 'timestamp' => '2026-10-04T08:00:00+0000', 'media_url' => 'https://cdn/55.mp4', 'thumbnail_url' => 'https://cdn/55-still.jpg'],
+                ['id' => '54', 'permalink' => 'https://www.instagram.com/p/def/', 'timestamp' => '2026-10-01T08:00:00+0000', 'media_url' => 'https://cdn/54.jpg'],
             ]]),
         ]);
 
         $posts = (new InstagramProvider)->fetchRecentPosts($this->account('instagram'), 10);
 
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/me/media')
-            && $r['fields'] === 'id,caption,permalink,timestamp' && (int) $r['limit'] === 10
+            && $r['fields'] === 'id,caption,permalink,timestamp,media_url,thumbnail_url' && (int) $r['limit'] === 10
             && $r['access_token'] === 'tok');
         $this->assertSame(['55', '54'], array_column($posts, 'remote_post_id'));
         $this->assertSame('Reel caption', $posts[0]['caption']);
         $this->assertSame('', $posts[1]['caption']);
         $this->assertSame('https://www.instagram.com/reel/abc/', $posts[0]['url']);
         $this->assertSame('2026-10-04T08:00:00+00:00', $posts[0]['published_at']->toIso8601String());
+        $this->assertSame('https://cdn/55-still.jpg', $posts[0]['thumbnail']); // video: the still
+        $this->assertSame('https://cdn/54.jpg', $posts[1]['thumbnail']);       // image: the media itself
     }
 
     public function test_the_list_is_capped_at_the_requested_limit(): void

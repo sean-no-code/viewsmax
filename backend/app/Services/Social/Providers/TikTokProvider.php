@@ -123,7 +123,7 @@ class TikTokProvider extends AbstractSocialProvider
         try {
             $account = $this->ensureFreshToken($account);
             $response = Http::withToken($account->access_token)
-                ->post('https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count', [
+                ->post('https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count,cover_image_url', [
                     'filters' => ['video_ids' => array_values(array_slice($remotePostIds, 0, 20))],
                 ]);
 
@@ -142,6 +142,8 @@ class TikTokProvider extends AbstractSocialProvider
                     'comments' => (int) ($v['comment_count'] ?? 0),
                     'shares' => (int) ($v['share_count'] ?? 0),
                     'views' => (int) ($v['view_count'] ?? 0),
+                    // Cover links expire within hours, so each day's metrics bring a fresh one.
+                    'thumbnail' => $v['cover_image_url'] ?? null,
                 ];
             }
 
@@ -168,7 +170,7 @@ class TikTokProvider extends AbstractSocialProvider
         try {
             $account = $this->ensureFreshToken($account);
             $response = Http::withToken($account->access_token)
-                ->post('https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,create_time,share_url', [
+                ->post('https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,create_time,share_url,cover_image_url', [
                     'max_count' => min(max($limit, 1), 20),
                 ]);
 
@@ -191,6 +193,7 @@ class TikTokProvider extends AbstractSocialProvider
                     'url' => $v['share_url'] ?? null,
                     'caption' => (string) (($v['title'] ?? '') !== '' ? $v['title'] : ($v['video_description'] ?? '')),
                     'published_at' => ! empty($v['create_time']) ? Carbon::createFromTimestamp((int) $v['create_time']) : null,
+                    'thumbnail' => $v['cover_image_url'] ?? null,
                 ];
             }
 

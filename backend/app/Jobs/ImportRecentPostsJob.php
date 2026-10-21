@@ -64,6 +64,7 @@ class ImportRecentPostsJob implements ShouldQueue
             'url' => $p['url'] ?? null,
             'caption' => (string) ($p['caption'] ?? ''),
             'published_at' => $p['published_at'] ?? null,
+            'thumbnail' => $p['thumbnail'] ?? null,
         ]);
 
         $result = $snapshotter->snapshot($account, $candidates);

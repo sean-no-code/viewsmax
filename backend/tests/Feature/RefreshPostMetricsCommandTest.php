@@ -102,6 +102,7 @@ class RefreshPostMetricsCommandTest extends TestCase
         PostMetricSnapshot::create([
             'user_id' => $this->user->id, 'social_account_id' => $yt->id, 'platform' => 'youtube',
             'remote_post_id' => 'imported1', 'url' => 'https://yt/imported1', 'caption_excerpt' => 'Imported',
+            'thumbnail_url' => 'https://cdn/imported1.jpg',
             'published_at' => now()->subDays(10), 'likes' => 1, 'engagement_total' => 1,
             'snapshot_date' => now()->subDay()->toDateString(),
         ]);
@@ -113,8 +114,24 @@ class RefreshPostMetricsCommandTest extends TestCase
         $this->assertSame(105, $today->engagement_total);
         $this->assertSame('https://yt/imported1', $today->url);
         $this->assertSame('Imported', $today->caption_excerpt);
+        $this->assertSame('https://cdn/imported1.jpg', $today->thumbnail_url); // carried forward when the metrics bring none
         $this->assertSame($yt->id, $today->social_account_id);
         $this->assertSame(2, PostMetricSnapshot::count());
+    }
+
+    public function test_a_fresh_thumbnail_from_the_metrics_replaces_the_stored_one(): void
+    {
+        $ig = $this->account('instagram');
+        PostMetricSnapshot::create([
+            'user_id' => $this->user->id, 'social_account_id' => $ig->id, 'platform' => 'instagram',
+            'remote_post_id' => 'm1', 'thumbnail_url' => 'https://cdn/expired.jpg', 'snapshot_date' => now()->subDay()->toDateString(),
+        ]);
+        $this->fakeManager(['m1' => ['likes' => 1, 'comments' => 0, 'shares' => 0, 'views' => 0, 'thumbnail' => 'https://cdn/fresh.jpg']]);
+
+        $this->artisan('posts:refresh-metrics')->assertExitCode(0);
+
+        $today = PostMetricSnapshot::where('remote_post_id', 'm1')->where('snapshot_date', now()->toDateString())->sole();
+        $this->assertSame('https://cdn/fresh.jpg', $today->thumbnail_url);
     }
 
     public function test_the_post_stores_caption_wins_over_an_earlier_snapshots(): void

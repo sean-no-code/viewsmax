@@ -608,8 +608,10 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
     }
 
     /**
-     * Per-media engagement. IG insights on this integration expose views/reach
-     * only (no likes/comments), so those stay 0. Gated behind the reach flag.
+     * Per-media engagement: likes, comments and a fresh preview link from the
+     * media node (basic scope), views from Insights (insights scope). A post
+     * is skipped only when neither call answers; views are 0 when only the
+     * media node did. Gated behind the reach flag.
      */
     public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array
     {
@@ -617,15 +619,53 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
             return [];
         }
 
+        $account = $this->ensureFreshToken($account);
+
         $out = [];
         foreach ($remotePostIds as $id) {
+            $media = $this->fetchMediaNode($account, (string) $id);
             $views = $this->fetchMediaViews($account, (string) $id);
-            if ($views !== null) {
-                $out[(string) $id] = ['likes' => 0, 'comments' => 0, 'shares' => 0, 'views' => $views];
+            if ($media === null && $views === null) {
+                continue;
             }
+            $out[(string) $id] = [
+                'likes' => (int) ($media['like_count'] ?? 0),
+                'comments' => (int) ($media['comments_count'] ?? 0),
+                'shares' => 0,
+                'views' => $views ?? 0,
+                'thumbnail' => $media ? self::mediaThumbnail($media) : null,
+            ];
         }
 
         return $out;
+    }
+
+    /**
+     * The media node's counts and image links, or null when the lookup fails
+     * (the caller then keeps the last known thumbnail).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fetchMediaNode(SocialAccount $account, string $mediaId): ?array
+    {
+        $response = Http::get($this->graphBase()."/{$mediaId}", [
+            'fields' => 'like_count,comments_count,media_url,thumbnail_url',
+            'access_token' => $account->access_token,
+        ]);
+
+        if (! $response->successful()) {
+            Log::warning('[Instagram] media lookup failed', ['media_id' => $mediaId, 'status' => $response->status()]);
+
+            return null;
+        }
+
+        return $response->json() ?: null;
+    }
+
+    /** Videos/reels carry a still in thumbnail_url; images and carousels use media_url. */
+    private static function mediaThumbnail(array $media): ?string
+    {
+        return $media['thumbnail_url'] ?? $media['media_url'] ?? null;
     }
 
     /**
@@ -638,7 +678,7 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         $account = $this->ensureFreshToken($account);
 
         $response = Http::get($this->graphBase().'/me/media', [
-            'fields' => 'id,caption,permalink,timestamp',
+            'fields' => 'id,caption,permalink,timestamp,media_url,thumbnail_url',
             'limit' => min(max($limit, 1), 100),
             'access_token' => $account->access_token,
         ]);
@@ -662,6 +702,7 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
                 'url' => $media['permalink'] ?? null,
                 'caption' => (string) ($media['caption'] ?? ''),
                 'published_at' => ! empty($media['timestamp']) ? Carbon::parse($media['timestamp']) : null,
+                'thumbnail' => self::mediaThumbnail($media),
             ];
         }
 

@@ -87,6 +87,7 @@ describe("Performance page", () => {
     expect(within(cards[0]).getByText("Views").nextSibling).toHaveTextContent("600"); // the sort key is the headline stat
     // YouTube shows the video still (derived from the id) and an icon to open the post on the platform.
     expect(cards[0].querySelector("img")).toHaveAttribute("src", "https://i.ytimg.com/vi/a/mqdefault.jpg");
+    expect(cards[1].querySelector("img")).toHaveAttribute("src", "https://cdn.test/b.jpg"); // a stored link beats the derived one
     expect(within(cards[0]).getByRole("link", { name: "Open on YouTube" })).toHaveAttribute("href", "https://youtu.be/a");
     // X is text-first: the caption line says so and the preview panel carries the post text; no URL → no open icon.
     expect(within(cards[2]).getByText("Text only, no media")).toBeInTheDocument();

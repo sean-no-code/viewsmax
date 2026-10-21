@@ -23,7 +23,7 @@ class PostMetricSnapshotter
     public function __construct(private SocialProviderManager $manager) {}
 
     /**
-     * @param  Collection<int, array{user_id:int, social_account_id:int, platform:string, remote_post_id:string, url:?string, caption:string, published_at:mixed}>  $candidates
+     * @param  Collection<int, array{user_id:int, social_account_id:int, platform:string, remote_post_id:string, url:?string, caption:string, published_at:mixed, thumbnail?:?string}>  $candidates
      * @return array{captured:int, skipped:int, failed:int}
      */
     public function snapshot(SocialAccount $account, Collection $candidates): array
@@ -64,6 +64,8 @@ class PostMetricSnapshotter
                         'user_id' => $c['user_id'],
                         'social_account_id' => $c['social_account_id'],
                         'url' => $c['url'],
+                        // A fresh link from the metrics wins; otherwise keep what the candidate carried.
+                        'thumbnail_url' => $m['thumbnail'] ?? $c['thumbnail'] ?? null,
                         'caption_excerpt' => Str::limit(trim((string) $c['caption']), 200, ''),
                         'published_at' => $c['published_at'],
                         'likes' => $likes,

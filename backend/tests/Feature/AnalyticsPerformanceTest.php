@@ -66,6 +66,7 @@ class AnalyticsPerformanceTest extends TestCase
             'platform' => $a->platform,
             'remote_post_id' => $remoteId,
             'url' => "https://example.test/{$remoteId}",
+            'thumbnail_url' => "https://img.test/{$remoteId}.jpg",
             'caption_excerpt' => "Post {$remoteId}",
             'published_at' => $publishedAt,
             'likes' => $m['likes'] ?? 0,
@@ -182,6 +183,7 @@ class AnalyticsPerformanceTest extends TestCase
         $this->assertSame($yt->id, $posts['in']['account_id']);
         $this->assertSame('youtube', $posts['in']['platform']);
         $this->assertSame('https://example.test/in', $posts['in']['url']);
+        $this->assertSame('https://img.test/in.jpg', $posts['in']['thumbnail_url']);
         $this->assertSame('Post in', $posts['in']['caption']);
         $this->assertSame('2026-10-04T10:00:00+00:00', $posts['in']['published_at']);
         // No published_at → the first snapshot date stands in.

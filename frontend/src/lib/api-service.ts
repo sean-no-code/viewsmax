@@ -544,6 +544,8 @@ export interface PerformancePost {
   platform: string;
   remote_post_id: string;
   url: string | null;
+  /** Platform preview image (Instagram, TikTok); null where none is stored. */
+  thumbnail_url: string | null;
   caption: string | null;
   published_at: string;
   likes: number;
