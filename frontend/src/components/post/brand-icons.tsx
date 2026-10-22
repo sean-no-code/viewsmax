@@ -25,6 +25,9 @@ const PATHS: Record<string, string> = {
 
 export const hasBrandIcon = (platform: string): boolean => platform in PATHS;
 
+/** The raw 24x24 path, for callers that compose their own <svg> (the landing page's channel tiles). */
+export const brandIconPath = (platform: string): string | undefined => PATHS[platform];
+
 export function BrandIcon({ platform, size = 20, color = "currentColor" }: { platform: string; size?: number; color?: string }) {
   const d = PATHS[platform];
   if (!d) return null;

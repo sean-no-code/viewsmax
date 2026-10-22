@@ -127,7 +127,7 @@ class PostPublishGuardsTest extends TestCase
 
     public function test_unknown_platform_in_targets_is_rejected(): void
     {
-        $this->createPost(['caption' => 'hi', 'targets' => [['platform' => 'pinterest']], 'status' => 'draft'])
+        $this->createPost(['caption' => 'hi', 'targets' => [['platform' => 'myspace']], 'status' => 'draft'])
             ->assertStatus(422);
     }
 

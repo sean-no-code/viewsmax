@@ -6,6 +6,8 @@ namespace App\Models;
 
 use Bavix\Wallet\Interfaces\Wallet;
 use Bavix\Wallet\Traits\HasWallet;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -85,6 +87,28 @@ class User extends Authenticatable implements Wallet
         'youtube_access_token',
         'youtube_refresh_token',
     ];
+
+    /**
+     * The one spelling an address is stored and looked up under. Postgres
+     * compares the users.email unique index case-sensitively, so without this
+     * "Jane@Example.com" and "jane@example.com" were two accounts and a login
+     * typed in the other case failed.
+     */
+    public static function normalizeEmail(?string $email): ?string
+    {
+        return $email === null ? null : mb_strtolower(trim($email));
+    }
+
+    protected function email(): Attribute
+    {
+        return Attribute::make(set: fn (?string $value) => static::normalizeEmail($value));
+    }
+
+    /** Find by address as typed: User::byEmail($request->email)->first(). */
+    public function scopeByEmail(Builder $query, ?string $email): Builder
+    {
+        return $query->where('email', static::normalizeEmail($email));
+    }
 
     /**
      * Get the attributes that should be cast.

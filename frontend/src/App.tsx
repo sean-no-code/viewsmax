@@ -17,6 +17,9 @@ import ConnectAI from "./pages/ConnectAI";
 import McpLanding from "./pages/McpLanding";
 import AgentPage from "./components/agents/AgentPage";
 import { AGENT_LIST } from "./lib/agent-pages";
+import ChannelPage from "./pages/channels/ChannelPage";
+import ChannelsHub from "./pages/channels/ChannelsHub";
+import { CHANNEL_LIST, CHANNELS_PATH } from "./lib/channel-pages";
 import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 // Thumbnails + AI models pages retired from the dashboard (routes commented out below).
@@ -127,6 +130,11 @@ const App = () => (
                 {/* Per-agent setup guides: /claude, /chatgpt, /cursor, ... (src/lib/agent-pages.ts) */}
                 {AGENT_LIST.map((a) => (
                   <Route key={a.key} path={a.slug} element={<AgentPage agent={a.key} />} />
+                ))}
+                {/* Per-channel scheduler guides: /channels and /channels/pinterest, ... (src/lib/channel-pages.ts) */}
+                <Route path={CHANNELS_PATH} element={<ChannelsHub />} />
+                {CHANNEL_LIST.map((c) => (
+                  <Route key={c.key} path={c.slug} element={<ChannelPage channel={c.key} />} />
                 ))}
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/youtube-monetization-calculator" element={<RevenueCalculator />} />

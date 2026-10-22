@@ -21,6 +21,9 @@ import InstagramTranscript from "@/pages/free-tools/InstagramTranscript";
 import AgentPage from "@/components/agents/AgentPage";
 import { AGENT_LIST } from "@/lib/agent-pages";
 import { MCP_PATH } from "@/lib/mcp-page";
+import ChannelPage from "@/pages/channels/ChannelPage";
+import ChannelsHub from "@/pages/channels/ChannelsHub";
+import { CHANNEL_LIST, CHANNELS_PATH } from "@/lib/channel-pages";
 import { HOME_LOCALES, localizedPath } from "@/pages/landing/locales";
 
 // Every public content route in App.tsx (not /auth — a login form has nothing
@@ -42,6 +45,8 @@ const PAGES: Record<string, ReactElement> = {
   "/free-tools/tiktok-transcript": <TiktokTranscript />,
   "/free-tools/instagram-transcript": <InstagramTranscript />,
   ...Object.fromEntries(AGENT_LIST.map((a) => [a.slug, <AgentPage agent={a.key} />])),
+  [CHANNELS_PATH]: <ChannelsHub />,
+  ...Object.fromEntries(CHANNEL_LIST.map((c) => [c.slug, <ChannelPage channel={c.key} />])),
 };
 
 export const STATIC_BODY_PATHS = Object.keys(PAGES);
