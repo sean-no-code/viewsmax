@@ -241,8 +241,8 @@ const App = () => (
                   <Route path="analytics/sources" element={<AnalyticsSources />} />
                   {/* Admin-only while the multi-platform data pipeline is finished */}
                   <Route path="analytics/audience-growth" element={<Navigate to="/dashboard/analytics/profile" replace />} />
-                  <Route path="analytics/profile" element={<AdminRoute><AnalyticsPerformance tab="profile" /></AdminRoute>} />
-                  <Route path="analytics/posts" element={<AdminRoute><AnalyticsPerformance tab="posts" /></AdminRoute>} />
+                  <Route path="analytics/profile" element={<AdminRoute allowPromo><AnalyticsPerformance tab="profile" /></AdminRoute>} />
+                  <Route path="analytics/posts" element={<AdminRoute allowPromo><AnalyticsPerformance tab="posts" /></AdminRoute>} />
                   <Route path="analytics/platform/:id" element={<AnalyticsPlatformDetail />} />
                   {/* Offers (formerly Landing Pages) — amalgamated with Links under Monetization */}
                   <Route path="monetization/offers" element={<Offers />} />

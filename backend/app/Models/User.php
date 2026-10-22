@@ -344,6 +344,9 @@ class User extends Authenticatable implements Wallet
             'promo_expires_at' => optional($this->promo_expires_at)->toIso8601String(),
             'access_expired' => $this->accessExpired(),
             'is_admin' => $this->isAdmin(),
+            // Promotional customer: with admins, the limited-release audience
+            // (SocialProviderManager::inLimitedReleaseAudience).
+            'is_promotional' => $this->isPromotional(),
             // Legacy extras retained for backward compatibility.
             'roles' => $this->roles,
             'active_plan' => $this->activePlan(),
