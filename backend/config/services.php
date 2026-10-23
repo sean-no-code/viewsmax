@@ -267,6 +267,10 @@ return [
         // Transcript provider for the free tools. Key is server-side only.
         'api_key' => env('CAPTAPIKEY'),
         'base_url' => env('CAPTAPI_BASE_URL', 'https://api.captapi.com/v1'),
+        // Seconds to wait for a transcript. Instagram/TikTok are transcribed from
+        // audio, so they run far longer than YouTube caption pulls. Keep this under
+        // the web server's upstream read timeout or the browser sees a 504 first.
+        'transcript_timeout' => (int) env('CAPTAPI_TRANSCRIPT_TIMEOUT', 60),
     ],
 
 ];

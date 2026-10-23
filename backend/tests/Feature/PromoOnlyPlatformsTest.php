@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 /**
  * Limited release: a platform marked `promo_only` in config/social is fully
- * configured and live, but only promotional customers (User::PROMO_ROLE) may
- * connect it. Everyone else sees the Connections page's "Coming soon" state,
+ * configured and live, but only promotional customers (User::PROMO_ROLE) and
+ * admins may connect it. Customers see the Connections page's "Coming soon" state,
  * and the AI never offers it. `enabled` stays the kill switch for everybody.
  *
  * Instagram stands in for the Meta trio (facebook, instagram, threads) — they
@@ -171,20 +171,27 @@ class PromoOnlyPlatformsTest extends TestCase
             ->assertJsonStructure(['data' => ['authorization_url']]);
     }
 
-    public function test_an_admin_is_blocked_too_unless_they_hold_the_promotional_role(): void
+    public function test_an_admin_may_connect_without_the_promotional_role(): void
     {
-        // Deliberately no admin bypass: an admin who wants early access gets
-        // the role (php artisan users:promo), so there is one rule to reason
-        // about and no way to connect by accident.
+        // Admins are in the limited-release audience alongside promotional
+        // customers, so the team can test a platform before it opens.
         $admin = $this->userWithRoles(['admin']);
 
-        $this->assertFalse($this->catalogEntry($admin, 'instagram')['available']);
+        $this->assertTrue($this->catalogEntry($admin, 'instagram')['available']);
 
         $this->withHeaders($this->auth($admin))
             ->getJson('/api/social/instagram/auth-url?redirect_uri=https://app.test/cb')
-            ->assertStatus(503);
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['authorization_url']]);
 
-        $this->assertNotContains('instagram', CreatePost::availablePlatforms($admin));
+        $this->assertContains('instagram', CreatePost::availablePlatforms($admin));
+    }
+
+    public function test_a_customer_role_alone_does_not_unlock_a_promo_only_platform(): void
+    {
+        $customer = $this->userWithRoles(['customer']);
+
+        $this->assertFalse($this->catalogEntry($customer, 'instagram')['available']);
     }
 
     public function test_an_admin_who_also_holds_the_promotional_role_may_connect(): void
@@ -209,6 +216,56 @@ class PromoOnlyPlatformsTest extends TestCase
             ->assertStatus(422);
 
         Http::assertNothingSent();
+    }
+
+    public function test_the_legacy_connection_exchange_gates_a_promo_only_platform(): void
+    {
+        // The old path serves TikTok and YouTube. If one of them is put in
+        // limited release, a code posted straight at the old path must not
+        // slip the gate.
+        config(['social.platforms.tiktok.promo_only' => true]);
+        Http::fake();
+
+        $this->withHeaders($this->auth($this->user(promotional: false)))
+            ->postJson('/api/auth/tiktok/exchange', [
+                'code' => 'abc',
+                'redirect_uri' => 'https://app.test/cb',
+            ])
+            ->assertStatus(503);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_the_legacy_connection_exchange_admits_an_admin(): void
+    {
+        config(['social.platforms.tiktok.promo_only' => true]);
+        Http::fake();
+
+        $this->withHeaders($this->auth($this->userWithRoles(['admin'])))
+            ->postJson('/api/auth/tiktok/exchange', [
+                'code' => 'abc',
+                'redirect_uri' => 'https://app.test/cb',
+            ])
+            ->assertStatus(422); // past the gate, fails at the provider exchange
+    }
+
+    public function test_the_legacy_connection_exchange_does_not_depend_on_the_social_stores_credentials(): void
+    {
+        // The old path has its own credentials, so blanking the social store's
+        // must not start refusing it: only the limited-release audience applies.
+        config([
+            'social.platforms.tiktok.promo_only' => true,
+            'social.platforms.tiktok.client_id' => null,
+            'social.platforms.tiktok.client_secret' => null,
+        ]);
+        Http::fake();
+
+        $this->withHeaders($this->auth($this->user(promotional: true)))
+            ->postJson('/api/auth/tiktok/exchange', [
+                'code' => 'abc',
+                'redirect_uri' => 'https://app.test/cb',
+            ])
+            ->assertStatus(422);
     }
 
     public function test_the_legacy_connection_exchange_still_serves_an_open_platform(): void

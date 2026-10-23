@@ -72,6 +72,16 @@
     "openclaw": "Skill ViewsMax dengan API key",
     "hermes": "Server MCP di config.yaml, masuk lewat OAuth"
   },
+  "channelCards": {
+    "youtube": "Jadwalkan Shorts & video, pilih visibilitasnya",
+    "tiktok": "Video & set foto dengan tingkat privasi",
+    "instagram": "Reels & foto di akun Business",
+    "x": "Postingan & thread, hingga 4 gambar",
+    "linkedin": "Postingan dengan gambar & komentar pertama",
+    "threads": "Postingan teks, foto, atau video",
+    "bluesky": "Postingan dengan hingga 4 gambar",
+    "pinterest": "Pin gambar & video ke papan mana pun"
+  },
   "footer": {
     "tagline": "Buat konten yang menghasilkan penjualan.",
     "product": "Produk",

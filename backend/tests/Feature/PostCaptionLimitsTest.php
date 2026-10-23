@@ -314,4 +314,43 @@ class PostCaptionLimitsTest extends TestCase
             ->assertStatus(422)
             ->assertJsonFragment(['message' => \App\Services\Social\CaptionRules::YOUTUBE_TITLE_REQUIRED]);
     }
+
+    /* ---------- Bluesky counts graphemes, not code points ---------- */
+
+    public function test_bluesky_counts_graphemes_so_emoji_sequences_and_combining_marks_fit(): void
+    {
+        // 👨‍👩‍👧 is 5 code points / 1 grapheme; "é" as e + combining acute is 2 / 1.
+        $family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        $caption = str_repeat($family, 150).str_repeat("e\u{0301}", 150); // exactly 300 graphemes
+
+        $this->assertSame(300, \App\Services\Social\CaptionRules::lengthFor('bluesky', $caption));
+        $this->assertSame(1050, \App\Services\Social\CaptionRules::plainLength($caption));
+        $this->assertNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption));
+        $this->assertNotNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption.'x'));
+
+        $this->createPost([
+            'caption' => $caption,
+            'platforms' => ['bluesky'],
+            'status' => 'posted',
+        ])->assertStatus(201);
+
+        $response = $this->createPost([
+            'caption' => $caption.'x',
+            'platforms' => ['bluesky'],
+            'status' => 'posted',
+        ]);
+        $response->assertStatus(422);
+        $this->assertStringContainsString("1 character over Bluesky's 300 limit", $response->json('message'));
+    }
+
+    public function test_the_same_caption_is_graphemes_on_bluesky_and_bytes_on_threads(): void
+    {
+        $caption = str_repeat("e\u{0301}", 251); // 502 code points, 251 graphemes, 753 UTF-8 bytes
+
+        $this->assertSame(251, \App\Services\Social\CaptionRules::lengthFor('bluesky', $caption));
+        $this->assertSame(753, \App\Services\Social\CaptionRules::lengthFor('threads', $caption));
+        $this->assertSame(502, \App\Services\Social\CaptionRules::lengthFor('instagram', $caption));
+        $this->assertNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption));
+        $this->assertNotNull(\App\Services\Social\CaptionRules::captionError('threads', $caption));
+    }
 }

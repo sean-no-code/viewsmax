@@ -37,6 +37,7 @@ class AiDiscoveryController extends Controller
     {
         $tools = collect((new ViewsMaxServer)->tools)
             ->map(fn (string $class) => app($class))
+            ->filter(fn ($tool) => $tool->isAvailable())
             ->map(fn ($tool) => [
                 'name' => $tool->name(),
                 'description' => $tool->description(),
@@ -53,7 +54,10 @@ class AiDiscoveryController extends Controller
                 . "agents act on a user's behalf: research outlier videos (content that "
                 . 'massively over-performed its channel) and get AI breakdowns of why they '
                 . 'worked — this works with nothing connected; compose and schedule posts to '
-                . 'YouTube, TikTok, X, LinkedIn, Threads, Instagram, and Bluesky; create '
+                . 'YouTube, TikTok, X, LinkedIn, Threads, Instagram, '
+                // Pinterest is named only once its app keys are set.
+                . (in_array('pinterest', \App\Mcp\Tools\CreatePost::availablePlatforms(), true)
+                    ? 'Bluesky, and Pinterest; create ' : 'and Bluesky; create ')
                 . 'offers and tracked links; read click, conversion, and revenue stats. '
                 . 'User data is private — all access is authenticated.',
             'site' => $site,

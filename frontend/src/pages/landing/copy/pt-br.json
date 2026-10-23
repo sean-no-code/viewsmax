@@ -72,6 +72,16 @@
     "openclaw": "Skill do ViewsMax com uma chave de API",
     "hermes": "Servidor MCP no config.yaml, login via OAuth"
   },
+  "channelCards": {
+    "youtube": "Agende Shorts e vídeos, escolha a visibilidade",
+    "tiktok": "Vídeos e conjuntos de fotos com níveis de privacidade",
+    "instagram": "Reels e fotos em contas Business",
+    "x": "Posts e threads, até 4 imagens",
+    "linkedin": "Posts com imagem e primeiro comentário",
+    "threads": "Posts de texto, foto ou vídeo",
+    "bluesky": "Posts com até 4 imagens",
+    "pinterest": "Pins de imagem e vídeo em qualquer pasta"
+  },
   "footer": {
     "tagline": "Crie conteúdo que vende.",
     "product": "Produto",

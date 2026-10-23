@@ -36,6 +36,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:reconcile-stuck scheduled run failed'));
 
+        // TikTok hands out the public post id only after moderation, so a
+        // target can be published with no id/link; fill them in once they exist.
+        $schedule->command('posts:resolve-tiktok-ids')
+            ->everyTenMinutes()
+            ->withoutOverlapping(10)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('posts:resolve-tiktok-ids scheduled run failed'));
+
         // Downgrade users whose paid subscription lapsed back to the free plan.
         $schedule->command('subscriptions:process-expired')
             ->daily()

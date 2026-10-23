@@ -6,6 +6,7 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\PublishResult;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 interface SocialProviderInterface
@@ -65,11 +66,26 @@ interface SocialProviderInterface
 
     /**
      * Engagement metrics for the given remote post ids, keyed by id →
-     * ['likes','comments','shares','views']. Only ids the platform returns data
-     * for appear. Consumed by posts:refresh-metrics.
+     * ['likes','comments','shares','views'], plus 'thumbnail' when the platform
+     * hands out an expiring preview link that needs refreshing with the
+     * metrics (Instagram, TikTok). Only ids the platform returns data for
+     * appear. Consumed by posts:refresh-metrics.
      *
      * @param  array<int, string>  $remotePostIds
-     * @return array<string, array{likes:int, comments:int, shares:int, views:int}>
+     * @return array<string, array{likes:int, comments:int, shares:int, views:int, thumbnail?:?string}>
      */
     public function fetchPostMetrics(SocialAccount $account, array $remotePostIds): array;
+
+    /**
+     * The account's most recent posts on the platform (newest first, at most
+     * $limit), whether or not they were published through the app. Each entry
+     * is ['remote_post_id','url','caption','published_at' (Carbon|null)] plus
+     * 'thumbnail' where the platform offers a preview image; metrics are not
+     * included — fetchPostMetrics() reads those. Consumed by
+     * ImportRecentPostsJob when a channel is connected. Empty when the
+     * platform doesn't expose a listing.
+     *
+     * @return array<int, array{remote_post_id:string, url:?string, caption:string, published_at:?Carbon, thumbnail?:?string}>
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array;
 }

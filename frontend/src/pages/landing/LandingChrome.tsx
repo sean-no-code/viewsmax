@@ -8,6 +8,7 @@ import logoLight from "@/assets/logo-lockup-light.svg";
 import logoDark from "@/assets/logo-lockup-dark.svg";
 import { API_BASE_URL } from "@/lib/api-service";
 import { AGENT_LIST } from "@/lib/agent-pages";
+import { CHANNEL_LIST, CHANNELS_PATH } from "@/lib/channel-pages";
 import LocaleFlag from "@/components/LocaleFlag";
 import { HOME_LOCALES, localizedPath, useHomeLocale, useLandingCopy, usePagePath, type HomeLocale, type LandingCopy } from "./locales";
 
@@ -32,6 +33,7 @@ const freeTools = ({ freeTools: f }: LandingCopy): NavItem[] => [
   { ...f.revenue, href: "/youtube-monetization-calculator" },
 ];
 const aiAgents = (c: LandingCopy): NavItem[] => AGENT_LIST.map((a) => ({ label: a.name, desc: c.agentCards[a.key], href: a.slug }));
+const channels = (c: LandingCopy): NavItem[] => CHANNEL_LIST.map((ch) => ({ label: ch.name, desc: c.channelCards[ch.key], href: ch.slug }));
 const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 /* ---------- Button (shared with the landing sections) ---------- */
@@ -59,7 +61,7 @@ export function Btn({ children, variant = "primary", size = "md", onClick, style
   );
 }
 
-/* ---------- Nav dropdown (Free Tools, Resources) ---------- */
+/* ---------- Nav dropdown (Channels, Free Tools, AI Agents, Resources) ---------- */
 function NavDropdown({ label, href, items }: { label: string; href: string; items: NavItem[] }) {
   const navigate = useNavigate();
   return (
@@ -115,16 +117,18 @@ export function LandingNav() {
   const home = useHomeLocale();
   const c = useLandingCopy();
   const homePath = home?.path ?? "/";
-  const links: [string, string][] = [[c.nav.features, "demos"], [c.nav.channels, "channels"], [c.nav.pricing, "pricing"]];
   // Section links scroll in place on the landing page; elsewhere they route home first.
   const goToSection = (id: string) => { if (pathname === homePath) scrollToId(id); else navigate(`${homePath}#${id}`); };
+  const sectionLink = (label: string, id: string) => <a href={`${homePath}#${id}`} onClick={(e) => { e.preventDefault(); goToSection(id); }} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>{label}</a>;
   return (
     <nav className="vm-nav" style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,250,248,.82)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--line-1)" }}>
       <style>{CHROME_CSS}</style>
       <div className="nav-inner" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", gap: 24 }}>
         <a href={homePath} onClick={(e) => { e.preventDefault(); navigate(homePath); }} style={{ display: "block", flexShrink: 0 }}><img className="nav-logo" src={logoLight} alt="ViewsMax" style={{ height: 30, display: "block" }} /></a>
         <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: 22, marginLeft: 16 }}>
-          {links.map(([l, id]) => <a key={l} href={`${homePath}#${id}`} onClick={(e) => { e.preventDefault(); goToSection(id); }} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>{l}</a>)}
+          {sectionLink(c.nav.features, "demos")}
+          <NavDropdown label={c.nav.channels} href={CHANNELS_PATH} items={channels(c)} />
+          {sectionLink(c.nav.pricing, "pricing")}
           <NavDropdown label={c.nav.freeTools} href="/free-tools" items={freeTools(c)} />
           <NavDropdown label={c.nav.aiAgents} href="/ai" items={aiAgents(c)} />
           <NavDropdown label={c.nav.resources} href="/ai" items={resources(c)} />
@@ -147,7 +151,7 @@ export function LandingFooter() {
   const f = c.footer;
   const links = (items: NavItem[]) => items.map(({ label, href }) => ({ label, href }));
   const cols: [string, { label: string; href: string }[]][] = [
-    [f.product, [{ label: f.scheduler, href: "#" }, { label: f.salesTracking, href: "#" }, { label: f.analytics, href: "#" }, { label: c.nav.channels, href: "#" }, { label: c.nav.pricing, href: "#" }]],
+    [f.product, [{ label: f.scheduler, href: "#" }, { label: f.salesTracking, href: "#" }, { label: f.analytics, href: "#" }, { label: c.nav.channels, href: CHANNELS_PATH }, { label: c.nav.pricing, href: "#" }]],
     [f.company, [{ label: f.about, href: "#" }, { label: f.careers, href: "#" }, { label: c.resources.blog.label, href: BLOG }, { label: f.contact, href: "#" }, { label: f.affiliates, href: "https://viewsmax.getrewardful.com/signup" }]],
     [c.nav.resources, links(resources(c).slice(0, 3))],
     [c.nav.aiAgents, links(aiAgents(c))],

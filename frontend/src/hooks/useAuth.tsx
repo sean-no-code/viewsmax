@@ -18,6 +18,7 @@ interface CustomUser {
   promo_expires_at?: string | null;
   access_expired?: boolean;
   is_admin?: boolean;
+  is_promotional?: boolean;
 }
 
 interface CustomSession {

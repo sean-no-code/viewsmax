@@ -208,6 +208,7 @@ class AnalyticsPerformanceController extends Controller
                     'platform' => $latest->platform,
                     'remote_post_id' => $latest->remote_post_id,
                     'url' => $latest->url,
+                    'thumbnail_url' => $latest->thumbnail_url,
                     'caption' => $latest->caption_excerpt,
                     'published_at' => $published->toIso8601String(),
                     'likes' => (int) $latest->likes,

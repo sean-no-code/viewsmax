@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkoutTerms, isAccessExpired, promoWindowLabel } from "../access";
+import { checkoutTerms, inLimitedReleaseAudience, isAccessExpired, promoWindowLabel } from "../access";
 
 const NOW = Date.parse("2026-09-28T10:00:00Z");
 const past = "2026-09-27T10:00:00Z";
@@ -48,5 +48,15 @@ describe("promoWindowLabel", () => {
     expect(promoWindowLabel(null, NOW)).toBe("unlimited");
     expect(promoWindowLabel(future, NOW)).toMatch(/^until /);
     expect(promoWindowLabel(past, NOW)).toMatch(/^expired /);
+  });
+});
+
+describe("inLimitedReleaseAudience", () => {
+  it("includes admins and promotional customers only", () => {
+    expect(inLimitedReleaseAudience({ is_admin: true })).toBe(true);
+    expect(inLimitedReleaseAudience({ is_promotional: true })).toBe(true);
+    expect(inLimitedReleaseAudience({ is_admin: false, is_promotional: false })).toBe(false);
+    expect(inLimitedReleaseAudience({})).toBe(false);
+    expect(inLimitedReleaseAudience(null)).toBe(false);
   });
 });

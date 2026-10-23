@@ -63,9 +63,12 @@ describe("MCP_TOOLS", () => {
       .filter((line) => !/^\s*\/\//.test(line))
       .flatMap((line) => [...line.matchAll(/([A-Za-z]+)::class/g)].map((m) => m[1]));
     expect(registered.length).toBeGreaterThan(0);
-    const names = registered.map(
-      (cls) => readFileSync(join(backend, "Tools", `${cls}.php`), "utf8").match(/function name\(\): string\s*\{\s*return '([a-z_]+)'/)?.[1],
-    );
+    // Tools that define isAvailable() are only served under a condition (e.g.
+    // a platform's app keys being set), so the public pages leave them out.
+    const sources = registered.map((cls) => readFileSync(join(backend, "Tools", `${cls}.php`), "utf8"));
+    const names = sources
+      .filter((src) => !/function isAvailable\(\)/.test(src))
+      .map((src) => src.match(/function name\(\): string\s*\{\s*return '([a-z_]+)'/)?.[1]);
     expect([...MCP_TOOLS].sort()).toEqual(names.sort());
   });
 });

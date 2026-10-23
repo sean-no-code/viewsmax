@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Exceptions\TranscriptUnavailableException;
 use App\Models\Transcript;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -26,12 +28,16 @@ class CaptApiService
     ];
 
     private string $apiKey;
+
     private string $baseUrl;
+
+    private int $timeout;
 
     public function __construct()
     {
         $this->apiKey = (string) config('services.captapi.api_key');
         $this->baseUrl = rtrim((string) config('services.captapi.base_url'), '/');
+        $this->timeout = max(1, (int) config('services.captapi.transcript_timeout', 60));
     }
 
     public function isSupported(string $platform): bool
@@ -44,6 +50,10 @@ class CaptApiService
      * already have it, otherwise from CaptAPI (and cached for next time).
      *
      * @return array{transcript: Transcript, cached: bool}
+     *
+     * @throws TranscriptUnavailableException when the provider has no transcript for the video (404)
+     * @throws ConnectionException when CaptAPI is unreachable
+     *                             or exceeds the configured timeout
      */
     public function getTranscript(string $platform, string $url): array
     {
@@ -68,21 +78,27 @@ class CaptApiService
 
         $response = Http::withToken($this->apiKey)
             ->acceptJson()
-            ->timeout(60)
+            ->timeout($this->timeout)
             ->get("{$this->baseUrl}/{$platform}/transcript", ['url' => $url]);
 
         if (! $response->successful() || $response->json('success') !== true) {
+            // CaptAPI errors are objects ({code, message}); older responses may be strings.
+            $error = $response->json('error');
+            $message = is_array($error) ? ($error['message'] ?? null) : $error;
+            $message = is_string($message) && $message !== '' ? $message : null;
+
+            // 404 = the video has no captions. Expected, user-facing, not reported.
+            if ($response->status() === 404) {
+                Log::info('CaptAPI has no transcript for this video', ['platform' => $platform, 'message' => $message]);
+                throw new TranscriptUnavailableException($message);
+            }
+
             Log::warning('CaptAPI transcript request failed', [
                 'platform' => $platform,
                 'status' => $response->status(),
                 'body' => mb_substr($response->body(), 0, 500),
             ]);
-            // CaptAPI errors are objects ({code, message}); older responses may be strings.
-            $error = $response->json('error');
-            $message = is_array($error) ? ($error['message'] ?? null) : $error;
-            throw new \RuntimeException(is_string($message) && $message !== ''
-                ? $message
-                : 'Could not fetch a transcript for that link. Please check the URL and try again.');
+            throw new \RuntimeException($message ?? 'Could not fetch a transcript for that link. Please check the URL and try again.');
         }
 
         $data = $response->json('data') ?? [];

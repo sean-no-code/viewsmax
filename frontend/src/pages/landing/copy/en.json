@@ -72,6 +72,16 @@
     "openclaw": "ViewsMax skill with an API key",
     "hermes": "MCP server in config.yaml, sign in over OAuth"
   },
+  "channelCards": {
+    "youtube": "Schedule Shorts & videos, pick the visibility",
+    "tiktok": "Videos & photo sets with privacy levels",
+    "instagram": "Reels & photos on Business accounts",
+    "x": "Posts & threads, up to 4 images",
+    "linkedin": "Posts with an image & first comment",
+    "threads": "Text, photo or video posts",
+    "bluesky": "Posts with up to 4 images",
+    "pinterest": "Image & video Pins to any board"
+  },
   "footer": {
     "tagline": "Make content that makes sales.",
     "product": "Product",

@@ -48,6 +48,8 @@ class WebRegisterController extends Controller
 
     public function store(Request $request, Registration $registration)
     {
+        // unique:users compares as stored (lowercase), so normalise first.
+        $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',

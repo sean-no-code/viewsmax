@@ -150,7 +150,13 @@ class SocialPostController extends Controller
         $failed = $post->targets->where('status', SocialPostTarget::STATUS_FAILED);
 
         foreach ($failed as $target) {
-            $target->update(['status' => SocialPostTarget::STATUS_PENDING, 'error' => null]);
+            // A manual retry means the user checked the account: lift the
+            // double-publish guard so the job may call the platform again.
+            $target->update([
+                'status' => SocialPostTarget::STATUS_PENDING,
+                'error' => null,
+                'response' => PublishSocialPostJob::withoutMarker($target->response),
+            ]);
             dispatch(new PublishSocialPostJob($target->id));
         }
 

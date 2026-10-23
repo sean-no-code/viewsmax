@@ -52,6 +52,19 @@ class PromotionalAccessTest extends TestCase
             ->assertJsonPath('data.user.promo_expires_at', $user->promo_expires_at->toIso8601String());
     }
 
+    public function test_payload_flags_promotional_customers_for_limited_release_pages(): void
+    {
+        // The SPA opens Profile and Post Performance to admins and these users.
+        $this->postJson('/api/login', ['email' => $this->promoUser(now()->addDays(7))->email, 'password' => 'password'])
+            ->assertOk()
+            ->assertJsonPath('data.user.is_promotional', true);
+
+        $regular = User::factory()->create();
+        $this->postJson('/api/login', ['email' => $regular->email, 'password' => 'password'])
+            ->assertOk()
+            ->assertJsonPath('data.user.is_promotional', false);
+    }
+
     public function test_unlimited_promo_never_expires(): void
     {
         $user = $this->promoUser(null);

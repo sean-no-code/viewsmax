@@ -169,6 +169,60 @@ class SocialAccountController extends Controller
         ]);
     }
 
+    /**
+     * List a Pinterest account's boards (every Pin goes on a board). Fetched
+     * live from Pinterest and cached on the account.
+     */
+    public function boards(int $id)
+    {
+        $account = Auth::user()->socialAccounts()->where('platform', 'pinterest')->findOrFail($id);
+        $provider = $this->manager->for('pinterest');
+
+        try {
+            $boards = $provider->boards($provider->ensureFreshToken($account));
+        } catch (\Throwable $e) {
+            Log::warning('Pinterest board list failed', ['account_id' => $account->id, 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not load your Pinterest boards. Try again, or reconnect the account.',
+            ], 502);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $boards,
+        ]);
+    }
+
+    /**
+     * Create a public board on a Pinterest account, so a user whose account
+     * has none can still post. Returns the new board.
+     */
+    public function createBoard(Request $request, int $id)
+    {
+        $account = Auth::user()->socialAccounts()->where('platform', 'pinterest')->findOrFail($id);
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
+        ]);
+        $provider = $this->manager->for('pinterest');
+
+        try {
+            $board = $provider->createBoard($provider->ensureFreshToken($account), trim($data['name']), $data['description'] ?? null);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pinterest refused the board: '.$e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $board,
+        ], 201);
+    }
+
     protected function ensureConfigured(string $platform, &$response): bool
     {
         if (! $this->manager->supports($platform)) {

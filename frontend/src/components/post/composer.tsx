@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Icon } from "@/components/analytics/primitives";
 import { BrandIcon, hasBrandIcon } from "@/components/post/brand-icons";
-import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type Post, type PostMediaItem } from "@/lib/api-service";
+import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type PinterestOptions, type Post, type PostMediaItem } from "@/lib/api-service";
 import { platformLength, splitXThread, xThreadStatus, xWeightedLength, X_LIMIT, X_MAX_IMAGES, type XThreadStatus } from "@/lib/text-metrics";
 
 export interface Platform {
@@ -29,6 +29,7 @@ export const PLATFORMS: Platform[] = [
   { id: "facebook", name: "Facebook", glyph: "f", handle: "Creator Lab", accent: "#1877F2", limit: 63206, followers: "38.0K", kind: "Post" },
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
+  { id: "pinterest", name: "Pinterest", glyph: "P", handle: "@creatorlab", accent: "#E60023", limit: 800, followers: "15.4K", kind: "Pin" },
 ];
 export const PMAP: Record<string, Platform> = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
 
@@ -54,6 +55,8 @@ export const PLATFORM_CAPS: Record<string, { text: boolean; image: boolean; vide
   threads: { text: true, image: true, video: true },
   // Bluesky embeds up to 4 images; the API has no video path yet.
   bluesky: { text: true, image: true, video: false },
+  // Every Pin is an image or a video; there are no text-only Pins.
+  pinterest: { text: false, image: true, video: true },
 };
 export type PostType = "media" | "text";
 export function platformAllowedForType(id: string, postType: PostType): boolean {
@@ -155,6 +158,15 @@ export function usePostComposer() {
   // links, which get reach-penalized in the post body).
   const [linkedin, setLinkedin] = useState<LinkedInOptions>({ first_comment: "" });
   const patchLinkedin = (p: Partial<LinkedInOptions>) => setLinkedin((l) => ({ ...l, ...p }));
+
+  // Pinterest publish options, sent exactly as typed — no board is picked
+  // for the user and an empty title/link/alt text means the Pin has none.
+  const [pinterest, setPinterest] = useState<PinterestOptions>({ board_ids: {}, title: "", link: "", alt_text: "" });
+  const patchPinterest = (p: Partial<PinterestOptions>) => setPinterest((o) => ({ ...o, ...p }));
+  // An account with exactly one board: use it, unless a board is already set
+  // (e.g. from a saved draft). Read from current state, not a stale closure.
+  const selectOnlyPinterestBoard = (accountId: number, boardId: string) =>
+    setPinterest((o) => (o.board_ids[String(accountId)] ? o : { ...o, board_ids: { ...o.board_ids, [String(accountId)]: boardId } }));
 
   // Custom cover: one uploaded image drives the YouTube thumbnail + Instagram
   // Reel cover; TikTok only supports a cover-frame time (seconds into the video).
@@ -399,6 +411,12 @@ export function usePostComposer() {
     const yt = targets.find((tg) => tg.platform === "youtube");
     if (yt?.options) setYoutube((cur) => ({ ...cur, ...(yt.options as Partial<YouTubeOptions>) }));
 
+    const pin = targets.find((tg) => tg.platform === "pinterest");
+    if (pin?.options) {
+      const o = pin.options as Partial<PinterestOptions>;
+      setPinterest((cur) => ({ ...cur, ...o, board_ids: { ...(o.board_ids ?? {}) } }));
+    }
+
     const li = targets.find((tg) => tg.platform === "linkedin");
     if (li?.options) setLinkedin((cur) => ({ ...cur, ...(li.options as Partial<LinkedInOptions>) }));
     // Drafts saved before the generic comments system stored a LinkedIn-only
@@ -414,6 +432,9 @@ export function usePostComposer() {
     const igCover = (targets.find((tg) => tg.platform === "instagram")?.options as Record<string, unknown> | undefined)?.cover_url as string | undefined;
     if (ytThumb?.url) setCover(ytThumb);
     else if (igCover) setCover({ type: "image", url: igCover });
+    else if ((pin?.options as Record<string, unknown> | undefined)?.cover_url) {
+      setCover({ type: "image", url: (pin!.options as Record<string, unknown>).cover_url as string });
+    }
 
     const ttCoverMs = (tt?.options as Record<string, unknown> | undefined)?.video_cover_timestamp_ms as number | undefined;
     if (ttCoverMs) setTiktokCoverSec(Math.round(ttCoverMs / 1000));
@@ -432,6 +453,7 @@ export function usePostComposer() {
     tiktok, patchTiktok, setPrivacyLevel, creatorInfo, creatorInfoError, creatorInfoLoading, creatorCannotPost, loadCreatorInfo,
     youtube, patchYoutube,
     linkedin, patchLinkedin,
+    pinterest, patchPinterest, selectOnlyPinterestBoard,
     cover, uploadCover, removeCover, coverUploading, coverError, tiktokCoverSec, setTiktokCoverSec,
     status, issues, youtubeTitleMissing, hydrate,
   };
@@ -671,7 +693,7 @@ export function PostPreview({ id, text, media, compact, handle }: { id: string; 
   const goNext = () => setSlide((active + 1) % media.length);
   // Vertical video (TikTok / Shorts / Reels) is 9:16 — give it a tall frame so
   // a portrait clip fills it instead of being cropped top & bottom.
-  const verticalVideo = first?.type === "video" && (id === "tiktok" || id === "youtube" || id === "instagram");
+  const verticalVideo = first?.type === "video" && (id === "tiktok" || id === "youtube" || id === "instagram" || id === "pinterest");
   const aspect = verticalVideo ? "9 / 16"
     : id === "youtube" ? "16 / 9"
     : (id === "x" || id === "linkedin" || id === "facebook" || id === "threads") ? "16 / 10"

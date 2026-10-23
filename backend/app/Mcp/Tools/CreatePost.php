@@ -42,6 +42,7 @@ class CreatePost extends ViewsMaxTool
         'instagram' => 2200,
         'facebook' => 5000,
         'bluesky' => 300,
+        'pinterest' => 800,
     ];
 
     /**
@@ -58,7 +59,35 @@ class CreatePost extends ViewsMaxTool
      * privacy_status goes out public, so the AI has to ask first.
      */
     public const YOUTUBE_PRIVACY_RULE = 'Ask the user which YouTube privacy_status to use (public, '
-        . 'unlisted, or private) and wait for their answer; without it the video is public.';
+        . 'unlisted, or private) and wait for their answer; without it the video is uploaded as private.';
+
+    /** Pinterest's media + board rule, only while Pinterest is set up. */
+    public static function pinterestRule(): string
+    {
+        return in_array('pinterest', self::availablePlatforms(), true)
+            ? 'Pinterest needs an image or video url (2-5 images become one carousel Pin; '
+                . 'only the first 5 are used, and they must all have the same width-to-height '
+                . 'ratio) and every Pin goes on a board '
+                . '(list_connected_accounts lists them). If the account has only one board, '
+                . 'tell the user the Pin goes on that board. If it has several, list them by '
+                . 'name and ask which board the Pin should go on, then wait for the answer. '
+                . 'No boards: offer create_pinterest_board. Pass it as '
+                . 'options.pinterest.board_id (one Pinterest account) or '
+                . 'options.pinterest.board_ids {social_account_id: board_id} (several). '
+                . 'Send title, link and alt_text only when the user gives them; empty means '
+                . 'the Pin has none. A video Pin also needs options.pinterest.cover_url. '
+            : '';
+    }
+
+    /** The options.pinterest keys, only while Pinterest is set up. */
+    public static function pinterestOptions(): string
+    {
+        return in_array('pinterest', self::availablePlatforms(), true)
+            ? '; pinterest: { board_id or board_ids (required to publish, user picks), '
+                . 'title (max 100), link (max 2048), alt_text (max 500), cover_url (required '
+                . 'for video) — none of these are filled in for the user }'
+            : '';
+    }
 
     public static function privacyRules(): string
     {
@@ -84,6 +113,7 @@ class CreatePost extends ViewsMaxTool
             . 'YouTube also requires a title: the caption (or overrides.youtube) is the '
             . 'video title, so it must not be empty when publishing or scheduling. '
             . 'Instagram needs an image or video url. '
+            . self::pinterestRule()
             . 'TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, '
             . 'default false) to let TikTok auto-add its recommended background music; '
             . 'there is no music option for video posts or for Instagram. '
@@ -141,7 +171,8 @@ class CreatePost extends ViewsMaxTool
                     . 'disable_stitch, auto_add_music (boolean, default false — auto-adds '
                     . "TikTok's recommended music to photo slideshows; ignored for video) }; "
                     . 'youtube: { privacy_status: public|unlisted|private }; '
-                    . 'instagram: { cover_url }; linkedin: { first_comment }.',
+                    . 'instagram: { cover_url }; linkedin: { first_comment }'
+                    . self::pinterestOptions() . '.',
             ])
             ->raw('comments', [
                 'type' => 'array',
@@ -382,6 +413,9 @@ class CreatePost extends ViewsMaxTool
         }
         if (in_array('youtube', $platforms, true) && ! $hasVideoPath) {
             return 'YouTube requires a video media entry with a path before publishing or scheduling. Use upload_media first.';
+        }
+        if (in_array('pinterest', $platforms, true) && ! $hasVideoUrl && ! $hasImageUrl) {
+            return 'Pinterest requires an image or a video (with a url) before publishing or scheduling. Use upload_media first.';
         }
 
         return null;
