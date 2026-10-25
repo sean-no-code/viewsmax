@@ -12,6 +12,15 @@ export interface AccessUser {
 
 export const PROMO_ROLE = "promotional_customer";
 
+/**
+ * The limited-release audience: promotional customers and admins. Features
+ * still being finished open to them before paying customers. Mirrors the
+ * backend's SocialProviderManager::inLimitedReleaseAudience.
+ */
+export function inLimitedReleaseAudience(user: { is_admin?: boolean; is_promotional?: boolean } | null | undefined): boolean {
+  return !!(user?.is_admin || user?.is_promotional);
+}
+
 export function isAccessExpired(user: AccessUser | null | undefined, now: number = Date.now()): boolean {
   if (!user) return false;
   if (user.access_expired) return true;

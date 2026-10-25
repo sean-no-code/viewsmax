@@ -18,6 +18,7 @@ class PostMetricSnapshot extends Model
         'platform',
         'remote_post_id',
         'url',
+        'thumbnail_url',
         'caption_excerpt',
         'published_at',
         'likes',

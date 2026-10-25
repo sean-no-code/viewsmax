@@ -21,6 +21,29 @@ class AiDiscoveryTest extends TestCase
             ->assertJsonPath('name', 'ViewsMax');
     }
 
+    public function test_summary_names_pinterest_only_once_it_is_set_up(): void
+    {
+        config(['social.platforms.pinterest.client_id' => null, 'social.platforms.pinterest.client_secret' => null]);
+        $this->assertStringNotContainsString('Pinterest', $this->getJson('/api/ai')->json('summary'));
+
+        // The page is cached for an hour; Pinterest appears on the next build.
+        \Illuminate\Support\Facades\Cache::flush();
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+        $this->assertStringContainsString('Bluesky, and Pinterest', $this->getJson('/api/ai')->json('summary'));
+    }
+
+    public function test_pinterest_board_tool_is_listed_only_once_pinterest_is_set_up(): void
+    {
+        config(['social.platforms.pinterest.client_id' => null, 'social.platforms.pinterest.client_secret' => null]);
+        $names = collect($this->getJson('/api/ai')->json('mcp.tools'))->pluck('name');
+        $this->assertNotContains('create_pinterest_board', $names);
+
+        \Illuminate\Support\Facades\Cache::flush();
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+        $names = collect($this->getJson('/api/ai')->json('mcp.tools'))->pluck('name');
+        $this->assertContains('create_pinterest_board', $names);
+    }
+
     public function test_discovery_describes_the_mcp_server(): void
     {
         $response = $this->getJson('/api/ai')->assertOk();

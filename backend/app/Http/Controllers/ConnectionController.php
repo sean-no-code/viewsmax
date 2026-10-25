@@ -63,7 +63,8 @@ class ConnectionController extends Controller
         // release must not slip the gate through it. Only the audience rule,
         // not isAvailableTo(): this path has its own credentials, so it must
         // not pick up a check against the social store's client_id/secret.
-        if (app(SocialProviderManager::class)->promoOnly($provider) && ! $request->user()->isPromotional()) {
+        $manager = app(SocialProviderManager::class);
+        if ($manager->promoOnly($provider) && ! $manager->inLimitedReleaseAudience($request->user())) {
             return response()->json([
                 'success' => false,
                 'message' => ucfirst($provider).' is not available on your account yet.',

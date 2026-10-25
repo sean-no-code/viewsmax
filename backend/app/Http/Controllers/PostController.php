@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use App\Models\PostTarget;
+use App\Services\Social\MediaRules;
 use App\Services\Social\PostPublishDispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
@@ -56,7 +58,7 @@ class PostController extends Controller
      * per-platform results.
      *
      * @bodyParam caption string The post text / caption. Example: Big news today!
-     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads. Example: ["tiktok","instagram"]
+     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest. Example: ["tiktok","instagram"]
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
@@ -71,6 +73,12 @@ class PostController extends Controller
      * @bodyParam options.youtube.privacy_status string public, unlisted, or private. Example: public
      * @bodyParam options.instagram.cover_url string Public cover image URL for an Instagram Reel.
      * @bodyParam options.linkedin.first_comment string A comment auto-posted right after publishing.
+     * @bodyParam options.pinterest.board_ids object Board per Pinterest account, keyed by social_account_id (boards from GET /api/social/accounts/{id}/boards). Required to publish; never chosen for you.
+     * @bodyParam options.pinterest.board_id string Board for a single Pinterest account, instead of board_ids. Example: 1234567890
+     * @bodyParam options.pinterest.title string Pin title (max 100). Empty = no title.
+     * @bodyParam options.pinterest.link string Where the Pin links to (max 2048). Empty = no link.
+     * @bodyParam options.pinterest.alt_text string Image description for screen readers (max 500). Empty = none.
+     * @bodyParam options.pinterest.cover_url string Cover image URL; required for a video Pin.
      */
     public function store(Request $request)
     {
@@ -121,6 +129,15 @@ class PostController extends Controller
 
         if (array_key_exists('platforms', $data) || array_key_exists('targets', $data)) {
             $this->upsertTargets($post, $data);
+        } elseif (array_key_exists('options', $data)) {
+            // Options alone (e.g. the AI adding a Pinterest board to a saved
+            // draft): store them on the post's existing targets, or they'd
+            // pass validation and then never reach the publish job.
+            foreach ($post->targets()->get() as $target) {
+                if (array_key_exists($target->platform, $data['options'] ?? [])) {
+                    $target->update(['options' => $data['options'][$target->platform]]);
+                }
+            }
         }
 
         if (array_key_exists('comments', $data)) {
@@ -212,6 +229,20 @@ class PostController extends Controller
             'options' => 'nullable|array',
         ]);
 
+        // Pinterest fields go out exactly as typed, so their limits (Pinterest's
+        // API spec) are checked even on drafts. A separate validator: nested
+        // rules in the one above would strip every other platform's options
+        // from the validated data.
+        Validator::make($request->input('options.pinterest') ?? [], [
+            'board_id' => 'nullable|string|max:64',
+            'board_ids' => 'nullable|array',
+            'board_ids.*' => 'nullable|string|max:64',
+            'title' => 'nullable|string|max:100',
+            'link' => 'nullable|url|max:2048',
+            'alt_text' => 'nullable|string|max:500',
+            'cover_url' => 'nullable|url',
+        ])->validate();
+
         // Back-compat: the old LinkedIn-only first_comment option becomes the
         // first composed comment (the generic system posts it now).
         $firstComment = trim((string) data_get($data, 'options.linkedin.first_comment', ''));
@@ -219,6 +250,7 @@ class PostController extends Controller
             $data['comments'] = [['body' => $firstComment, 'delay_seconds' => 0]];
         }
 
+        $this->validatePlatforms($data);
         $this->validateTargetAccounts($data['targets'] ?? null);
 
         // Honour the offset: "18:00+07:00" is 11:00 UTC. The datetime cast
@@ -239,6 +271,34 @@ class PostController extends Controller
             throw ValidationException::withMessages([
                 'scheduled_at' => 'A scheduled post needs a scheduled_at time (ISO-8601).',
             ]);
+        }
+
+        // A past time would publish on the scheduler's next tick, which is
+        // almost never what the caller meant (the MCP tool refuses it too).
+        // Checked when the request sets the time or moves the post into
+        // scheduled; a caption edit on a scheduled post whose time just
+        // passed is left to the scheduler. One minute of grace covers the
+        // tick interval and browser/server clock skew.
+        $enteringSchedule = array_key_exists('scheduled_at', $data) || $post?->status !== Post::STATUS_SCHEDULED;
+        if ($resultingStatus === Post::STATUS_SCHEDULED && $enteringSchedule
+            && Carbon::parse($resultingTime)->lt(now()->subMinute())) {
+            throw ValidationException::withMessages([
+                'scheduled_at' => 'scheduled_at is in the past. The current time is '
+                    .now()->utc()->toIso8601ZuluString().' — pick a later time.',
+            ]);
+        }
+
+        // Once a platform has the post live, the post can't go back to a draft
+        // or be rescheduled: publishing again would double-post. Retrying a
+        // single failed platform goes through retryTarget instead.
+        if ($post && $resultingStatus !== Post::STATUS_POSTED) {
+            $live = $post->targets()->where('status', PostTarget::STATUS_PUBLISHED)->pluck('platform')->unique();
+            if ($live->isNotEmpty()) {
+                abort(response()->json([
+                    'message' => 'This post has already been published to '.$live->map(fn ($p) => config("social.platforms.{$p}.label", ucfirst($p)))->join(', ')
+                        ." and can't be moved back to {$resultingStatus}.",
+                ], 422));
+            }
         }
 
         // Platform list for the publish-time checks below, whichever payload
@@ -276,6 +336,18 @@ class PostController extends Controller
 
                 if ($errors !== []) {
                     abort(response()->json(['message' => implode(' ', $errors)], 422));
+                }
+            }
+
+            // Per-platform media rules (count, type, mixing) — resolved the
+            // same way as captions: the payload's media, else what's saved.
+            $effectiveMedia = array_key_exists('media', $data)
+                ? ($data['media'] ?? [])
+                : ($post?->media ?? []);
+
+            foreach (array_unique($platformList) as $platform) {
+                if ($error = MediaRules::error($platform, $effectiveMedia)) {
+                    abort(response()->json(['message' => $error], 422));
                 }
             }
 
@@ -344,7 +416,69 @@ class PostController extends Controller
             }
         }
 
+        // Every Pin is an image or a video; Pinterest has no text-only posts.
+        if ($publishing && in_array('pinterest', $platformList, true)) {
+            $hasMedia = collect($data['media'] ?? $post?->media ?? [])
+                ->contains(fn ($m) => in_array($m['type'] ?? null, ['image', 'video'], true) && ! empty($m['url']));
+            if (! $hasMedia) {
+                abort(response()->json([
+                    'message' => 'Pinterest needs an image or a video before publishing or scheduling.',
+                ], 422));
+            }
+
+            // No board is ever picked for the user: every Pinterest target
+            // needs one chosen for its own account (a board belongs to one
+            // account), or the single board_id when no account is pinned.
+            $pin = $data['options']['pinterest']
+                ?? $post?->targets()->where('platform', 'pinterest')->value('options')
+                ?? [];
+            if (isset($data['targets'])) {
+                $pinTargets = array_filter($data['targets'], fn ($t) => $t['platform'] === 'pinterest');
+            } elseif (isset($data['platforms'])) {
+                $pinTargets = [['platform' => 'pinterest']];
+            } else {
+                $pinTargets = $post?->targets()->where('platform', 'pinterest')->get(['social_account_id'])->toArray() ?? [];
+            }
+            foreach ($pinTargets as $t) {
+                $accountId = $t['social_account_id'] ?? null;
+                $board = ($accountId !== null ? ($pin['board_ids'][(string) $accountId] ?? null) : null) ?? ($pin['board_id'] ?? null);
+                if (blank($board)) {
+                    abort(response()->json([
+                        'message' => 'Choose a Pinterest board for every Pinterest account before publishing or scheduling.',
+                    ], 422));
+                }
+            }
+        }
+
         return $data;
+    }
+
+    /**
+     * Every requested platform must have a publisher and be switched on;
+     * otherwise its target would sit pending forever. Same rule the MCP
+     * create_post tool applies before delegating here.
+     */
+    private function validatePlatforms(array $data): void
+    {
+        $requested = array_unique(array_merge(
+            $data['platforms'] ?? [],
+            array_column($data['targets'] ?? [], 'platform'),
+        ));
+
+        foreach ($requested as $platform) {
+            if (! in_array($platform, PostPublishDispatcher::platforms(), true)) {
+                abort(response()->json([
+                    'message' => "Unsupported platform: {$platform}. Supported platforms: "
+                        .implode(', ', PostPublishDispatcher::platforms()).'.',
+                ], 422));
+            }
+            if (config("social.platforms.{$platform}.enabled", true) === false) {
+                $label = config("social.platforms.{$platform}.label", ucfirst($platform));
+                abort(response()->json([
+                    'message' => "{$label} isn't available on ViewsMax right now.",
+                ], 422));
+            }
+        }
     }
 
     /**
@@ -442,8 +576,11 @@ class PostController extends Controller
             }
         }
 
+        // A published target is the record of a live post: it is never deleted
+        // (and so never recreated as a fresh pending target that could
+        // publish again) even when the request leaves it out.
         foreach ($existing as $key => $target) {
-            if (! isset($kept[$key])) {
+            if (! isset($kept[$key]) && $target->status !== PostTarget::STATUS_PUBLISHED) {
                 $target->delete();
             }
         }
@@ -505,11 +642,16 @@ class PostController extends Controller
     }
 
     /**
-     * Dispatch publish jobs for every target we have a publisher for
-     * (TikTok, YouTube). See PostPublishDispatcher for the platform map.
+     * Dispatch publish jobs for every target we have a publisher for. See
+     * PostPublishDispatcher for the platform map. A target that is already
+     * published is skipped so a re-save can never double-post.
      */
     private function dispatchPublishing(Post $post): void
     {
-        PostPublishDispatcher::dispatch($post);
+        foreach ($post->targets()->get() as $target) {
+            if ($target->status !== PostTarget::STATUS_PUBLISHED) {
+                PostPublishDispatcher::dispatchTarget($target);
+            }
+        }
     }
 }

@@ -103,11 +103,21 @@ class SocialAccount extends Model
         return data_get($this->metadata, $key, $default);
     }
 
+    /**
+     * Flag the account as needing the user to reconnect. The first flip into
+     * needs_reauth emails the owner; repeated calls while the account stays
+     * in that state are silent, so a dead token reported by every scheduled
+     * post sends one email per episode, not one per post.
+     */
     public function markNeedsReauth(?string $error = null): void
     {
         $this->update([
             'status' => self::STATUS_NEEDS_REAUTH,
             'last_error' => $error,
         ]);
+
+        if ($this->wasChanged('status')) {
+            \App\Jobs\SendReconnectEmailJob::dispatch($this->id);
+        }
     }
 }

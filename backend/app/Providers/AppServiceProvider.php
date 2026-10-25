@@ -97,6 +97,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->configureMcpRateLimiters();
+        $this->configurePublishRateLimiters();
         $this->configureMcpOAuth();
 
         // Centralised outbound-email logging. Lets us trace in production whether
@@ -121,6 +122,22 @@ class AppServiceProvider extends ServiceProvider
                 if (in_array($event->command, self::MIGRATE_COMMANDS)) {
                     $this->ensureSecondaryDatabasesExist($event->output);
                 }
+            });
+        }
+    }
+
+    /**
+     * Per-platform publish throughput caps (config/publishing.php), used by
+     * the RateLimited job middleware on PublishYouTubeJob / PublishToTikTokJob
+     * so a spike on one platform cannot starve the others. 0 means uncapped.
+     */
+    private function configurePublishRateLimiters(): void
+    {
+        foreach (['youtube', 'tiktok'] as $platform) {
+            RateLimiter::for("publish-{$platform}", function () use ($platform) {
+                $perMinute = (int) config("publishing.{$platform}_per_minute");
+
+                return $perMinute > 0 ? Limit::perMinute($perMinute) : Limit::none();
             });
         }
     }

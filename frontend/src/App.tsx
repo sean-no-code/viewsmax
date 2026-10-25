@@ -17,6 +17,9 @@ import ConnectAI from "./pages/ConnectAI";
 import McpLanding from "./pages/McpLanding";
 import AgentPage from "./components/agents/AgentPage";
 import { AGENT_LIST } from "./lib/agent-pages";
+import ChannelPage from "./pages/channels/ChannelPage";
+import ChannelsHub from "./pages/channels/ChannelsHub";
+import { CHANNEL_LIST, CHANNELS_PATH } from "./lib/channel-pages";
 import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 // Thumbnails + AI models pages retired from the dashboard (routes commented out below).
@@ -128,6 +131,11 @@ const App = () => (
                 {AGENT_LIST.map((a) => (
                   <Route key={a.key} path={a.slug} element={<AgentPage agent={a.key} />} />
                 ))}
+                {/* Per-channel scheduler guides: /channels and /channels/pinterest, ... (src/lib/channel-pages.ts) */}
+                <Route path={CHANNELS_PATH} element={<ChannelsHub />} />
+                {CHANNEL_LIST.map((c) => (
+                  <Route key={c.key} path={c.slug} element={<ChannelPage channel={c.key} />} />
+                ))}
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/youtube-monetization-calculator" element={<RevenueCalculator />} />
                 <Route path="/thumbnail-preview" element={<ThumbnailPreview />} />
@@ -233,8 +241,8 @@ const App = () => (
                   <Route path="analytics/sources" element={<AnalyticsSources />} />
                   {/* Admin-only while the multi-platform data pipeline is finished */}
                   <Route path="analytics/audience-growth" element={<Navigate to="/dashboard/analytics/profile" replace />} />
-                  <Route path="analytics/profile" element={<AdminRoute><AnalyticsPerformance tab="profile" /></AdminRoute>} />
-                  <Route path="analytics/posts" element={<AdminRoute><AnalyticsPerformance tab="posts" /></AdminRoute>} />
+                  <Route path="analytics/profile" element={<AdminRoute allowPromo><AnalyticsPerformance tab="profile" /></AdminRoute>} />
+                  <Route path="analytics/posts" element={<AdminRoute allowPromo><AnalyticsPerformance tab="posts" /></AdminRoute>} />
                   <Route path="analytics/platform/:id" element={<AnalyticsPlatformDetail />} />
                   {/* Offers (formerly Landing Pages) — amalgamated with Links under Monetization */}
                   <Route path="monetization/offers" element={<Offers />} />

@@ -6,8 +6,8 @@ use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\PublishResult;
-use App\Services\YouTubePublishService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -113,69 +113,69 @@ class YouTubeProvider extends GoogleOAuthProvider
         return $out;
     }
 
+    /**
+     * Most recent public uploads via the channel's uploads playlist ("UU" +
+     * channel id, newest first; 1 quota unit where search.list would cost
+     * 100). The owner's token lists private/unlisted videos too, so one page
+     * is fetched and filtered to public before the limit applies. A channel
+     * with no uploads has no such playlist (404) — that's just empty.
+     */
+    public function fetchRecentPosts(SocialAccount $account, int $limit): array
+    {
+        $channelId = (string) ($account->meta('channel_id') ?? $account->platform_account_id);
+        if (! str_starts_with($channelId, 'UC')) {
+            return [];
+        }
+
+        $account = $this->ensureFreshToken($account);
+
+        $response = Http::withToken($account->access_token)
+            ->get('https://www.googleapis.com/youtube/v3/playlistItems', [
+                'part' => 'snippet,contentDetails,status',
+                'playlistId' => 'UU'.substr($channelId, 2),
+                'maxResults' => 50,
+            ]);
+
+        if ($response->status() === 404) {
+            return [];
+        }
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('[YouTube] recent uploads lookup failed', [
+                'account_id' => $account->id, 'status' => $response->status(),
+            ]);
+
+            return [];
+        }
+
+        $out = [];
+        foreach ($response->json('items') ?? [] as $item) {
+            $id = data_get($item, 'contentDetails.videoId');
+            if (! $id || data_get($item, 'status.privacyStatus') !== 'public') {
+                continue;
+            }
+            $publishedAt = data_get($item, 'contentDetails.videoPublishedAt') ?? data_get($item, 'snippet.publishedAt');
+            $out[] = [
+                'remote_post_id' => (string) $id,
+                'url' => 'https://www.youtube.com/watch?v='.$id,
+                'caption' => (string) data_get($item, 'snippet.title', ''),
+                'published_at' => $publishedAt ? Carbon::parse($publishedAt) : null,
+            ];
+        }
+
+        return array_slice($out, 0, $limit);
+    }
+
+    /** Why the legacy SocialPost path no longer uploads to YouTube. */
+    public const USE_POSTS_API = 'YouTube uploads are no longer made from the social posts API, which had to hold the whole video in memory. Create the post through the posts API (POST /api/posts with an uploaded video) instead.';
+
+    /**
+     * Retired. This path downloaded the whole video into worker
+     * memory before the PUT; the Post pipeline (PublishYouTubeJob) streams it
+     * from the media disk through YouTubePublishService in resumable chunks,
+     * and no client of this endpoint sends YouTube targets any more.
+     */
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
     {
-        $video = $this->firstVideoUrl($post);
-        if (! $video) {
-            return PublishResult::failure('YouTube requires a video to publish.');
-        }
-
-        $content = trim((string) $post->content);
-        if ($titleError = \App\Services\Social\CaptionRules::titleError('youtube', $content)) {
-            return PublishResult::failure($titleError);
-        }
-        $title = mb_substr($content, 0, 95);
-
-        $metadata = [
-            'snippet' => [
-                'title' => $title,
-                'description' => $content,
-                'categoryId' => '22', // People & Blogs
-            ],
-            'status' => [
-                'privacyStatus' => 'private', // safe default; user can flip to public
-                'selfDeclaredMadeForKids' => false,
-            ],
-        ];
-
-        // 1. Initiate a resumable upload session.
-        $init = Http::withToken($account->access_token)
-            ->withHeaders([
-                'X-Upload-Content-Type' => 'video/*',
-                'Content-Type' => 'application/json; charset=UTF-8',
-            ])
-            ->post('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', $metadata);
-
-        if (! $init->successful()) {
-            return PublishResult::failure(YouTubePublishService::failureMessage($init) ?? 'YouTube upload init failed: '.$init->body(), $init->json() ?? []);
-        }
-
-        $uploadUrl = $init->header('Location');
-        if (! $uploadUrl) {
-            return PublishResult::failure('YouTube did not return a resumable upload URL.');
-        }
-
-        // 2. Stream the source video into the upload session.
-        $binary = $this->fetchMedia($video, 'video');
-        if ($binary === null) {
-            return PublishResult::failure('Could not download source video for YouTube upload.');
-        }
-
-        $upload = Http::withToken($account->access_token)
-            ->timeout(600)
-            ->withBody($binary['body'], 'video/*')
-            ->put($uploadUrl);
-
-        if (! $upload->successful()) {
-            return PublishResult::failure(YouTubePublishService::failureMessage($upload) ?? 'YouTube upload failed: '.$upload->body(), $upload->json() ?? []);
-        }
-
-        $videoId = $upload->json('id');
-
-        return PublishResult::success(
-            $videoId,
-            $videoId ? "https://www.youtube.com/watch?v={$videoId}" : null,
-            $upload->json()
-        );
+        return PublishResult::failure(self::USE_POSTS_API);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Social;
 
+use App\Jobs\ImportRecentPostsJob;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -99,6 +100,7 @@ class SocialConnect
         if ($followUs) {
             $this->followUs->followFrom($accounts);
         }
+        $this->queueRecentPostsImport($accounts);
 
         return $accounts;
     }
@@ -121,8 +123,24 @@ class SocialConnect
         if ($followUs) {
             $this->followUs->followFrom($accounts);
         }
+        $this->queueRecentPostsImport($accounts);
 
         return $accounts;
+    }
+
+    /**
+     * Pull the account's latest posts into analytics (off the request). Only
+     * platforms that can report stats are worth a job; the job re-checks.
+     *
+     * @param  Collection<int, \App\Models\SocialAccount>  $accounts
+     */
+    private function queueRecentPostsImport(Collection $accounts): void
+    {
+        foreach ($accounts as $account) {
+            if ($this->manager->supportsStats($account->platform)) {
+                ImportRecentPostsJob::dispatch($account->id);
+            }
+        }
     }
 
     /** Human-friendly explanation when OAuth succeeds but no account is usable. */

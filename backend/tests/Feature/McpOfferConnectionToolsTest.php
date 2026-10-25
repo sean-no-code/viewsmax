@@ -332,6 +332,61 @@ class McpOfferConnectionToolsTest extends TestCase
         $this->assertSame('connected', $beehiiv['status']);
     }
 
+    public function test_list_connected_accounts_includes_pinterest_boards(): void
+    {
+        // Every Pin goes on a board, so the AI needs the board ids to pass as
+        // options.pinterest.board_id. They're fetched live (Pinterest forbids
+        // storing API data). Other platforms carry no boards key.
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+        \Illuminate\Support\Facades\Http::fake(['api.pinterest.com/v5/boards*' => \Illuminate\Support\Facades\Http::response([
+            'items' => [['id' => 'b1', 'name' => 'Recipes', 'privacy' => 'PUBLIC']], 'bookmark' => null,
+        ])]);
+        $user = User::factory()->create();
+        SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'pinterest',
+            'platform_account_id' => 'pin-1',
+            'username' => 'creatorlab',
+            'access_token' => 'tok',
+            'status' => SocialAccount::STATUS_CONNECTED,
+            'token_expires_at' => now()->addDays(30),
+        ]);
+        SocialAccount::create([
+            'user_id' => $user->id,
+            'platform' => 'x',
+            'platform_account_id' => 'x-1',
+            'access_token' => 'tok',
+            'status' => SocialAccount::STATUS_CONNECTED,
+        ]);
+
+        $data = $this->toolJson($this->callTool($this->mcpKey($user), 'list_connected_accounts'));
+
+        $pinterest = collect($data['accounts'])->firstWhere('platform', 'pinterest');
+        $this->assertSame([['id' => 'b1', 'name' => 'Recipes']], $pinterest['boards']);
+        $this->assertArrayNotHasKey('boards', collect($data['accounts'])->firstWhere('platform', 'x'));
+    }
+
+    public function test_create_pinterest_board_creates_a_board_once_pinterest_is_set_up(): void
+    {
+        $user = User::factory()->create();
+        $account = SocialAccount::create([
+            'user_id' => $user->id, 'platform' => 'pinterest', 'platform_account_id' => 'pin-1',
+            'access_token' => 'tok', 'token_expires_at' => now()->addDays(30), 'status' => SocialAccount::STATUS_CONNECTED,
+        ]);
+        $key = $this->mcpKey($user);
+
+        // Hidden while Pinterest has no app keys.
+        config(['social.platforms.pinterest.client_id' => null, 'social.platforms.pinterest.client_secret' => null]);
+        $this->assertToolError($this->callTool($key, 'create_pinterest_board', ['social_account_id' => $account->id, 'name' => 'X']));
+
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+        \Illuminate\Support\Facades\Http::fake(['api.pinterest.com/v5/boards' => \Illuminate\Support\Facades\Http::response(['id' => '777', 'name' => 'Weeknight dinners', 'privacy' => 'PUBLIC'], 201)]);
+        $data = $this->toolJson($this->callTool($key, 'create_pinterest_board', ['social_account_id' => $account->id, 'name' => 'Weeknight dinners']));
+
+        $this->assertSame('777', $data['board']['id']);
+        $this->assertSame('Weeknight dinners', $data['board']['name']);
+    }
+
     public function test_disconnect_account_removes_beehiiv_connection(): void
     {
         $user = User::factory()->create();

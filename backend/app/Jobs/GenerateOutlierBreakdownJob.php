@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TranscriptUnavailableException;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
 use App\Services\AnthropicService;
@@ -22,7 +23,9 @@ use Illuminate\Support\Facades\Log;
  *
  * Every failure is report()ed, not just logged: the exception handler sends
  * it to Sentry and the error log/Slack, and the platform + video id ride along
- * via Context so the alert says which breakdown broke.
+ * via Context so the alert says which breakdown broke. The one exception is a
+ * video with no transcript (TranscriptUnavailableException): that is the
+ * provider's answer, stored on the row for the user and not reported.
  */
 class GenerateOutlierBreakdownJob implements ShouldQueue
 {
@@ -85,6 +88,18 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
                 'status' => OutlierBreakdown::STATUS_COMPLETED,
                 'payload' => $payload,
                 'error' => null,
+            ]);
+        } catch (TranscriptUnavailableException $e) {
+            // No captions for this video: the provider's answer, not a bug. The
+            // row carries the message for the user; Sentry is left alone.
+            Log::info('GenerateOutlierBreakdownJob: no transcript for video', [
+                'platform' => $this->platform,
+                'video_id' => $this->videoId,
+            ]);
+
+            $breakdown->update([
+                'status' => OutlierBreakdown::STATUS_FAILED,
+                'error' => $e->getMessage(),
             ]);
         } catch (\Throwable $e) {
             report($e);

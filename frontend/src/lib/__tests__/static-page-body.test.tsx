@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { STATIC_PAGE_SEO } from "@/lib/static-page-seo";
 import { AGENT_LIST } from "@/lib/agent-pages";
 import { PLATFORM_LIST } from "@/lib/transcript-tools";
+import { CHANNEL_LIST, CHANNELS_PATH } from "@/lib/channel-pages";
 import { STATIC_BODY_PATHS, renderStaticPageBody } from "@/lib/static-page-body";
 
 // AI crawlers and the plugin directory reviews fetch these URLs without
@@ -16,6 +17,8 @@ describe("renderStaticPageBody", () => {
       ...STATIC_PAGE_SEO.map((p) => p.path),
       ...AGENT_LIST.map((a) => a.slug),
       ...PLATFORM_LIST.map((p) => p.slug),
+      CHANNELS_PATH,
+      ...CHANNEL_LIST.map((c) => c.slug),
     ];
     expect(STATIC_BODY_PATHS).toEqual(expect.arrayContaining(expected));
   });
@@ -33,6 +36,7 @@ describe("renderStaticPageBody", () => {
     expect(renderStaticPageBody("/privacy")).toContain("Information We Collect");
     expect(renderStaticPageBody("/terms")).toContain("Subscriptions and Billing");
     expect(renderStaticPageBody("/ai")).toContain("Connect your AI to ViewsMax");
+    expect(renderStaticPageBody("/channels/pinterest")).toContain("Schedule Pinterest Pins to the right board");
   });
 
   it("returns null for a path with no static body", () => {

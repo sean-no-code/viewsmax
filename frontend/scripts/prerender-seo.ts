@@ -1,7 +1,7 @@
 // Build-time SEO prerender (head injection — no headless browser).
 //
 // After `vite build`, this writes a per-route static index.html for the free-tools
-// pages and the static pages in src/lib/static-page-seo.ts (privacy, terms, /ai)
+// pages, the channel pages (src/lib/channel-pages.ts) and the static pages in src/lib/static-page-seo.ts (privacy, terms, /ai)
 // with the real <title>, meta, canonical, and JSON-LD baked into the served
 // HTML (so crawlers and social scrapers get correct tags without executing JS).
 // It also writes the localized homepages (/es, /ru, ... in
@@ -13,6 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PLATFORM_LIST, HUB_SEO, buildJsonLd } from "../src/lib/transcript-tools";
 import { STATIC_PAGE_SEO } from "../src/lib/static-page-seo";
+import { CHANNEL_LIST, CHANNELS_HUB_SEO, CHANNELS_PATH, buildChannelJsonLd, buildChannelsHubJsonLd } from "../src/lib/channel-pages";
 import { HOME_LOCALES } from "../src/pages/landing/locales";
 import { SITEMAP_MARKER, hreflangLinks, sitemapLocalizedPages } from "../src/lib/locale-seo";
 
@@ -58,6 +59,9 @@ const routes: Route[] = [
     keywords: p.seo.keywords,
     jsonLd: buildJsonLd(p),
   })),
+  // /channels and one guide per posting channel (src/lib/channel-pages.ts).
+  { path: CHANNELS_PATH, ...CHANNELS_HUB_SEO, jsonLd: buildChannelsHubJsonLd() },
+  ...CHANNEL_LIST.map((c) => ({ path: c.slug, ...c.seo, jsonLd: buildChannelJsonLd(c) })),
   // Privacy, terms, and AI docs: without a file per route the host serves
   // them with HTTP 404 (see src/lib/static-page-seo.ts).
   ...STATIC_PAGE_SEO.map((p) => ({ ...p, jsonLd: [] })),

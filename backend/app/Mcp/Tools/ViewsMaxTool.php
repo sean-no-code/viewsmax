@@ -48,7 +48,18 @@ abstract class ViewsMaxTool extends Tool
     {
         $granted = \App\Http\Middleware\McpAuth::grantedScopes(request());
 
-        return in_array($this->requiresWrite() ? 'mcp:write' : 'mcp:read', $granted, true);
+        return $this->isAvailable()
+            && in_array($this->requiresWrite() ? 'mcp:write' : 'mcp:read', $granted, true);
+    }
+
+    /**
+     * Whether the tool exists right now, regardless of who asks (e.g. a
+     * platform-specific tool before that platform has app keys). Hidden
+     * tools stay out of tools/list and the /api/ai listing alike.
+     */
+    public function isAvailable(): bool
+    {
+        return true;
     }
 
     /**

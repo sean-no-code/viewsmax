@@ -29,6 +29,8 @@ class AuthController extends Controller
      */
     public function register(Request $request, Registration $registration)
     {
+        // unique:users compares as stored (lowercase), so normalise first.
+        $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -93,7 +95,7 @@ class AuthController extends Controller
 
         try {
             // Find user by email
-            $user = User::where('email', $request->email)->first();
+            $user = User::byEmail($request->email)->first();
 
             // Check if user exists and password is correct
             if (! $user || ! Hash::check($request->password, $user->password)) {
@@ -230,7 +232,7 @@ class AuthController extends Controller
             return response()->json(['success' => true]);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::byEmail($request->email)->first();
 
         if ($user && is_null($user->email_verified_at)) {
             app(Registration::class)->sendVerificationEmail($user);
@@ -350,7 +352,7 @@ class AuthController extends Controller
         }
 
         try {
-            $user = User::where('email', $request->email)->first();
+            $user = User::byEmail($request->email)->first();
 
             if (! $user) {
                 Log::channel('mail')->info('Password reset requested for non-existent email', ['email' => $request->email]);
@@ -445,7 +447,7 @@ class AuthController extends Controller
         }
 
         try {
-            $user = User::where('email', $request->email)->first();
+            $user = User::byEmail($request->email)->first();
 
             if (! $user) {
                 Log::warning('Password reset attempted with invalid email', ['email' => $request->email]);

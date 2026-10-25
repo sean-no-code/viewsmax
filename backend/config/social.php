@@ -48,8 +48,8 @@ return [
             'label' => 'Facebook',
             'enabled' => env('FACEBOOK_ENABLED', true),
             // Limited release pending Meta App Review: configured and live, but
-            // only promotional customers may connect it — everyone else sees
-            // "Coming soon". Restricted in production by default; set
+            // only promotional customers and admins may connect it — everyone
+            // else sees "Coming soon". Restricted in production by default; set
             // FACEBOOK_PROMO_ONLY=false to open it to all users.
             'promo_only' => env('FACEBOOK_PROMO_ONLY', env('APP_ENV') === 'production'),
             'client_id' => env('FACEBOOK_CLIENT_ID'),
@@ -71,8 +71,8 @@ return [
             // omits it) regardless of promo_only below.
             'enabled' => env('INSTAGRAM_ENABLED', true),
             // Limited release pending Meta App Review: live, but only
-            // promotional customers may connect it. Restricted in production by
-            // default; set INSTAGRAM_PROMO_ONLY=false once approved.
+            // promotional customers and admins may connect it. Restricted in
+            // production by default; set INSTAGRAM_PROMO_ONLY=false once approved.
             'promo_only' => env('INSTAGRAM_PROMO_ONLY', env('APP_ENV') === 'production'),
             // "Instagram API with Instagram Login" — connects directly to an
             // Instagram professional account (no Facebook Page). Uses the
@@ -85,12 +85,14 @@ return [
             // grants the insights scope; flipping it on adds the scope to the
             // connect flow (existing accounts must reconnect) and turns on the
             // baseline capture + daily refresh for instagram_media_id links.
-            'reach_enabled' => env('INSTAGRAM_REACH_ENABLED', false),
+            'reach_enabled' => env('INSTAGRAM_REACH_ENABLED', true),
+            // The insights scope follows the same flag with the same default:
+            // reach on without the scope means every metrics call is refused.
             'scopes' => array_values(array_filter([
                 'instagram_business_basic',
                 'instagram_business_content_publish',
                 'instagram_business_manage_comments',
-                env('INSTAGRAM_REACH_ENABLED', false) ? 'instagram_business_manage_insights' : null,
+                env('INSTAGRAM_REACH_ENABLED', true) ? 'instagram_business_manage_insights' : null,
             ])),
         ],
 
@@ -123,6 +125,26 @@ return [
                 'profile',
                 'email',
                 'w_member_social',
+            ],
+        ],
+
+        'pinterest' => [
+            'label' => 'Pinterest',
+            'enabled' => env('PINTEREST_ENABLED', true),
+            'client_id' => env('PINTEREST_CLIENT_ID'),
+            'client_secret' => env('PINTEREST_CLIENT_SECRET'),
+            // Send every call to api-sandbox.pinterest.com. Pins made there
+            // are visible only to their creator, and video Pins don't work.
+            'sandbox' => env('PINTEREST_SANDBOX', false),
+            // Local testing only: send calls to a mock of Pinterest's official
+            // API spec instead (see tests/Contract/README.md). Leave empty.
+            'api_base' => env('PINTEREST_API_BASE'),
+            'scopes' => [
+                'user_accounts:read',
+                'boards:read',
+                'boards:write',
+                'pins:read',
+                'pins:write',
             ],
         ],
 
@@ -162,7 +184,7 @@ return [
             // scopes; flipping it on adds those scopes to the connect flow
             // (existing accounts must reconnect) and enables the follower + post
             // metric fetch. Mirrors the Instagram reach flag.
-            'stats_enabled' => env('TIKTOK_STATS_ENABLED', false),
+            'stats_enabled' => env('TIKTOK_STATS_ENABLED', true),
             'scopes' => array_values(array_filter([
                 'user.info.basic',
                 'video.publish',

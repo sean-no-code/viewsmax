@@ -185,6 +185,8 @@ class McpServerTest extends TestCase
         'list_brands' => [true, false, false],
         'upload_media' => [false, false, true],
         'create_post' => [false, true, true],
+        // Only listed once Pinterest has app keys (set in the test below).
+        'create_pinterest_board' => [false, false, true],
         'list_posts' => [true, false, false],
         'get_post' => [true, false, false],
         'update_post' => [false, true, true],
@@ -219,6 +221,9 @@ class McpServerTest extends TestCase
 
     public function test_every_tool_declares_a_title_and_all_three_safety_hints(): void
     {
+        // Pinterest-only tools appear once Pinterest has app keys.
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+
         // Both directories reject tools without annotations: Anthropic wants a
         // title plus readOnlyHint/destructiveHint, OpenAI wants explicit
         // readOnlyHint, destructiveHint, and openWorldHint on every tool.
@@ -614,10 +619,32 @@ class McpServerTest extends TestCase
         $key = $this->mcpKey(User::factory()->create());
 
         $this->assertToolError(
-            $this->callTool($key, 'create_post', ['caption' => 'Nope', 'platforms' => ['pinterest']]),
-            'pinterest'
+            $this->callTool($key, 'create_post', ['caption' => 'Nope', 'platforms' => ['snapchat']]),
+            'snapchat'
         );
         $this->assertSame(0, Post::count());
+    }
+
+    public function test_pinterest_rules_appear_only_once_pinterest_is_set_up(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+        $describe = fn () => collect($this->rpc($key, 'tools/list', ['per_page' => 50])->assertOk()->json('result.tools'))
+            ->keyBy('name')['create_post'];
+
+        config(['social.platforms.pinterest.client_id' => null, 'social.platforms.pinterest.client_secret' => null]);
+        $this->assertStringNotContainsStringIgnoringCase('pinterest', json_encode($describe()));
+
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+        $tool = $describe();
+        $this->assertStringContainsString('options.pinterest.board_id', $tool['description']);
+        // One board: say which board will be used. Several: ask and wait.
+        $this->assertStringContainsString('only one board', $tool['description']);
+        $this->assertStringContainsString('carousel', $tool['description']);
+        $this->assertStringContainsString('list them by name and ask which board the Pin should go on', $tool['description']);
+        // Phrased as what to do: prohibitions ("never choose for them") were
+        // echoed back to users as if they had asked about it.
+        $this->assertStringNotContainsString('never', strtolower($tool['description'] === '' ? '' : \App\Mcp\Tools\CreatePost::pinterestRule()));
+        $this->assertStringContainsString('pinterest: { board_id', json_encode($tool['inputSchema']));
     }
 
     public function test_post_tools_only_offer_platforms_that_are_set_up(): void
@@ -641,10 +668,14 @@ class McpServerTest extends TestCase
 
     public function test_tool_schemas_mark_the_inputs_each_tool_cannot_work_without_as_required(): void
     {
+        // Pinterest-only tools appear once Pinterest has app keys.
+        config(['social.platforms.pinterest.client_id' => 'id', 'social.platforms.pinterest.client_secret' => 'secret']);
+
         // Without "required" in the schema, clients show every input as
         // optional and the AI can call e.g. update_post with no id.
         $expected = [
             // TEMP: add_outlier_channel, create_offer and create_tracking_link are hidden from the MCP for now
+            'create_pinterest_board' => ['name', 'social_account_id'],
             'delete_offer' => ['id'],
             'delete_post' => ['id'],
             'disconnect_account' => ['platform'],

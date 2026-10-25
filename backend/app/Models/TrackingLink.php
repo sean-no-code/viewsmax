@@ -37,6 +37,7 @@ class TrackingLink extends Model
         'facebook',
         'threads',
         'bluesky',
+        'pinterest',
     ];
 
     protected $fillable = [

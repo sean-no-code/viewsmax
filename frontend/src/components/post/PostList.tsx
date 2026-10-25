@@ -194,6 +194,10 @@ function deliveryDetail(target: PostTarget, t: TFunction): { text: string; tone:
 function DeliveryLine({ target, comments, retrying, onRetry }: { target: PostTarget; comments?: PostComment[]; retrying: boolean; onRetry: () => void }) {
   const { t } = useTranslation();
   const detail = deliveryDetail(target, t);
+  // A non-fatal notice from the publisher (YouTube: the video went live but
+  // the thumbnail was rejected) — the target is published, so it would
+  // otherwise read as a clean success.
+  const warning = target.status === "published" && typeof target.meta?.warning === "string" ? target.meta.warning : null;
   // Follow-up comment delivery on THIS target: "2/3 comments posted" etc.
   const rows = (comments ?? []).flatMap((cm) => (cm.target_comments ?? []).filter((tc) => tc.post_target_id === target.id));
   const posted = rows.filter((r) => r.status === "posted").length;
@@ -216,6 +220,9 @@ function DeliveryLine({ target, comments, retrying, onRetry }: { target: PostTar
         )}
       </div>
       <div style={{ fontFamily: "var(--font-body)", fontSize: 11.5, lineHeight: 1.45, color: detail.tone }}>{detail.text}</div>
+      {warning && (
+        <div style={{ fontFamily: "var(--font-body)", fontSize: 11.5, lineHeight: 1.45, color: "var(--warn)" }}>{warning}</div>
+      )}
       {rows.length > 0 && !skipped && (
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: failed ? "var(--vm-red)" : "var(--ink-on-paper-3)" }}>
           {failed

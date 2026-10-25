@@ -40,8 +40,8 @@ export const FIXTURE: PerformanceData = {
     base({ id: 5, platform: "instagram", username: "@sean.ig" }),
   ],
   posts: [
-    { id: "youtube|a", account_id: 1, platform: "youtube", remote_post_id: "a", url: "https://youtu.be/a", caption: "Thumbnail test results", published_at: "2026-10-03T10:00:00+00:00", likes: 30, comments: 5, shares: 1, views: 600 },
-    { id: "youtube|b", account_id: 1, platform: "youtube", remote_post_id: "b", url: "https://youtu.be/b", caption: "Channel audit", published_at: "2026-10-06T10:00:00+00:00", likes: 8, comments: 2, shares: 0, views: 100 },
-    { id: "x|c", account_id: 2, platform: "x", remote_post_id: "c", url: null, caption: "A thread on retention", published_at: "2026-10-05T10:00:00+00:00", likes: 12, comments: 3, shares: 4, views: 0 },
+    { id: "youtube|a", account_id: 1, platform: "youtube", remote_post_id: "a", url: "https://youtu.be/a", thumbnail_url: null, caption: "Thumbnail test results", published_at: "2026-10-03T10:00:00+00:00", likes: 30, comments: 5, shares: 1, views: 600 },
+    { id: "youtube|b", account_id: 1, platform: "youtube", remote_post_id: "b", url: "https://youtu.be/b", thumbnail_url: "https://cdn.test/b.jpg", caption: "Channel audit", published_at: "2026-10-06T10:00:00+00:00", likes: 8, comments: 2, shares: 0, views: 100 },
+    { id: "x|c", account_id: 2, platform: "x", remote_post_id: "c", url: null, thumbnail_url: null, caption: "A thread on retention", published_at: "2026-10-05T10:00:00+00:00", likes: 12, comments: 3, shares: 4, views: 0 },
   ],
 };
