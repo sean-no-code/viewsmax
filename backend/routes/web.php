@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\WebConnectController;
+use App\Http\Controllers\Auth\WebBillingController;
 use App\Http\Controllers\Auth\WebRegisterController;
 use App\Http\Controllers\Oauth\McpClientRegistrationController;
 use App\Http\Controllers\Oauth\McpOAuthMetadataController;
@@ -85,6 +86,10 @@ Route::middleware('auth:web')->group(function () {
 
     Route::middleware('access.web')->group(function () {
         Route::get('/register/setup', [WebRegisterController::class, 'setup'])->name('register.setup');
+        // The card step. EnsureWebAccess lets a user without a card reach
+        // this page (it is where the denial sends them) and nothing past it.
+        Route::get('/register/billing', [WebBillingController::class, 'show'])->name('register.billing');
+        Route::post('/register/billing', [WebBillingController::class, 'store'])->middleware('throttle:10,1');
         Route::get('/register/continue', [WebRegisterController::class, 'continue'])->name('register.continue');
         Route::get('/connect/{platform}', [WebConnectController::class, 'start'])->name('connect.start');
         Route::get('/connect/{platform}/callback', [WebConnectController::class, 'callback'])->name('connect.callback');

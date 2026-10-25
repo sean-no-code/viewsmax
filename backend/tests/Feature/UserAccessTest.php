@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Plan;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\UserAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,5 +100,49 @@ class UserAccessTest extends TestCase
 
         // Session endpoints stay open so the app can show the resend prompt and sign out.
         $this->withHeaders(['Authorization' => 'Bearer '.$token])->getJson('/api/profile')->assertOk();
+    }
+
+    // --- The card step -------------------------------------------------------
+
+    private function notOnboarded(array $attrs = []): User
+    {
+        return User::factory()->create($attrs + ['onboarding_completed_at' => null, 'promo_expires_at' => now()->addDays(6)]);
+    }
+
+    public function test_a_signup_that_has_not_added_a_card_is_told_to_add_one(): void
+    {
+        $denial = UserAccess::denial($this->notOnboarded(['signup_source' => 'app']));
+
+        $this->assertSame(UserAccess::PAYMENT_REQUIRED, $denial->code);
+        $this->assertSame('https://app.example.com/onboarding', $denial->url);
+        $this->assertStringContainsString('Add a card', $denial->message);
+        $this->assertStringContainsString($denial->url, $denial->message);
+
+        // Agent signups add the card on this host, mid OAuth flow.
+        $this->assertSame(route('register.billing'), UserAccess::denial($this->notOnboarded(['signup_source' => 'agent']))->url);
+    }
+
+    public function test_a_card_or_a_promotional_window_clears_the_card_step(): void
+    {
+        $plan = Plan::create(['name' => 'starter', 'display_name' => 'Starter', 'price' => 29, 'currency' => 'USD', 'is_active' => true, 'stripe_price_id' => 'price_starter']);
+        $paid = $this->notOnboarded();
+        $paid->plans()->attach($plan->id, ['status' => 'trialing', 'starts_at' => now(), 'stripe_subscription_id' => 'sub_1']);
+        $this->assertNull(UserAccess::denial($paid->fresh()));
+
+        $promo = $this->notOnboarded(['promo_expires_at' => null]);
+        $promo->roles()->attach(Role::firstOrCreate(['name' => User::PROMO_ROLE], ['display_name' => 'Promotional customer'])->id);
+        $this->assertNull(UserAccess::denial($promo->fresh()));
+    }
+
+    public function test_an_onboarded_user_without_a_card_keeps_access_until_the_window_closes(): void
+    {
+        // Signups from the card-free weeks finished onboarding with no card;
+        // they are not locked out mid-window, the window's end handles them.
+        $this->assertNull(UserAccess::denial(User::factory()->create(['onboarding_completed_at' => now(), 'promo_expires_at' => now()->addDay()])));
+    }
+
+    public function test_an_expired_window_outranks_the_card_step(): void
+    {
+        $this->assertSame(UserAccess::ACCESS_EXPIRED, UserAccess::denial($this->notOnboarded(['promo_expires_at' => now()->subDay()]))->code);
     }
 }

@@ -92,7 +92,7 @@ export default function ChannelPage({ channel }: { channel: ChannelKey }) {
               <Link to={SIGNUP} className={PRIMARY_BTN}>Start for $0</Link>
               <a href="#how-it-works" className={OUTLINE_BTN}>See how it works</a>
             </div>
-            <p className="mt-4 text-[13px] font-semibold text-ink-on-paper-3">Free plan. No card. Connect {cfg.name} in about a minute.</p>
+            <p className="mt-4 text-[13px] font-semibold text-ink-on-paper-3">7-day free trial for $1. Connect {cfg.name} in about a minute.</p>
           </div>
           <SpecCard cfg={cfg} />
         </section>

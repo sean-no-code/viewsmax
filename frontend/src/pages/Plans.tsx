@@ -331,7 +331,7 @@ const Plans = () => {
 						<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
 							{trialUsed
 								? t("billing.plans.trialEndedIntro", "Your free trial has ended. Pick the tier that fits how you grow.")
-								: t("billing.plans.trialIntro", "7-day free trial at $0, then pick the tier that fits how you grow.")}
+								: t("billing.plans.trialIntro", "7-day free trial for a $1 activation fee, then pick the tier that fits how you grow.")}
 						</p>
 					)}
 				</div>

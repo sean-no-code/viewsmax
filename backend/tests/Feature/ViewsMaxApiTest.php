@@ -204,7 +204,7 @@ class ViewsMaxApiTest extends TestCase
         // Missing both prereqs.
         $this->postJson('/api/onboarding/complete', [], $this->authHeaders($user))
             ->assertStatus(422)
-            ->assertJson(['message' => 'Connect an account and add payment first.']);
+            ->assertJson(['message' => 'Add payment to finish setting up your account.']);
 
         // Add a connection only — still blocked.
         $user->connections()->create([

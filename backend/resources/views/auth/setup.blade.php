@@ -9,7 +9,10 @@
         <p class="card-description">
             <span class="setup-step done"><b>✓</b> Verify email</span>
             <span class="setup-step current"><b>2</b> Connect channels</span>
-            <span class="setup-step"><b>3</b> {{ $hasAgent ? 'Grant '.($client ?? 'your AI agent').' access' : 'Open ViewsMax' }}</span>
+            @if ($needsCard)
+                <span class="setup-step"><b>3</b> Add a card</span>
+            @endif
+            <span class="setup-step"><b>{{ $needsCard ? 4 : 3 }}</b> {{ $hasAgent ? 'Grant '.($client ?? 'your AI agent').' access' : 'Open ViewsMax' }}</span>
         </p>
 
         @if (session('error'))
@@ -81,8 +84,10 @@
             @endforelse
         </div>
 
-        <a href="{{ route('register.continue') }}" class="btn btn-primary" style="margin-top: 20px;">
-            @if ($hasAgent)
+        <a href="{{ $needsCard ? route('register.billing') : route('register.continue') }}" class="btn btn-primary" style="margin-top: 20px;">
+            @if ($needsCard)
+                {{ $connectedCount > 0 ? 'Continue to add a card' : 'Skip for now, add a card' }}
+            @elseif ($hasAgent)
                 {{ $connectedCount > 0 ? 'Continue to grant access' : 'Skip for now, grant access' }}
             @else
                 {{ $connectedCount > 0 ? 'Continue to ViewsMax' : 'Skip for now, open ViewsMax' }}

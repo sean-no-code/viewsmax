@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Mcp\Tools\CreatePost;
 use App\Models\User;
+use App\Support\UserAccess;
 use App\Services\Registration;
 use App\Services\Social\SocialProviderManager;
-use App\Support\OAuthIntendedClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class WebRegisterController extends Controller
 {
+    use Concerns\RemembersAgentSignup;
+
     /**
      * Session keys holding the agent's /oauth/authorize URL (and client name)
      * for the whole signup → connect → consent chain. Laravel's own
@@ -114,8 +116,9 @@ class WebRegisterController extends Controller
     }
 
     /**
-     * "Set up your account": connect channels here on the API host, then
-     * continue to the consent screen. Lists only platforms a user can post to.
+     * "Set up your account": connect channels here on the API host, then add
+     * a card (register.billing) and continue to the consent screen. Lists
+     * only platforms a user can post to.
      */
     public function setup(Request $request, SocialProviderManager $providers)
     {
@@ -140,6 +143,8 @@ class WebRegisterController extends Controller
             'hasAgent' => $request->session()->has(self::SESSION_AUTHORIZE_URL),
             'platforms' => $platforms,
             'connectedCount' => $user->socialAccounts()->count(),
+            // Step 3 is the card (WebBillingController) while the paywall applies.
+            'needsCard' => UserAccess::denial($user)?->code === UserAccess::PAYMENT_REQUIRED,
         ]);
     }
 
@@ -163,22 +168,5 @@ class WebRegisterController extends Controller
         $request->session()->forget([self::SESSION_CLIENT, 'url.intended']);
 
         return redirect()->to($authorizeUrl ?: rtrim((string) config('app.frontend_url'), '/').'/auth');
-    }
-
-    /**
-     * Copy the pending authorize URL + client name from `url.intended` into the
-     * flow's own session keys (first sighting wins) and return the client name.
-     */
-    private function rememberAgent(Request $request): ?string
-    {
-        $session = $request->session();
-        $intended = $session->get('url.intended');
-
-        if (! $session->has(self::SESSION_AUTHORIZE_URL) && OAuthIntendedClient::isAuthorizeUrl($intended)) {
-            $session->put(self::SESSION_AUTHORIZE_URL, $intended);
-            $session->put(self::SESSION_CLIENT, OAuthIntendedClient::nameFrom($intended));
-        }
-
-        return $session->get(self::SESSION_CLIENT);
     }
 }

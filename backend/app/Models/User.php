@@ -246,6 +246,18 @@ class User extends Authenticatable implements Wallet
     }
 
     /**
+     * Onboarding's paywall: a card-backed plan (active or trialing) is needed
+     * to leave the wizard. The free window alone isn't enough for a self
+     * signup; it is the trial that subscription starts with (see
+     * subscriptionTrialTerms). Only an admin-created promotional customer
+     * with an open window skips the card step.
+     */
+    public function canCompleteOnboarding(): bool
+    {
+        return $this->hasActivePlan() || ($this->isPromotional() && $this->hasActivePromo());
+    }
+
+    /**
      * Days a new signup can use the product before a card is required. Set as
      * `promo_expires_at` at registration — the same free window an admin
      * grants a promotional customer, just without the role.

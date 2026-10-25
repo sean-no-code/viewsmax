@@ -7,16 +7,16 @@ use Illuminate\Http\Request;
 class OnboardingController extends Controller
 {
     /**
-     * Mark onboarding complete. Server-side gate: the user must have an
-     * active/trialing subscription or an open free window (every new signup
-     * has one, so no card is needed here). Connecting an account is optional — users may
-     * skip that step during onboarding — so it is not required here.
+     * Mark onboarding complete. Server-side gate: the user must have added a
+     * card (User::canCompleteOnboarding — an active/trialing plan, or a
+     * promotional customer's open window). Connecting an account is optional —
+     * users may skip that step during onboarding — so it is not required here.
      */
     public function complete(Request $request)
     {
         $user = $request->user();
 
-        if (! $user->hasActiveSubscription()) {
+        if (! $user->canCompleteOnboarding()) {
             return response()->json([
                 'message' => 'Add payment to finish setting up your account.',
             ], 422);

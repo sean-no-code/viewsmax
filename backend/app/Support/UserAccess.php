@@ -24,6 +24,9 @@ final class UserAccess
     /** Kept as-is: the SPA keys off this code to pin the user to Billing. */
     public const ACCESS_EXPIRED = 'access_expired';
 
+    /** Signed up, verified, but never added a card (User::canCompleteOnboarding). */
+    public const PAYMENT_REQUIRED = 'payment_required';
+
     /** Why this user can't use ViewsMax right now, or null when they can. */
     public static function denial(User $user): ?AccessDenial
     {
@@ -47,7 +50,31 @@ final class UserAccess
             );
         }
 
+        // The paywall: onboarding isn't finished and no card has been added.
+        // Accounts that finished onboarding during the card-free weeks are
+        // left alone; the end of their window handles them (above).
+        if (is_null($user->onboarding_completed_at) && ! $user->canCompleteOnboarding()) {
+            $url = self::cardUrl($user);
+
+            return new AccessDenial(
+                self::PAYMENT_REQUIRED,
+                "Add a card to start your ViewsMax free trial: {$url}",
+                $url,
+            );
+        }
+
         return null;
+    }
+
+    /**
+     * Where the card gets added: agent signups on this host, mid OAuth flow
+     * (WebBillingController); app signups in the SPA's onboarding wizard.
+     */
+    public static function cardUrl(User $user): string
+    {
+        return $user->signup_source === User::SIGNUP_SOURCE_AGENT
+            ? route('register.billing')
+            : self::frontendUrl('/onboarding');
     }
 
     /**

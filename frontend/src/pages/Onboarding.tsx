@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Check, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { viewsMaxApi } from "@/lib/api-service";
+import { skipsCardStep } from "@/lib/access";
 import ConnectAccounts from "@/components/ConnectAccounts";
 import TrialCheckout from "@/components/onboarding/TrialCheckout";
 import { toast } from "sonner";
@@ -40,17 +41,18 @@ const Onboarding = () => {
 
   // Derive the starting step from the user's current state (reload mid-flow
   // resumes; an already-subscribed user completes immediately).
-  // A promotional customer (free window, no card) counts as subscribed but has
-  // no plan row: they see the connect step and skip the card step entirely.
-  const promoOnly = !!user?.has_active_subscription && user?.has_active_plan === false;
+  // Everyone adds a card here (the free window is that plan's trial), except an
+  // admin-created promotional customer with an open window: they count as
+  // subscribed with no plan row, see the connect step and skip the card step.
+  const promoOnly = skipsCardStep(user);
 
   useEffect(() => {
     if (!user) return;
     const connected = (user.connections_count ?? 0) > 0;
-    const subscribed = !!user.has_active_subscription;
+    const subscribed = !!user.has_active_plan || promoOnly;
     setHasConnection(connected);
 
-    // Subscription is the only hard requirement; connecting is optional.
+    // A card-backed plan is the only hard requirement; connecting is optional.
     // Card-backed subscribers finish at once; promo users finish once connected.
     if (subscribed && (!promoOnly || connected)) {
       if (!autoCompleted.current) {

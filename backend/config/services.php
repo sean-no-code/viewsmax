@@ -211,6 +211,9 @@ return [
         'portal_return_url' => env('STRIPE_PORTAL_RETURN_URL'),
         // Fallback recurring price (the Starter tier) when checkout is started without a price_id.
         'trial_price_id' => env('STRIPE_TRIAL_PRICE_ID'),
+        // One-time $1 price charged the day a free trial starts (the card step
+        // in onboarding). A Stripe price id per environment; unset = no fee.
+        'activation_fee_price_id' => env('STRIPE_ACTIVATION_FEE_PRICE_ID'),
         // The recurring Stripe price behind each paid tier, keyed by plans.name.
         // Read by PlanSeeder and plans:sync-stripe-prices (which also copies the
         // amount onto plans.price). Stripe prices are immutable, so a price

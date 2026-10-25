@@ -5,7 +5,7 @@ import { ArrowLeft, Check, Crown } from "lucide-react";
 import StripeTrialStep from "@/components/StripeTrialStep";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
-import { checkoutTerms } from "@/lib/access";
+import { ACTIVATION_FEE_USD, checkoutTerms } from "@/lib/access";
 import { planIncludes } from "@/lib/plan-helpers";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -15,8 +15,9 @@ const Checkout = () => {
   const [searchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
   const [isComplete, setIsComplete] = useState(false);
-  // What adding a card costs today: the card-backed trial, $0 until the free
-  // window closes, or the full price once it has (see checkoutTerms).
+  // What adding a card costs today: the $1 activation fee while the free
+  // window is open (the plan price follows when it closes), or the full price
+  // once it has closed (see checkoutTerms).
   const terms = checkoutTerms(user);
   const chargeNow = terms.kind === "charge-now";
   const freeUntil = terms.kind === "window"
@@ -73,7 +74,7 @@ const Checkout = () => {
               {chargeNow
                 ? t("checkout.subtitle.chargeNow", "Your free trial has ended — add your card to keep going")
                 : freeUntil
-                  ? t("checkout.subtitle.window", "Add your card — nothing to pay until {{date}}", { date: freeUntil })
+                  ? t("checkout.subtitle.window", "Add your card — $1 today, then nothing until {{date}}", { date: freeUntil })
                   : t("checkout.subtitle.trial", "Add your card to start your free trial")}
             </p>
           </div>
@@ -106,10 +107,10 @@ const Checkout = () => {
                     <div className="border-t pt-3 mt-3">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">{t("checkout.summary.dueToday", "Due Today")}</span>
-                        <span className={`text-lg font-semibold ${chargeNow ? "text-foreground" : "text-green-600"}`}>{chargeNow ? `$${planPrice}.00` : "$0.00"}</span>
+                        <span className={`text-lg font-semibold ${chargeNow ? "text-foreground" : "text-green-600"}`}>{chargeNow ? `$${planPrice}.00` : `$${ACTIVATION_FEE_USD}.00`}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {chargeNow ? t("checkout.summary.chargedToday", "Your free trial has ended — charged today") : t("checkout.summary.noChargeToday", "Free trial — no charge today")}
+                        {chargeNow ? t("checkout.summary.chargedToday", "Your free trial has ended — charged today") : t("checkout.summary.noChargeToday", "Free trial — $1 activation fee today")}
                       </p>
                     </div>
                   </div>
@@ -133,7 +134,7 @@ const Checkout = () => {
                       ) : freeUntil ? (
                         <Trans
                           i18nKey="checkout.terms.chargeOnDate"
-                          defaults="You'll be charged <0>${{price}}</0> on {{date}} unless you cancel."
+                          defaults="You pay $1 today, then <0>${{price}}</0> on {{date}} unless you cancel."
                           values={{ price: planPrice, date: freeUntil }}
                           components={[<strong />]}
                         />
