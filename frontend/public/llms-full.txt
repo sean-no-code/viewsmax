@@ -227,7 +227,7 @@ want to know which content generates revenue — not just views.
 
 # ViewsMax Pricing
 
-Free to start (no card required). Paid plans are monthly, in USD.
+7-day free trial of any paid plan for a $1 activation fee; the plan price starts when the trial ends. Paid plans are monthly, in USD.
 Sign up at https://viewsmax.com/auth — plan checkout at https://viewsmax.com/checkout.
 
 | Plan | Price | Channels | Offers | Posts / month |

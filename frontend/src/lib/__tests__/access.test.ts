@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkoutTerms, inLimitedReleaseAudience, isAccessExpired, promoWindowLabel } from "../access";
+import { checkoutTerms, inLimitedReleaseAudience, isAccessExpired, promoWindowLabel, skipsCardStep } from "../access";
 
 const NOW = Date.parse("2026-09-28T10:00:00Z");
 const past = "2026-09-27T10:00:00Z";
@@ -58,5 +58,21 @@ describe("inLimitedReleaseAudience", () => {
     expect(inLimitedReleaseAudience({ is_admin: false, is_promotional: false })).toBe(false);
     expect(inLimitedReleaseAudience({})).toBe(false);
     expect(inLimitedReleaseAudience(null)).toBe(false);
+  });
+});
+
+describe("skipsCardStep", () => {
+  it("skips the card step only for a promotional customer inside their window", () => {
+    expect(skipsCardStep({ is_promotional: true, has_active_subscription: true, has_active_plan: false })).toBe(true);
+  });
+
+  it("asks a self signup for a card even while their free window is open", () => {
+    expect(skipsCardStep({ has_active_subscription: true, has_active_plan: false, promo_expires_at: future })).toBe(false);
+  });
+
+  it("does not skip for a promotional customer who already has a plan, an expired one, or no user", () => {
+    expect(skipsCardStep({ is_promotional: true, has_active_subscription: true, has_active_plan: true })).toBe(false);
+    expect(skipsCardStep({ is_promotional: true, has_active_subscription: false, has_active_plan: false })).toBe(false);
+    expect(skipsCardStep(null)).toBe(false);
   });
 });

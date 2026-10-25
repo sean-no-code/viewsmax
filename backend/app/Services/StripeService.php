@@ -18,6 +18,13 @@ use Stripe\Webhook;
 
 class StripeService
 {
+    /**
+     * The activation fee, in dollars, matching the one-time Stripe price in
+     * STRIPE_ACTIVATION_FEE_PRICE_ID. Mirrored as ACTIVATION_FEE_USD in the
+     * SPA (frontend/src/lib/access.ts).
+     */
+    public const ACTIVATION_FEE_USD = 1;
+
     public function __construct()
     {
         Stripe::setApiKey(config('services.stripe.secret'));
@@ -284,9 +291,10 @@ class StripeService
 
     /**
      * Create a subscription on the given price. $trial is Stripe's
-     * `trial_end` (no charge until the free window closes); empty charges the
-     * saved card now, and a declined card fails the call instead of leaving
-     * an incomplete subscription behind.
+     * `trial_end` (the plan price is charged when the free window closes, the
+     * activation fee today); empty charges the plan price now. Either way a
+     * declined card fails the call instead of leaving an incomplete
+     * subscription behind.
      *
      * @param  array{trial_end?: int}  $trial
      */
@@ -304,16 +312,7 @@ class StripeService
             ]);
         }
 
-        $subscription = Subscription::create([
-            'customer' => $customer->id,
-            'items' => [['price' => $priceId]],
-            ...($trial ?: ['payment_behavior' => 'error_if_incomplete']),
-            'metadata' => array_filter([
-                'user_id' => (string) $user->id,
-                'referral' => $referralId,
-            ]),
-            'expand' => ['latest_invoice.payment_intent', 'items.data.price'],
-        ]);
+        $subscription = Subscription::create($this->subscriptionParams($user, $customer->id, $priceId, $trial, $referralId));
 
         Log::info('Stripe subscription created', [
             'user_id' => $user->id,
@@ -322,6 +321,32 @@ class StripeService
         ]);
 
         return $subscription->toArray();
+    }
+
+    /**
+     * Parameters for Subscription::create. A trial (free window still open)
+     * also bills the one-time activation fee on the first invoice, which
+     * Stripe issues and charges immediately; with `error_if_incomplete` a
+     * declined fee, like a declined plan price, fails the request.
+     *
+     * @param  array{trial_end?: int}  $trial
+     */
+    public function subscriptionParams(User $user, string $customerId, string $priceId, array $trial, ?string $referralId = null): array
+    {
+        $feePriceId = config('services.stripe.activation_fee_price_id');
+
+        return [
+            'customer' => $customerId,
+            'items' => [['price' => $priceId]],
+            ...$trial,
+            ...($trial && $feePriceId ? ['add_invoice_items' => [['price' => $feePriceId]]] : []),
+            'payment_behavior' => 'error_if_incomplete',
+            'metadata' => array_filter([
+                'user_id' => (string) $user->id,
+                'referral' => $referralId,
+            ]),
+            'expand' => ['latest_invoice.payment_intent', 'items.data.price'],
+        ];
     }
 
     /**

@@ -37,19 +37,20 @@ interface StripeTrialStepProps {
 const fmtDate = (at: number) => new Date(at).toLocaleDateString([], { day: "numeric", month: "short" });
 
 // Payment-step copy for each case of checkoutTerms: a card added during the
-// free window ($0 until it closes), or one added at any other time (charged
-// today). There is no card-backed Stripe trial.
-function checkoutCopy(terms: CheckoutTerms, t: TFunction) {
+// free window (the $1 activation fee today, the plan price when it closes), or
+// one added at any other time (the plan price today). The same keys are used
+// by the onboarding Trial Checkout so the wording stays identical.
+export function checkoutCopy(terms: CheckoutTerms, t: TFunction) {
   if (terms.kind === "window") {
     const until = fmtDate(terms.chargeAt);
     return {
-      cta: t("checkout.payment.window.cta", "Add card — $0 today"),
-      busy: t("checkout.payment.window.busy", "Saving card…"),
-      lead: t("checkout.payment.window.lead", "$0 today."),
-      note: t("checkout.payment.window.note", "Your free trial runs until {{date}} — you won't be charged before then. Cancel anytime.", { date: until }),
+      cta: t("checkout.payment.window.cta", "Start free trial — $1 today"),
+      busy: t("checkout.payment.window.busy", "Starting trial…"),
+      lead: t("checkout.payment.window.lead", "$1 today."),
+      note: t("checkout.payment.window.note", "A $1 activation fee is charged now. Your free trial runs until {{date}} and your plan isn't charged before then. Cancel anytime.", { date: until }),
       banner: {
-        title: t("trial.banner.title", "$0 today · free until {{date}}", { date: until }),
-        text: t("trial.banner.text", "You won't be charged before {{date}}. Cancel anytime.", { date: until }),
+        title: t("trial.banner.title", "$1 today · free until {{date}}", { date: until }),
+        text: t("trial.banner.text", "Only the $1 activation fee is charged before {{date}}. Cancel anytime.", { date: until }),
       },
     };
   }
@@ -62,7 +63,7 @@ function checkoutCopy(terms: CheckoutTerms, t: TFunction) {
   };
 }
 
-type CheckoutCopy = ReturnType<typeof checkoutCopy>;
+export type CheckoutCopy = ReturnType<typeof checkoutCopy>;
 
 // Shared: create the trial subscription, persist it in the shape useUserRole
 // expects, and notify the parent. Returns true on success.

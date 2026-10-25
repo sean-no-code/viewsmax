@@ -64,8 +64,11 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   to the Passport consent screen; every provider app must allow that callback URL.
 
 - **Access gating.** `App\Support\UserAccess::denial($user)` is the single rule set for "may this user use
-  ViewsMax right now" (unverified email, then expired free window). Add new rules there, not in a
-  middleware. Delivery differs per entry point: `EnsureAccessActive` (REST 403 with `code`), `SafeCallTool`
+  ViewsMax right now" (unverified email, then expired free window, then the paywall: onboarding not
+  finished and no card — `payment_required`). Add new rules there, not in a middleware. At the card step
+  the deliveries keep the pre-card endpoints open (`EnsureAccessActive::ONBOARDING_PATTERNS`,
+  `EnsureWebAccess::ONBOARDING_ROUTES`); agent signups add the card at `/register/billing`
+  (`WebBillingController`), app signups in the SPA's onboarding. Both go through `SubscriptionStarter`. Delivery differs per entry point: `EnsureAccessActive` (REST 403 with `code`), `SafeCallTool`
   (MCP `isError` tool result at HTTP 200 — never an HTTP error, which counts against directory ranking),
   `EnsureWebAccess` (web redirect). Console code calls `denial()` directly.
 

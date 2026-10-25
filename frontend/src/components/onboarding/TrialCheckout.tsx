@@ -6,15 +6,17 @@ import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
 import { sortPlansByPrice, formatLimit, planIncludes } from "@/lib/plan-helpers";
 import { isMockApi } from "@/lib/mock-api";
 import { useAuth } from "@/hooks/useAuth";
-import { activateSubscription, stripePromise } from "@/components/StripeTrialStep";
+import { activateSubscription, checkoutCopy, stripePromise, type CheckoutCopy } from "@/components/StripeTrialStep";
+import { ACTIVATION_FEE_USD, checkoutTerms } from "@/lib/access";
 import { toast } from "sonner";
 import i18n, { type TFunction } from "i18next";
 import { Trans, useTranslation } from "react-i18next";
 
-// Only accounts with no free window reach this step (users inside their
-// card-free window skip it, see Onboarding). Subscribing here charges the
-// card today: the backend creates the subscription with no Stripe trial
-// (User::subscriptionTrialTerms).
+// Onboarding step 2: everyone adds a card here (only a promotional customer
+// skips it, see Onboarding). Inside the free window the card starts a trial:
+// the $1 activation fee today, the plan price when the window closes. After
+// the window (reached from Billing) the plan price is charged today. Terms
+// come from checkoutTerms / the backend's User::subscriptionTrialTerms.
 
 type SubscribedResult = { stripe_subscription_id: string; status: string; current_period_end: string };
 
@@ -44,6 +46,7 @@ function featuresFor(plan: PlanTier, t: TFunction): string[] {
  */
 export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [plans, setPlans] = useState<PlanTier[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,6 +73,10 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
   const selected = plans.find((p) => p.id === selectedId) ?? null;
 
   const selPrice = selected ? Math.round(Number(selected.price)) : 0;
+  // Trial copy while the free window is open; null once the plan price is due today.
+  const terms = checkoutTerms(user);
+  const trialCopy = terms.kind === "window" ? checkoutCopy(terms, t) : null;
+  const dueToday = trialCopy ? ACTIVATION_FEE_USD : selPrice;
 
   return (
     <div className="trial-checkout">
@@ -105,7 +112,9 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
           {t("trial.checkout.banner.simpleBilling", "Simple monthly billing")}
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
-          <Trans i18nKey="trial.checkout.banner.chargedToday" defaults="Charged <0>today</0>, then monthly" components={[<strong style={{ color: "var(--ink-on-paper-1)" }} />]} />
+          {trialCopy
+            ? <strong style={{ color: "var(--ink-on-paper-1)" }}>{trialCopy.banner?.title}</strong>
+            : <Trans i18nKey="trial.checkout.banner.chargedToday" defaults="Charged <0>today</0>, then monthly" components={[<strong style={{ color: "var(--ink-on-paper-1)" }} />]} />}
         </span>
         <span style={{ fontSize: 14, color: "var(--ink-on-paper-2)" }}>
           <Trans i18nKey="trial.checkout.banner.cancelAnytime" defaults="Cancel anytime from <0>Settings</0>" components={[<strong style={{ color: "var(--ink-on-paper-1)" }} />]} />
@@ -242,7 +251,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
           <div style={{ borderTop: "1px solid var(--line-1)", marginTop: 24, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
               <span style={{ color: "var(--ink-on-paper-2)" }}>{t("trial.checkout.dueToday", "Due today")}</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>${selPrice}.00</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 15, color: "var(--ink-on-paper-1)" }}>${dueToday}.00</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "2px 12px", fontSize: 13, color: "var(--ink-on-paper-3)" }}>
               <span>{t("trial.checkout.renewsMonthly", "Renews monthly")}</span>
@@ -252,7 +261,7 @@ export default function TrialCheckout({ onSubscribed }: TrialCheckoutProps) {
         </div>
 
         {/* RIGHT — payment */}
-        <PaymentColumn priceId={selected?.stripe_price_id ?? undefined} price={selPrice} onSubscribed={onSubscribed} />
+        <PaymentColumn priceId={selected?.stripe_price_id ?? undefined} price={selPrice} trialCopy={trialCopy} onSubscribed={onSubscribed} />
       </div>
     </div>
   );
@@ -292,10 +301,12 @@ const paymentCardStyle: React.CSSProperties = {
 interface PaymentColumnProps {
   priceId?: string;
   price: number;
+  /** Trial wording while the free window is open; null when the plan price is due today. */
+  trialCopy: CheckoutCopy | null;
   onSubscribed: (result: SubscribedResult) => void;
 }
 
-function PaymentColumn({ priceId, price, onSubscribed }: PaymentColumnProps) {
+function PaymentColumn({ priceId, price, trialCopy, onSubscribed }: PaymentColumnProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -326,7 +337,7 @@ function PaymentColumn({ priceId, price, onSubscribed }: PaymentColumnProps) {
       </div>
 
       {isMockApi() ? (
-        <MockPaymentForm priceId={priceId} price={price} onSubscribed={onSubscribed} />
+        <MockPaymentForm priceId={priceId} price={price} trialCopy={trialCopy} onSubscribed={onSubscribed} />
       ) : error ? (
         <p style={{ padding: "24px 0", textAlign: "center", fontSize: 14, color: "var(--vm-red-deep)" }}>{error}</p>
       ) : !clientSecret || !stripePromise ? (
@@ -335,7 +346,7 @@ function PaymentColumn({ priceId, price, onSubscribed }: PaymentColumnProps) {
         </div>
       ) : (
         <Elements stripe={stripePromise} options={{ clientSecret, appearance: stripeAppearance }}>
-          <CardForm priceId={priceId} price={price} onSubscribed={onSubscribed} email={user?.email} />
+          <CardForm priceId={priceId} price={price} trialCopy={trialCopy} onSubscribed={onSubscribed} email={user?.email} />
         </Elements>
       )}
     </div>
@@ -355,13 +366,15 @@ const ctaStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const reassurance = (price: number, t: TFunction) => (
+const reassurance = (price: number, trialCopy: CheckoutCopy | null, t: TFunction) => (
   <div style={{ fontSize: 12.5, color: "var(--ink-on-paper-3)", textAlign: "center", lineHeight: 1.5 }}>
-    {t("trial.checkout.reassurance", "Your card is charged ${{price}} today, then monthly. Cancel in one click from Settings — no calls, no forms.", { price })}
+    {trialCopy
+      ? trialCopy.note
+      : t("trial.checkout.reassurance", "Your card is charged ${{price}} today, then monthly. Cancel in one click from Settings — no calls, no forms.", { price })}
   </div>
 );
 
-function CardForm({ priceId, price, onSubscribed, email }: PaymentColumnProps & { email?: string }) {
+function CardForm({ priceId, price, trialCopy, onSubscribed, email }: PaymentColumnProps & { email?: string }) {
   const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
@@ -401,18 +414,18 @@ function CardForm({ priceId, price, onSubscribed, email }: PaymentColumnProps & 
       <button type="submit" className="tc-cta" style={ctaStyle} disabled={!stripe || submitting}>
         {submitting ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <Loader2 className="animate-spin" size={16} /> {t("trial.checkout.subscribing", "Subscribing…")}
+            <Loader2 className="animate-spin" size={16} /> {trialCopy ? trialCopy.busy : t("trial.checkout.subscribing", "Subscribing…")}
           </span>
         ) : (
-          t("trial.checkout.subscribeCta", "Subscribe — ${{price}} today", { price })
+          trialCopy ? trialCopy.cta : t("trial.checkout.subscribeCta", "Subscribe — ${{price}} today", { price })
         )}
       </button>
-      {reassurance(price, t)}
+      {reassurance(price, trialCopy, t)}
     </form>
   );
 }
 
-function MockPaymentForm({ priceId, price, onSubscribed }: PaymentColumnProps) {
+function MockPaymentForm({ priceId, price, trialCopy, onSubscribed }: PaymentColumnProps) {
   const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
@@ -429,13 +442,15 @@ function MockPaymentForm({ priceId, price, onSubscribed }: PaymentColumnProps) {
       <button type="submit" className="tc-cta" style={ctaStyle} disabled={submitting}>
         {submitting ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <Loader2 className="animate-spin" size={16} /> {t("trial.checkout.subscribing", "Subscribing…")}
+            <Loader2 className="animate-spin" size={16} /> {trialCopy ? trialCopy.busy : t("trial.checkout.subscribing", "Subscribing…")}
           </span>
         ) : (
-          t("trial.checkout.mock.subscribeCta", "Subscribe — ${{price}} today (mock)", { price })
+          trialCopy
+            ? t("checkout.payment.mock.cta", "{{cta}} (mock)", { cta: trialCopy.cta })
+            : t("trial.checkout.mock.subscribeCta", "Subscribe — ${{price}} today (mock)", { price })
         )}
       </button>
-      {reassurance(price, t)}
+      {reassurance(price, trialCopy, t)}
     </form>
   );
 }

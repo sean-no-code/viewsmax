@@ -26,6 +26,9 @@ class UserFactory extends Factory
         return [
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
+            // Finished onboarding (card added or grandfathered): the usual
+            // user. Tests of the card step set this null explicitly.
+            'onboarding_completed_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];

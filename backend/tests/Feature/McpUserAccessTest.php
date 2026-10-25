@@ -107,4 +107,17 @@ class McpUserAccessTest extends TestCase
                 ->assertJsonPath('result.isError', false);
         }
     }
+
+    public function test_a_signup_without_a_card_is_told_to_add_one_instead_of_running_the_tool(): void
+    {
+        $user = User::factory()->create(['onboarding_completed_at' => null, 'promo_expires_at' => now()->addDays(6), 'signup_source' => 'agent']);
+
+        $response = $this->rpc($this->mcpKey($user), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
+            ->assertOk()
+            ->assertJsonPath('result.isError', false);
+
+        $text = $response->json('result.content.0.text');
+        $this->assertStringContainsString('Add a card', $text);
+        $this->assertStringContainsString(route('register.billing'), $text);
+    }
 }

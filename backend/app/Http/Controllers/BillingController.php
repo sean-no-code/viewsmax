@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plan;
+use App\Services\BillingNotConfiguredException;
 use App\Services\StripeService;
+use App\Services\SubscriptionStarter;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -121,10 +123,11 @@ class BillingController extends Controller
 
     /**
      * Attach the vaulted PaymentMethod and start the subscription on the trial
-     * terms the user is due (User::subscriptionTrialTerms — charged today once
-     * their free window has closed). Persists the subscription against the user.
+     * terms the user is due (SubscriptionStarter / User::subscriptionTrialTerms:
+     * the activation fee today while the free window is open, the plan price
+     * today once it has closed). Persists the subscription against the user.
      */
-    public function subscribe(Request $request, StripeService $stripeService)
+    public function subscribe(Request $request, SubscriptionStarter $starter)
     {
         $validator = Validator::make($request->all(), [
             'payment_method_id' => 'required|string',
@@ -140,70 +143,24 @@ class BillingController extends Controller
             ], 422);
         }
 
-        // Subscribe to the tier the user actually selected. Only honour a
-        // price that maps to an active plan; otherwise fall back to the
-        // configured trial price + default plan.
-        $targetPlan = null;
-        if ($request->filled('price_id')) {
-            $targetPlan = Plan::where('stripe_price_id', $request->input('price_id'))
-                ->where('is_active', true)
-                ->first();
-        }
-
-        $priceId = $targetPlan?->stripe_price_id ?? config('services.stripe.trial_price_id');
-        if (! $priceId) {
-            return response()->json(['message' => 'Billing is not configured.'], 500);
-        }
-
         try {
-            $user = $request->user();
-
-            $stripeService->attachPaymentMethod($user, $request->input('payment_method_id'));
-
-            $subscription = $stripeService->createSubscription(
-                $user,
-                $priceId,
-                $user->subscriptionTrialTerms(),
+            $started = $starter->start(
+                $request->user(),
+                $request->input('payment_method_id'),
+                $request->input('price_id'),
                 $request->input('referral'),
             );
 
-            $subscriptionId = $subscription['id'];
-            $status = $subscription['status'] ?? 'trialing';
-            $currentPeriodEnd = $subscription['current_period_end']
-                ?? ($subscription['items']['data'][0]['current_period_end'] ?? null)
-                ?? ($subscription['trial_end'] ?? null);
-            $expiresAt = $currentPeriodEnd ? Carbon::createFromTimestamp($currentPeriodEnd) : now()->addDays(3);
-
-            $plan = $targetPlan ?? Plan::where('name', Plan::getDefaultPlan())->first();
-
-            DB::transaction(function () use ($user, $plan, $subscriptionId, $priceId, $status, $expiresAt) {
-                // Deactivate any prior live plan rows.
-                $activeIds = $user->plans()
-                    ->wherePivotIn('status', \App\Models\User::ACTIVE_SUBSCRIPTION_STATUSES)
-                    ->pluck('plans.id')->toArray();
-                if (! empty($activeIds)) {
-                    $user->plans()->updateExistingPivot($activeIds, ['status' => 'inactive', 'cancelled_at' => now()]);
-                }
-
-                if ($plan) {
-                    $user->plans()->attach($plan->id, [
-                        'stripe_subscription_id' => $subscriptionId,
-                        'stripe_price_id' => $priceId,
-                        'status' => $status,
-                        'starts_at' => now(),
-                        'expires_at' => $expiresAt,
-                    ]);
-                }
-            });
-
             return response()->json([
                 'data' => [
-                    'stripe_subscription_id' => $subscriptionId,
-                    'status' => $status,
-                    'current_period_end' => $expiresAt->toIso8601String(),
-                    'plan_id' => $priceId,
+                    'stripe_subscription_id' => $started['subscription_id'],
+                    'status' => $started['status'],
+                    'current_period_end' => $started['expires_at']->toIso8601String(),
+                    'plan_id' => $started['price_id'],
                 ],
             ]);
+        } catch (BillingNotConfiguredException $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
         } catch (\Exception $e) {
             Log::error('Stripe subscribe error', [
                 'user_id' => $request->user()->id,

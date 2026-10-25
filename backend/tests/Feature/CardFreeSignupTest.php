@@ -12,11 +12,13 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Self-signup no longer needs a card: registering opens a 7-day free window
- * (the same `promo_expires_at` window promotional customers use, without the
- * role). While it is open the user counts as subscribed and onboarding skips
- * the card step. Once it closes they are locked to the billing endpoints, and
- * subscribing then charges straight away — the 7 days were the trial.
+ * Registering opens a 7-day free window (the same `promo_expires_at` window
+ * promotional customers use, without the role). The window is the trial, but
+ * onboarding still asks for a card: subscribing during the window starts a
+ * trialing subscription that charges the activation fee today and the plan
+ * price when the window closes. Once the window closes without a card the
+ * user is locked to the billing endpoints, and subscribing then charges the
+ * plan price straight away.
  */
 class CardFreeSignupTest extends TestCase
 {
@@ -90,24 +92,45 @@ class CardFreeSignupTest extends TestCase
             ->assertJsonPath('data.user.access_expired', false);
     }
 
-    public function test_onboarding_completes_without_a_card_during_the_window(): void
-    {
-        $user = $this->register();
-
-        $this->withHeaders($this->authHeaders($user))->postJson('/api/onboarding/complete')
-            ->assertOk()
-            ->assertJsonPath('success', true);
-
-        $this->assertNotNull($user->fresh()->onboarding_completed_at);
-    }
-
-    public function test_after_seven_days_the_user_is_sent_to_billing(): void
+    public function test_onboarding_needs_a_card_even_during_the_window(): void
     {
         $user = $this->register();
         $headers = $this->authHeaders($user);
 
-        Carbon::setTestNow('2026-10-09 09:59:00');
+        $this->withHeaders($headers)->postJson('/api/onboarding/complete')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Add payment to finish setting up your account.');
+        $this->assertNull($user->fresh()->onboarding_completed_at);
+
+        $this->plan();
+        $this->expectSubscription($trial, 'trialing');
+        $this->withHeaders($headers)->postJson('/api/billing/stripe/subscribe', [
+            'payment_method_id' => 'pm_card', 'price_id' => 'price_starter',
+        ])->assertOk();
+
+        $this->withHeaders($headers)->postJson('/api/onboarding/complete')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+        $this->assertNotNull($user->fresh()->onboarding_completed_at);
         $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
+    }
+
+    public function test_without_a_card_only_the_onboarding_endpoints_answer_and_the_window_end_sends_them_to_billing(): void
+    {
+        $user = $this->register();
+        $headers = $this->authHeaders($user);
+
+        // Inside the window but no card yet: what onboarding needs works,
+        // everything else says to add a card.
+        Carbon::setTestNow('2026-10-09 09:59:00');
+        $this->withHeaders($headers)->getJson('/api/connections')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/social/platforms')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/social/accounts')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/posts')
+            ->assertForbidden()
+            ->assertJsonPath('code', 'payment_required');
+        $this->withHeaders($headers)->getJson('/api/social/posts')->assertForbidden();
 
         Carbon::setTestNow('2026-10-09 10:01:00');
         $this->withHeaders($headers)->getJson('/api/profile')

@@ -52,8 +52,8 @@ const slug = (key: ChannelKey) => `${CHANNELS_PATH}/${key}`;
 // Shared answers that are true on every channel; each page phrases its own
 // channel-specific questions around them.
 const PLAN_FAQ: FaqItem = {
-  q: "Is there a free plan?",
-  a: "Yes. ViewsMax starts at $0 with no card: connect your channels, schedule posts and track sales. Paid plans add more channels, posts and team seats.",
+  q: "Is there a free trial?",
+  a: "Yes. Every new account gets a 7-day free trial of the plan you pick, for a $1 activation fee. The plan price isn't charged until the trial ends, and you can cancel anytime from Settings.",
 };
 const AGENT_FAQ = (name: string): FaqItem => ({
   q: `Can an AI assistant post to ${name} for me?`,

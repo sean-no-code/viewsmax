@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Mail\VerifyEmailMail;
+use App\Models\Plan;
 use App\Models\Role;
 use App\Models\SocialAccount;
 use App\Http\Controllers\Auth\WebRegisterController;
 use App\Models\User;
 use App\Services\Social\SocialConnect;
 use App\Services\Social\SocialConnectException;
+use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -54,6 +56,20 @@ class WebRegisterTest extends TestCase
             'code_challenge' => str_repeat('x', 43),
             'code_challenge_method' => 'S256',
         ]);
+    }
+
+    private function plan(): Plan
+    {
+        return Plan::create(['name' => 'creator', 'display_name' => 'Creator', 'price' => 29, 'currency' => 'USD', 'is_active' => true, 'stripe_price_id' => 'price_creator', 'description' => 'For solo creators']);
+    }
+
+    /** The card step done: a trialing plan on the account (the billing page's POST does this for real in its own test). */
+    private function addCard(string $email): User
+    {
+        $user = User::where('email', $email)->sole();
+        $user->plans()->attach($this->plan()->id, ['status' => 'trialing', 'starts_at' => now(), 'stripe_subscription_id' => 'sub_test']);
+
+        return $user;
     }
 
     /** Click the magic link from the last verification email (agent links land on this host). */
@@ -116,6 +132,7 @@ class WebRegisterTest extends TestCase
         // Setup page names the agent and still knows where to go next.
         $this->get(route('register.setup'))->assertOk()->assertSee('Grant Claude access')->assertSee('Skip for now')
             ->assertSee('First thing to ask Claude')->assertSee('top outlier videos');
+        $this->addCard('jane@example.com');
         $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
     }
 
@@ -136,9 +153,64 @@ class WebRegisterTest extends TestCase
 
         $this->get(route('connect.start', 'youtube'))->assertRedirect('https://accounts.google.test/o?state=s1');
         $this->get(route('connect.callback', 'youtube').'?code=c&state=s1')->assertRedirect(route('register.setup'));
-        $this->get(route('register.setup'))->assertOk()->assertSee('grant access');
+        $this->get(route('register.setup'))->assertOk()->assertSee('add a card');
 
+        $this->addCard('jane@example.com');
         $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
+    }
+
+    public function test_agent_signup_adds_a_card_before_consent(): void
+    {
+        $authorizeUrl = $this->authorizeUrl('Claude');
+        $this->get($authorizeUrl)->assertRedirect('/login');
+        $this->post('/register', self::FORM)->assertRedirect(route('register.verify'));
+        $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
+        $this->plan();
+        config(['services.stripe.activation_fee_price_id' => 'price_fee', 'services.stripe.key' => 'pk_test_123']);
+
+        // Setup leads to the card step, and nothing past it opens without a card.
+        $this->get(route('register.setup'))->assertOk()->assertSee('Add a card')->assertSee(route('register.billing'));
+        $this->get(route('register.continue'))->assertRedirect(route('register.billing'));
+        $this->get($authorizeUrl)->assertRedirect(route('register.billing'));
+
+        $this->mock(StripeService::class, function ($mock) use (&$trial) {
+            $mock->shouldReceive('createSetupIntent')->once()->andReturn(\Stripe\SetupIntent::constructFrom(['id' => 'seti_1', 'client_secret' => 'seti_secret_123']));
+            $mock->shouldReceive('attachPaymentMethod')->once();
+            $mock->shouldReceive('createSubscription')->once()->andReturnUsing(function ($user, $priceId, $terms) use (&$trial) {
+                $trial = $terms;
+
+                return ['id' => 'sub_agent', 'status' => 'trialing', 'current_period_end' => now()->addDays(7)->getTimestamp()];
+            });
+        });
+
+        $this->get(route('register.billing'))->assertOk()
+            ->assertSee('Creator')->assertSee('$1 today')->assertSee('seti_secret_123')->assertSee('Grant Claude access');
+
+        $this->post(route('register.billing'), ['payment_method_id' => 'pm_card', 'price_id' => 'price_creator'])
+            ->assertRedirect(route('register.continue'));
+
+        $user = User::where('email', 'jane@example.com')->sole();
+        $this->assertSame(['trial_end' => $user->promo_expires_at->getTimestamp()], $trial);
+        $this->assertTrue($user->hasActivePlan());
+        $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
+    }
+
+    public function test_a_declined_card_keeps_the_user_on_the_card_step(): void
+    {
+        $this->post('/register', self::FORM)->assertRedirect(route('register.verify'));
+        $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
+        $this->plan();
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('attachPaymentMethod')->once();
+            $mock->shouldReceive('createSubscription')->once()->andThrow(new \Exception('Your card was declined.'));
+        });
+
+        $this->from(route('register.billing'))
+            ->post(route('register.billing'), ['payment_method_id' => 'pm_card', 'price_id' => 'price_creator'])
+            ->assertRedirect(route('register.billing'))
+            ->assertSessionHas('error');
+        $this->assertFalse(User::where('email', 'jane@example.com')->sole()->hasActivePlan());
     }
 
     public function test_continue_returns_to_consent_even_if_url_intended_was_overwritten_mid_flow(): void
@@ -154,6 +226,7 @@ class WebRegisterTest extends TestCase
         $this->session(['url.intended' => url(route('connect.callback', 'youtube').'?code=x')]);
 
         $this->get(route('register.setup'))->assertOk()->assertSee('Grant Claude access');
+        $this->addCard('jane@example.com');
         $this->assertSameUrl($authorizeUrl, $this->get(route('register.continue'))->headers->get('Location'));
         $this->assertNull(session(WebRegisterController::SESSION_AUTHORIZE_URL));
     }
@@ -166,6 +239,7 @@ class WebRegisterTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'jane@example.com', 'signup_source' => 'agent', 'signup_client' => null]);
         // No agent to go back to, so no "first thing to ask" suggestion.
         $this->get(route('register.setup'))->assertOk()->assertDontSee('First thing to ask');
+        $this->addCard('jane@example.com');
         $this->get(route('register.continue'))->assertRedirect(rtrim(config('app.frontend_url'), '/').'/auth');
     }
 
