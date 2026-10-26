@@ -68,7 +68,7 @@ Route::post('/auth/resend-verification', [AuthController::class, 'resendVerifica
 Route::get('/ai', [\App\Http\Controllers\AiDiscoveryController::class, 'index'])
     ->middleware('throttle:ai-discovery');
 
-// Free transcript tools (public). Server-side so the CaptAPI key stays off the FE.
+// Free transcript tools (public). Server-side so the Gemini / CaptAPI keys stay off the FE.
 Route::post('/free-tools/transcript', [\App\Http\Controllers\FreeToolTranscriptController::class, 'store'])
     ->middleware('throttle:transcript');
 

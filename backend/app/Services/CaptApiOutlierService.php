@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\TranscriptUnavailableException;
 use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
 use Carbon\Carbon;
@@ -116,6 +117,87 @@ class CaptApiOutlierService
         }
 
         return null;
+    }
+
+    /**
+     * A downloadable file URL for one TikTok/Instagram video, without storing
+     * anything. The free transcript tool is public: it must be able to analyse
+     * a video without writing outlier rows (fetchAndStore() upserts channel +
+     * video and flags them manually added). Links are signed CDN URLs that expire.
+     *
+     * @return array{url: string, expires_at: ?Carbon}
+     *
+     * @throws \RuntimeException when CaptAPI has no media for the video
+     */
+    public function fetchMediaUrl(string $platform, string $url): array
+    {
+        $platform = strtolower(trim($platform));
+        if (! isset(self::PATHS[$platform])) {
+            throw new \InvalidArgumentException("Unsupported outlier platform: {$platform}.");
+        }
+
+        $d = $this->get(self::PATHS[$platform], ['url' => trim($url)], 'Could not fetch that video. Check the URL and try again.');
+
+        // TikTok offers a clean download; Instagram only the playback URL.
+        $media = $d['downloadUrlNoWatermark'] ?? $d['downloadUrl'] ?? $d['videoUrl'] ?? null;
+        if (! is_string($media) || $media === '') {
+            throw new \RuntimeException('We could not download this video from '.($platform === 'tiktok' ? 'TikTok' : 'Instagram').'.');
+        }
+
+        $expires = $d['videoUrlExpiresAt'] ?? $d['mediaUrlsExpireAt'] ?? null;
+
+        return ['url' => $media, 'expires_at' => $expires ? Carbon::parse($expires) : null];
+    }
+
+    /**
+     * CaptAPI's own transcription of a video (/{platform}/transcript, audio →
+     * text on their side). Used for TikTok, where CaptAPI exposes no media file
+     * for Gemini to watch; the breakdown is then made from the words alone.
+     *
+     * @return array{text: string, segments: list<array{text: string, startMs: int, endMs: int}>, language: ?string}
+     *
+     * @throws TranscriptUnavailableException when the provider has no transcript for the video (404)
+     * @throws \RuntimeException on any other provider failure (user-safe message)
+     */
+    public function fetchTranscript(string $platform, string $url): array
+    {
+        $platform = strtolower(trim($platform));
+        if ($this->apiKey === '') {
+            throw new \RuntimeException('Transcript service is not configured.');
+        }
+
+        $response = Http::withToken($this->apiKey)
+            ->acceptJson()
+            ->timeout((int) config('services.captapi.transcript_timeout', 60))
+            ->get("{$this->baseUrl}/{$platform}/transcript", ['url' => trim($url)]);
+
+        if (! $response->successful() || $response->json('success') !== true) {
+            // CaptAPI errors are objects ({code, message}); older responses may be strings.
+            $error = $response->json('error');
+            $message = is_array($error) ? ($error['message'] ?? null) : $error;
+            $message = is_string($message) && $message !== '' ? $message : null;
+
+            // 404 = nothing to transcribe. Expected, user-facing, not reported.
+            if ($response->status() === 404) {
+                Log::info('CaptAPI has no transcript for this video', ['platform' => $platform, 'message' => $message]);
+                throw new TranscriptUnavailableException($message);
+            }
+
+            Log::warning('CaptAPI transcript request failed', [
+                'platform' => $platform,
+                'status' => $response->status(),
+                'body' => mb_substr($response->body(), 0, 500),
+            ]);
+            throw new \RuntimeException($message ?? 'Could not fetch a transcript for that link. Please check the URL and try again.');
+        }
+
+        $data = $response->json('data') ?? [];
+        $segments = [];
+        foreach ($data['segments'] ?? [] as $s) {
+            $segments[] = ['text' => (string) ($s['text'] ?? ''), 'startMs' => (int) ($s['startMs'] ?? 0), 'endMs' => (int) ($s['endMs'] ?? 0)];
+        }
+
+        return ['text' => (string) ($data['text'] ?? ''), 'segments' => $segments, 'language' => $data['language'] ?? null];
     }
 
     /** Fetch a TikTok/Instagram video by URL, normalize it, and upsert it as an outlier. */

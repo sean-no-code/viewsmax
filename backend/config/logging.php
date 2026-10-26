@@ -108,6 +108,23 @@ return [
             'permission' => 0777,
         ],
 
+        // Gemini video calls (App\Services\GeminiVideoService): one line per
+        // breakdown / transcript request with tokens by modality and cost_usd,
+        // in storage/logs/gemini.log. GEMINI_LOG_ENABLED=false silences it.
+        'gemini' => [
+            'driver' => 'stack',
+            'channels' => env('GEMINI_LOG_ENABLED', true) ? ['gemini_file', 'sentry'] : ['sentry'],
+            'ignore_exceptions' => false,
+        ],
+        'gemini_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/gemini.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'follow_us' => [
             'driver' => 'stack',
             'channels' => env('FOLLOW_US_LOG_ENABLED', true) ? ['follow_us_file', 'sentry'] : ['sentry'],

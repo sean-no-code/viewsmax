@@ -84,7 +84,28 @@ return [
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
         'api_url' => env('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models'),
+        // Thumbnail generation (App\Services\GeminiService).
         'model' => env('GEMINI_MODEL', 'gemini-3-pro-image-preview'),
+
+        // Video understanding (App\Services\GeminiVideoService): outlier breakdowns
+        // and the free transcript tools watch the actual video. YouTube goes by
+        // URL; TikTok/Instagram files are uploaded through the File API at base_url.
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com'),
+        'video_model' => env('GEMINI_VIDEO_MODEL', 'gemini-3.8-flash'),
+        // Billing is per second of video (~91 tokens/s), so every request clips the
+        // input: a cap on the public transcript tool bounds abuse, a cap on
+        // breakdowns keeps hour-long outliers inside the job timeout.
+        'breakdown_max_video_seconds' => (int) env('GEMINI_BREAKDOWN_MAX_VIDEO_SECONDS', 1500),
+        'transcript_max_video_seconds' => (int) env('GEMINI_TRANSCRIPT_MAX_VIDEO_SECONDS', 900),
+        // $ per 1M tokens, used only for the cost_usd in the gemini log line. Output includes
+        // thinking tokens. Google's intro pricing doubles after price_doubles_after.
+        'price_input_per_m' => (float) env('GEMINI_VIDEO_PRICE_INPUT_PER_M', 0.75),
+        'price_output_per_m' => (float) env('GEMINI_VIDEO_PRICE_OUTPUT_PER_M', 3.75),
+        'price_doubles_after' => env('GEMINI_VIDEO_PRICE_DOUBLES_AFTER', '2026-12-31'),
+        'timeout' => (int) env('GEMINI_VIDEO_TIMEOUT', 200),
+        'download_timeout' => (int) env('GEMINI_VIDEO_DOWNLOAD_TIMEOUT', 60),
+        'download_max_bytes' => (int) env('GEMINI_VIDEO_DOWNLOAD_MAX_BYTES', 200 * 1024 * 1024),
+        // Canned in local/development/testing unless USE_LIVE_IN_APIS_DEVELOPMENT=true (config/app.php).
     ],
 
     'thumbnail' => [
@@ -267,12 +288,13 @@ return [
     ],
 
     'captapi' => [
-        // Transcript provider for the free tools. Key is server-side only.
+        // TikTok / Instagram video + channel details for outlier ingest, and the
+        // downloadable media URLs Gemini analyses (App\Services\CaptApiOutlierService).
+        // Key is server-side only.
         'api_key' => env('CAPTAPIKEY'),
         'base_url' => env('CAPTAPI_BASE_URL', 'https://api.captapi.com/v1'),
-        // Seconds to wait for a transcript. Instagram/TikTok are transcribed from
-        // audio, so they run far longer than YouTube caption pulls. Keep this under
-        // the web server's upstream read timeout or the browser sees a 504 first.
+        // Seconds to wait for /tiktok/transcript (CaptAPI transcribes the audio, so it
+        // runs well past a metadata call). Keep under the web server's upstream timeout.
         'transcript_timeout' => (int) env('CAPTAPI_TRANSCRIPT_TIMEOUT', 60),
     ],
 

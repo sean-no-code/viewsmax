@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -29,22 +30,72 @@ final class SafeHttp
      */
     public static function get(string $url, int $maxBytes = 15 * 1024 * 1024, int $timeout = 15): array
     {
+        [$response, $url] = self::fetch($url, $maxBytes, $timeout, null);
+
+        $body = $response->body();
+        if (strlen($body) > $maxBytes) {
+            throw new UnsafeUrlException('That file is too large.');
+        }
+
+        return ['body' => $body, 'content_type' => $response->header('Content-Type') ?: null, 'url' => $url];
+    }
+
+    /**
+     * Same guards as get(), but the body streams straight to $destPath instead of
+     * into memory — for video files (hundreds of MB) a worker can't hold as a string.
+     * The file is removed again on every failure.
+     *
+     * @return array{content_type: ?string, bytes: int, url: string}
+     *
+     * @throws UnsafeUrlException
+     */
+    public static function download(string $url, string $destPath, int $maxBytes = 200 * 1024 * 1024, int $timeout = 120): array
+    {
+        try {
+            [$response, $url] = self::fetch($url, $maxBytes, $timeout, $destPath);
+
+            clearstatcache(true, $destPath);
+            $bytes = (int) filesize($destPath);
+            if ($bytes > $maxBytes) {
+                throw new UnsafeUrlException('That file is too large.');
+            }
+        } catch (UnsafeUrlException $e) {
+            @unlink($destPath);
+            throw $e;
+        }
+
+        return ['content_type' => $response->header('Content-Type') ?: null, 'bytes' => $bytes, 'url' => $url];
+    }
+
+    /**
+     * The vetted request loop shared by get() and download(): every hop is
+     * checked, pinned and capped; with $sink the body is written to that file.
+     *
+     * @return array{0: Response, 1: string} the final response and the URL it came from
+     */
+    private static function fetch(string $url, int $maxBytes, int $timeout, ?string $sink): array
+    {
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
             [$host, $port, $ip] = self::assertPublic($url);
 
+            $request = Http::withoutRedirecting()
+                ->timeout($timeout)
+                ->connectTimeout(5)
+                ->withOptions([
+                    'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$ip}"]],
+                    'progress' => function ($total, $downloaded) use ($maxBytes) {
+                        if ($total > $maxBytes || $downloaded > $maxBytes) {
+                            throw new UnsafeUrlException('That file is too large.');
+                        }
+                    },
+                ]);
+            if ($sink !== null) {
+                // Guzzle opens the sink 'w+', so a redirect hop's empty body is overwritten by the next.
+                $request = $request->sink($sink);
+            }
+
             try {
-                $response = Http::withoutRedirecting()
-                    ->timeout($timeout)
-                    ->connectTimeout(5)
-                    ->withOptions([
-                        'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$ip}"]],
-                        'progress' => function ($total, $downloaded) use ($maxBytes) {
-                            if ($total > $maxBytes || $downloaded > $maxBytes) {
-                                throw new UnsafeUrlException('That file is too large.');
-                            }
-                        },
-                    ])
-                    ->get($url);
+                $response = $request->get($url);
             } catch (ConnectionException) {
                 throw new UnsafeUrlException('We couldn\'t download that URL.');
             }
@@ -63,12 +114,7 @@ final class SafeHttp
                 throw new UnsafeUrlException("That URL returned HTTP {$response->status()}.");
             }
 
-            $body = $response->body();
-            if (strlen($body) > $maxBytes) {
-                throw new UnsafeUrlException('That file is too large.');
-            }
-
-            return ['body' => $body, 'content_type' => $response->header('Content-Type') ?: null, 'url' => $url];
+            return [$response, $url];
         }
 
         throw new UnsafeUrlException('That URL redirects too many times.');

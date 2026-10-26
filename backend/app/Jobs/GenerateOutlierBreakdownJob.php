@@ -2,12 +2,14 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\GeminiVideoException;
 use App\Exceptions\TranscriptUnavailableException;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
-use App\Services\AnthropicService;
 use App\Services\CaptApiOutlierService;
-use App\Services\CaptApiService;
+use App\Services\GeminiVideoService;
+use App\Support\UserSafeError;
+use App\Support\VideoSource;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,21 +19,30 @@ use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Fetches the video's transcript (CaptAPI) and asks Claude for a structured
- * breakdown (idea / hook / structure / visual layout / annotated transcript),
- * storing the result on the outlier_breakdowns row for the video.
+ * Has Gemini watch the video and return a structured breakdown (transcript /
+ * idea / hook / structure / visual layout), stored on the outlier_breakdowns
+ * row for the video. Tokens and cost per call go to the `gemini` log channel.
  *
- * Every failure is report()ed, not just logged: the exception handler sends
- * it to Sentry and the error log/Slack, and the platform + video id ride along
- * via Context so the alert says which breakdown broke. The one exception is a
- * video with no transcript (TranscriptUnavailableException): that is the
- * provider's answer, stored on the row for the user and not reported.
+ * YouTube videos go to Gemini by URL. Instagram needs the file: the row's
+ * CaptAPI media URL is used while it is fresh, otherwise one details call
+ * refreshes it. TikTok has no obtainable file (CaptAPI exposes none), so
+ * Gemini works from CaptAPI's transcript and the visual cards are inferred.
+ *
+ * Every failure is report()ed, not just logged — the exception handler sends
+ * it to Sentry and the error log/Slack, with the platform + video id attached
+ * via Context — except the provider's own answers (private video, busy,
+ * timeout: GeminiVideoException with reportable = false), which are stored on
+ * the row for the user and not reported.
  */
 class GenerateOutlierBreakdownJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 600;
+    /**
+     * Must stay below the database queue's retry_after (330s): a job that
+     * outlives it is handed to a second worker, which would run Gemini twice.
+     */
+    public $timeout = 300;
 
     public $tries = 1;
 
@@ -40,7 +51,7 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
         protected string $videoId,
     ) {}
 
-    public function handle(CaptApiService $captApi, AnthropicService $anthropic, CaptApiOutlierService $captApiOutliers): void
+    public function handle(GeminiVideoService $gemini, CaptApiOutlierService $captApiOutliers): void
     {
         $breakdown = OutlierBreakdown::where('platform', $this->platform)
             ->where('video_id', $this->videoId)
@@ -63,39 +74,48 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
                 throw new \RuntimeException('Video not found.');
             }
 
-            $url = $this->videoUrl($video, $captApiOutliers);
-            $transcript = $captApi->getTranscript($this->platform, $url)['transcript'];
+            $meta = [
+                'title' => $video->title,
+                'channel' => $video->channel?->channel_name ?? 'Unknown',
+                'platform' => $this->platform,
+                'duration_seconds' => $video->duration_in_seconds,
+                'views' => $video->views,
+                'like_count' => $video->like_count,
+                'comment_count' => $video->comment_count,
+                'video_id' => $this->videoId,
+            ];
 
-            if (trim((string) $transcript->text) === '') {
-                throw new \RuntimeException('No transcript is available for this video.');
+            if ($this->platform === 'tiktok') {
+                // CaptAPI exposes no TikTok media file, so Gemini works from CaptAPI's transcript.
+                $transcript = $captApiOutliers->fetchTranscript('tiktok', $this->tiktokUrl($video, $captApiOutliers));
+                if (trim($transcript['text']) === '') {
+                    throw new TranscriptUnavailableException();
+                }
+                $result = $gemini->breakdownFromTranscript($meta, $transcript['text'], $transcript['segments']);
+            } else {
+                $result = $gemini->breakdown($meta, $this->videoSource($video, $captApiOutliers));
             }
-
-            $payload = $anthropic->generateOutlierBreakdown(
-                [
-                    'title' => $video->title,
-                    'channel' => $video->channel?->channel_name ?? 'Unknown',
-                    'platform' => $this->platform,
-                    'duration_seconds' => $video->duration_in_seconds,
-                    'views' => $video->views,
-                    'like_count' => $video->like_count,
-                    'comment_count' => $video->comment_count,
-                ],
-                (string) $transcript->text,
-                $transcript->segments ?? [],
-            );
 
             $breakdown->update([
                 'status' => OutlierBreakdown::STATUS_COMPLETED,
-                'payload' => $payload,
+                'payload' => $result['payload'],
                 'error' => null,
             ]);
         } catch (TranscriptUnavailableException $e) {
-            // No captions for this video: the provider's answer, not a bug. The
-            // row carries the message for the user; Sentry is left alone.
-            Log::info('GenerateOutlierBreakdownJob: no transcript for video', [
-                'platform' => $this->platform,
-                'video_id' => $this->videoId,
-            ]);
+            // Nothing to transcribe: the provider's answer, stored for the user, not reported.
+            Log::info('GenerateOutlierBreakdownJob: no transcript for video', ['platform' => $this->platform, 'video_id' => $this->videoId]);
+
+            $breakdown->update(['status' => OutlierBreakdown::STATUS_FAILED, 'error' => $e->getMessage()]);
+        } catch (GeminiVideoException $e) {
+            if ($e->reportable) {
+                report($e);
+            } else {
+                Log::info('GenerateOutlierBreakdownJob: provider could not analyse the video', [
+                    'platform' => $this->platform,
+                    'video_id' => $this->videoId,
+                    'reason' => $e->reason,
+                ]);
+            }
 
             $breakdown->update([
                 'status' => OutlierBreakdown::STATUS_FAILED,
@@ -106,7 +126,7 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
 
             $breakdown->update([
                 'status' => OutlierBreakdown::STATUS_FAILED,
-                'error' => $e->getMessage(),
+                'error' => UserSafeError::message($e, 'Breakdown generation failed. Try again in a few minutes.'),
             ]);
         }
     }
@@ -134,16 +154,16 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
     }
 
     /**
-     * The URL CaptAPI gets for the transcript. TikTok links need the creator's
-     * real @handle in the path — CaptAPI parses it, and a display name ("Tunde
-     * Alao") makes it read the link as a profile. Channels ingested before we
-     * stored handles get one back-filled here via a single video-details call.
+     * The TikTok URL CaptAPI's transcript endpoint needs: it must carry the
+     * creator's real @handle (a display name reads as a profile link). Channels
+     * ingested before handles were stored get one back-filled through a single
+     * video-details call.
      */
-    private function videoUrl(OutlierVideo $video, CaptApiOutlierService $captApiOutliers): string
+    private function tiktokUrl(OutlierVideo $video, CaptApiOutlierService $captApiOutliers): string
     {
         $channel = $video->channel;
 
-        if ($this->platform === 'tiktok' && $channel && $channel->handle === null) {
+        if ($channel && $channel->handle === null) {
             try {
                 $captApiOutliers->fetchAndStore('tiktok', self::nativeUrl('tiktok', $this->videoId, $channel->channel_name));
                 $channel->refresh();
@@ -154,7 +174,34 @@ class GenerateOutlierBreakdownJob implements ShouldQueue
             }
         }
 
-        return self::nativeUrl($this->platform, $this->videoId, $channel?->handle ?? $channel?->channel_name);
+        return self::nativeUrl('tiktok', $this->videoId, $channel?->handle ?? $channel?->channel_name);
+    }
+
+    /**
+     * Where Gemini gets the video. YouTube: the public watch URL. Instagram:
+     * the CaptAPI media link stored on the row, refreshed through one details
+     * call when it is missing or about to expire.
+     */
+    private function videoSource(OutlierVideo $video, CaptApiOutlierService $captApiOutliers): VideoSource
+    {
+        if ($this->platform === 'youtube') {
+            return VideoSource::youtube($this->videoId);
+        }
+
+        $fresh = $video->video_url && $video->video_url_expires_at?->gt(now()->addMinutes(10));
+        if (! $fresh) {
+            $channel = $video->channel;
+            $video = $captApiOutliers->fetchAndStore(
+                $this->platform,
+                self::nativeUrl($this->platform, $this->videoId, $channel?->handle ?? $channel?->channel_name),
+            );
+        }
+
+        if (! $video->video_url) {
+            throw GeminiVideoException::mediaUnavailable('no media url from CaptAPI');
+        }
+
+        return VideoSource::remote($video->video_url);
     }
 
     /** Canonical native watch/permalink URL (mirror of the FE's outlierUrl helper). */

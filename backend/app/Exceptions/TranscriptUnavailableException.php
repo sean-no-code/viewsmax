@@ -5,9 +5,9 @@ namespace App\Exceptions;
 use RuntimeException;
 
 /**
- * The transcript provider (CaptAPI) answered 404: the video exists but has no
- * captions / audio it can transcribe. That is the provider's answer, not our
- * bug, so callers show the message to the user and do NOT report() it.
+ * The video exists but has no spoken audio to transcribe (music / sound
+ * effects only). That is the provider's answer, not our bug, so callers show
+ * the message to the user and do NOT report() it.
  */
 class TranscriptUnavailableException extends RuntimeException
 {

@@ -175,8 +175,8 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by('ai-discovery:' . $request->ip());
         });
 
-        // Free transcript tools: public + per-IP. Each miss spends CaptAPI credits
-        // (repeat URLs are served from the DB cache), so keep this modest.
+        // Free transcript tools: public + per-IP. Each miss pays Gemini for the
+        // video's runtime (repeat URLs are served from the DB cache), so keep this modest.
         RateLimiter::for('transcript', function (Request $request) {
             return Limit::perMinute(15)->by('transcript:' . ($request->user()?->id ?? $request->ip()));
         });

@@ -14,8 +14,8 @@ use Illuminate\Http\Request;
 /**
  * @group Outliers
  *
- * AI breakdowns of outlier videos. Generation is queued (transcript fetch +
- * Claude call are slow); the FE polls show() until status is completed/failed.
+ * AI breakdowns of outlier videos. Generation is queued (Gemini watches the
+ * whole video, which is slow); the FE polls show() until status is completed/failed.
  * Breakdowns are per-video, not per-user — one generation serves everyone.
  */
 class OutlierBreakdownController extends Controller
@@ -65,7 +65,7 @@ class OutlierBreakdownController extends Controller
     /**
      * Generate an outlier's AI breakdown
      *
-     * Queues generation (transcript + LLM analysis); poll the GET endpoint until
+     * Queues generation (the AI watches the video: transcript + analysis); poll the GET endpoint until
      * `status` is completed. An existing breakdown is returned, not regenerated.
      *
      * @urlParam platform string required youtube, tiktok, or instagram. Example: youtube

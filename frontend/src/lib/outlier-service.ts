@@ -127,6 +127,10 @@ export interface BreakdownTranscriptLine {
 }
 
 export interface BreakdownPayload {
+    /** false = no spoken audio; the transcript lines are the on-screen text. Absent on older breakdowns. */
+    has_speech?: boolean;
+    /** true = the AI worked from the transcript only (no video file, e.g. TikTok); visual cards are inferred. */
+    visual_inferred?: boolean;
     idea: { topic: string; idea_seed: string; unique_angle: string };
     hook: BreakdownHookBeat[];
     structure: { summary: string; beats: BreakdownStructureBeat[] };

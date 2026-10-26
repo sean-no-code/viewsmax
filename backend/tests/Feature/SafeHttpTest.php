@@ -27,12 +27,6 @@ class SafeHttpTest extends TestCase
         });
     }
 
-    protected function tearDown(): void
-    {
-        SafeHttp::resolveUsing(null);
-        parent::tearDown();
-    }
-
     /** @return array<string, array{string}> */
     public static function blockedUrls(): array
     {
@@ -118,5 +112,80 @@ class SafeHttpTest extends TestCase
 
         $this->expectException(UnsafeUrlException::class);
         SafeHttp::get('https://img.test/big.png', maxBytes: 1024);
+    }
+
+    // ---- download(): same guards, body streamed to a file ----
+
+    private function tempPath(): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'safehttp-test-');
+        $this->tempPaths[] = $path;
+
+        return $path;
+    }
+
+    /** @var string[] */
+    private array $tempPaths = [];
+
+    protected function tearDown(): void
+    {
+        foreach ($this->tempPaths as $path) {
+            @unlink($path);
+        }
+        SafeHttp::resolveUsing(null);
+        parent::tearDown();
+    }
+
+    public function test_download_streams_the_body_to_the_destination(): void
+    {
+        Http::fake(['https://cdn.test/v.mp4' => Http::response('MP4DATA', 200, ['Content-Type' => 'video/mp4'])]);
+        $dest = $this->tempPath();
+
+        $result = SafeHttp::download('https://cdn.test/v.mp4', $dest);
+
+        $this->assertSame('MP4DATA', file_get_contents($dest));
+        $this->assertSame(['content_type' => 'video/mp4', 'bytes' => 7, 'url' => 'https://cdn.test/v.mp4'], $result);
+    }
+
+    #[DataProvider('blockedUrls')]
+    public function test_download_refuses_non_public_destinations(string $url): void
+    {
+        Http::fake();
+        $dest = $this->tempPath();
+
+        try {
+            SafeHttp::download($url, $dest);
+            $this->fail("{$url} should have been refused");
+        } catch (UnsafeUrlException) {
+            Http::assertNothingSent();
+            $this->assertFileDoesNotExist($dest);
+        }
+    }
+
+    public function test_download_refuses_a_body_over_the_cap_and_removes_the_file(): void
+    {
+        Http::fake(['https://cdn.test/big.mp4' => Http::response(str_repeat('x', 2048), 200)]);
+        $dest = $this->tempPath();
+
+        try {
+            SafeHttp::download('https://cdn.test/big.mp4', $dest, maxBytes: 1024);
+            $this->fail('should have been refused');
+        } catch (UnsafeUrlException) {
+            $this->assertFileDoesNotExist($dest);
+        }
+    }
+
+    public function test_download_follows_a_redirect_to_another_public_host(): void
+    {
+        Http::fake([
+            'https://img.test/v' => Http::response('', 302, ['Location' => 'https://cdn.test/real.mp4']),
+            'https://cdn.test/real.mp4' => Http::response('MP4DATA', 200, ['Content-Type' => 'video/mp4']),
+        ]);
+        $dest = $this->tempPath();
+
+        $result = SafeHttp::download('https://img.test/v', $dest);
+
+        $this->assertSame('MP4DATA', file_get_contents($dest));
+        $this->assertSame('https://cdn.test/real.mp4', $result['url']);
     }
 }

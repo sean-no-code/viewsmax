@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Exceptions\GeminiVideoException;
 use App\Exceptions\TranscriptUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use Stripe\Exception\CardException;
@@ -22,6 +23,7 @@ class UserSafeError
         \RuntimeException::class,
         \InvalidArgumentException::class,
         TranscriptUnavailableException::class,
+        GeminiVideoException::class,
     ];
 
     public static function message(\Throwable $e, string $fallback): string

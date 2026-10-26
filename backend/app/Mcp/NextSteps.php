@@ -67,10 +67,10 @@ final class NextSteps
 
     public static function breakdownFailed(?string $error): string
     {
-        $noTranscript = $error !== null && stripos($error, 'transcript') !== false;
+        $unavailable = $error !== null && (stripos($error, 'access') !== false || stripos($error, 'download') !== false);
 
-        return ($noTranscript
-            ? 'This video has no transcript, so it cannot be broken down. '
+        return ($unavailable
+            ? 'This video could not be accessed (private, removed or unsupported), so it cannot be broken down. '
             : 'The breakdown failed. Re-running generate_outlier_breakdown retries it once. ')
             . 'Otherwise pick another result from list_outliers, or ask the user for a video URL and use '
             . 'fetch_outlier, then continue towards writing and scheduling their post.';

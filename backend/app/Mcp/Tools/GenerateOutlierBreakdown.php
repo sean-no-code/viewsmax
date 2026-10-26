@@ -26,8 +26,9 @@ class GenerateOutlierBreakdown extends ViewsMaxTool
 
     public function description(): string
     {
-        return 'Queue an AI breakdown of an outlier video (transcript + analysis of the hook, '
-            . 'structure and why it over-performed). Generation runs in the background and '
+        return 'Queue an AI breakdown of an outlier video: the AI watches it and returns the '
+            . 'transcript plus an analysis of the hook, structure, visual layout and why it '
+            . 'over-performed. Generation runs in the background and '
             . 'takes up to a couple of minutes — poll get_outlier_breakdown until status is '
             . 'completed. Re-running for a video that already has a breakdown returns the '
             . 'existing one instead of regenerating.';

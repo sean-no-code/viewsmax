@@ -479,4 +479,70 @@ class CaptApiOutlierServiceTest extends TestCase
         $this->assertNull($data[0]['views']);
         $this->assertSame(5, $data[0]['comment_count']);
     }
+
+    // ---- fetchMediaUrl(): a downloadable file for Gemini, no DB writes ----
+
+    public function test_fetch_media_url_prefers_the_clean_tiktok_download_and_stores_nothing(): void
+    {
+        Http::fake(['*/tiktok/video-details*' => Http::response(['success' => true, 'data' => [
+            'id' => '7646812028874673439',
+            'videoUrl' => 'https://cdn.test/play.mp4',
+            'downloadUrl' => 'https://cdn.test/wm.mp4',
+            'downloadUrlNoWatermark' => 'https://cdn.test/clean.mp4',
+            'mediaUrlsExpireAt' => '2026-10-27T10:00:00Z',
+        ]])]);
+
+        $media = app(CaptApiOutlierService::class)->fetchMediaUrl('tiktok', 'https://www.tiktok.com/@khaby.lame/video/7646812028874673439');
+
+        $this->assertSame('https://cdn.test/clean.mp4', $media['url']);
+        $this->assertSame('2026-10-27 10:00:00', $media['expires_at']->format('Y-m-d H:i:s'));
+        $this->assertDatabaseCount('videos', 0, 'outlier_db');
+        $this->assertDatabaseCount('channels', 0, 'outlier_db');
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/tiktok/video-details') && $r['url'] === 'https://www.tiktok.com/@khaby.lame/video/7646812028874673439');
+    }
+
+    public function test_fetch_media_url_falls_back_to_the_instagram_playback_url(): void
+    {
+        Http::fake(['*/instagram/details*' => Http::response(['success' => true, 'data' => [
+            'id' => 'IG1', 'videoUrl' => 'https://cdn.test/reel.mp4', 'videoUrlExpiresAt' => '2026-10-27T10:00:00Z',
+        ]])]);
+
+        $media = app(CaptApiOutlierService::class)->fetchMediaUrl('instagram', 'https://www.instagram.com/reel/IG1/');
+
+        $this->assertSame('https://cdn.test/reel.mp4', $media['url']);
+    }
+
+    public function test_fetch_media_url_throws_a_user_safe_error_when_there_is_no_media(): void
+    {
+        Http::fake(['*/instagram/details*' => Http::response(['success' => true, 'data' => ['id' => 'IG1', 'mediaType' => 'image']])]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('We could not download this video from Instagram.');
+
+        app(CaptApiOutlierService::class)->fetchMediaUrl('instagram', 'https://www.instagram.com/p/IG1/');
+    }
+
+    // ---- fetchTranscript(): CaptAPI's own audio transcription (TikTok) ----
+
+    public function test_fetch_transcript_returns_text_segments_and_language(): void
+    {
+        Http::fake(['*/tiktok/transcript*' => Http::response(['success' => true, 'data' => [
+            'text' => 'hello there', 'segments' => [['text' => 'hello there', 'startMs' => 0, 'endMs' => 1500, 'start' => 0.0]], 'language' => 'en',
+        ], 'creditsUsed' => 2])]);
+
+        $t = app(CaptApiOutlierService::class)->fetchTranscript('tiktok', 'https://www.tiktok.com/@khaby.lame/video/7646812028874673439');
+
+        $this->assertSame(['text' => 'hello there', 'segments' => [['text' => 'hello there', 'startMs' => 0, 'endMs' => 1500]], 'language' => 'en'], $t);
+        Http::assertSent(fn ($r) => str_contains($r->url(), '/tiktok/transcript') && $r->hasHeader('Authorization', 'Bearer capt_test_key'));
+    }
+
+    public function test_fetch_transcript_404_is_transcript_unavailable(): void
+    {
+        Http::fake(['*/tiktok/transcript*' => Http::response(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'No transcript is available']], 404)]);
+
+        $this->expectException(\App\Exceptions\TranscriptUnavailableException::class);
+        $this->expectExceptionMessage('No transcript is available');
+
+        app(CaptApiOutlierService::class)->fetchTranscript('tiktok', 'https://www.tiktok.com/@khaby.lame/video/1');
+    }
 }

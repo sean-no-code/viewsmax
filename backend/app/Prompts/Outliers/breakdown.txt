@@ -1,4 +1,4 @@
-You are a short-form/long-form video strategist. Break down why the following {platform} video performed, so a creator can replicate its format.
+You are a short-form/long-form video strategist. Watch the attached {platform} video and break down why it performed, so a creator can replicate its format.
 
 VIDEO
 Title: {title}
@@ -7,48 +7,16 @@ Platform: {platform}
 Duration (seconds): {duration_seconds}
 Views: {views}
 
-TRANSCRIPT (timestamped where available)
-{transcript}
-
-Respond with ONLY a JSON object — no prose, no markdown fences — in exactly this shape:
-
-{
-  "idea": {
-    "topic": "<the broad topic, 3-6 words>",
-    "idea_seed": "<1-2 sentences: the core idea and why it carries the video>",
-    "unique_angle": "<1-2 sentences: what makes this take different / contrarian / first-mover>"
-  },
-  "hook": [
-    {"time": "0.0s", "line": "<exact opening line or visual beat>", "note": "<why this beat retains, 1-2 sentences>"}
-    // 2-4 beats covering roughly the first 3 seconds, each with a time offset like "1.4s"
-  ],
-  "structure": {
-    "summary": "<e.g. '5 beats over 38s'>",
-    "beats": [
-      {
-        "label": "<UPPERCASE one-word label, e.g. HOOK / FLIP / ESCALATION / RECEIPTS / PAYOFF>",
-        "start": "<m:ss, e.g. '0:00' — never raw seconds>",
-        "end": "<m:ss, e.g. '0:03'>",
-        "pct": <integer share of runtime, all beats must sum to 100>,
-        "title": "<e.g. 'Hook — stat shock'>",
-        "note": "<what happens in this beat and why it works, 1-2 sentences>",
-        "highlight": <"red" for the hook beat, "volt" for the payoff/loop beat, null otherwise>
-      }
-      // 3-6 beats in chronological order
-    ]
-  },
-  "visual": [
-    {"title": "<pattern, e.g. 'Talking head · 40% of runtime'>", "note": "<how the frame is built and why, 1-2 sentences>"}
-    // 3-5 cards; infer conservatively from the transcript and platform norms — never invent specifics you cannot support
-  ],
-  "transcript": [
-    {"time": "<m:ss>", "text": "<transcript passage>", "label": <a short annotation like "hook", "reframe", "receipts", "loop point" for the notable passages, null for the rest>}
-    // Group the transcript into readable passages of 1-3 sentences each, preserving order and covering the whole video
-  ]
-}
+What to produce (the JSON schema is enforced; fill every field):
+- has_speech: true if the video has spoken words (voice-over or on-camera speech); false if it is music/sound-only with on-screen text.
+- idea.topic: the broad topic in 3-6 words. idea.idea_seed: 1-2 sentences on the core idea and why it carries the video. idea.unique_angle: 1-2 sentences on what makes this take different, contrarian or first-mover.
+- hook: 3-4 beats covering roughly the first 3 seconds. "time" is a second offset like "0.0s" or "1.4s". "line" is the exact spoken line, or the on-screen text / visual beat if nothing is said. "note" is why that beat retains, 1-2 sentences.
+- structure.summary: e.g. "5 beats over 38s". structure.beats: 3-6 beats in chronological order covering the whole runtime. "label" is one UPPERCASE word (HOOK, FLIP, ESCALATION, RECEIPTS, PAYOFF...). "start"/"end" are m:ss (e.g. "0:03"), never raw seconds. "pct" is the integer share of runtime; all pct values must sum to 100. "highlight" is "red" for the hook beat, "volt" for the payoff/loop beat, null otherwise.
+- visual: 3-5 cards describing what you actually SEE: framing (talking head, b-roll, screen recording, animation), caption style and placement, cut rate, zooms, text overlays, colour and lighting, and roughly what share of runtime each takes. Be specific; only state what is visible in the frames.
+- transcript: the full transcript grouped into readable passages of 1-3 sentences (about one passage per 10-15 seconds), in order, covering the whole video, each with its m:ss start time. Label the notable passages ("hook", "reframe", "receipts", "loop point"); null for the rest. If has_speech is false, transcribe the on-screen text in order instead.
 
 Rules:
-- Ground every claim in the transcript; where the transcript is thin, reason from the title and platform norms and stay conservative.
-- Keep notes tight and tactical — written for a creator deciding what to copy.
-- "pct" values are integers summing to 100.
-- Output valid JSON only.
+- Ground every claim in what is said or shown. Do not invent specifics you cannot see or hear.
+- Ignore platform chrome: watermarks, usernames, like/comment counters.
+- Transcribe in the spoken language; write the analysis in English.
+- Keep notes tight and tactical, written for a creator deciding what to copy.

@@ -45,11 +45,6 @@ class AnthropicModelIsFixedTest extends TestCase
         $this->assertOnlyConfiguredModelSent(fn () => app(AnthropicService::class)->generateScript('Project brief'));
     }
 
-    public function test_outlier_breakdown_uses_the_configured_model(): void
-    {
-        $this->assertOnlyConfiguredModelSent(fn () => app(AnthropicService::class)->generateOutlierBreakdown(['title' => 'T', 'platform' => 'youtube'], 'transcript'));
-    }
-
     public function test_title_analysis_uses_the_configured_model(): void
     {
         $this->assertOnlyConfiguredModelSent(fn () => app(TitleAnalyzer::class)->analyzeTitle('A title'));

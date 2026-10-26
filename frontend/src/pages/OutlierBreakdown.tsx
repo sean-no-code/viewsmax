@@ -39,7 +39,7 @@ const POLL_MS = 3000;
  *  timer (the queued job reports no granular progress) and hold on the last
  *  step until the poll reports completed. */
 const genStepLabels = (t: TFunction) => [
-    t('outliers.breakdown.stepTranscript', 'Pulling the transcript'),
+    t('outliers.breakdown.stepTranscript', 'Watching the video'),
     t('outliers.breakdown.stepHook', 'Breaking down the hook'),
     t('outliers.breakdown.stepIdea', 'Analysing the idea'),
     t('outliers.breakdown.stepBeats', 'Mapping the story beats'),
@@ -575,6 +575,11 @@ function VisualTab({ payload }: { payload: BreakdownPayload }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)' }}>{t('outliers.breakdown.visualHeading', 'How the frame is built')}</span>
+            {payload.visual_inferred && (
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: 'var(--ink-on-paper-2)' }}>
+                    {t('outliers.breakdown.visualInferred', 'Inferred from the transcript — the video itself wasn’t available to watch.')}
+                </p>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 {payload.visual.map((v, i) => (
                     <div key={i} style={panelCard}>
@@ -592,6 +597,11 @@ function TranscriptTab({ payload }: { payload: BreakdownPayload }) {
     return (
         <div>
             <span style={{ ...eyebrow, color: 'var(--ink-on-paper-3)', display: 'block', marginBottom: 18 }}>{t('outliers.breakdown.transcriptHeading', 'Full transcript · annotated')}</span>
+            {payload.has_speech === false && (
+                <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.5, color: 'var(--ink-on-paper-2)' }}>
+                    {t('outliers.breakdown.noSpeech', 'No spoken audio — these lines are the on-screen text.')}
+                </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {payload.transcript.map((line, i) => (
                     <div key={i} style={{ display: 'grid', gridTemplateColumns: '56px 1fr', gap: 16, alignItems: 'baseline' }}>

@@ -2,16 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\GeminiVideoException;
 use App\Exceptions\TranscriptUnavailableException;
 use App\Jobs\GenerateOutlierBreakdownJob;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
-use App\Models\Transcript;
 use App\Models\User;
-use App\Services\AnthropicService;
 use App\Services\CaptApiOutlierService;
-use App\Services\CaptApiService;
+use App\Services\GeminiVideoService;
+use App\Support\VideoSource;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
@@ -204,21 +204,32 @@ class OutlierBreakdownTest extends TestCase
 
         // What the worker calls when handle()'s dependencies can't be built (e.g. no API key).
         (new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'))
-            ->failed(new \TypeError('Cannot assign null to property App\Services\AnthropicService::$apiKey of type string'));
+            ->failed(new \TypeError('Cannot assign null to property App\Services\GeminiVideoService::$apiKey of type string'));
 
         $breakdown->refresh();
         $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
-        $this->assertStringNotContainsString('AnthropicService', $breakdown->error);
+        $this->assertStringNotContainsString('GeminiVideoService', $breakdown->error);
     }
 
-    public function test_anthropic_service_builds_without_an_api_key(): void
+    public function test_job_timeout_stays_below_the_queue_retry_window(): void
     {
-        config(['services.anthropic.api_key' => null]);
-
-        $this->assertInstanceOf(AnthropicService::class, new AnthropicService());
+        // A job that outlives retry_after is handed to a second worker → Gemini runs twice.
+        $this->assertLessThan((int) config('queue.connections.database.retry_after', 330), (new GenerateOutlierBreakdownJob('youtube', 'x'))->timeout);
     }
 
-    public function test_job_generates_and_stores_payload(): void
+    private static function payload(): array
+    {
+        return [
+            'has_speech' => true,
+            'idea' => ['topic' => 'Convenience-store food economics', 'idea_seed' => 'seed', 'unique_angle' => 'angle'],
+            'hook' => [['time' => '0.0s', 'line' => 'Gas station sushi…', 'note' => 'Stat shock.']],
+            'structure' => ['summary' => '5 beats over 38s', 'beats' => []],
+            'visual' => [['title' => 'Talking head · 60%', 'note' => 'Centered.']],
+            'transcript' => [['time' => '0:00', 'text' => 'Gas station sushi…', 'label' => 'hook']],
+        ];
+    }
+
+    public function test_job_sends_the_youtube_url_to_gemini_and_stores_the_payload(): void
     {
         $this->makeVideo();
         $breakdown = OutlierBreakdown::create([
@@ -226,67 +237,53 @@ class OutlierBreakdownTest extends TestCase
             'status' => OutlierBreakdown::STATUS_PENDING,
         ]);
 
-        $transcript = new Transcript([
-            'platform' => 'youtube',
-            'text' => 'Gas station sushi is a two billion dollar business.',
-            'segments' => [['start' => 0, 'text' => 'Gas station sushi is a two billion dollar business.']],
-        ]);
-
-        $this->mock(CaptApiService::class, function ($mock) use ($transcript) {
-            $mock->shouldReceive('getTranscript')
-                ->once()
-                ->with('youtube', 'https://www.youtube.com/watch?v=abc123xyz')
-                ->andReturn(['transcript' => $transcript, 'cached' => false]);
+        $this->mock(GeminiVideoService::class, function ($mock) {
+            $mock->shouldReceive('breakdown')->once()
+                ->with(
+                    \Mockery::on(fn (array $meta) => $meta['title'] === 'Gas station sushi is a $2B business'
+                        && $meta['channel'] === 'kaiexplains' && $meta['platform'] === 'youtube'
+                        && $meta['duration_seconds'] === 38 && $meta['views'] === 2100000 && $meta['video_id'] === 'abc123xyz'),
+                    \Mockery::on(fn (VideoSource $src) => $src->isYoutube() && $src->url === 'https://www.youtube.com/watch?v=abc123xyz'),
+                )
+                ->andReturn(['payload' => self::payload(), 'usage' => ['model' => 'gemini-3.8-flash', 'video_tokens' => 3400, 'cost_usd' => 0.0051]]);
         });
-
-        $payload = [
-            'idea' => ['topic' => 'Convenience-store food economics', 'idea_seed' => 'seed', 'unique_angle' => 'angle'],
-            'hook' => [['time' => '0.0s', 'line' => 'Gas station sushi…', 'note' => 'Stat shock.']],
-            'structure' => ['summary' => '5 beats over 38s', 'beats' => []],
-            'visual' => [],
-            'transcript' => [['time' => '0:00', 'text' => 'Gas station sushi…', 'label' => 'hook']],
-        ];
-        $this->mock(AnthropicService::class, function ($mock) use ($payload) {
-            $mock->shouldReceive('generateOutlierBreakdown')->once()->andReturn($payload);
-        });
+        $this->mock(CaptApiOutlierService::class, fn ($m) => $m->shouldNotReceive('fetchAndStore'));
 
         app()->call([new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'), 'handle']);
 
         $breakdown->refresh();
         $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->status);
         $this->assertSame('Convenience-store food economics', $breakdown->payload['idea']['topic']);
+        $this->assertTrue($breakdown->payload['has_speech']);
+        $this->assertNull($breakdown->error);
     }
 
-    public function test_job_marks_failed_when_transcript_unavailable(): void
+    public function test_job_marks_failed_and_reports_an_unexpected_error_with_a_safe_message(): void
     {
         Exceptions::fake();
+        config(['app.debug' => false]);
         $this->makeVideo();
         $breakdown = OutlierBreakdown::create([
             'platform' => 'youtube', 'video_id' => 'abc123xyz',
             'status' => OutlierBreakdown::STATUS_PENDING,
         ]);
 
-        $this->mock(CaptApiService::class, function ($mock) {
-            $mock->shouldReceive('getTranscript')
-                ->once()
-                ->andThrow(new \RuntimeException('Could not fetch a transcript for that link.'));
-        });
-        $this->mock(AnthropicService::class, function ($mock) {
-            $mock->shouldNotReceive('generateOutlierBreakdown');
+        $this->mock(GeminiVideoService::class, function ($mock) {
+            $mock->shouldReceive('breakdown')->once()->andThrow(new \LogicException('internal: schema builder exploded'));
         });
 
         app()->call([new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'), 'handle']);
 
         $breakdown->refresh();
         $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
-        $this->assertStringContainsString('transcript', strtolower($breakdown->error));
+        $this->assertSame('Breakdown generation failed. Try again in a few minutes.', $breakdown->error);
 
         // The failure must reach the exception handler (Sentry, error log, Slack),
         // not just the row — a swallowed exception is how failures went unnoticed.
-        Exceptions::assertReported(fn (\RuntimeException $e) => str_contains($e->getMessage(), 'transcript'));
+        Exceptions::assertReported(fn (\LogicException $e) => str_contains($e->getMessage(), 'exploded'));
     }
 
-    public function test_job_marks_failed_without_reporting_when_the_video_has_no_transcript(): void
+    public function test_job_marks_failed_without_reporting_when_the_video_is_unavailable(): void
     {
         Exceptions::fake();
         $this->makeVideo();
@@ -295,27 +292,38 @@ class OutlierBreakdownTest extends TestCase
             'status' => OutlierBreakdown::STATUS_PENDING,
         ]);
 
-        $this->mock(CaptApiService::class, function ($mock) {
-            $mock->shouldReceive('getTranscript')
-                ->once()
-                ->andThrow(new TranscriptUnavailableException('Transcript not available for this video'));
-        });
-        $this->mock(AnthropicService::class, function ($mock) {
-            $mock->shouldNotReceive('generateOutlierBreakdown');
+        $this->mock(GeminiVideoService::class, function ($mock) {
+            $mock->shouldReceive('breakdown')->once()->andThrow(GeminiVideoException::videoUnavailable('HTTP 400 not available'));
         });
 
         app()->call([new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'), 'handle']);
 
         $breakdown->refresh();
         $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
-        $this->assertSame('Transcript not available for this video', $breakdown->error);
+        $this->assertStringContainsString("couldn't access this video", $breakdown->error);
+        $this->assertStringNotContainsString('HTTP 400', $breakdown->error);
 
-        // A video with no captions is the provider's answer, not our bug: the row
+        // A private / removed video is the provider's answer, not our bug: the row
         // carries the message for the user, and Sentry is left alone.
         Exceptions::assertNothingReported();
     }
 
-    // ---- TikTok: transcript URL must carry the creator's @handle ----
+    public function test_job_reports_a_reportable_gemini_failure(): void
+    {
+        Exceptions::fake();
+        $this->makeVideo();
+        OutlierBreakdown::create(['platform' => 'youtube', 'video_id' => 'abc123xyz', 'status' => OutlierBreakdown::STATUS_PENDING]);
+
+        $this->mock(GeminiVideoService::class, function ($mock) {
+            $mock->shouldReceive('breakdown')->once()->andThrow(GeminiVideoException::badResponse('not json'));
+        });
+
+        app()->call([new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'), 'handle']);
+
+        Exceptions::assertReported(fn (GeminiVideoException $e) => $e->reason === GeminiVideoException::BAD_RESPONSE);
+    }
+
+    // ---- TikTok: no media file is obtainable, so Gemini works from CaptAPI's transcript ----
 
     private function makeTiktokVideo(?string $handle, string $displayName = 'Tunde Alao'): OutlierVideo
     {
@@ -337,13 +345,15 @@ class OutlierBreakdownTest extends TestCase
         ]);
     }
 
-    private function fakeBreakdownAi(): void
+    private const TT_TRANSCRIPT = ['text' => 'hello there', 'segments' => [['text' => 'hello there', 'startMs' => 0, 'endMs' => 1500]], 'language' => 'en'];
+
+    private function expectTranscriptBreakdown(): void
     {
-        $this->mock(AnthropicService::class, function ($mock) {
-            $mock->shouldReceive('generateOutlierBreakdown')->once()->andReturn([
-                'idea' => ['topic' => 't', 'idea_seed' => 's', 'unique_angle' => 'a'],
-                'hook' => [], 'structure' => ['summary' => '', 'beats' => []], 'visual' => [], 'transcript' => [],
-            ]);
+        $this->mock(GeminiVideoService::class, function ($mock) {
+            $mock->shouldNotReceive('breakdown');
+            $mock->shouldReceive('breakdownFromTranscript')->once()
+                ->with(\Mockery::on(fn (array $m) => $m['platform'] === 'tiktok' && $m['video_id'] === '7685768676645113110'), 'hello there', self::TT_TRANSCRIPT['segments'])
+                ->andReturn(['payload' => self::payload() + ['visual_inferred' => true], 'usage' => ['model' => 'gemini-3.8-flash', 'source' => 'transcript']]);
         });
     }
 
@@ -360,38 +370,35 @@ class OutlierBreakdownTest extends TestCase
         );
     }
 
-    public function test_tiktok_job_requests_transcript_with_stored_handle(): void
+    public function test_tiktok_job_sends_captapi_transcript_to_gemini_with_the_stored_handle(): void
     {
         $this->makeTiktokVideo('itstundealao');
         $breakdown = OutlierBreakdown::create([
             'platform' => 'tiktok', 'video_id' => '7685768676645113110', 'status' => OutlierBreakdown::STATUS_PENDING,
         ]);
-        $transcript = Transcript::create([
-            'platform' => 'tiktok', 'source_url' => 'x', 'url_hash' => hash('sha256', 'tt'), 'text' => 'hello', 'segments' => [],
-        ]);
 
-        $this->mock(CaptApiOutlierService::class, fn ($m) => $m->shouldNotReceive('fetchAndStore'));
-        $this->mock(CaptApiService::class, function ($mock) use ($transcript) {
-            $mock->shouldReceive('getTranscript')->once()
+        $this->mock(CaptApiOutlierService::class, function ($mock) {
+            $mock->shouldNotReceive('fetchAndStore');
+            $mock->shouldNotReceive('fetchMediaUrl');
+            $mock->shouldReceive('fetchTranscript')->once()
                 ->with('tiktok', 'https://www.tiktok.com/@itstundealao/video/7685768676645113110')
-                ->andReturn(['transcript' => $transcript, 'cached' => false]);
+                ->andReturn(self::TT_TRANSCRIPT);
         });
-        $this->fakeBreakdownAi();
+        $this->expectTranscriptBreakdown();
 
         app()->call([new GenerateOutlierBreakdownJob('tiktok', '7685768676645113110'), 'handle']);
 
-        $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->fresh()->status);
+        $breakdown->refresh();
+        $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->status);
+        $this->assertTrue($breakdown->payload['visual_inferred']);
     }
 
-    public function test_tiktok_job_backfills_missing_handle_before_fetching_transcript(): void
+    public function test_tiktok_job_backfills_a_missing_handle_before_fetching_the_transcript(): void
     {
         // Channel ingested before handles were stored: only the display name is known.
         $video = $this->makeTiktokVideo(null);
         $breakdown = OutlierBreakdown::create([
             'platform' => 'tiktok', 'video_id' => '7685768676645113110', 'status' => OutlierBreakdown::STATUS_PENDING,
-        ]);
-        $transcript = Transcript::create([
-            'platform' => 'tiktok', 'source_url' => 'x', 'url_hash' => hash('sha256', 'tt2'), 'text' => 'hello', 'segments' => [],
         ]);
 
         $this->mock(CaptApiOutlierService::class, function ($mock) use ($video) {
@@ -403,17 +410,107 @@ class OutlierBreakdownTest extends TestCase
 
                     return $video;
                 });
-        });
-        $this->mock(CaptApiService::class, function ($mock) use ($transcript) {
-            $mock->shouldReceive('getTranscript')->once()
+            $mock->shouldReceive('fetchTranscript')->once()
                 ->with('tiktok', 'https://www.tiktok.com/@itstundealao/video/7685768676645113110')
-                ->andReturn(['transcript' => $transcript, 'cached' => false]);
+                ->andReturn(self::TT_TRANSCRIPT);
         });
-        $this->fakeBreakdownAi();
+        $this->expectTranscriptBreakdown();
 
         app()->call([new GenerateOutlierBreakdownJob('tiktok', '7685768676645113110'), 'handle']);
 
         $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->fresh()->status);
         $this->assertSame('itstundealao', $video->channel->fresh()->handle);
+    }
+
+    public function test_tiktok_job_marks_failed_without_reporting_when_there_is_no_transcript(): void
+    {
+        Exceptions::fake();
+        $this->makeTiktokVideo('itstundealao');
+        $breakdown = OutlierBreakdown::create([
+            'platform' => 'tiktok', 'video_id' => '7685768676645113110', 'status' => OutlierBreakdown::STATUS_PENDING,
+        ]);
+
+        $this->mock(CaptApiOutlierService::class, fn ($m) => $m->shouldReceive('fetchTranscript')->once()
+            ->andThrow(new TranscriptUnavailableException('Transcript not available for this video')));
+        $this->mock(GeminiVideoService::class, fn ($m) => $m->shouldNotReceive('breakdownFromTranscript'));
+
+        app()->call([new GenerateOutlierBreakdownJob('tiktok', '7685768676645113110'), 'handle']);
+
+        $breakdown->refresh();
+        $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
+        $this->assertSame('Transcript not available for this video', $breakdown->error);
+        Exceptions::assertNothingReported();
+    }
+
+    // ---- Instagram: Gemini watches the file from CaptAPI's media URL ----
+
+    private function makeInstagramVideo(array $attrs = []): OutlierVideo
+    {
+        $channel = OutlierChannel::create(['platform' => 'instagram', 'youtube_channel_id' => 'kallaway', 'handle' => 'kallaway', 'channel_name' => 'Kallaway']);
+
+        return OutlierVideo::create([
+            'platform' => 'instagram', 'channel_id' => $channel->id, 'youtube_video_id' => 'DVzhP3Cj8ZL',
+            'title' => 'Openclaw agent', 'views' => 612094, 'duration' => 'PT56S', 'published_at' => now()->subDays(3),
+        ] + $attrs);
+    }
+
+    private function expectRemoteBreakdown(string $mediaUrl): void
+    {
+        $this->mock(GeminiVideoService::class, function ($mock) use ($mediaUrl) {
+            $mock->shouldReceive('breakdown')->once()
+                ->with(\Mockery::type('array'), \Mockery::on(fn (VideoSource $src) => ! $src->isYoutube() && $src->url === $mediaUrl))
+                ->andReturn(['payload' => self::payload(), 'usage' => []]);
+        });
+    }
+
+    public function test_instagram_job_uses_a_fresh_stored_media_url_without_calling_captapi(): void
+    {
+        $this->makeInstagramVideo(['video_url' => 'https://cdn.test/fresh.mp4', 'video_url_expires_at' => now()->addHours(2)]);
+        $breakdown = OutlierBreakdown::create(['platform' => 'instagram', 'video_id' => 'DVzhP3Cj8ZL', 'status' => OutlierBreakdown::STATUS_PENDING]);
+
+        $this->mock(CaptApiOutlierService::class, fn ($m) => $m->shouldNotReceive('fetchAndStore'));
+        $this->expectRemoteBreakdown('https://cdn.test/fresh.mp4');
+
+        app()->call([new GenerateOutlierBreakdownJob('instagram', 'DVzhP3Cj8ZL'), 'handle']);
+
+        $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->fresh()->status);
+    }
+
+    public function test_instagram_job_refreshes_an_expired_media_url_through_captapi(): void
+    {
+        $video = $this->makeInstagramVideo(['video_url' => 'https://cdn.test/old.mp4', 'video_url_expires_at' => now()->addMinutes(5)]);
+        $breakdown = OutlierBreakdown::create(['platform' => 'instagram', 'video_id' => 'DVzhP3Cj8ZL', 'status' => OutlierBreakdown::STATUS_PENDING]);
+
+        $this->mock(CaptApiOutlierService::class, function ($mock) use ($video) {
+            $mock->shouldReceive('fetchAndStore')->once()
+                ->with('instagram', 'https://www.instagram.com/p/DVzhP3Cj8ZL/')
+                ->andReturnUsing(function () use ($video) {
+                    $video->update(['video_url' => 'https://cdn.test/new.mp4', 'video_url_expires_at' => now()->addHours(2)]);
+
+                    return $video->fresh();
+                });
+        });
+        $this->expectRemoteBreakdown('https://cdn.test/new.mp4');
+
+        app()->call([new GenerateOutlierBreakdownJob('instagram', 'DVzhP3Cj8ZL'), 'handle']);
+
+        $this->assertSame(OutlierBreakdown::STATUS_COMPLETED, $breakdown->fresh()->status);
+    }
+
+    public function test_instagram_job_fails_cleanly_when_captapi_has_no_media_url(): void
+    {
+        Exceptions::fake();
+        $video = $this->makeInstagramVideo();
+        $breakdown = OutlierBreakdown::create(['platform' => 'instagram', 'video_id' => 'DVzhP3Cj8ZL', 'status' => OutlierBreakdown::STATUS_PENDING]);
+
+        $this->mock(CaptApiOutlierService::class, fn ($m) => $m->shouldReceive('fetchAndStore')->once()->andReturn($video));
+        $this->mock(GeminiVideoService::class, fn ($m) => $m->shouldNotReceive('breakdown'));
+
+        app()->call([new GenerateOutlierBreakdownJob('instagram', 'DVzhP3Cj8ZL'), 'handle']);
+
+        $breakdown->refresh();
+        $this->assertSame(OutlierBreakdown::STATUS_FAILED, $breakdown->status);
+        $this->assertStringContainsString("couldn't download this video", $breakdown->error);
+        Exceptions::assertReported(fn (GeminiVideoException $e) => $e->reason === GeminiVideoException::MEDIA_UNAVAILABLE);
     }
 }

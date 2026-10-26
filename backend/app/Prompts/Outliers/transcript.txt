@@ -1,0 +1,5 @@
+Transcribe the attached {platform} video.
+
+- has_speech: true if there are spoken words (voice-over or on-camera speech). If the video has no speech (music or sound effects only), set has_speech to false and return an empty segments list.
+- language: the BCP-47 code of the spoken language (e.g. "en", "es", "pt-BR"), or null when has_speech is false.
+- segments: the complete speech, in order, split into natural sentences or short phrases of roughly 2-8 seconds. "start" and "end" are the m:ss timestamps where the segment begins and ends (e.g. "0:00", "1:07"), as precise as you can make them. Transcribe verbatim in the spoken language. Do not translate, summarise, or add commentary. Do not include on-screen text, sung lyrics from background music, or sound-effect descriptions.

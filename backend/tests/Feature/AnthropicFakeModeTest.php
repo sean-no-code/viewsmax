@@ -6,24 +6,20 @@ use App\Services\AnthropicService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
+/**
+ * AnthropicService returns canned text in local/development/testing (no API
+ * cost, the suite never reaches the network) and calls Claude everywhere else.
+ */
 class AnthropicFakeModeTest extends TestCase
 {
-    private const PAYLOAD = [
-        'idea' => ['topic' => 'Real topic', 'idea_seed' => 'seed', 'unique_angle' => 'angle'],
-        'hook' => [['time' => '0.0s', 'line' => 'Real hook', 'note' => 'note']],
-        'structure' => ['summary' => 'real', 'beats' => []],
-        'visual' => [],
-        'transcript' => [['time' => '0:00', 'text' => 'Real line', 'label' => 'hook']],
-    ];
-
-    public function test_local_and_development_envs_return_canned_breakdowns(): void
+    public function test_local_and_development_envs_return_canned_scripts(): void
     {
         Http::fake(); // any real call would be a bug
 
         foreach (['local', 'development', 'testing'] as $env) {
             config()->set('app.env', $env);
-            $payload = app(AnthropicService::class)->generateOutlierBreakdown(['title' => 'T'], 'transcript text');
-            $this->assertNotSame('Real topic', $payload['idea']['topic'] ?? null, "env {$env} should be canned");
+            $script = app(AnthropicService::class)->generateScript('A video about sushi');
+            $this->assertNotEmpty($script, "env {$env} should return a canned script");
         }
 
         Http::assertNothingSent();
@@ -35,12 +31,11 @@ class AnthropicFakeModeTest extends TestCase
         config()->set('services.anthropic.api_key', 'sk-test');
 
         Http::fake(['*' => Http::response([
-            'content' => [['text' => json_encode(self::PAYLOAD)]],
+            'content' => [['text' => "Real Title\n\nReal script body about sushi."]],
         ], 200)]);
 
-        $payload = app(AnthropicService::class)->generateOutlierBreakdown(['title' => 'T'], 'transcript text');
+        app(AnthropicService::class)->generateScript('A video about sushi');
 
-        $this->assertSame('Real topic', $payload['idea']['topic']);
         Http::assertSentCount(1);
     }
 }

@@ -108,9 +108,9 @@ class McpNextStepsTest extends TestCase
         $this->assertStringContainsString('Write it yourself', $done['next_steps']);
         $this->assertStringNotContainsString('save_outlier', $done['next_steps']);
 
-        OutlierBreakdown::where('video_id', 'brk1')->update(['status' => OutlierBreakdown::STATUS_FAILED, 'error' => 'No transcript is available for this video.']);
+        OutlierBreakdown::where('video_id', 'brk1')->update(['status' => OutlierBreakdown::STATUS_FAILED, 'error' => "We couldn't access this video. It may be private, age-restricted, removed, or not supported."]);
         $failed = $this->tool($key, 'get_outlier_breakdown', ['platform' => 'youtube', 'video_id' => 'brk1']);
-        $this->assertStringContainsString('no transcript', $failed['next_steps']);
+        $this->assertStringContainsString('could not be accessed', $failed['next_steps']);
         $this->assertStringContainsString('list_outliers', $failed['next_steps']);
     }
 

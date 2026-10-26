@@ -30,6 +30,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Live Third-Party APIs In Development
+    |--------------------------------------------------------------------------
+    |
+    | Paid provider calls (Anthropic, Gemini, …) return canned responses in
+    | local / development / testing so nothing is spent by accident. Set this
+    | to true to call the real APIs from a dev box (App\Support\LiveApis).
+    |
+    */
+
+    'live_apis_in_development' => (bool) env('USE_LIVE_IN_APIS_DEVELOPMENT', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
     |

@@ -56,7 +56,7 @@ class YouTubeTranscriptService
         ]);
 
         // Check if we're in local environment - if so, return fake response to avoid API costs
-        if (config('app.env') === 'local') {
+        if (! \App\Support\LiveApis::enabled()) {
             Log::info('Local environment detected - returning fake transcription response to avoid API costs', [
                 'environment' => config('app.env'),
                 'video_id' => $videoId

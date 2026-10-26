@@ -22,6 +22,8 @@
              outgrown PHP's 128M default; without this it dies mid-run. -->
         <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
+        <!-- Never inherit a dev box's live-API switch: the suite must not spend (App\Support\LiveApis). -->
+        <env name="USE_LIVE_IN_APIS_DEVELOPMENT" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
