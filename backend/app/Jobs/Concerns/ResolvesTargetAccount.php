@@ -4,6 +4,8 @@ namespace App\Jobs\Concerns;
 
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
+use App\Support\AccessDenial;
+use App\Support\UserAccess;
 
 /**
  * Shared account resolution for the per-platform publish jobs.
@@ -26,6 +28,22 @@ trait ResolvesTargetAccount
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube',
     ];
+
+    /**
+     * Why the target's owner may not publish right now, or null. A job checks
+     * this before any API traffic: access can lapse between scheduling and
+     * the run (publish-due gates too, but a job may already be queued), and
+     * a denied post goes back to drafts via Post::revertToDraft().
+     */
+    protected function accessDenialFor(PostTarget $target): ?AccessDenial
+    {
+        $user = $target->post?->user;
+        if (! $user) {
+            return new AccessDenial(UserAccess::ACCESS_EXPIRED, 'The post\'s owner no longer exists.', '');
+        }
+
+        return UserAccess::denial($user);
+    }
 
     /**
      * @return array{0: SocialAccount|null, 1: string|null} [account, error]

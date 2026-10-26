@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\SearchTerm;
 use App\Models\User;
+use App\Support\UserAccess;
 use App\Services\YouTubeSearchService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -44,6 +45,14 @@ class ProcessYouTubeSearchTermJob implements ShouldQueue
      */
     public function handle(YouTubeSearchService $searchService): void
     {
+        // The chain re-dispatches itself per word, so the user's access can lapse
+        // between dispatch and run: stop spending YouTube quota for them.
+        if (! UserAccess::allowsBackgroundWork($this->user)) {
+            Log::info("ProcessYouTubeSearchTermJob skipped: user has no access", ['term' => $this->term, 'user_id' => $this->user->id]);
+
+            return;
+        }
+
         Log::info("ProcessYouTubeSearchTermJob started for term: {$this->term}");
 
         try {

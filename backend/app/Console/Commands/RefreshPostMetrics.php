@@ -34,7 +34,8 @@ class RefreshPostMetrics extends Command
         $failed = 0;
 
         foreach ($candidates->groupBy('social_account_id') as $accountId => $group) {
-            $account = SocialAccount::find($accountId);
+            // Accounts of users without access are skipped with their posts (no API spend for lapsed users).
+            $account = SocialAccount::whereHas('user', fn ($u) => $u->withAccess())->find($accountId);
 
             if (! $account || $account->status !== SocialAccount::STATUS_CONNECTED
                 || ! $manager->supports($account->platform) || ! $manager->supportsStats($account->platform)) {

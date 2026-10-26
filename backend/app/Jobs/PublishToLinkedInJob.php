@@ -45,6 +45,12 @@ class PublishToLinkedInJob implements ShouldQueue
         }
 
         $post = $target->post;
+        if ($denial = $this->accessDenialFor($target)) {
+            $target->post?->revertToDraft($denial->code);
+
+            return;
+        }
+
         [$account, $accountError] = $this->resolveTargetAccount($target, 'linkedin');
 
         if (! $account) {

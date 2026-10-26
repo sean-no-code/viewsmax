@@ -174,4 +174,16 @@ class RefreshSocialTokensCommandTest extends TestCase
         $this->assertSame('new-x', $x->fresh()->access_token);
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $tiktok->fresh()->status);
     }
+
+    public function test_tokens_of_users_without_access_are_left_alone(): void
+    {
+        $this->fakeTokenEndpoints();
+        $this->user->forceFill(['promo_expires_at' => now()->subDay()])->save();
+        $account = $this->account('linkedin');
+
+        $this->artisan('social:refresh-tokens')->assertExitCode(0);
+
+        $this->assertSame('old-access', $account->refresh()->access_token);
+        $this->assertSame(0, $this->refreshCallsFor('linkedin'));
+    }
 }

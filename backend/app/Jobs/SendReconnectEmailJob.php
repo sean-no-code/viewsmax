@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\AccountNeedsReconnectMail;
 use App\Models\SocialAccount;
+use App\Support\UserAccess;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
@@ -28,8 +29,10 @@ class SendReconnectEmailJob implements ShouldQueue
     {
         $account = SocialAccount::with('user')->find($this->socialAccountId);
 
-        // Deleted, or already reconnected before the queue got here: nothing to say.
-        if (! $account || ! $account->user || $account->status !== SocialAccount::STATUS_NEEDS_REAUTH) {
+        // Deleted, already reconnected before the queue got here, or an owner who
+        // can't use ViewsMax right now (no reconnect nags to lapsed users): nothing to say.
+        if (! $account || ! $account->user || $account->status !== SocialAccount::STATUS_NEEDS_REAUTH
+            || ! UserAccess::allowsBackgroundWork($account->user)) {
             return;
         }
 

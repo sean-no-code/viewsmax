@@ -395,4 +395,48 @@ class TikTokPendingPublishTest extends TestCase
         $this->assertStringContainsString('posts API', $result->error);
         Http::assertNothingSent();
     }
+
+    // ---- Owner access ----------
+
+    public function test_a_lapsed_owners_untouched_target_goes_back_to_draft_before_init(): void
+    {
+        Http::fake();
+        $user = User::factory()->expired()->create();
+        $target = $this->videoTarget($user, $this->account($user));
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PENDING, $target->status);
+        $this->assertSame(Post::STATUS_DRAFT, $target->post->status);
+        Http::assertNothingSent();
+    }
+
+    public function test_a_target_tiktok_already_holds_still_completes_for_a_lapsed_owner(): void
+    {
+        // publish_id = point of no return: the video is with TikTok, so we finish
+        // tracking it rather than pulling a post back that may already be live.
+        $user = User::factory()->expired()->create();
+        $target = $this->pendingTarget($user, $this->account($user));
+        Http::fake(['*/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['9001']]], 200)]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+        $this->assertSame(Post::STATUS_POSTED, $target->post->status);
+    }
+
+    public function test_resolver_skips_targets_of_users_without_access(): void
+    {
+        $user = User::factory()->expired()->create();
+        $target = $this->pendingTarget($user, $this->account($user), 'p_pub_lapsed~1');
+        $target->forceFill(['status' => PostTarget::STATUS_PUBLISHED, 'published_at' => now()->subHour()])->save();
+        Http::fake();
+
+        $this->artisan('posts:resolve-tiktok-ids')->assertSuccessful();
+
+        $this->assertNull($target->refresh()->platform_post_id);
+        Http::assertNothingSent();
+    }
 }

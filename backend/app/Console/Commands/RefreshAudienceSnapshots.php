@@ -28,7 +28,10 @@ class RefreshAudienceSnapshots extends Command
 
     public function handle(SocialProviderManager $manager): int
     {
-        $accounts = SocialAccount::where('status', SocialAccount::STATUS_CONNECTED)->get();
+        // Connected accounts of users who may use ViewsMax right now (lapsed users cost nothing).
+        $accounts = SocialAccount::where('status', SocialAccount::STATUS_CONNECTED)
+            ->whereHas('user', fn ($u) => $u->withAccess())
+            ->get();
 
         $captured = 0;
         $skipped = 0;

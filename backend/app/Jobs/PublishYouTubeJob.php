@@ -71,6 +71,14 @@ class PublishYouTubeJob implements ShouldQueue
         }
 
         $post = $target->post;
+        // An in-progress resumable upload (upload_url) is left to finish; only a
+        // target that hasn't started uploading can still be pulled back.
+        if (empty($target->meta['upload_url']) && ($denial = $this->accessDenialFor($target))) {
+            $target->post?->revertToDraft($denial->code);
+
+            return;
+        }
+
         [$account, $accountError] = $this->resolveTargetAccount($target, 'youtube');
         if (! $account) {
             $this->markFailed($target, $accountError ?? 'No YouTube account connected.');

@@ -32,9 +32,12 @@ class RefreshTrackingReach extends Command
 
     public function handle(YouTubeChannelService $youtube, BeehiivService $beehiiv): int
     {
+        // Every path below is limited to links whose owner may use ViewsMax right
+        // now (User::withAccess): lapsed users' links keep their last numbers.
         $videoIds = TrackingLink::query()
             ->whereNotNull('youtube_video_id')
             ->where('youtube_video_id', '!=', '')
+            ->whereHas('event.user', fn ($u) => $u->withAccess())
             ->distinct()
             ->pluck('youtube_video_id')
             ->filter()
@@ -110,6 +113,7 @@ class RefreshTrackingReach extends Command
         $beehiivUpdated = 0;
         $beehiivLinks = TrackingLink::whereNotNull('beehiiv_post_id')
             ->where('beehiiv_post_id', '!=', '')
+            ->whereHas('event.user', fn ($u) => $u->withAccess())
             ->with('event.user.beehiivConnection')
             ->get();
 
@@ -139,6 +143,7 @@ class RefreshTrackingReach extends Command
         if (config('social.platforms.instagram.reach_enabled')) {
             $igLinks = TrackingLink::whereNotNull('instagram_media_id')
                 ->where('instagram_media_id', '!=', '')
+                ->whereHas('event.user', fn ($u) => $u->withAccess())
                 ->with('event')
                 ->get();
 

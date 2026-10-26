@@ -161,14 +161,14 @@ class PlanLimitsTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
-    public function test_user_without_an_active_plan_is_capped_at_the_free_limit(): void
+    public function test_user_without_an_active_plan_is_locked_out_before_any_cap_applies(): void
     {
-        // A past_due / expired / never-subscribed user has no *active* plan. They
-        // must fall back to the Free tier's cap (0 offers) — NOT get unlimited.
+        // A past_due / expired / never-subscribed user with no open signup window
+        // has no access at all (UserAccess::ACCESS_EXPIRED) — they never reach the
+        // offer cap, let alone get unlimited offers.
         $this->plan('free', ['max_offers' => 0]);
 
-        $user = User::factory()->create();
-        // Simulate a lapsed subscription: pivot exists but is past_due (inactive).
+        $user = User::factory()->withoutWindow()->create();
         $past = $this->plan('pro', ['max_offers' => 10], 'price_pro');
         $user->plans()->attach($past->id, [
             'stripe_subscription_id' => 'sub_pastdue',
@@ -180,9 +180,9 @@ class PlanLimitsTest extends TestCase
 
         $headers = $this->authHeaders($user);
 
-        $blocked = $this->createOffer($headers, 'Should be blocked');
-        $blocked->assertStatus(422);
-        $this->assertStringContainsString('offer', strtolower($blocked->json('message') ?? ''));
+        $this->createOffer($headers, 'Should be blocked')
+            ->assertForbidden()
+            ->assertJsonPath('code', 'access_expired');
     }
 
     public function test_unlimited_plan_allows_many_offers(): void

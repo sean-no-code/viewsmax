@@ -510,4 +510,21 @@ class PublishToXJobTest extends TestCase
         $this->assertSame('X rejected the attached media, please re-upload the media and try again', $target->error);
         Sleep::assertNeverSlept();
     }
+
+    public function test_a_lapsed_owners_queued_target_goes_back_to_draft_before_any_api_call(): void
+    {
+        Http::fake();
+        $user = User::factory()->expired()->create();
+        $this->connectX($user);
+        $target = $this->makeTarget($user, 'Scheduled while I was subscribed');
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PENDING, $target->status);
+        $this->assertNull($target->error);
+        $this->assertSame(Post::STATUS_DRAFT, $target->post->status);
+        $this->assertNull($target->post->scheduled_at);
+        Http::assertNothingSent();
+    }
 }

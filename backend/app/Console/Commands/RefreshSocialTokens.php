@@ -39,9 +39,12 @@ class RefreshSocialTokens extends Command
 
     public function handle(SocialProviderManager $manager): int
     {
+        // Only users who may use ViewsMax right now. A lapsed user's Instagram /
+        // Threads token may therefore die for good; they reconnect when they're back.
         $due = SocialAccount::where('status', SocialAccount::STATUS_CONNECTED)
             ->whereNotNull('token_expires_at')
             ->where('token_expires_at', '<', now()->addDays((int) $this->option('days')))
+            ->whereHas('user', fn ($u) => $u->withAccess())
             ->get();
 
         $refreshed = $flagged = $failed = 0;

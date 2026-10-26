@@ -240,9 +240,21 @@ class User extends Authenticatable implements Wallet
 
     public const PROMO_ROLE = 'promotional_customer';
 
+    public const ADMIN_ROLE = 'admin';
+
     public function isPromotional(): bool
     {
         return $this->hasRole(self::PROMO_ROLE);
+    }
+
+    /**
+     * Admins and promotional customers are never gated: no plan, card or
+     * window is required of them, anywhere (UserAccess, the SPA's billing
+     * pin, and every scheduled command / job).
+     */
+    public function isExemptFromAccessRules(): bool
+    {
+        return $this->hasAnyRole([self::ADMIN_ROLE, self::PROMO_ROLE]);
     }
 
     /**
@@ -250,11 +262,11 @@ class User extends Authenticatable implements Wallet
      * to leave the wizard. The free window alone isn't enough for a self
      * signup; it is the trial that subscription starts with (see
      * subscriptionTrialTerms). Only an admin-created promotional customer
-     * with an open window skips the card step.
+     * skips the card step.
      */
     public function canCompleteOnboarding(): bool
     {
-        return $this->hasActivePlan() || ($this->isPromotional() && $this->hasActivePromo());
+        return $this->hasActivePlan() || $this->isPromotional();
     }
 
     /**
@@ -264,28 +276,54 @@ class User extends Authenticatable implements Wallet
      */
     public const CARD_FREE_DAYS = 7;
 
-    /**
-     * Free window still open: no card needed yet. A promotional customer with
-     * a null promo_expires_at has a window that never closes; for everyone
-     * else null means no window at all.
-     */
-    public function hasActivePromo(): bool
+    /** The card-free window set at signup (promo_expires_at) hasn't closed yet. Null = no window. */
+    public function freeWindowOpen(): bool
     {
-        return is_null($this->promo_expires_at)
-            ? $this->isPromotional()
-            : $this->promo_expires_at->isFuture();
+        return ! is_null($this->promo_expires_at) && $this->promo_expires_at->isFuture();
     }
 
     /**
-     * Free window has closed and the user hasn't subscribed since.
-     * EnsureAccessActive locks these users to the billing endpoints and the
-     * SPA pins them to the Billing page.
+     * Free access without a card: the signup window is still open, or the
+     * user is a promotional customer (whose window never closes).
+     */
+    public function hasActivePromo(): bool
+    {
+        return $this->isPromotional() || $this->freeWindowOpen();
+    }
+
+    /**
+     * No active/trialing plan and no free access — the user must subscribe.
+     * EnsureAccessActive locks these users to the billing endpoints, the SPA
+     * pins them to the Billing page, and background work skips them (see
+     * scopeWithAccess). A user with no window at all (pre-paywall signups,
+     * admin-created accounts) is expired unless they hold a plan or an
+     * exempt role; only admins and promotional customers are never expired.
      */
     public function accessExpired(): bool
     {
-        return ! is_null($this->promo_expires_at)
-            && $this->promo_expires_at->isPast()
-            && ! $this->hasActivePlan();
+        return ! $this->isExemptFromAccessRules()
+            && ! $this->hasActivePlan()
+            && ! $this->freeWindowOpen();
+    }
+
+    /**
+     * Users UserAccess::denial() would allow, as a query — for commands and
+     * jobs that pick records in bulk (publish-due, syncs, metrics) so lapsed
+     * users cost nothing. Mirrors denial(): verified, and either an exempt
+     * role, or (a live plan or an open window) plus finished onboarding (or
+     * a live plan). Soft-deleted users are excluded by the model's scope.
+     */
+    public function scopeWithAccess(Builder $query): Builder
+    {
+        $livePlan = fn (Builder $q) => $q->whereIn('user_plans.status', self::ACTIVE_SUBSCRIPTION_STATUSES);
+
+        return $query->whereNotNull('email_verified_at')->where(function (Builder $q) use ($livePlan) {
+            $q->whereHas('roles', fn (Builder $r) => $r->whereIn('name', [self::ADMIN_ROLE, self::PROMO_ROLE]))
+                ->orWhere(function (Builder $q) use ($livePlan) {
+                    $q->where(fn (Builder $q) => $q->whereHas('plans', $livePlan)->orWhere('promo_expires_at', '>', now()))
+                        ->where(fn (Builder $q) => $q->whereNotNull('onboarding_completed_at')->orWhereHas('plans', $livePlan));
+                });
+        });
     }
 
     /**
@@ -298,7 +336,7 @@ class User extends Authenticatable implements Wallet
      */
     public function subscriptionTrialTerms(): array
     {
-        return $this->hasActivePromo() && $this->promo_expires_at
+        return $this->freeWindowOpen()
             ? ['trial_end' => $this->promo_expires_at->getTimestamp()]
             : [];
     }
@@ -391,7 +429,7 @@ class User extends Authenticatable implements Wallet
      */
     public function isAdmin(): bool
     {
-        return $this->hasRole('admin');
+        return $this->hasRole(self::ADMIN_ROLE);
     }
 
     /**

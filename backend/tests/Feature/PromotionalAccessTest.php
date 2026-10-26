@@ -109,59 +109,36 @@ class PromotionalAccessTest extends TestCase
         $this->assertSame(200, $response->getStatusCode());
     }
 
-    public function test_plain_customer_without_a_plan_is_still_unsubscribed(): void
+    public function test_plain_customer_without_a_plan_or_window_is_locked_out(): void
     {
-        $user = User::factory()->create();
+        // No free window at all (pre-paywall signup) and no plan: must subscribe.
+        $user = User::factory()->withoutWindow()->create();
 
         $this->withHeaders($this->authHeaders($user))->getJson('/api/profile')
-            ->assertOk()
-            ->assertJsonPath('data.user.has_active_subscription', false)
-            ->assertJsonPath('data.user.access_expired', false);
-    }
-
-    // --- Expired promo -------------------------------------------------------
-
-    public function test_expired_promo_is_flagged_and_no_longer_subscribed(): void
-    {
-        $user = $this->promoUser(now()->subMinute());
-
-        $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password'])
             ->assertOk()
             ->assertJsonPath('data.user.has_active_subscription', false)
             ->assertJsonPath('data.user.access_expired', true);
     }
 
-    public function test_expired_promo_is_blocked_from_feature_routes(): void
+    // --- Promotional customers never expire ----------------------------------
+
+    public function test_a_promotional_customer_keeps_access_after_the_window_closes(): void
     {
         $user = $this->promoUser(now()->subDay(), ['onboarding_completed_at' => now()->subWeek()]);
         $headers = $this->authHeaders($user);
 
-        $this->withHeaders($headers)->getJson('/api/posts')
-            ->assertForbidden()
-            ->assertJsonPath('code', 'access_expired');
-
+        $this->withHeaders($headers)->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.user.has_active_subscription', true)
+            ->assertJsonPath('data.user.access_expired', false);
+        $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
         $this->withHeaders($headers)->postJson('/api/tracking-events', [
-            'name' => 'Nope',
-            'offer_url' => 'https://example.com/nope',
-        ])->assertForbidden()->assertJsonPath('code', 'access_expired');
-
-        $this->withHeaders($headers)->postJson('/api/onboarding/complete')
-            ->assertForbidden()->assertJsonPath('code', 'access_expired');
+            'name' => 'Yes',
+            'offer_url' => 'https://example.com/yes',
+        ])->assertCreated();
     }
 
-    public function test_expired_promo_can_still_reach_billing_and_account_routes(): void
-    {
-        $user = $this->promoUser(now()->subDay());
-        $headers = $this->authHeaders($user);
-
-        $this->withHeaders($headers)->getJson('/api/profile')->assertOk();
-        $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
-        $this->withHeaders($headers)->getJson('/api/billing/status')->assertOk();
-        // 404 = "no active plan", i.e. the route ran rather than being blocked.
-        $this->withHeaders($headers)->getJson('/api/user-plans/current')->assertNotFound();
-    }
-
-    public function test_expired_promo_user_who_subscribed_is_unlocked(): void
+    public function test_a_promotional_customer_who_subscribed_is_unlocked(): void
     {
         $user = $this->promoUser(now()->subDay());
         $plan = Plan::create(['name' => 'starter', 'display_name' => 'Starter', 'price' => 29, 'currency' => 'USD', 'is_active' => true]);

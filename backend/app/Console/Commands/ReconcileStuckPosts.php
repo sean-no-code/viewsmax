@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Post;
 use App\Models\PostTarget;
 use App\Services\Social\PostPublishDispatcher;
+use App\Support\UserAccess;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -39,7 +40,7 @@ class ReconcileStuckPosts extends Command
 
         // Stuck = target still pending/publishing on a POSTED post, untouched for
         // at least --minutes (so genuinely in-flight jobs are left alone).
-        $stuck = PostTarget::stuck($minutes)->orderBy('post_id')->get();
+        $stuck = PostTarget::stuck($minutes)->with('post.user')->orderBy('post_id')->get();
 
         if ($stuck->isEmpty()) {
             $this->info('No stuck targets found.');
@@ -62,6 +63,16 @@ class ReconcileStuckPosts extends Command
                     $target->update(['status' => PostTarget::STATUS_PUBLISHED, 'published_at' => $target->published_at ?? now()]);
                     $skipped++;
                     $this->warn("HEALED (already on platform, marked published): {$label}");
+
+                    continue;
+                }
+
+                $owner = $target->post?->user;
+                if (! $owner || ($denial = UserAccess::denial($owner))) {
+                    // Lapsed owner: don't republish for them; the post goes back to drafts.
+                    $target->post?->revertToDraft($denial?->code ?? 'user_missing');
+                    $skipped++;
+                    $this->warn("DRAFTED (owner has no access): {$label}");
 
                     continue;
                 }

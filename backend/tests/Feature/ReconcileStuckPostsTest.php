@@ -89,4 +89,19 @@ class ReconcileStuckPostsTest extends TestCase
     {
         $this->artisan('posts:reconcile-stuck --requeue --fail')->assertExitCode(1);
     }
+
+    public function test_requeue_drafts_a_lapsed_owners_stuck_target_instead_of_republishing(): void
+    {
+        Queue::fake();
+        $post = User::factory()->expired()->create()->posts()->create([
+            'caption' => 'x', 'media' => [], 'status' => Post::STATUS_POSTED, 'scheduled_at' => now()->subHour(),
+        ]);
+        $target = $post->targets()->create(['platform' => 'x', 'status' => PostTarget::STATUS_PUBLISHING]);
+
+        $this->artisan('posts:reconcile-stuck --requeue --minutes=0')->assertExitCode(0);
+
+        $this->assertSame(Post::STATUS_DRAFT, $post->refresh()->status);
+        $this->assertSame(PostTarget::STATUS_PENDING, $target->refresh()->status);
+        Queue::assertNothingPushed();
+    }
 }

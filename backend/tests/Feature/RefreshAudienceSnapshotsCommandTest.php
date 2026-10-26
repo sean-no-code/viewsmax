@@ -151,4 +151,16 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
         $this->fakeManager([]);
         $this->artisan('audience:refresh')->assertExitCode(0);
     }
+
+    public function test_accounts_of_users_without_access_are_not_snapshotted(): void
+    {
+        $this->account(User::factory()->create(), 'x');
+        $this->account(User::factory()->expired()->create(), 'youtube');
+        $this->fakeManager(['x' => 10, 'youtube' => 20]);
+
+        $this->artisan('audience:refresh')->assertExitCode(0);
+
+        $this->assertSame(1, AudienceSnapshot::count());
+        $this->assertSame('x', AudienceSnapshot::first()->socialAccount->platform);
+    }
 }

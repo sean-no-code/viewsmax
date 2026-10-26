@@ -37,6 +37,7 @@ class ResolveTikTokPostIds extends Command
             ->where('status', PostTarget::STATUS_PUBLISHED)
             ->whereNull('platform_post_id')
             ->where('published_at', '>=', now()->subHours($hours))
+            ->whereHas('post.user', fn ($u) => $u->withAccess())
             ->with('post.user')
             ->get()
             ->filter(fn (PostTarget $t) => ! empty($t->meta['publish_id'])

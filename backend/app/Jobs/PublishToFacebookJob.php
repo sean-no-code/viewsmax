@@ -43,6 +43,12 @@ class PublishToFacebookJob implements ShouldQueue
         }
 
         $post = $target->post;
+        if ($denial = $this->accessDenialFor($target)) {
+            $target->post?->revertToDraft($denial->code);
+
+            return;
+        }
+
         [$account, $accountError] = $this->resolveTargetAccount($target, 'facebook');
 
         if (! $account) {

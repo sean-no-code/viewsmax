@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
 
 class Post extends Model
 {
@@ -56,5 +57,25 @@ class Post extends Model
     public function failureNotifications(): HasMany
     {
         return $this->hasMany(PostFailureNotification::class)->latest('id');
+    }
+
+    /**
+     * Take a post off the schedule because its owner can't use ViewsMax right
+     * now (UserAccess::denial). It isn't a failure — nothing was attempted —
+     * so no error, no failure email: the post waits in drafts, unscheduled,
+     * and the user re-schedules it once their access is back.
+     */
+    public function revertToDraft(string $reason): void
+    {
+        $this->update(['status' => self::STATUS_DRAFT, 'scheduled_at' => null]);
+        $this->targets()
+            ->whereIn('status', [PostTarget::STATUS_PENDING, PostTarget::STATUS_PUBLISHING])
+            ->update(['status' => PostTarget::STATUS_PENDING, 'error' => null]);
+
+        Log::info('Post returned to draft: owner has no access', [
+            'post_id' => $this->id,
+            'user_id' => $this->user_id,
+            'reason' => $reason,
+        ]);
     }
 }

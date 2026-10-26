@@ -127,4 +127,23 @@ class SyncChannelVideosCommandTest extends TestCase
 
         $this->artisan('channels:sync-videos')->assertExitCode(1);
     }
+
+    public function test_channels_of_users_without_access_are_not_synced(): void
+    {
+        $active = $this->channel(User::factory()->create());
+        $this->channel(User::factory()->expired()->create());
+        $this->channel(User::factory()->withoutWindow()->withPlan('cancelled')->create());
+        $exempt = $this->channel(User::factory()->promotional()->expired()->create());
+
+        $this->mock(YouTubeChannelService::class, function ($m) use ($active, $exempt) {
+            $m->shouldReceive('fetchAndImportChannelVideos')->once()
+                ->with(\Mockery::on(fn ($c) => $c->id === $active->id), 'yt-oauth-token', \Mockery::any())
+                ->andReturn(['imported' => 0, 'updated' => 0, 'total' => 0]);
+            $m->shouldReceive('fetchAndImportChannelVideos')->once()
+                ->with(\Mockery::on(fn ($c) => $c->id === $exempt->id), 'yt-oauth-token', \Mockery::any())
+                ->andReturn(['imported' => 0, 'updated' => 0, 'total' => 0]);
+        });
+
+        $this->artisan('channels:sync-videos')->assertExitCode(0);
+    }
 }

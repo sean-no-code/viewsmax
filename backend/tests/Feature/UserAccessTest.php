@@ -27,7 +27,40 @@ class UserAccessTest extends TestCase
     public function test_a_verified_user_inside_their_free_window_is_allowed(): void
     {
         $this->assertNull(UserAccess::denial(User::factory()->create(['promo_expires_at' => now()->addDay()])));
-        $this->assertNull(UserAccess::denial(User::factory()->create(['promo_expires_at' => null])));
+    }
+
+    public function test_a_user_with_no_window_and_no_plan_is_expired(): void
+    {
+        // Pre-paywall signups and admin-created accounts have promo_expires_at
+        // null; without a live plan or an exempt role they must subscribe.
+        $this->assertSame(UserAccess::ACCESS_EXPIRED, UserAccess::denial(User::factory()->withoutWindow()->create())->code);
+    }
+
+    public function test_only_active_or_trialing_plans_grant_access(): void
+    {
+        foreach (['active', 'trialing'] as $status) {
+            $this->assertNull(UserAccess::denial(User::factory()->withoutWindow()->withPlan($status)->create()), $status);
+        }
+        foreach (['cancelled', 'past_due', 'expired', 'inactive'] as $status) {
+            $this->assertSame(UserAccess::ACCESS_EXPIRED, UserAccess::denial(User::factory()->withoutWindow()->withPlan($status)->create())->code, $status);
+        }
+    }
+
+    public function test_admins_and_promotional_customers_are_exempt(): void
+    {
+        $this->assertNull(UserAccess::denial(User::factory()->admin()->withoutWindow()->create()));
+        $this->assertNull(UserAccess::denial(User::factory()->admin()->expired()->create()));
+        $this->assertNull(UserAccess::denial(User::factory()->promotional()->withoutWindow()->create()));
+        $this->assertNull(UserAccess::denial(User::factory()->promotional()->expired()->create()));
+        // …but still have to verify their email first.
+        $this->assertSame(UserAccess::EMAIL_UNVERIFIED, UserAccess::denial(User::factory()->admin()->unverified()->create())->code);
+    }
+
+    public function test_allows_background_work_follows_denial(): void
+    {
+        $this->assertTrue(UserAccess::allowsBackgroundWork(User::factory()->create()));
+        $this->assertFalse(UserAccess::allowsBackgroundWork(User::factory()->expired()->create()));
+        $this->assertFalse(UserAccess::allowsBackgroundWork(User::factory()->unverified()->create()));
     }
 
     public function test_an_unverified_app_signup_is_told_to_verify_at_the_app(): void

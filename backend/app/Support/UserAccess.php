@@ -11,11 +11,14 @@ use App\Models\User;
  *  - REST API   EnsureAccessActive   -> 403 with the denial as JSON
  *  - MCP        SafeCallTool         -> plain tool result (HTTP 200, not isError)
  *  - Web        EnsureWebAccess      -> redirect to the denial's url
- *  - Console    call denial() directly before acting for a user
+ *  - Console    allowsBackgroundWork() per record in jobs; User::withAccess()
+ *               when a command selects records in bulk (never act for a
+ *               user who couldn't do it themselves)
  *
  * Checks run in order and the first failure wins: an unverified user is told
- * to verify before being told to pay. Callers decide only how to deliver the
- * answer; add a new rule here and every entry point enforces it.
+ * to verify before being told to pay. Admins and promotional customers are
+ * exempt from everything after verification. Callers decide only how to
+ * deliver the answer; add a new rule here and every entry point enforces it.
  */
 final class UserAccess
 {
@@ -38,6 +41,10 @@ final class UserAccess
                 "Verify your email address to use ViewsMax. Open the link we emailed you, or sign in at {$url} to resend it.",
                 $url,
             );
+        }
+
+        if ($user->isExemptFromAccessRules()) {
+            return null;
         }
 
         if ($user->accessExpired()) {
@@ -64,6 +71,16 @@ final class UserAccess
         }
 
         return null;
+    }
+
+    /**
+     * For queued jobs and commands handling one record at a time: may work be
+     * done on this user's behalf right now? Scheduled posts, boosts, syncs and
+     * reminders about their accounts all stop the moment they lose access.
+     */
+    public static function allowsBackgroundWork(User $user): bool
+    {
+        return self::denial($user) === null;
     }
 
     /**

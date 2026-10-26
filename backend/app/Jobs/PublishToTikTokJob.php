@@ -73,6 +73,14 @@ class PublishToTikTokJob implements ShouldQueue
             return;
         }
 
+        // Once TikTok holds a publish_id the post is theirs (see handOver): only
+        // a target that hasn't been handed over can still be pulled back.
+        if (empty($target->meta['publish_id']) && ($denial = $this->accessDenialFor($target))) {
+            $target->post?->revertToDraft($denial->code);
+
+            return;
+        }
+
         [$account, $accountError] = $this->resolveTargetAccount($target, 'tiktok');
         if (! $account) {
             $this->markFailed($target, $accountError ?? 'No TikTok account connected.');

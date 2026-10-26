@@ -105,14 +105,14 @@ class UserSeeder extends Seeder
             $paidCustomer->roles()->attach($customerRole->id);
         }
 
-        // Assign customer role and starter plan
+        // Assign customer role and starter plan (without a plan or a free window
+        // this account would be access_expired and locked to billing).
         if ($customerRole && !$paidCustomer2->hasRole('customer')) {
             $paidCustomer2->roles()->attach($customerRole->id);
         }
-        
-        
-        if ($starterPlan && !$paidCustomer->hasActivePlan()) {
-            $paidCustomer->plans()->attach($starterPlan->id, [
+
+        if ($starterPlan && !$paidCustomer2->hasActivePlan()) {
+            $paidCustomer2->plans()->attach($starterPlan->id, [
                 'status' => 'active',
                 'starts_at' => now(),
                 'expires_at' => now()->addMonth(), // Monthly billing cycle

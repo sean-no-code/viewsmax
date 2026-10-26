@@ -159,4 +159,18 @@ class PublishSocialPostJobDoublePublishTest extends TestCase
         $this->assertStringContainsString('rate limit', $this->target->error);
         $this->assertNull(data_get($this->target->response, PublishSocialPostJob::ATTEMPT_MARKER));
     }
+
+    public function test_a_lapsed_owners_delayed_post_goes_back_to_draft_before_any_api_call(): void
+    {
+        Http::fake();
+        $this->user->forceFill(['promo_expires_at' => now()->subDay()])->save();
+
+        $this->runJob();
+
+        $this->target->refresh();
+        $this->assertSame(SocialPostTarget::STATUS_PENDING, $this->target->status);
+        $this->assertSame(SocialPost::STATUS_DRAFT, $this->target->post->fresh()->status);
+        $this->assertNull($this->target->post->fresh()->scheduled_at);
+        Http::assertNothingSent();
+    }
 }

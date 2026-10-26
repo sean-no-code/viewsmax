@@ -283,4 +283,20 @@ class BoostFlowTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data');
     }
+
+    public function test_a_lapsed_owners_boost_check_is_exhausted_without_touching_x(): void
+    {
+        Http::fake();
+        $this->enable(BoostSetting::FEATURE_AUTO_REPOST, 1);
+        $this->publishTarget();
+        $check = BoostCheck::firstOrFail();
+        $this->user->forceFill(['promo_expires_at' => now()->subDay()])->save();
+
+        (new ProcessBoostCheckJob($check->id))->handle(app(\App\Services\Social\SocialProviderManager::class));
+
+        $check->refresh();
+        $this->assertSame(BoostCheck::STATUS_EXHAUSTED, $check->status);
+        $this->assertStringContainsString('no longer has access', (string) $check->error);
+        Http::assertNothingSent();
+    }
 }

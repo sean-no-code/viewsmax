@@ -147,4 +147,22 @@ class RefreshTrackingReachCommandTest extends TestCase
 
         $this->assertSame(500, $link->refresh()->current_view_count);
     }
+
+    public function test_links_of_users_without_access_are_not_refreshed(): void
+    {
+        config(['services.youtube.key' => 'test-key']);
+        $lapsed = User::factory()->expired()->create();
+        $link = $this->trackedVideo($lapsed, 'vid-lapsed', $this->connectedChannel($lapsed));
+        $orphan = $this->trackedVideo($lapsed, 'vid-orphan'); // would have used the API key
+
+        $this->mock(YouTubeChannelService::class, function ($m) {
+            $m->shouldNotReceive('getVideoDetails');
+            $m->shouldNotReceive('getVideoDetailsWithApiKey');
+        });
+
+        $this->artisan('tracking:refresh-reach')->assertExitCode(0);
+
+        $this->assertNull($link->refresh()->reach_synced_at);
+        $this->assertNull($orphan->refresh()->reach_synced_at);
+    }
 }

@@ -245,4 +245,16 @@ class RefreshPostMetricsCommandTest extends TestCase
 
         $this->assertSame(0, PostMetricSnapshot::count());
     }
+
+    public function test_posts_of_users_without_access_are_skipped(): void
+    {
+        $account = $this->account('x');
+        $this->legacyTarget($account, 'lapsed1');
+        $this->user->forceFill(['promo_expires_at' => now()->subDay()])->save();
+        $this->fakeManager(['lapsed1' => ['likes' => 5, 'comments' => 0, 'shares' => 0, 'views' => 10]]);
+
+        $this->artisan('posts:refresh-metrics')->assertExitCode(0);
+
+        $this->assertSame(0, PostMetricSnapshot::count());
+    }
 }

@@ -64,8 +64,14 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   to the Passport consent screen; every provider app must allow that callback URL.
 
 - **Access gating.** `App\Support\UserAccess::denial($user)` is the single rule set for "may this user use
-  ViewsMax right now" (unverified email, then expired free window, then the paywall: onboarding not
-  finished and no card — `payment_required`). Add new rules there, not in a middleware. At the card step
+  ViewsMax right now" (unverified email, then `access_expired`: no active/trialing plan and no open free
+  window — a user with no window at all is expired too — then the paywall: onboarding not finished and no
+  card — `payment_required`). Admins and `promotional_customer` role holders are exempt after verification.
+  Add new rules there, not in a middleware. **Background work follows the same rule**: commands that select
+  records in bulk use `User::withAccess()` (`->whereHas('user', fn ($u) => $u->withAccess())`), jobs that
+  handle one record call `UserAccess::allowsBackgroundWork($user)`; a lapsed user's due post goes back to
+  draft (`Post::revertToDraft`), never published. The factory user has an open window (has access); use
+  `User::factory()->expired()` / `->withoutWindow()` / `->withPlan('cancelled')` / `->promotional()` / `->admin()`. At the card step
   the deliveries keep the pre-card endpoints open (`EnsureAccessActive::ONBOARDING_PATTERNS`,
   `EnsureWebAccess::ONBOARDING_ROUTES`); agent signups add the card at `/register/billing`
   (`WebBillingController`), app signups in the SPA's onboarding. Both go through `SubscriptionStarter`. Delivery differs per entry point: `EnsureAccessActive` (REST 403 with `code`), `SafeCallTool`

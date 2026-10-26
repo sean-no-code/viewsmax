@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Post;
 use App\Services\Social\PostPublishDispatcher;
+use App\Support\UserAccess;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,8 @@ class PublishDuePosts extends Command
         // run logs nothing, so the log alone can't.
         Cache::put(self::HEARTBEAT_KEY, now()->toIso8601String(), now()->addDays(7));
 
-        $due = Post::where('status', Post::STATUS_SCHEDULED)
+        $due = Post::with('user')
+            ->where('status', Post::STATUS_SCHEDULED)
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<=', now())
             ->get();
@@ -37,8 +39,20 @@ class PublishDuePosts extends Command
         }
 
         $dispatched = 0;
+        $drafted = 0;
         foreach ($due as $post) {
             try {
+                // A lapsed trial / cancelled plan / deleted owner: never publish on
+                // their behalf. The post goes back to drafts for them to re-schedule.
+                $denial = $post->user ? UserAccess::denial($post->user) : null;
+                if (! $post->user || $denial) {
+                    $post->revertToDraft($denial?->code ?? 'user_missing');
+                    $drafted++;
+                    $this->warn("Post {$post->id} returned to draft: owner has no access.");
+
+                    continue;
+                }
+
                 // Flip status first so a subsequent tick can't re-dispatch this post.
                 $post->update(['status' => Post::STATUS_POSTED]);
 
@@ -59,7 +73,7 @@ class PublishDuePosts extends Command
         }
 
         // Observable even though the scheduler runs this with output to /dev/null.
-        Log::info('posts:publish-due ran', ['due' => $due->count(), 'dispatched' => $dispatched]);
+        Log::info('posts:publish-due ran', ['due' => $due->count(), 'dispatched' => $dispatched, 'drafted_no_access' => $drafted]);
 
         return self::SUCCESS;
     }

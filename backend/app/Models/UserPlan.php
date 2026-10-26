@@ -43,10 +43,11 @@ class UserPlan extends Model
     }
 
     /**
-     * Scope a query to only include active plans.
+     * Scope a query to live subscriptions (active or trialing) — the same
+     * definition as User::ACTIVE_SUBSCRIPTION_STATUSES.
      */
     public function scopeActive($query)
     {
-        return $query->where('status', 'active');
+        return $query->whereIn('status', User::ACTIVE_SUBSCRIPTION_STATUSES);
     }
 }

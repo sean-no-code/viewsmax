@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Exceptions\TransientPublishException;
 use App\Models\SocialAccount;
+use App\Models\SocialPost;
 use App\Models\SocialPostTarget;
+use App\Support\UserAccess;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -53,6 +55,16 @@ class PublishSocialPostJob implements ShouldQueue
                 'status' => SocialPostTarget::STATUS_FAILED,
                 'error' => 'Account or post no longer exists.',
             ]);
+
+            return;
+        }
+
+        // Owner lost access since scheduling: back to drafts, nothing attempted.
+        $owner = $post->user ?? $account->user;
+        if (! $owner || ! UserAccess::allowsBackgroundWork($owner)) {
+            $target->update(['status' => SocialPostTarget::STATUS_PENDING, 'error' => null]);
+            $post->update(['status' => SocialPost::STATUS_DRAFT, 'scheduled_at' => null]);
+            Log::info('Social post returned to draft: owner has no access', ['social_post_id' => $post->id, 'user_id' => $post->user_id]);
 
             return;
         }

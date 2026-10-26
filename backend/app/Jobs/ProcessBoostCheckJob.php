@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\BoostCheck;
+use App\Support\UserAccess;
 use App\Models\BoostSetting;
 use App\Models\SocialAccount;
 use App\Services\Social\Providers\XProvider;
@@ -28,7 +29,7 @@ class ProcessBoostCheckJob implements ShouldQueue
 
     public function handle(SocialProviderManager $manager): void
     {
-        $check = BoostCheck::with('target', 'setting.socialAccount')->find($this->boostCheckId);
+        $check = BoostCheck::with('target', 'setting.socialAccount', 'setting.user')->find($this->boostCheckId);
         if (! $check || $check->status !== BoostCheck::STATUS_PENDING) {
             return;
         }
@@ -41,6 +42,17 @@ class ProcessBoostCheckJob implements ShouldQueue
             $check->forceFill([
                 'status' => BoostCheck::STATUS_EXHAUSTED,
                 'error' => 'Boost setting was disabled before the check ran.',
+            ])->save();
+
+            return;
+        }
+
+        // Owner lost access (lapsed trial / cancelled plan): the boost stops here,
+        // quietly — it's an automation, not a post they wrote.
+        if (! $setting->user || ! UserAccess::allowsBackgroundWork($setting->user)) {
+            $check->forceFill([
+                'status' => BoostCheck::STATUS_EXHAUSTED,
+                'error' => 'Boost stopped: the account owner no longer has access to ViewsMax.',
             ])->save();
 
             return;

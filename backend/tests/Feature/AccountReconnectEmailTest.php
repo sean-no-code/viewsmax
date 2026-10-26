@@ -131,4 +131,18 @@ class AccountReconnectEmailTest extends TestCase
 
         Mail::assertSent(AccountNeedsReconnectMail::class, fn ($mail) => $mail->hasTo($this->user->email));
     }
+
+    public function test_no_reconnect_email_for_a_user_without_access(): void
+    {
+        Mail::fake();
+        $this->user->forceFill(['promo_expires_at' => now()->subDay()])->save();
+        $account = $this->user->socialAccounts()->create([
+            'platform' => 'linkedin', 'platform_account_id' => 'li-lapsed', 'name' => 'Jane', 'access_token' => 't',
+            'status' => SocialAccount::STATUS_NEEDS_REAUTH, 'error' => 'dead',
+        ]);
+
+        (new SendReconnectEmailJob($account->id))->handle();
+
+        Mail::assertNothingSent();
+    }
 }

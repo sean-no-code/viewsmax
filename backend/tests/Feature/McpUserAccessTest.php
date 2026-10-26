@@ -93,14 +93,24 @@ class McpUserAccessTest extends TestCase
         $this->assertStringContainsString(route('login'), $text);
     }
 
-    public function test_users_in_trial_or_on_a_plan_or_without_a_window_are_not_gated(): void
+    public function test_a_user_without_a_window_or_a_plan_is_gated(): void
+    {
+        $legacy = User::factory()->create(['promo_expires_at' => null]);
+
+        $this->assertTrue($legacy->accessExpired());
+        $this->rpc($this->mcpKey($legacy), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
+            ->assertOk()
+            ->assertJsonPath('result.isError', false)
+            ->assertJsonPath('result.content.0.text', UserAccess::denial($legacy)->message);
+    }
+
+    public function test_users_in_trial_or_on_a_plan_are_not_gated(): void
     {
         $inTrial = User::factory()->create(['promo_expires_at' => now()->addDay()]);
-        $legacy = User::factory()->create(['promo_expires_at' => null]);
         $paid = User::factory()->create(['promo_expires_at' => now()->subDay()]);
         $paid->plans()->attach($this->paidPlan()->id, ['status' => 'active', 'starts_at' => now()]);
 
-        foreach ([$inTrial, $legacy, $paid] as $user) {
+        foreach ([$inTrial, $paid] as $user) {
             $this->assertFalse($user->accessExpired());
             $this->rpc($this->mcpKey($user), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
                 ->assertOk()
