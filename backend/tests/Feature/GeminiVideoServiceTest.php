@@ -396,6 +396,7 @@ class GeminiVideoServiceTest extends TestCase
             } catch (GeminiVideoException $e) {
                 $this->assertSame(GeminiVideoException::BAD_RESPONSE, $e->reason);
                 $this->assertTrue($e->reportable);
+                $this->assertNotSame('', $e->detail, 'the log needs to say what Gemini actually returned');
             }
         }
     }
@@ -418,5 +419,21 @@ class GeminiVideoServiceTest extends TestCase
         config(['services.gemini.api_key' => null]);
 
         $this->assertInstanceOf(GeminiVideoService::class, new GeminiVideoService);
+    }
+
+    public function test_a_live_call_without_an_api_key_fails_before_contacting_google(): void
+    {
+        config(['services.gemini.api_key' => '']);
+        Http::fake();
+
+        try {
+            app(GeminiVideoService::class)->breakdown(self::META, VideoSource::youtube('abc'));
+            $this->fail('expected RuntimeException');
+        } catch (\RuntimeException $e) {
+            $this->assertNotInstanceOf(GeminiVideoException::class, $e);
+            $this->assertStringContainsString('GEMINI_API_KEY', $e->getMessage());
+        }
+
+        Http::assertNothingSent();
     }
 }

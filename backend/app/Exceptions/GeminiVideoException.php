@@ -41,6 +41,18 @@ class GeminiVideoException extends RuntimeException
         parent::__construct($message, 0, $previous);
     }
 
+    /**
+     * Picked up by Laravel's exception handler and Sentry when the exception is
+     * report()ed, so laravel.log / Sentry carry the provider's answer and not
+     * only the user-facing sentence.
+     *
+     * @return array{reason: string, detail: string}
+     */
+    public function context(): array
+    {
+        return ['reason' => $this->reason, 'detail' => $this->detail];
+    }
+
     /** Private, removed, age-gated, or a URL Google can't fetch. The video's fault, not ours. */
     public static function videoUnavailable(string $detail = '', ?\Throwable $previous = null): self
     {

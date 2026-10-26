@@ -320,7 +320,10 @@ class OutlierBreakdownTest extends TestCase
 
         app()->call([new GenerateOutlierBreakdownJob('youtube', 'abc123xyz'), 'handle']);
 
-        Exceptions::assertReported(fn (GeminiVideoException $e) => $e->reason === GeminiVideoException::BAD_RESPONSE);
+        // The provider's answer must travel with the report: laravel.log and Sentry
+        // read context(), so a generic "analysis failed" line is never all we have.
+        Exceptions::assertReported(fn (GeminiVideoException $e) => $e->reason === GeminiVideoException::BAD_RESPONSE
+            && $e->context() === ['reason' => GeminiVideoException::BAD_RESPONSE, 'detail' => 'not json']);
     }
 
     // ---- TikTok: no media file is obtainable, so Gemini works from CaptAPI's transcript ----

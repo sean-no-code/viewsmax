@@ -330,6 +330,12 @@ class GeminiVideoService
 
     private function client(): PendingRequest
     {
+        // A blank key reaches Google as a 403 "unregistered caller" that reads like a
+        // video problem. Fail here instead, so the report names the misconfiguration.
+        if ($this->apiKey === '') {
+            throw new \RuntimeException('GEMINI_API_KEY is not set (services.gemini.api_key); restart the queue worker after setting it.');
+        }
+
         // The key goes in a header, never the URL: URLs end up in logs and traces.
         return Http::withHeaders(['x-goog-api-key' => $this->apiKey])->acceptJson();
     }
