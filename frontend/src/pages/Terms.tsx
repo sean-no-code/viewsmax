@@ -149,7 +149,7 @@ const Terms = () => {
             <div className="bg-muted p-4 rounded-lg">
               <p className="text-muted-foreground">
                 <strong>Email:</strong> admin@iclicksee.com<br/>
-                <strong>Address:</strong> Forma House, 40 Bowling Green Lane, London, UK, EC1R 0NE
+                <strong>Address:</strong> Dubai Silicon Oasis, DDP, Building A2, Dubai, United Arab Emirates
               </p>
             </div>
           </section>
