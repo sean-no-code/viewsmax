@@ -12,7 +12,6 @@ Object.defineProperty(import.meta, 'env', {
   value: {
     VITE_API_BASE_URL: 'http://localhost:3000',
     VITE_GOOGLE_CLIENT_ID: 'test-google-client-id',
-    VITE_YOUTUBE_API_KEY: 'test-youtube-api-key',
     VITE_PAYPAL_CLIENT_ID: 'test-paypal-client-id',
     VITE_PAYPAL_PLAN_ID: 'test-paypal-plan-id',
   },
@@ -25,7 +24,6 @@ vi.stubGlobal('import', {
     env: {
       VITE_API_BASE_URL: 'http://localhost:3000',
       VITE_GOOGLE_CLIENT_ID: 'test-google-client-id',
-      VITE_YOUTUBE_API_KEY: 'test-youtube-api-key',
       VITE_PAYPAL_CLIENT_ID: 'test-paypal-client-id',
       VITE_PAYPAL_PLAN_ID: 'test-paypal-plan-id',
     }

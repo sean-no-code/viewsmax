@@ -67,7 +67,6 @@ jobs:
         VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         VITE_TIKTOK_CLIENT_KEY: ${{ secrets.VITE_TIKTOK_CLIENT_KEY }}
         VITE_PAYPAL_CLIENT_ID: ${{ secrets.VITE_PAYPAL_CLIENT_ID }}
-        VITE_YOUTUBE_API_KEY: ${{ secrets.VITE_YOUTUBE_API_KEY }}
         VITE_USE_MOCK_API: 'false'
         # Analytics / pixels — optional; blank disables that tracker (see frontend/.env.example)
         VITE_TRACKING_HOSTNAME: ${{ secrets.VITE_TRACKING_HOSTNAME }}

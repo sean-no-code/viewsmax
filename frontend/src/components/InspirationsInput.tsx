@@ -52,7 +52,7 @@ const InspirationsInput = ({ inspirations, onChange }: InspirationsInputProps) =
 
   const fetchVideoDetails = async (videoId: string): Promise<{ title: string; thumbnailUrl: string } | null> => {
     try {
-      // Use YouTube oEmbed API as a fallback (no API key needed) or try direct API
+      // YouTube oEmbed gives us the title without an API key.
       const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
       
       try {
@@ -64,23 +64,8 @@ const InspirationsInput = ({ inspirations, onChange }: InspirationsInputProps) =
             thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
           };
         }
-      } catch (e) {
-        // oEmbed failed, try YouTube Data API if we have a key
-        const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
-        if (apiKey) {
-          const apiResponse = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${apiKey}`
-          );
-          if (apiResponse.ok) {
-            const apiData = await apiResponse.json();
-            if (apiData.items && apiData.items.length > 0) {
-              return {
-                title: apiData.items[0].snippet.title,
-                thumbnailUrl: apiData.items[0].snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-              };
-            }
-          }
-        }
+      } catch {
+        // oEmbed is best-effort: fall through to the thumbnail-only result.
       }
       
       // Fallback: just return with no title

@@ -147,7 +147,6 @@ interface YouTubeApiVideoItem {
 }
 
 class YouTubeAuthService {
-  private readonly API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
   private readonly CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   private readonly REDIRECT_URI = `${window.location.origin}/oauth/callback`;
   // Same scope set as the Connections page (oauth-connect.ts). The backend
@@ -307,7 +306,7 @@ class YouTubeAuthService {
       console.log('📺 Fetching comprehensive user channel data...');
 
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,brandingSettings,status&mine=true&key=${this.API_KEY}`,
+        `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,brandingSettings,status&mine=true`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -419,7 +418,7 @@ class YouTubeAuthService {
     try {
       // First, try to get the authenticated user's channel
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true&key=${this.API_KEY}`,
+        `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -450,66 +449,6 @@ class YouTubeAuthService {
     } catch (error) {
       console.error('Error fetching channel info:', error);
       throw error;
-    }
-  }
-
-  // Test with a public channel to verify API key works
-  async testApiKey(): Promise<boolean> {
-    try {
-      console.log('🔍 Testing API key:', this.API_KEY.substring(0, 15) + '...');
-
-      // Test with a well-known public channel (YouTube's own channel)
-      const testUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=UCBR8-60-B28hp2BmDPdntcQ&key=${this.API_KEY}`;
-      console.log('📡 Making request to:', testUrl.replace(this.API_KEY, 'API_KEY_HIDDEN'));
-
-      const response = await fetch(testUrl);
-
-      console.log('📊 Response status:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API key test failed with response:', errorText);
-
-        // Parse the error response to get more details
-        try {
-          const errorData = JSON.parse(errorText);
-          console.error('🔍 Error details:', errorData);
-
-          if (errorData.error) {
-            console.error('📋 Error message:', errorData.error.message);
-            console.error('📋 Error reason:', errorData.error.errors?.[0]?.reason);
-          }
-        } catch (parseError) {
-          console.error('❌ Could not parse error response');
-        }
-
-        // Common error cases
-        if (response.status === 403) {
-          console.error('🚫 403 Forbidden - Possible causes:');
-          console.error('   • API key is invalid');
-          console.error('   • YouTube Data API v3 is not enabled');
-          console.error('   • Quota exceeded');
-          console.error('   • IP restrictions on API key');
-        } else if (response.status === 400) {
-          console.error('🚫 400 Bad Request - Check API parameters');
-        }
-
-        return false;
-      }
-
-      const data = await response.json();
-      console.log('✅ API key test successful!');
-      console.log('📺 Channel found:', data.items?.[0]?.snippet?.title || 'Unknown');
-      console.log('📋 Full response:', data);
-      return true;
-    } catch (error) {
-      console.error('❌ API key test error:', error);
-      if (error.message.includes('CORS')) {
-        console.error('🌐 CORS Error detected - this might be a browser restriction');
-      } else if (error.message.includes('Failed to fetch')) {
-        console.error('🌐 Network error - check internet connection');
-      }
-      return false;
     }
   }
 
@@ -887,7 +826,7 @@ class YouTubeAuthService {
   // Fetch detailed channel statistics
   private async fetchChannelStats(accessToken: string, channelId: string) {
     const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}&key=${this.API_KEY}`,
+      `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${channelId}`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -908,7 +847,7 @@ class YouTubeAuthService {
   private async fetchChannelPlaylists(accessToken: string, channelId: string): Promise<YouTubePlaylist[]> {
     try {
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/playlists?part=snippet,status,contentDetails&channelId=${channelId}&maxResults=50&key=${this.API_KEY}`,
+        `https://www.googleapis.com/youtube/v3/playlists?part=snippet,status,contentDetails&channelId=${channelId}&maxResults=50`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -944,7 +883,7 @@ class YouTubeAuthService {
     try {
       // Get recent videos
       const recentResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=10&key=${this.API_KEY}`,
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=10`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -962,7 +901,7 @@ class YouTubeAuthService {
 
       // Get detailed video information
       const detailsResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${videoIds}&key=${this.API_KEY}`,
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${videoIds}`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -1102,11 +1041,6 @@ class YouTubeAuthService {
     return data ? JSON.parse(data) : null;
   }
 
-  // Get API key for debugging
-  getApiKey(): string {
-    return this.API_KEY;
-  }
-
   // Disconnect/logout
   disconnect(): void {
     this.clearStoredAuth();
@@ -1121,76 +1055,6 @@ class YouTubeAuthService {
     localStorage.removeItem('youtube_auth_type');
   }
 
-  // Advanced API testing with detailed logs
-  async performDetailedApiTest(): Promise<{
-    success: boolean, details: {
-      apiKeyValid: boolean;
-      channelDataRetrieved: boolean;
-      videosRetrieved: boolean;
-      error: string | null;
-    }
-  }> {
-    const testResults = {
-      success: false,
-      details: {
-        apiKeyValid: false,
-        channelDataRetrieved: false,
-        videosRetrieved: false,
-        error: null as string | null
-      }
-    };
-
-    try {
-      console.log('🔍 Starting detailed API test...');
-
-      // Test 1: Basic API key validation
-      console.log('Test 1: Validating API key...');
-      const apiResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=UCBR8-60-B28hp2BmDPdntcQ&key=${this.API_KEY}`
-      );
-
-      if (!apiResponse.ok) {
-        throw new Error(`API Key validation failed: ${apiResponse.status} - ${apiResponse.statusText}`);
-      }
-
-      testResults.details.apiKeyValid = true;
-      console.log('✅ API key is valid');
-
-      // Test 2: Retrieve channel data
-      console.log('Test 2: Retrieving channel data...');
-      const channelData = await apiResponse.json();
-      if (channelData.items && channelData.items.length > 0) {
-        testResults.details.channelDataRetrieved = true;
-        console.log('✅ Channel data retrieved:', channelData.items[0].snippet.title);
-      }
-
-      // Test 3: Retrieve videos
-      console.log('Test 3: Retrieving videos...');
-      const videosResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=UCBR8-60-B28hp2BmDPdntcQ&type=video&maxResults=5&key=${this.API_KEY}`
-      );
-
-      if (videosResponse.ok) {
-        const videosData = await videosResponse.json();
-        if (videosData.items && videosData.items.length > 0) {
-          testResults.details.videosRetrieved = true;
-          console.log('✅ Videos retrieved:', videosData.items.length, 'videos');
-        }
-      }
-
-      testResults.success = testResults.details.apiKeyValid &&
-        testResults.details.channelDataRetrieved &&
-        testResults.details.videosRetrieved;
-
-      console.log('🎉 Detailed API test completed:', testResults);
-      return testResults;
-
-    } catch (error) {
-      console.error('❌ Detailed API test failed:', error);
-      testResults.details.error = error.message;
-      return testResults;
-    }
-  }
 }
 
 // Export singleton instance
