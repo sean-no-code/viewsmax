@@ -9,6 +9,7 @@ type NavItem = {
   isProFeature?: boolean;
   subItems?: NavSubItem[];
 };
+import appIcon from "@/assets/icon.svg";
 import { NavLink, useLocation, Link } from "react-router-dom";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
@@ -128,13 +129,7 @@ export function AppSidebar() {
       <SidebarContent>
         <div className="p-4 border-b border-border">
           <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="flex-shrink-0">
-              <rect x="1" y="1" width="30" height="30" rx="8" fill="var(--vm-red)" />
-              <circle cx="9.5" cy="16" r="2.6" fill="#fff" />
-              <circle cx="22" cy="9.5" r="2.6" fill="#fff" />
-              <circle cx="22" cy="22.5" r="2.6" fill="var(--vm-volt)" />
-              <path d="M11.6 14.7 L20 10.4 M11.6 17.3 L20 21.6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
+            <img src={appIcon} alt="" aria-hidden="true" width={32} height={32} className="flex-shrink-0 rounded-lg" />
             {state !== "collapsed" && <span className="font-display text-xl font-extrabold tracking-tight text-foreground">ViewsMax</span>}
           </Link>
         </div>

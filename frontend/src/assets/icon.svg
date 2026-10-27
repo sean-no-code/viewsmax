@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="45 45 510 510" width="512" height="512">
+  <!-- ViewsMax icon: red gradient rounded square + bar chart (lucide bar-chart-4). -->
+  <defs>
+    <linearGradient id="vmx-red" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FF0033"/>
+      <stop offset="0.73" stop-color="#FF0F0F"/>
+    </linearGradient>
+  </defs>
+  <rect x="45" y="45" width="510" height="510" rx="80" fill="url(#vmx-red)"/>
+  <g transform="translate(100 100) scale(16.6667)" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3v18h18"/>
+    <path d="M13 17V9"/>
+    <path d="M18 17V5"/>
+    <path d="M8 17v-3"/>
+  </g>
+</svg>

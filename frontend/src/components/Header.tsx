@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import appIcon from "@/assets/icon.svg";
 import { TrendingUp, Menu, BarChart3, LogOut, User, Crown, ChevronDown, Youtube, Calculator, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,9 +55,7 @@ const Header = () => {
     <header className="fixed top-0 left-0 right-0 bg-background/95 backdrop-blur-md border-b border-border z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-primary-foreground" />
-          </div>
+          <img src={appIcon} alt="" aria-hidden="true" className="w-8 h-8 rounded-lg" />
           <span className="text-xl font-bold text-foreground">ViewsMax</span>
         </Link>
         
