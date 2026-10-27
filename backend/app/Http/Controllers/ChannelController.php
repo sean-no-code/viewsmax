@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Models\Video;
+use App\Services\Social\YouTubeDisconnector;
 use App\Services\YouTubeChannelService;
 use App\Services\YouTubeAnalyticsService;
 use Illuminate\Http\Request;
@@ -436,8 +437,9 @@ class ChannelController extends Controller
             $channel = Channel::where('user_id', Auth::id())
                 ->findOrFail($channelId);
 
-            // Delete the channel (videos will cascade delete automatically)
-            $channel->delete();
+            // Revokes the Google grant and deletes the channel (videos cascade)
+            // together with the publishing account / connection that share it.
+            YouTubeDisconnector::disconnect(Auth::user(), $channel->youtube_channel_id);
 
             Log::info('Channel disconnected', [
                 'channel_id' => $channelId,

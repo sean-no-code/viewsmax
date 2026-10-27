@@ -4,16 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
-use App\Services\Exceptions\ProbeRateLimited;
 use App\Services\VideoFormatClassifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * Shorts vs long-form classification. YouTube exposes the answer via its own URL:
- * HEAD /shorts/{id} → 200 for a Short, 303 → /watch for long-form, 404 for unknown.
+ * Shorts vs long-form classification from the stored duration: 1–180s is a
+ * Short, longer (or 0s live streams / premieres) is long-form, no duration is
+ * unknown. TikTok/Instagram are short-form by platform. Nothing is fetched.
  */
 class VideoFormatClassifierTest extends TestCase
 {
@@ -37,101 +36,57 @@ class VideoFormatClassifierTest extends TestCase
         ], $extra));
     }
 
-    public function test_tiktok_and_instagram_are_always_short_without_probing(): void
+    public function test_tiktok_and_instagram_are_always_short(): void
+    {
+        $this->assertTrue($this->classifier()->classify($this->makeVideo('tiktok', ['duration' => 'PT10M'])));
+        $this->assertTrue($this->classifier()->classify($this->makeVideo('instagram')));
+    }
+
+    public function test_youtube_up_to_three_minutes_is_short(): void
+    {
+        $this->assertTrue($this->classifier()->classify($this->makeVideo('youtube', ['duration' => 'PT1S'])));
+        $this->assertTrue($this->classifier()->classify($this->makeVideo('youtube', ['duration' => 'PT59S'])));
+        $this->assertTrue($this->classifier()->classify($this->makeVideo('youtube', ['duration' => 'PT3M'])));
+    }
+
+    public function test_youtube_over_three_minutes_is_long(): void
+    {
+        $this->assertFalse($this->classifier()->classify($this->makeVideo('youtube', ['duration' => 'PT3M1S'])));
+        $this->assertFalse($this->classifier()->classify($this->makeVideo('youtube', ['duration' => 'PT1H2M'])));
+    }
+
+    public function test_zero_duration_live_streams_and_premieres_are_long(): void
+    {
+        $this->assertFalse($this->classifier()->classify($this->makeVideo('youtube', ['duration' => 'P0D'])));
+        $this->assertFalse($this->classifier()->classify($this->makeVideo('youtube', ['duration' => 'PT0S'])));
+    }
+
+    public function test_youtube_without_a_duration_is_unknown(): void
+    {
+        $this->assertNull($this->classifier()->classify($this->makeVideo('youtube')));
+    }
+
+    public function test_classification_never_calls_out(): void
     {
         Http::fake();
 
-        $this->assertTrue($this->classifier()->classify('tiktok', '7646812028874673439'));
-        $this->assertTrue($this->classifier()->classify('instagram', 'DbYaLffE2DD'));
+        $this->classifier()->ensureClassified($this->makeVideo('youtube', ['duration' => 'PT2M']));
+
         Http::assertNothingSent();
-    }
-
-    public function test_youtube_shorts_url_returning_200_is_short(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 200)]);
-
-        $this->assertTrue($this->classifier()->classify('youtube', 'abc123'));
-    }
-
-    public function test_youtube_redirect_to_watch_is_long(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 303, ['Location' => 'https://www.youtube.com/watch?v=abc123'])]);
-
-        $this->assertFalse($this->classifier()->classify('youtube', 'abc123'));
-    }
-
-    public function test_youtube_404_is_unknown(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 404)]);
-
-        $this->assertNull($this->classifier()->classify('youtube', 'gone'));
-    }
-
-    public function test_youtube_timeout_is_unknown(): void
-    {
-        Http::fake(fn () => throw new ConnectionException('cURL error 28: timed out'));
-
-        $this->assertNull($this->classifier()->classify('youtube', 'slow'));
-    }
-
-    public function test_redirect_to_consent_page_is_unknown_not_rate_limited(): void
-    {
-        // UK/EU egress gets this deterministically without a consent cookie; it must
-        // not be treated as throttling (that requeued the batch every 5 min forever).
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 302, ['Location' => 'https://consent.youtube.com/m?continue=https%3A%2F%2Fwww.youtube.com%2Fshorts%2Fabc123&gl=GB'])]);
-
-        $this->assertNull($this->classifier()->classify('youtube', 'abc123'));
-    }
-
-    public function test_redirect_to_sorry_page_raises_rate_limited(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 302, ['Location' => 'https://www.google.com/sorry/index?continue=...'])]);
-
-        $this->expectException(ProbeRateLimited::class);
-        $this->classifier()->classify('youtube', 'abc123');
-    }
-
-    public function test_429_raises_rate_limited(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 429)]);
-
-        $this->expectException(ProbeRateLimited::class);
-        $this->classifier()->classify('youtube', 'abc123');
-    }
-
-    public function test_probe_is_a_head_request_to_the_shorts_url(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 200)]);
-
-        $this->classifier()->classify('youtube', 'abc123');
-
-        Http::assertSent(fn ($r) => $r->method() === 'HEAD' && str_contains($r->url(), 'youtube.com/shorts/abc123'));
-    }
-
-    public function test_probe_sends_pre_accepted_consent_cookies(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 200)]);
-
-        $this->classifier()->classify('youtube', 'abc123');
-
-        Http::assertSent(fn ($r) => str_contains((string) $r->header('Cookie')[0], 'SOCS=CAI'));
     }
 
     public function test_ensure_classified_skips_rows_already_classified(): void
     {
-        Http::fake();
-        $video = $this->makeVideo('youtube', ['is_short' => false, 'format_checked_at' => now()]);
+        // A row classified as long stays long even though its duration says short.
+        $video = $this->makeVideo('youtube', ['is_short' => false, 'format_checked_at' => now(), 'duration' => 'PT30S']);
 
         $this->assertFalse($this->classifier()->ensureClassified($video));
-
-        Http::assertNothingSent();
         $this->assertFalse($video->fresh()->is_short);
     }
 
-    public function test_ensure_classified_stores_the_probe_result(): void
+    public function test_ensure_classified_stores_the_result(): void
     {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 200)]);
-        $video = $this->makeVideo('youtube');
+        $video = $this->makeVideo('youtube', ['duration' => 'PT45S']);
 
         $this->assertTrue($this->classifier()->ensureClassified($video));
 
@@ -141,7 +96,6 @@ class VideoFormatClassifierTest extends TestCase
 
     public function test_ensure_classified_stamps_checked_at_even_when_unknown(): void
     {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 404)]);
         $video = $this->makeVideo('youtube');
 
         $this->assertNull($this->classifier()->ensureClassified($video));
@@ -151,22 +105,11 @@ class VideoFormatClassifierTest extends TestCase
         $this->assertNotNull($fresh->format_checked_at); // so backfills don't loop on it
     }
 
-    public function test_ensure_classified_marks_tiktok_short_without_probing(): void
+    public function test_ensure_classified_marks_tiktok_short(): void
     {
-        Http::fake();
         $video = $this->makeVideo('tiktok');
 
         $this->assertTrue($this->classifier()->ensureClassified($video));
         $this->assertTrue($video->fresh()->is_short);
-        Http::assertNothingSent();
-    }
-
-    public function test_probe_disabled_by_config_returns_null(): void
-    {
-        config()->set('services.youtube.format_probe_enabled', false);
-        Http::fake();
-
-        $this->assertNull($this->classifier()->classify('youtube', 'abc123'));
-        Http::assertNothingSent();
     }
 }

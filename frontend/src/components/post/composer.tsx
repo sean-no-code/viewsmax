@@ -151,7 +151,7 @@ export function usePostComposer() {
   };
 
   // YouTube publish options. Default to public to match the "Post now" intent.
-  const [youtube, setYoutube] = useState<YouTubeOptions>({ privacy_status: "public" });
+  const [youtube, setYoutube] = useState<YouTubeOptions>({ privacy_status: "public", title: "", community_guidelines_accepted: false });
   const patchYoutube = (p: Partial<YouTubeOptions>) => setYoutube((y) => ({ ...y, ...p }));
 
   // LinkedIn publish options — a scheduled first comment (the usual spot for
@@ -285,9 +285,9 @@ export function usePostComposer() {
 
   const issues = selected.filter((id) => status[id].over);
 
-  // YouTube rejects an empty title and the caption is the title, so a YouTube
-  // post can't publish without text (the backend returns a 422 too).
-  const youtubeTitleMissing = selected.includes("youtube") && textFor("youtube").trim() === "";
+  // YouTube rejects an empty title: the explicit title, else the caption, so a
+  // YouTube post can't publish with neither (the backend returns a 422 too).
+  const youtubeTitleMissing = selected.includes("youtube") && (youtube.title ?? "").trim() === "" && textFor("youtube").trim() === "";
 
   // Drive a single upload for an existing media item, streaming progress into
   // its state and recording the final url/path or an error.

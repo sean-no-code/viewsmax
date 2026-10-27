@@ -19,9 +19,6 @@ return [
         'fetch_period_days' => env('YOUTUBE_FETCH_PERIOD_DAYS', 2),
         'video_cache_duration_hours' => env('YOUTUBE_VIDEO_CACHE_DURATION_HOURS', 1),
         'channel_cache_duration_hours' => env('YOUTUBE_CHANNEL_CACHE_DURATION_HOURS', 24),
-        // Shorts detection via HEAD youtube.com/shorts/{id}. Kill switch → duration fallback.
-        'format_probe_enabled' => env('YOUTUBE_FORMAT_PROBE_ENABLED', true),
-        'format_probe_delay_ms' => env('YOUTUBE_FORMAT_PROBE_DELAY_MS', 250),
         'sample_size' => env('YOUTUBE_AVERAGE_SAMPLE_SIZE', 30),
         'max_pages' => env('YOUTUBE_MAX_PAGES', 5),
         'max_search_results' => env('YOUTUBE_MAX_SEARCH_RESULTS', 50),

@@ -156,16 +156,16 @@ const Privacy = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Data Retention and Deletion</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Users may delete their data directly from the Dashboard at any time via <Link to="/dashboard/settings" className="text-primary hover:underline">Settings</Link>. Alternatively, they may email us at <a href="mailto:admin@iclicksee.com" className="text-primary hover:underline">admin@iclicksee.com</a> to request deletion. All requests are honored within 30 days.
+              Users may delete their data directly from the Dashboard at any time via <Link to="/dashboard/settings" className="text-primary hover:underline">Settings</Link>. Alternatively, they may email us at <a href="mailto:admin@iclicksee.com" className="text-primary hover:underline">admin@iclicksee.com</a> to request deletion. All requests are honored within 7 days.
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">
               <li>We retain Google user data only as long as needed to provide the service.</li>
-              <li>Upon your request or if authorization is revoked, we delete Google user data promptly and within 30 days.</li>
+              <li>Upon your request or if authorization is revoked, we delete Google user data promptly and within 7 days.</li>
               <li>Stored tokens are deleted when you disconnect an account.</li>
               <li>The AI assistant activity log is kept while your account exists and is deleted with your account.</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed">
-              To request deletion beyond the controls above, contact us at the email below. We will complete deletion within 30 days of receipt.
+              To request deletion beyond the controls above, contact us at the email below. We will complete deletion within 7 days of receipt.
             </p>
           </section>
 

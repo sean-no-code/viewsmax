@@ -177,7 +177,7 @@ const Settings = () => {
       await fetchBackendChannels();
 
       if (successCount > 0) {
-        toast.success(t("settings.account.youtubeDisconnected", "YouTube channel disconnected"));
+        toast.success(t("settings.account.youtubeDisconnected", "YouTube disconnected and Google access revoked"));
         setIsConnected(false);
         setChannelName(null);
       }
@@ -201,7 +201,7 @@ const Settings = () => {
         throw new Error(result.error || 'Failed to delete user data');
       }
 
-      // Clear cached analytics; keep YouTube connection and basic info intact
+      // Clear the cached analytics and local YouTube state the backend just deleted
       try {
         localStorage.removeItem('youtube_analytics_data');
         localStorage.removeItem('youtube_analytics_timestamp');
@@ -221,10 +221,12 @@ const Settings = () => {
         console.debug('Failed to clear some cached analytics items', e);
       }
 
-      toast.success(t("settings.account.dataCleared", "Projects, analytics cache, and privacy consent cleared. YouTube connection remains."));
+      youtubeAuthService.disconnect();
+      await fetchBackendChannels();
+      toast.success(t("settings.account.dataCleared", "Your YouTube data was deleted and ViewsMax's Google access revoked."));
     } catch (error) {
-      console.error('Local data clear error:', error);
-      toast.error(t("settings.account.clearFailed", "Failed to clear local data. Please try again."));
+      console.error('Delete data error:', error);
+      toast.error(t("settings.account.clearFailed", "Could not delete your data. Please try again."));
     } finally {
       setIsDeleting(false);
     }
@@ -232,9 +234,8 @@ const Settings = () => {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      {/* NOTE: Other Settings sections (Connected Accounts, Account & Data) are
-          temporarily commented out while we build/review the AI Assistant Access
-          card in isolation. Restore these when ready.
+      {/* NOTE: The Connected Accounts card is commented out while platforms are
+          connected from the Connections page. Restore when ready.
       <Card>
         <CardHeader>
           <CardTitle>Connected Accounts</CardTitle>
@@ -274,49 +275,53 @@ const Settings = () => {
 
       <AiActivityLog />
 
-      {/*
       <Card>
         <CardHeader>
-          <CardTitle>Account & Data</CardTitle>
-          <CardDescription>Manage your connected accounts and your stored data.</CardDescription>
+          <CardTitle>{t("settings.account.title", "Account & Data")}</CardTitle>
+          <CardDescription>{t("settings.account.description", "Manage your YouTube connection and the data ViewsMax stores from it.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="font-medium">Disconnect YouTube</div>
-              <div className="text-sm text-muted-foreground">Stops access and clears YouTube tokens and cached data.<br>
-              </br> You can also revoke via Google settings.</div>
+              <div className="font-medium">{t("settings.account.disconnectYoutube", "Disconnect YouTube")}</div>
+              <div className="text-sm text-muted-foreground">
+                {t("settings.account.disconnectYoutubeHint", "Revokes ViewsMax's access in your Google account and deletes the stored tokens, your connected channels and their imported videos.")}
+              </div>
             </div>
             <Button onClick={handleDisconnect} disabled={!isConnected || isDisconnecting} variant="outline">
-              {isConnected ? (isDisconnecting ? 'Disconnecting…' : 'Disconnect') : 'Not connected'}
+              {isConnected
+                ? (isDisconnecting ? t("settings.account.disconnecting", "Disconnecting…") : t("settings.account.disconnect", "Disconnect"))
+                : t("settings.account.notConnected", "Not connected")}
             </Button>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="font-medium">Delete My Data</div>
-              <div className="text-sm text-muted-foreground">Deletes your projects and YouTube tokens and cached data.</div>
+              <div className="font-medium">{t("settings.account.deleteData", "Delete My Data")}</div>
+              <div className="text-sm text-muted-foreground">
+                {t("settings.account.deleteDataHint", "Deletes every connected YouTube channel with its imported videos and analytics, all stored Google tokens, and revokes ViewsMax's access in your Google account. Your ViewsMax account, posts and offers stay.")}
+              </div>
             </div>
             <Dialog>
               <DialogTrigger asChild>
                 <Button disabled={isDeleting} variant="destructive">
-                  {isDeleting ? 'Deleting…' : 'Delete Data'}
+                  {isDeleting ? t("settings.account.deleting", "Deleting…") : t("settings.account.deleteDataButton", "Delete Data")}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Are you absolutely sure?</DialogTitle>
+                  <DialogTitle>{t("settings.account.deleteConfirmTitle", "Are you absolutely sure?")}</DialogTitle>
                   <DialogDescription>
-                    This action will permanently delete all your projects and clear YouTube tokens and cached analytics from this device. This cannot be undone.
+                    {t("settings.account.deleteConfirmBody", "This permanently deletes your connected YouTube channels, their imported videos and analytics, and all stored Google tokens, and revokes ViewsMax's access in your Google account. This cannot be undone; you can reconnect YouTube afterwards.")}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button variant="outline">Cancel</Button>
+                    <Button variant="outline">{t("settings.account.cancel", "Cancel")}</Button>
                   </DialogClose>
                   <DialogClose asChild>
                     <Button onClick={handleDeleteData} variant="destructive">
-                      Yes, delete my data
+                      {t("settings.account.deleteConfirmButton", "Yes, delete my data")}
                     </Button>
                   </DialogClose>
                 </DialogFooter>
@@ -325,7 +330,6 @@ const Settings = () => {
           </div>
         </CardContent>
       </Card>
-      */}
     </div>
   );
 };

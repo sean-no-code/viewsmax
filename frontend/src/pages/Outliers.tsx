@@ -752,7 +752,7 @@ export default function Outliers() {
                     />
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingLeft: 12, borderLeft: '1px solid var(--line-1)', fontSize: 12, color: 'var(--ink-on-paper-3)' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><TrendingUp size={13} stroke="#0FB67E" /> {t('outliers.search.legendScore', 'Score')}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={t('outliers.card.outlierScoreTooltip', 'Outlier score — calculated by ViewsMax, not provided by the platform')}><TrendingUp size={13} stroke="#0FB67E" /> {t('outliers.search.legendScore', 'ViewsMax score')}</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Eye size={13} /> {t('outliers.search.legendViews', 'Views')}</span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Heart size={13} /> {t('outliers.search.legendEngagement', 'Engagement')}</span>
                 </div>

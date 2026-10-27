@@ -303,6 +303,22 @@ class McpOfferConnectionToolsTest extends TestCase
         $this->assertSame(0, SocialAccount::where('user_id', $user->id)->count());
     }
 
+    public function test_disconnect_youtube_revokes_the_google_grant(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([\App\Services\Social\GoogleGrantRevoker::REVOKE_URL => \Illuminate\Support\Facades\Http::response('', 200)]);
+        $user = User::factory()->create();
+        SocialAccount::create([
+            'user_id' => $user->id, 'platform' => 'youtube', 'platform_account_id' => 'UC1', 'name' => 'Chan',
+            'access_token' => 'access-1', 'refresh_token' => 'refresh-1', 'status' => 'connected',
+        ]);
+
+        $key = $this->mcpKey($user);
+        $this->toolJson($this->callTool($key, 'disconnect_account', ['platform' => 'youtube']));
+
+        $this->assertSame(0, SocialAccount::where('user_id', $user->id)->count());
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => $r->url() === \App\Services\Social\GoogleGrantRevoker::REVOKE_URL && $r['token'] === 'refresh-1');
+    }
+
     public function test_disconnect_account_errors_when_nothing_connected(): void
     {
         $key = $this->mcpKey(User::factory()->create());

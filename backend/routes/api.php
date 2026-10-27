@@ -142,6 +142,8 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
     // Per-user preference toggles (e.g. publish-failure emails)
     Route::get('/user/settings', [\App\Http\Controllers\UserSettingsController::class, 'show']);
     Route::patch('/user/settings', [\App\Http\Controllers\UserSettingsController::class, 'update']);
+    // Settings → "Delete my data": YouTube/Google data + grant revocation.
+    Route::delete('/user-data', [\App\Http\Controllers\UserDataController::class, 'destroy']);
 
     // Boosts — like-threshold automations per connected X account
     Route::get('/boosts/settings', [\App\Http\Controllers\BoostSettingController::class, 'index']);

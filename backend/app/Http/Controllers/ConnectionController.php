@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\OAuthConnectionService;
 use App\Services\Social\SocialProviderManager;
+use App\Services\Social\YouTubeDisconnector;
 use App\Services\TikTokPublishService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -100,6 +101,8 @@ class ConnectionController extends Controller
                     'connection' => $connection->toApiArray(),
                 ],
             ]);
+        } catch (\App\Services\Social\HandleClaimedException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             Log::error('Connection exchange failed', [
                 'provider' => $provider,
@@ -168,7 +171,13 @@ class ConnectionController extends Controller
             return response()->json(['message' => 'Connection not found.'], 404);
         }
 
-        $connection->delete();
+        if ($connection->provider === 'youtube') {
+            // Revokes the Google grant and deletes this row together with the
+            // channel / social account / user tokens that share it.
+            YouTubeDisconnector::disconnect($request->user(), $connection->account_id);
+        } else {
+            $connection->delete();
+        }
 
         return response()->json(['success' => true]);
     }

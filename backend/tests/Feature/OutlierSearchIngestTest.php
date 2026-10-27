@@ -26,7 +26,6 @@ class OutlierSearchIngestTest extends TestCase
         parent::setUp();
         config()->set('services.youtube.key', 'yt_test_key');
         config()->set('services.youtube.min_outlier_score', 0); // save everything the search returns
-        config()->set('services.youtube.format_probe_delay_ms', 0);
     }
 
     private function videoItem(string $id, int $views): array
@@ -55,7 +54,6 @@ class OutlierSearchIngestTest extends TestCase
                 'statistics' => ['subscriberCount' => '9000', 'videoCount' => '12'],
             ]]], 200),
             '*/youtube/v3/playlistItems*' => Http::response(['items' => []], 200),
-            'www.youtube.com/shorts/*' => Http::response('', 303, ['Location' => 'https://www.youtube.com/watch?v=x']),
         ]);
     }
 
@@ -128,53 +126,21 @@ class OutlierSearchIngestTest extends TestCase
         $this->assertCount(4, $searchCalls); // 2 buckets × 2 pages
     }
 
-    public function test_classify_job_probes_only_unclassified_rows_and_stores_results(): void
+    public function test_classify_job_classifies_only_unclassified_rows_from_their_duration(): void
     {
-        Http::fake(['www.youtube.com/shorts/*' => function ($request) {
-            return str_ends_with($request->url(), 'short') // ids "alreadyshort"/"newshort" (every probe URL has "/shorts/")
-                ? Http::response('', 200)
-                : Http::response('', 303, ['Location' => 'https://www.youtube.com/watch?v=x']);
-        }]);
-        $done = $this->makeYoutubeVideo('alreadyshort', ['is_short' => true, 'format_checked_at' => now()]);
-        $short = $this->makeYoutubeVideo('newshort');
-        $long = $this->makeYoutubeVideo('newlong');
+        Http::fake();
+        $done = $this->makeYoutubeVideo('alreadyshort', ['is_short' => true, 'format_checked_at' => now(), 'duration' => 'PT10M']);
+        $short = $this->makeYoutubeVideo('newshort', ['duration' => 'PT59S']);
+        $long = $this->makeYoutubeVideo('newlong', ['duration' => 'PT3M1S']);
+        $noDuration = $this->makeYoutubeVideo('nodur');
 
-        app()->call([new ClassifyOutlierVideoFormatsJob(['alreadyshort', 'newshort', 'newlong']), 'handle']);
+        app()->call([new ClassifyOutlierVideoFormatsJob(['alreadyshort', 'newshort', 'newlong', 'nodur']), 'handle']);
 
-        Http::assertSentCount(2);
-        $this->assertTrue($done->fresh()->is_short);
+        Http::assertNothingSent(); // the duration rule needs no request
+        $this->assertTrue($done->fresh()->is_short); // classified rows are never re-decided
         $this->assertTrue($short->fresh()->is_short);
         $this->assertFalse($long->fresh()->is_short);
-    }
-
-    public function test_classify_job_requeues_remaining_ids_when_rate_limited(): void
-    {
-        Queue::fake();
-        Http::fake(['www.youtube.com/shorts/*' => Http::sequence()->push('', 200)->push('', 429)]);
-        $first = $this->makeYoutubeVideo('vid1');
-        $second = $this->makeYoutubeVideo('vid2');
-        $third = $this->makeYoutubeVideo('vid3');
-
-        app()->call([new ClassifyOutlierVideoFormatsJob(['vid1', 'vid2', 'vid3']), 'handle']);
-
-        $this->assertTrue($first->fresh()->is_short);
-        $this->assertNull($second->fresh()->is_short);
-        $this->assertNull($third->fresh()->is_short);
-        // The rest is retried later rather than hammering YouTube now — as attempt 2 of a capped chain.
-        Queue::assertPushed(ClassifyOutlierVideoFormatsJob::class, fn ($job) => $job->videoIds === ['vid2', 'vid3'] && $job->attempt === 2);
-    }
-
-    public function test_classify_job_stops_requeueing_after_max_retries(): void
-    {
-        Queue::fake();
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 429)]);
-        $video = $this->makeYoutubeVideo('vid1');
-
-        // A permanent bot wall must not spawn an immortal chain: the last allowed
-        // attempt logs and stops, leaving the rows for the daily backfill.
-        app()->call([new ClassifyOutlierVideoFormatsJob(['vid1'], ClassifyOutlierVideoFormatsJob::MAX_RETRIES), 'handle']);
-
-        $this->assertNull($video->fresh()->is_short);
-        Queue::assertNothingPushed();
+        $this->assertNull($noDuration->fresh()->is_short);
+        $this->assertNotNull($noDuration->fresh()->format_checked_at);
     }
 }

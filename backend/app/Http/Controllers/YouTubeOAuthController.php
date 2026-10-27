@@ -142,6 +142,13 @@ class YouTubeOAuthController extends Controller
                 // failure there must not fail the connect.
                 ImportChannelVideosJob::dispatch($channel->id);
 
+            } catch (\App\Services\Social\HandleClaimedException $e) {
+                // The channel belongs to another ViewsMax account: keep nothing
+                // from this grant and hand the grant back to Google.
+                $user->update(['youtube_access_token' => null, 'youtube_refresh_token' => null, 'youtube_token_expires_at' => null]);
+                \App\Services\Social\GoogleGrantRevoker::revoke($tokenData['refresh_token'] ?? null, $tokenData['access_token'] ?? null, ['user_id' => $user->id, 'reason' => 'handle claimed']);
+
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
             } catch (\Exception $e) {
                 Log::error('Failed to fetch/store channel data', [
                     'user_id' => $user->id,

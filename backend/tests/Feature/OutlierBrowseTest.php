@@ -140,13 +140,12 @@ class OutlierBrowseTest extends TestCase
         $this->assertSame('youtube', $data[0]['platform']);
     }
 
-    /** YouTube Data API fakes for one pasted video + the /shorts/ format probe response. */
-    private function fakeYouTubeVideoApi(int $shortsStatus, array $shortsHeaders = []): void
+    /** YouTube Data API fakes for one pasted video; the duration decides Short vs long-form. */
+    private function fakeYouTubeVideoApi(string $duration = 'PT12M5S'): void
     {
         config()->set('services.youtube.key', 'yt_test_key');
 
         \Illuminate\Support\Facades\Http::fake([
-            'www.youtube.com/shorts/*' => \Illuminate\Support\Facades\Http::response('', $shortsStatus, $shortsHeaders),
             '*/youtube/v3/videos*' => \Illuminate\Support\Facades\Http::response(['items' => [[
                 'id' => 'dQw4w9WgXcQ',
                 'snippet' => [
@@ -156,7 +155,7 @@ class OutlierBrowseTest extends TestCase
                     'thumbnails' => ['medium' => ['url' => 'https://example.com/m.jpg'], 'default' => ['url' => 'https://example.com/d.jpg']],
                 ],
                 'statistics' => ['viewCount' => '5000', 'likeCount' => '100', 'commentCount' => '10'],
-                'contentDetails' => ['duration' => 'PT2M5S'],
+                'contentDetails' => ['duration' => $duration],
             ]]], 200),
             '*/youtube/v3/channels*' => \Illuminate\Support\Facades\Http::response(['items' => [[
                 'snippet' => ['title' => 'Pasted Channel', 'country' => 'US', 'thumbnails' => ['high' => ['url' => 'https://example.com/av.jpg']]],
@@ -168,8 +167,7 @@ class OutlierBrowseTest extends TestCase
 
     public function test_fetch_by_url_ingests_a_youtube_video(): void
     {
-        // Long-form: YouTube redirects /shorts/{id} → /watch?v={id}.
-        $this->fakeYouTubeVideoApi(303, ['Location' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
+        $this->fakeYouTubeVideoApi('PT12M5S'); // long-form: over three minutes
 
         // 5000 views with no channel average → score 0, far below the outlier
         // threshold — a deliberate URL add must be stored anyway.
@@ -196,7 +194,7 @@ class OutlierBrowseTest extends TestCase
 
     public function test_fetch_by_url_marks_a_real_short(): void
     {
-        $this->fakeYouTubeVideoApi(200); // a genuine Short answers 200 at /shorts/{id}
+        $this->fakeYouTubeVideoApi('PT45S'); // three minutes or less is a Short
         \Illuminate\Support\Facades\Queue::fake();
 
         app()->call([new \App\Jobs\IngestOutlierByUrlJob('youtube', 'https://www.youtube.com/shorts/dQw4w9WgXcQ', 'dQw4w9WgXcQ'), 'handle']);

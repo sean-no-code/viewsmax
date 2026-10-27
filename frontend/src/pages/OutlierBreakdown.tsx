@@ -299,7 +299,7 @@ export default function OutlierBreakdown() {
                         <span style={pill('var(--paper-2)', 'var(--ink-on-paper-2)')}>{t('outliers.breakdown.comments', '{{comments}} comments', { comments: formatCompact(video.comment_count) })}</span>
                     )}
                     {video?.outlier_score != null && (
-                        <span style={pill('var(--vm-red-tint-l)', 'var(--vm-red-deep)')}>⚡ {t('outliers.breakdown.viral', '{{score}} viral', { score: formatScore(video.outlier_score) })}</span>
+                        <span style={pill('var(--vm-red-tint-l)', 'var(--vm-red-deep)')} title={t('outliers.card.outlierScoreTooltip', 'Outlier score — calculated by ViewsMax, not provided by the platform')}>⚡ {t('outliers.breakdown.viral', '{{score}} viral · ViewsMax score', { score: formatScore(video.outlier_score) })}</span>
                     )}
                 </div>
             </div>

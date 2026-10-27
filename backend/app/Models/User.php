@@ -199,6 +199,12 @@ class User extends Authenticatable implements Wallet
      * Get the user's active plan (active or trialing).
      * The connected social media accounts that belong to the user.
      */
+    /** Social accounts this user connected first; kept after disconnects (see HandleClaims). */
+    public function handleClaims(): HasMany
+    {
+        return $this->hasMany(SocialHandleClaim::class);
+    }
+
     public function socialAccounts(): HasMany
     {
         return $this->hasMany(SocialAccount::class);

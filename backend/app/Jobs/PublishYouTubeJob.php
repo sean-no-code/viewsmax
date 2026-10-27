@@ -16,8 +16,9 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Publish a single post's YouTube target by uploading its video via the
- * Data API resumable upload. The post's caption becomes the video
- * title/description; per-target options carry the privacy choice.
+ * Data API resumable upload. The caption becomes the description and, unless
+ * the per-target options carry an explicit title, the title too; the options
+ * also carry the privacy choice.
  */
 class PublishYouTubeJob implements ShouldQueue
 {
@@ -124,13 +125,13 @@ class PublishYouTubeJob implements ShouldQueue
             : 'private';
 
         // Posts saved before the publish-time title check could still be empty.
-        if ($titleError = CaptionRules::titleError('youtube', $caption)) {
+        if ($titleError = CaptionRules::titleError('youtube', $caption, $options['title'] ?? null)) {
             $this->markFailed($target, $titleError);
 
             return;
         }
 
-        $title = mb_substr(trim($caption), 0, 95);
+        $title = CaptionRules::youtubeTitle($caption, $options['title'] ?? null);
         $snippet = [
             'title' => $title,
             'description' => $caption,

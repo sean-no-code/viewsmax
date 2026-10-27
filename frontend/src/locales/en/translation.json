@@ -1084,7 +1084,7 @@
       "videoFallback": "Video",
       "videoNotFound": "Video not found",
       "views": "{{views}} views",
-      "viral": "{{score}} viral",
+      "viral": "{{score}} viral · ViewsMax score",
       "visualHeading": "How the frame is built",
       "watchOn": "Watch on {{platform}}",
       "whyIdeaWorks": "Why this idea works"
@@ -1094,7 +1094,7 @@
       "comments": "Comments",
       "engagement": "Engagement",
       "feature": "Feature on default feed",
-      "outlierScore": "Outlier score",
+      "outlierScore": "Outlier score · by ViewsMax",
       "removeFromLibrary": "Remove from library",
       "saveToLibrary": "Save to library",
       "subs": "{{subscribers}} subs",
@@ -1170,7 +1170,7 @@
       "filterSaveFailed": "Failed to save filter",
       "instagramSlow": "Instagram profiles can take a minute or two to scrape.",
       "legendEngagement": "Engagement",
-      "legendScore": "Score",
+      "legendScore": "ViewsMax score",
       "legendViews": "Views",
       "loadFailed": "Failed to load outliers",
       "long": "Long",
@@ -1388,11 +1388,11 @@
       "xThreadCount_other": "X thread · {{count}} posts",
       "xVideoConflict": "X can't post video — its target will be marked failed. Use images for X, or remove it from this post.",
       "yourBrand": "Your brand",
-      "youtubeCaptionHint": "The caption becomes the video title (first 95 chars) and description.",
+      "youtubeCaptionHint": "Empty = the caption's first 100 characters become the title. The caption is always the description.",
       "youtubeNeedsVideo": "YouTube needs an uploaded video.",
       "youtubePrivate": "Private (only you)",
       "youtubePublic": "Public",
-      "youtubeTitleMissing": "YouTube needs a title — add a caption, it's used as the video title.",
+      "youtubeTitleMissing": "YouTube needs a title — add one in YouTube options, or write a caption (its first 100 characters become the title).",
       "youtubeUnlisted": "Unlisted (anyone with the link)"
     },
     "drafts": {
@@ -1509,13 +1509,13 @@
   "settings": {
     "account": {
       "authRequired": "Authentication required",
-      "clearFailed": "Failed to clear local data. Please try again.",
-      "dataCleared": "Projects, analytics cache, and privacy consent cleared. YouTube connection remains.",
+      "clearFailed": "Could not delete your data. Please try again.",
+      "dataCleared": "Your YouTube data was deleted and ViewsMax's Google access revoked.",
       "disconnectChannelsFailed_one": "Failed to disconnect {{count}} channel(s)",
       "disconnectChannelsFailed_other": "Failed to disconnect {{count}} channel(s)",
       "disconnectFailed": "Could not disconnect. Please try again.",
       "noChannels": "No channels to disconnect",
-      "youtubeDisconnected": "YouTube channel disconnected"
+      "youtubeDisconnected": "YouTube disconnected and Google access revoked"
     },
     "aiAccess": {
       "accessHeading": "Access",

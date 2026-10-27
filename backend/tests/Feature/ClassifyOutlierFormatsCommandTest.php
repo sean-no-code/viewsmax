@@ -25,61 +25,50 @@ class ClassifyOutlierFormatsCommandTest extends TestCase
         ], $extra));
     }
 
-    /** 200 for ids starting "ytshort", 303 → /watch otherwise (every probe URL contains "/shorts/"). */
-    private function fakeProbes(): void
+    public function test_marks_tiktok_and_instagram_rows_short(): void
     {
-        Http::fake(['www.youtube.com/shorts/*' => function ($request) {
-            return str_contains($request->url(), '/shorts/ytshort')
-                ? Http::response('', 200)
-                : Http::response('', 303, ['Location' => 'https://www.youtube.com/watch?v=x']);
-        }]);
-    }
-
-    public function test_marks_tiktok_and_instagram_rows_short_without_probing(): void
-    {
-        Http::fake();
         $tt = $this->makeVideo('tiktok', 'tt1');
         $ig = $this->makeVideo('instagram', 'ig1');
 
-        $this->artisan('outliers:classify-formats', ['--delay-ms' => 0])->assertExitCode(0);
+        $this->artisan('outliers:classify-formats')->assertExitCode(0);
 
         $this->assertTrue($tt->fresh()->is_short);
         $this->assertTrue($ig->fresh()->is_short);
-        Http::assertNothingSent();
     }
 
-    public function test_probes_unclassified_youtube_rows_and_stores_result(): void
+    public function test_classifies_unclassified_youtube_rows_from_their_duration_without_calling_out(): void
     {
-        $this->fakeProbes();
-        $short = $this->makeVideo('youtube', 'ytshort1');
-        $long = $this->makeVideo('youtube', 'ytlong1');
+        Http::fake();
+        $short = $this->makeVideo('youtube', 'ytshort1', ['duration' => 'PT58S']);
+        $long = $this->makeVideo('youtube', 'ytlong1', ['duration' => 'PT12M']);
 
-        $this->artisan('outliers:classify-formats', ['--delay-ms' => 0])
+        $this->artisan('outliers:classify-formats')
             ->expectsOutputToContain('short 1, long 1')
             ->assertExitCode(0);
 
         $this->assertTrue($short->fresh()->is_short);
         $this->assertFalse($long->fresh()->is_short);
-        Http::assertSentCount(2);
+        Http::assertNothingSent();
     }
 
     public function test_skips_rows_already_classified_or_recently_checked(): void
     {
-        $this->fakeProbes();
-        $this->makeVideo('youtube', 'ytshortDone', ['is_short' => true, 'format_checked_at' => now()]);
-        $this->makeVideo('youtube', 'ytlongRecent', ['is_short' => null, 'format_checked_at' => now()->subHour()]);
+        $done = $this->makeVideo('youtube', 'ytDone', ['is_short' => true, 'format_checked_at' => now(), 'duration' => 'PT10M']);
+        $recent = $this->makeVideo('youtube', 'ytRecent', ['is_short' => null, 'format_checked_at' => now()->subHour(), 'duration' => 'PT10S']);
 
-        $this->artisan('outliers:classify-formats', ['--delay-ms' => 0])->assertExitCode(0);
+        $this->artisan('outliers:classify-formats')
+            ->expectsOutputToContain('classified 0')
+            ->assertExitCode(0);
 
-        Http::assertNothingSent();
+        $this->assertTrue($done->fresh()->is_short);
+        $this->assertNull($recent->fresh()->is_short);
     }
 
-    public function test_leaves_inconclusive_rows_null_but_stamps_checked_at(): void
+    public function test_leaves_duration_less_rows_null_but_stamps_checked_at(): void
     {
-        Http::fake(['www.youtube.com/shorts/*' => Http::response('', 404)]);
-        $video = $this->makeVideo('youtube', 'ytgone');
+        $video = $this->makeVideo('youtube', 'ytnodur');
 
-        $this->artisan('outliers:classify-formats', ['--delay-ms' => 0])->assertExitCode(0);
+        $this->artisan('outliers:classify-formats')->assertExitCode(0);
 
         $fresh = $video->fresh();
         $this->assertNull($fresh->is_short);
@@ -88,53 +77,33 @@ class ClassifyOutlierFormatsCommandTest extends TestCase
 
     public function test_retries_stale_unknowns_after_the_configured_days(): void
     {
-        $this->fakeProbes();
-        $stale = $this->makeVideo('youtube', 'ytshortStale', ['format_checked_at' => now()->subDays(8)]);
+        // An unknown row that has since received a duration gets decided on the next backfill.
+        $stale = $this->makeVideo('youtube', 'ytStale', ['format_checked_at' => now()->subDays(8), 'duration' => 'PT20S']);
 
-        $this->artisan('outliers:classify-formats', ['--delay-ms' => 0, '--retry-unknown-days' => 7])->assertExitCode(0);
+        $this->artisan('outliers:classify-formats', ['--retry-unknown-days' => 7])->assertExitCode(0);
 
         $this->assertTrue($stale->fresh()->is_short);
-        Http::assertSentCount(1);
     }
 
     public function test_respects_limit_option(): void
     {
-        $this->fakeProbes();
         foreach (range(1, 5) as $i) {
-            $this->makeVideo('youtube', "ytlong{$i}");
+            $this->makeVideo('youtube', "ytlong{$i}", ['duration' => 'PT10M']);
         }
 
-        $this->artisan('outliers:classify-formats', ['--delay-ms' => 0, '--limit' => 2])->assertExitCode(0);
+        $this->artisan('outliers:classify-formats', ['--limit' => 2])->assertExitCode(0);
 
-        Http::assertSentCount(2);
         $this->assertSame(3, OutlierVideo::whereNull('is_short')->count());
-    }
-
-    public function test_stops_on_rate_limit_and_leaves_remaining_rows_untouched(): void
-    {
-        Http::fake(['www.youtube.com/shorts/*' => Http::sequence()->push('', 429)->push('', 200)]);
-        $a = $this->makeVideo('youtube', 'yta');
-        $b = $this->makeVideo('youtube', 'ytb');
-
-        $this->artisan('outliers:classify-formats', ['--delay-ms' => 0])
-            ->expectsOutputToContain('Rate limited')
-            ->assertExitCode(0);
-
-        Http::assertSentCount(1);
-        $this->assertNull($a->fresh()->is_short);
-        $this->assertNull($b->fresh()->is_short);
     }
 
     public function test_dry_run_changes_nothing(): void
     {
-        Http::fake();
         $tt = $this->makeVideo('tiktok', 'tt1');
-        $yt = $this->makeVideo('youtube', 'ytshort1');
+        $yt = $this->makeVideo('youtube', 'ytshort1', ['duration' => 'PT10S']);
 
         $this->artisan('outliers:classify-formats', ['--dry-run' => true])->assertExitCode(0);
 
         $this->assertNull($tt->fresh()->is_short);
         $this->assertNull($yt->fresh()->is_short);
-        Http::assertNothingSent();
     }
 }

@@ -7,6 +7,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\SocialConnect;
 use App\Services\Social\SocialConnectException;
 use App\Services\Social\SocialProviderManager;
+use App\Services\Social\YouTubeDisconnector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -161,7 +162,14 @@ class SocialAccountController extends Controller
     public function destroy(int $id)
     {
         $account = Auth::user()->socialAccounts()->findOrFail($id);
-        $account->delete();
+
+        // YouTube: revoke the Google grant and clear every store that shares
+        // it (this row, the channel, the legacy connection, the user tokens).
+        if ($account->platform === 'youtube') {
+            YouTubeDisconnector::disconnect(Auth::user(), $account->platform_account_id);
+        } else {
+            $account->delete();
+        }
 
         return response()->json([
             'success' => true,

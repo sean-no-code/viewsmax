@@ -21,6 +21,7 @@ class UserSafeError
     /** Exact classes whose message was written for end users. */
     private const SAFE_CLASSES = [
         \RuntimeException::class,
+        \App\Services\Social\HandleClaimedException::class,
         \InvalidArgumentException::class,
         TranscriptUnavailableException::class,
         GeminiVideoException::class,

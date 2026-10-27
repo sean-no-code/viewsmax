@@ -359,6 +359,68 @@ class PublishYouTubeJobTest extends TestCase
         $this->assertStringContainsString('reconnect', strtolower((string) $target->error));
     }
 
+    public function test_an_explicit_title_option_is_sent_as_the_video_title_with_the_caption_as_description(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['id' => 'yt-vid-1'], 200),
+        ]);
+        $user = User::factory()->create();
+        $target = $this->videoPost($user)->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $this->ytAccount($user)->id,
+            'status' => PostTarget::STATUS_PENDING,
+            'options' => ['privacy_status' => 'public', 'title' => 'Chosen title', 'community_guidelines_accepted' => true],
+        ]);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status, (string) $target->error);
+        Http::assertSent(fn (Request $r) => $r->method() === 'POST'
+            && $r['snippet']['title'] === 'Chosen title'
+            && $r['snippet']['description'] === 'My video');
+    }
+
+    public function test_without_a_title_option_the_caption_is_cut_at_youtubes_100_not_shorter(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['id' => 'yt-vid-1'], 200),
+        ]);
+        $user = User::factory()->create();
+        $post = $this->videoPost($user);
+        $post->forceFill(['caption' => str_repeat('a', 120)])->save();
+        $target = $post->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $this->ytAccount($user)->id,
+            'status' => PostTarget::STATUS_PENDING,
+            'options' => ['privacy_status' => 'public', 'title' => ''],
+        ]);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status, (string) $target->error);
+        Http::assertSent(fn (Request $r) => $r->method() === 'POST' && mb_strlen($r['snippet']['title']) === 100);
+    }
+
+    public function test_a_title_youtube_would_refuse_fails_before_uploading(): void
+    {
+        Http::fake();
+        $user = User::factory()->create();
+        $target = $this->videoPost($user)->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $this->ytAccount($user)->id,
+            'status' => PostTarget::STATUS_PENDING,
+            'options' => ['privacy_status' => 'public', 'title' => 'No <tags> here'],
+        ]);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+        $this->assertStringContainsString('< or >', $target->error);
+        Http::assertNothingSent();
+    }
+
     public function test_untitled_post_fails_instead_of_uploading_with_a_placeholder_title(): void
     {
         Http::fake();

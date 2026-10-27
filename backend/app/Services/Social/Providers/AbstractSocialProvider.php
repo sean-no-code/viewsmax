@@ -2,6 +2,7 @@
 
 namespace App\Services\Social\Providers;
 
+use App\Services\Social\HandleClaims;
 use App\Exceptions\TransientPublishException;
 use App\Models\SocialAccount;
 use App\Models\SocialPost;
@@ -216,6 +217,9 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
     protected function storeAccount(User $user, array $attributes): SocialAccount
     {
         $platformAccountId = $attributes['platform_account_id'] ?? null;
+
+        // Refused (HandleClaimedException) when the account belongs to another ViewsMax user.
+        HandleClaims::claim($user, $this->platform, $platformAccountId, $attributes['username'] ?? $attributes['name'] ?? null);
 
         // A reconnect that omits refresh_token (LinkedIn, Google without a
         // fresh consent) must not wipe the stored one — that forces a reconnect

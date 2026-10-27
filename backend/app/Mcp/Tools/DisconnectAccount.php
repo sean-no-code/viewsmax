@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Services\Social\YouTubeDisconnector;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
@@ -43,7 +44,13 @@ class DisconnectAccount extends ViewsMaxTool
         // Accounts live in two stores (newer SocialAccount + legacy Connection);
         // remove from both, mirroring what the Connections page offers. Beehiiv
         // is a separate connection type (API key, not OAuth) in its own model.
-        $removed = $user->socialAccounts()->where('platform', $platform)->delete()
+        $removed = 0;
+        if ($platform === 'youtube') {
+            // Revokes the Google grant and clears every store that shares it.
+            $result = YouTubeDisconnector::disconnect($user);
+            $removed += $result['social_accounts'] + $result['connections'] + $result['channels'];
+        }
+        $removed += $user->socialAccounts()->where('platform', $platform)->delete()
             + $user->connections()->where('provider', $platform)->delete();
 
         if ($platform === 'beehiiv') {

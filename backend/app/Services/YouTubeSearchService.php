@@ -239,9 +239,9 @@ class YouTubeSearchService
         }
         if (isset($filters['duration_type'])) {
             $wantShorts = $filters['duration_type'] === OutlierVideo::DURATION_TYPE_SHORTS;
-            // Classified rows are authoritative (is_short comes from YouTube's own
-            // /shorts/ URL, or the platform rule for TikTok/Instagram). Rows not yet
-            // classified fall back to the legacy platform + duration rule.
+            // Classified rows are authoritative (is_short from the duration rule in
+            // VideoFormatClassifier, or the platform rule for TikTok/Instagram). Rows
+            // not yet classified fall back to the same platform + duration rule in SQL.
             $query->where(function ($q) use ($wantShorts) {
                 $q->whereRaw('videos.is_short IS '.($wantShorts ? 'TRUE' : 'FALSE'))
                     ->orWhere(function ($qq) use ($wantShorts) {
@@ -253,7 +253,7 @@ class YouTubeSearchService
     }
 
     /**
-     * Legacy rule for rows without a classification: TikTok/Instagram are shorts;
+     * Rule for rows without a classification: TikTok/Instagram are shorts;
      * YouTube goes by duration (≤ SHORTS_MAX_SECONDS = short; null, > max, or the
      * 0s of live streams/premieres = long). The duration parsing is Postgres-only,
      * so on other drivers (SQLite tests) unclassified YouTube rows count as long.

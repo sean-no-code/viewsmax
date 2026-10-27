@@ -137,7 +137,7 @@ function ShortsBody({ video, isIG, tier, handle }: { video: OutlierVideo; isIG: 
                     </span>
                 ) : (
                     <>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: tier.scoreColor }} title={t('outliers.card.outlierScore', 'Outlier score')}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: tier.scoreColor }} title={t('outliers.card.outlierScoreTooltip', 'Outlier score — calculated by ViewsMax, not provided by the platform')}>
                             <TrendingUp size={13} />{formatScore(video.outlier_score)}
                         </span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={t('outliers.card.views', 'Views')}>
@@ -175,7 +175,7 @@ function LongBody({ video, isIG, tier, score, barWidth }: {
                         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 26, lineHeight: 1, color: tier.scoreColor }}>
                             {formatScore(video.outlier_score)}{tier.emoji ? ' ' : ''}
                         </div>
-                        <div style={{ ...eyebrow, marginTop: 3 }}>{t('outliers.card.outlierScore', 'Outlier score')}</div>
+                        <div style={{ ...eyebrow, marginTop: 3 }} title={t('outliers.card.outlierScoreTooltip', 'Outlier score — calculated by ViewsMax, not provided by the platform')}>{t('outliers.card.outlierScore', 'Outlier score · by ViewsMax')}</div>
                         <div style={{ position: 'relative', height: 6, background: 'var(--paper-2)', borderRadius: 'var(--r-pill)', marginTop: 8 }}>
                             <div style={{ position: 'absolute', inset: 0, width: barWidth, background: tier.barColor, borderRadius: 'var(--r-pill)' }} />
                             {tier.emoji && (

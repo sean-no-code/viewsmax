@@ -24,6 +24,9 @@ class OAuthConnectionService
             default => throw new Exception("Unsupported provider: {$provider}"),
         };
 
+        // Refused (HandleClaimedException) when the account belongs to another ViewsMax user.
+        \App\Services\Social\HandleClaims::claim($user, $provider, $profile['account_id'] ?? null, $profile['account_name'] ?? null);
+
         $connection = Connection::updateOrCreate(
             ['user_id' => $user->id, 'provider' => $provider],
             [

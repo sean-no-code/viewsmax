@@ -63,6 +63,12 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   this host via `App\Services\Social\SocialConnect` + `/connect/{platform}/callback`) and then back
   to the Passport consent screen; every provider app must allow that callback URL.
 
+- **Handle claims.** `social_handle_claims` (`App\Services\Social\HandleClaims::claim`) records which user first
+  connected each social account (platform + platform account id + handle) and is never deleted — not on
+  disconnect, not by `DELETE /api/user-data`. Every connect path calls it (`AbstractSocialProvider::storeAccount`,
+  `YouTubeChannelService::createOrUpdateChannel`, `OAuthConnectionService::exchange`); another user connecting the
+  same account gets `HandleClaimedException` ("sign in with that account"). New connect paths must call it too.
+
 - **Access gating.** `App\Support\UserAccess::denial($user)` is the single rule set for "may this user use
   ViewsMax right now" (unverified email, then `access_expired`: no active/trialing plan and no open free
   window — a user with no window at all is expired too — then the paywall: onboarding not finished and no

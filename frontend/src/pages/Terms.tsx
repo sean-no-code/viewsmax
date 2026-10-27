@@ -80,7 +80,9 @@ const Terms = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Disconnect and Data Deletion</h2>
             <p className="text-muted-foreground leading-relaxed">
-              You may disconnect your YouTube account at any time at
+              You may disconnect your YouTube account at any time from the Connections page or
+              {" "}
+              <Link to="/dashboard/settings" className="text-primary hover:underline">Settings</Link>; disconnecting revokes ViewsMax's access to your Google account and deletes the stored tokens. You can also revoke access at
               {" "}
               <a href="https://myaccount.google.com/permissions" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Google Account Permissions</a>.
               {" "}
@@ -115,7 +117,10 @@ const Terms = () => {
               <li><a href="https://policies.google.com/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a></li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              We request only the read‑only YouTube scopes necessary to provide user‑facing features: <code className="bg-muted px-2 py-1 rounded">youtube.readonly</code> and <code className="bg-muted px-2 py-1 rounded">yt-analytics.readonly</code>. We use Google user data solely to provide or improve user‑facing features in accordance with the Limited Use requirements; we do not sell Google user data, we do not transfer it to third parties except as necessary to provide the Service with your consent or as required by law, we do not use it for advertising or retargeting, and we do not allow human access except with your consent or for security, compliance, or troubleshooting.
+              We request only the YouTube scopes necessary to provide user‑facing features: <code className="bg-muted px-2 py-1 rounded">youtube.readonly</code> and <code className="bg-muted px-2 py-1 rounded">yt-analytics.readonly</code> to read your channel, videos and analytics, and <code className="bg-muted px-2 py-1 rounded">youtube.upload</code> to upload videos to your own channel. We use Google user data solely to provide or improve user‑facing features in accordance with the Limited Use requirements; we do not sell Google user data, we do not transfer it to third parties except as necessary to provide the Service with your consent or as required by law, we do not use it for advertising or retargeting, and we do not allow human access except with your consent or for security, compliance, or troubleshooting.
+            </p>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              <strong className="text-foreground">YouTube uploads:</strong> with the <code className="bg-muted px-2 py-1 rounded">youtube.upload</code> permission, ViewsMax uploads a video to your YouTube channel only when you (or an AI assistant acting on your explicit instruction) publish or schedule a post that targets YouTube. You choose the title, description and visibility (public, unlisted or private) of every upload, and you are responsible for ensuring that each video complies with the <a href="https://www.youtube.com/howyoutubeworks/policies/community-guidelines/" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">YouTube Community Guidelines</a> and the YouTube Terms of Service. ViewsMax never uploads, edits or deletes videos on its own, and it does not modify videos you did not publish through the Service.
             </p>
             <p className="text-muted-foreground leading-relaxed">
               You may revoke our access to your Google account data at any time at <a href="https://myaccount.google.com/permissions" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">myaccount.google.com/permissions</a>.

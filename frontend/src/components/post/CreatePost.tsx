@@ -85,7 +85,10 @@ const todayStr = () => {
 // Instagram comments, Threads replies. Each comment can wait a delay after the
 // previous message in the chain (presets + custom minutes).
 const youtubeTitleMsg = (t: TFunction) =>
-  t("post.composer.youtubeTitleMissing", "YouTube needs a title — add a caption, it's used as the video title.");
+  t("post.composer.youtubeTitleMissing", "YouTube needs a title — add one in YouTube options, or write a caption (its first 100 characters become the title).");
+
+// YouTube's own title limit; API Services Developer Policies forbid setting a shorter one.
+const YOUTUBE_TITLE_MAX = 100;
 
 const COMMENT_PLATFORMS = ["x", "linkedin", "threads", "instagram"];
 const DELAY_SECONDS = [0, 60, 120, 300, 600, 900, 1800, 3600, 7200];
@@ -610,7 +613,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     : pinterestNeedsCover ? t("post.composer.pinterest.coverBlock", "Add a cover image for the Pinterest video Pin.")
     : pinterestMixedShapes ? t("post.composer.pinterest.mixedShapesBlock", "Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image.")
     : null;
-  const blockReason = tiktokBlockReason ?? pinterestBlockReason;
+  // YouTube: the Community Guidelines confirmation (YouTube options tab) is mandatory before an upload.
+  const youtubeBlockReason: string | null = c.selected.includes("youtube") && !c.youtube.community_guidelines_accepted
+    ? t("post.composer.youtubeGuidelinesBlock", "Confirm the video follows YouTube's Community Guidelines (YouTube options) before publishing.")
+    : null;
+  const blockReason = tiktokBlockReason ?? youtubeBlockReason ?? pinterestBlockReason;
 
   // Shared cover uploader — one uploaded image drives both the YouTube thumbnail
   // and the Instagram Reel cover, so the same control renders in either tab.
@@ -660,6 +667,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     if (status !== "draft" && c.selected.includes("youtube") && !c.media.some((m) => m.type === "video" && m.url)) {
       toast.error(t("post.composer.youtubeNeedsVideo", "YouTube needs an uploaded video.")); return;
     }
+    if (status !== "draft" && youtubeBlockReason) { toast.error(youtubeBlockReason); return; }
     // Every Pin is an image or a video, and a video Pin needs a cover image.
     if (status !== "draft" && c.selected.includes("pinterest") && !c.media.some((m) => m.url)) {
       toast.error(t("post.composer.pinterest.needsMedia", "Pinterest needs an uploaded image or video.")); return;
@@ -1235,6 +1243,23 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                 {activeOptTab === "youtube" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>
+                        <span>{t("post.composer.youtubeTitle", "Title")}</span>
+                        {/* YouTube's own limit; API Services Developer Policies forbid a shorter one. */}
+                        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: (c.youtube.title ?? "").length >= YOUTUBE_TITLE_MAX ? "var(--vm-red)" : "var(--ink-on-paper-3)" }}>{(c.youtube.title ?? "").length}/{YOUTUBE_TITLE_MAX}</span>
+                      </span>
+                      <input
+                        value={c.youtube.title ?? ""}
+                        maxLength={YOUTUBE_TITLE_MAX}
+                        placeholder={t("post.composer.youtubeTitlePlaceholder", "Leave empty to use the caption")}
+                        onChange={(e) => c.patchYoutube({ title: e.target.value.replace(/[<>]/g, "") })}
+                        style={{ ...fieldBase, maxWidth: "100%" }}
+                      />
+                      <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+                        {t("post.composer.youtubeCaptionHint", "Empty = the caption's first 100 characters become the title. The caption is always the description.")}
+                      </span>
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.visibility", "Visibility")}</span>
                       <select
                         value={c.youtube.privacy_status}
@@ -1246,9 +1271,20 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         <option value="private">{t("post.composer.youtubePrivate", "Private (only you)")}</option>
                       </select>
                     </label>
-                    <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
-                      {t("post.composer.youtubeCaptionHint", "The caption becomes the video title (first 95 chars) and description.")}
-                    </span>
+                    {/* Required before a YouTube upload can go out; stored with the target. */}
+                    <div style={{ borderTop: "1px solid var(--line-1)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                      <Toggle label={t("post.composer.youtubeGuidelines", "This video follows YouTube's Community Guidelines")} checked={!!c.youtube.community_guidelines_accepted} onChange={(v) => c.patchYoutube({ community_guidelines_accepted: v })} />
+                      <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+                        <Trans
+                          i18nKey="post.composer.youtubeGuidelinesHint"
+                          defaults="Read the <0>Community Guidelines</0> and the <1>YouTube Terms of Service</1>. Videos that break them can be removed by YouTube."
+                          components={[
+                            <a key="cg" href="https://www.youtube.com/howyoutubeworks/policies/community-guidelines/" target="_blank" rel="noopener noreferrer" style={policyLink} />,
+                            <a key="tos" href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer" style={policyLink} />,
+                          ]}
+                        />
+                      </span>
+                    </div>
                     {mediaVideoPost && coverUploaderBlock("YouTube")}
                   </div>
                 )}

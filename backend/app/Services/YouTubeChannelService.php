@@ -282,7 +282,7 @@ class YouTubeChannelService
         foreach ($items as $item) {
             $videoDbData = $this->mapVideoDataToDatabase($item);
             $videoDbData['views'] = (int) ($videoDbData['view_count'] ?? 0);
-            // No is_short here on purpose: the /shorts/ probe job is authoritative.
+            // No is_short here on purpose: the classify job (duration rule) is authoritative.
             $video = $this->saveOutlierVideo($videoDbData, $channel, $this->computeOutlierScore($videoDbData['views'], (float) $median), true);
             if ($video) {
                 $ids[] = $video->youtube_video_id;
@@ -679,13 +679,9 @@ class YouTubeChannelService
             $video->forceFill(['manually_added' => true])->save();
         }
 
-        // Classify inline (one probe) so the breakdown page gets the right shape
-        // immediately. The add must never fail because of the probe.
-        try {
-            app(\App\Services\VideoFormatClassifier::class)->ensureClassified($video);
-        } catch (\App\Services\Exceptions\ProbeRateLimited $e) {
-            Log::warning('[shorts-probe] rate limited during URL add — left unclassified', ['video_id' => $videoId]);
-        }
+        // Classify inline (duration rule, no request) so the breakdown page gets
+        // the right shape immediately.
+        app(\App\Services\VideoFormatClassifier::class)->ensureClassified($video);
 
         return $video->load('channel');
     }
@@ -1137,6 +1133,9 @@ class YouTubeChannelService
             $channelAttributes['youtube_token_expires_at'] = now()->addSeconds($tokenData['expires_in'] ?? 3600);
             $channelAttributes['oauth_scopes'] = json_encode($scopes);
         }
+
+        // Refused (HandleClaimedException) when the channel belongs to another ViewsMax user.
+        \App\Services\Social\HandleClaims::claim($user, 'youtube', $channelData['id'], $channelAttributes['custom_url'] ?? $channelAttributes['channel_name'] ?? null);
 
         // Check for an existing public channel (orphan) and claim it
         $publicChannel = Channel::where('youtube_channel_id', $channelData['id'])

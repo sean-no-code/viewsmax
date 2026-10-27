@@ -589,6 +589,12 @@ export interface TikTokOptions {
 export interface YouTubeOptions {
   // Visibility the uploaded video is published with.
   privacy_status: "public" | "unlisted" | "private";
+  // Video title (YouTube's own limit: 100 chars, no < or >). Empty = the
+  // caption's first 100 characters; the caption is always the description.
+  title?: string;
+  // The composer's confirmation that the video follows YouTube's Community
+  // Guidelines; publishing to YouTube is blocked until it is given.
+  community_guidelines_accepted?: boolean;
 }
 
 export interface LinkedInOptions {
@@ -1746,10 +1752,14 @@ class ViewsMaxApiService {
       });
 
       if (!response.ok) {
+        // A refusal written for the user (e.g. the channel belongs to another
+        // ViewsMax account) comes back as { message }; show it as is.
         const errorData = await response.text();
+        let message: string | undefined;
+        try { message = JSON.parse(errorData)?.message || undefined; } catch { /* not JSON */ }
         return {
           success: false,
-          error: `Token exchange failed: ${response.status} - ${errorData}`
+          error: message || `Token exchange failed: ${response.status} - ${errorData}`
         };
       }
 
@@ -4987,9 +4997,11 @@ class ViewsMaxApiService {
 
       if (!response.ok) {
         const errorData = await response.text();
+        let message: string | undefined;
+        try { message = JSON.parse(errorData)?.message || undefined; } catch { /* not JSON */ }
         return {
           success: false,
-          error: `Connection failed: ${response.status} - ${errorData}`
+          error: message || `Connection failed: ${response.status} - ${errorData}`
         };
       }
 

@@ -167,20 +167,50 @@ final class CaptionRules
         return "Caption is {$over} {$chars} over {$label}'s {$limit} limit.";
     }
 
+    /** YouTube's own title limit (characters). Never set a shorter one: API Services Developer Policies III.E.4.d. */
+    public const YOUTUBE_TITLE_MAX = 100;
+
     /**
-     * YouTube rejects an empty video title, and the caption is the title, so
-     * a YouTube post can't go out without one. Null means the text is fine.
+     * YouTube rejects an empty video title. The title is the explicit
+     * options.youtube.title when set, else the caption, so a YouTube post can't
+     * go out with neither. Null means the title is fine.
      */
-    public static function titleError(string $platform, string $text): ?string
+    public static function titleError(string $platform, string $text, ?string $title = null): ?string
     {
-        if ($platform !== 'youtube' || trim($text) !== '') {
+        if ($platform !== 'youtube') {
             return null;
         }
 
-        return self::YOUTUBE_TITLE_REQUIRED;
+        $title = trim((string) $title);
+        if ($title !== '') {
+            return self::youtubeTitleError($title);
+        }
+
+        return trim($text) !== '' ? null : self::YOUTUBE_TITLE_REQUIRED;
     }
 
-    public const YOUTUBE_TITLE_REQUIRED = 'YouTube requires a title. Add a caption — it is used as the video title.';
+    /** The video title YouTube will receive: the explicit title, else the caption's first 100 characters. */
+    public static function youtubeTitle(string $caption, ?string $title = null): string
+    {
+        $title = trim((string) $title);
+
+        return $title !== '' ? $title : mb_substr(trim($caption), 0, self::YOUTUBE_TITLE_MAX);
+    }
+
+    /** Mirrors YouTube's invalidTitle rule so the composer/API refuse what the upload would. */
+    public static function youtubeTitleError(string $title): ?string
+    {
+        if (mb_strlen($title) > self::YOUTUBE_TITLE_MAX) {
+            return 'YouTube titles are limited to '.self::YOUTUBE_TITLE_MAX.' characters.';
+        }
+        if (preg_match('/[<>]/', $title)) {
+            return 'YouTube titles cannot contain < or >.';
+        }
+
+        return null;
+    }
+
+    public const YOUTUBE_TITLE_REQUIRED = 'YouTube requires a title. Add one in the YouTube options, or write a caption — its first 100 characters become the title.';
 
     /** Display names for validation messages. */
     public const PLATFORM_LABELS = [

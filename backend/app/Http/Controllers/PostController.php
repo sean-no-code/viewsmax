@@ -71,6 +71,8 @@ class PostController extends Controller
      * @bodyParam options.tiktok.privacy_level string TikTok privacy, e.g. SELF_ONLY or PUBLIC_TO_EVERYONE. Example: SELF_ONLY
      * @bodyParam options.tiktok.auto_add_music boolean Auto-add TikTok's recommended music to a photo slideshow. Slideshows only; ignored for video. Defaults to false. Example: false
      * @bodyParam options.youtube.privacy_status string public, unlisted, or private. Example: public
+     * @bodyParam options.youtube.title string Video title (max 100, no < or >). Empty = the caption's first 100 characters. Example: My new video
+     * @bodyParam options.youtube.community_guidelines_accepted boolean The composer's confirmation that the video follows YouTube's Community Guidelines. Example: true
      * @bodyParam options.instagram.cover_url string Public cover image URL for an Instagram Reel.
      * @bodyParam options.linkedin.first_comment string A comment auto-posted right after publishing.
      * @bodyParam options.pinterest.board_ids object Board per Pinterest account, keyed by social_account_id (boards from GET /api/social/accounts/{id}/boards). Required to publish; never chosen for you.
@@ -233,6 +235,12 @@ class PostController extends Controller
         // API spec) are checked even on drafts. A separate validator: nested
         // rules in the one above would strip every other platform's options
         // from the validated data.
+        // YouTube's own title limit applies as typed (the upload would refuse more).
+        Validator::make($request->input('options.youtube') ?? [], [
+            'title' => 'nullable|string|max:'.\App\Services\Social\CaptionRules::YOUTUBE_TITLE_MAX,
+            'community_guidelines_accepted' => 'nullable|boolean',
+        ])->validate();
+
         Validator::make($request->input('options.pinterest') ?? [], [
             'board_id' => 'nullable|string|max:64',
             'board_ids' => 'nullable|array',
@@ -322,6 +330,10 @@ class PostController extends Controller
                 ? $post->targets()->pluck('caption_override', 'platform')->filter()->all()
                 : [];
             $effectiveOverrides = ($data['overrides'] ?? null) !== null ? $data['overrides'] : $savedOverrides;
+            // An explicit YouTube title stands in for the caption; absent from the payload, the saved one counts.
+            $youtubeTitle = array_key_exists('options', $data)
+                ? data_get($data, 'options.youtube.title')
+                : data_get($post?->targets()->where('platform', 'youtube')->first()?->options, 'title');
 
             foreach (array_unique($platformList) as $platform) {
                 $override = $effectiveOverrides[$platform] ?? '';
@@ -330,7 +342,7 @@ class PostController extends Controller
                 $errors = $platform === 'x'
                     ? \App\Services\Social\CaptionRules::xThreadErrors($text)
                     : array_filter([
-                        \App\Services\Social\CaptionRules::titleError($platform, $text),
+                        \App\Services\Social\CaptionRules::titleError($platform, $text, $platform === 'youtube' ? $youtubeTitle : null),
                         \App\Services\Social\CaptionRules::captionError($platform, $text),
                     ]);
 

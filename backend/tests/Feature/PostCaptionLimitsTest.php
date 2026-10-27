@@ -315,6 +315,55 @@ class PostCaptionLimitsTest extends TestCase
             ->assertJsonFragment(['message' => \App\Services\Social\CaptionRules::YOUTUBE_TITLE_REQUIRED]);
     }
 
+    public function test_an_explicit_youtube_title_stands_in_for_the_caption(): void
+    {
+        $this->createPost([
+            'caption' => '',
+            'platforms' => ['youtube'],
+            'options' => ['youtube' => ['title' => 'My video title', 'privacy_status' => 'public']],
+            'media' => self::YT_VIDEO,
+            'status' => 'posted',
+        ])->assertStatus(201);
+    }
+
+    public function test_a_saved_youtube_title_counts_when_publishing_a_draft(): void
+    {
+        $id = $this->createPost([
+            'platforms' => ['youtube'],
+            'options' => ['youtube' => ['title' => 'Saved title']],
+            'media' => self::YT_VIDEO,
+            'status' => 'draft',
+        ])->json('id');
+
+        $this->withHeaders($this->auth())
+            ->putJson("/api/posts/{$id}", ['status' => 'posted', 'media' => self::YT_VIDEO])
+            ->assertStatus(200);
+    }
+
+    public function test_youtube_title_over_youtubes_own_limit_is_rejected_even_on_drafts(): void
+    {
+        $this->createPost([
+            'caption' => 'x',
+            'platforms' => ['youtube'],
+            'options' => ['youtube' => ['title' => str_repeat('a', 101)]],
+            'status' => 'draft',
+        ])->assertStatus(422);
+    }
+
+    public function test_youtube_title_with_angle_brackets_is_rejected_when_publishing(): void
+    {
+        $response = $this->createPost([
+            'caption' => 'fine caption',
+            'platforms' => ['youtube'],
+            'options' => ['youtube' => ['title' => 'Bad <b>title</b>']],
+            'media' => self::YT_VIDEO,
+            'status' => 'posted',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('< or >', $response->json('message'));
+    }
+
     /* ---------- Bluesky counts graphemes, not code points ---------- */
 
     public function test_bluesky_counts_graphemes_so_emoji_sequences_and_combining_marks_fit(): void

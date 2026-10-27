@@ -49,10 +49,10 @@ export function formatDuration(iso: string | null | undefined): string | null {
 }
 
 /**
- * THE shorts/long rule for the UI. Backend classification (`is_short`, from
- * YouTube's own /shorts/ URL) wins; TikTok/Instagram are short-form by
- * definition; otherwise fall back to the legacy ≤180s duration rule for rows
- * not yet classified (P0D live streams / null durations count as long).
+ * THE shorts/long rule for the UI. Backend classification (`is_short`, the
+ * same ≤180s duration rule) wins; TikTok/Instagram are short-form by
+ * definition; otherwise apply the ≤180s duration rule here for rows not yet
+ * classified (P0D live streams / null durations count as long).
  */
 export function isShortVideo(video: { platform: string; is_short?: boolean | null; duration?: string | null }): boolean {
     if (typeof video.is_short === 'boolean') return video.is_short;

@@ -87,6 +87,8 @@ class SocialConnect
 
         try {
             $accounts = $this->manager->for($platform)->connectFromCode($user, $code, $redirectUri, $options);
+        } catch (HandleClaimedException $e) {
+            throw $e; // already worded for the user
         } catch (Throwable $e) {
             throw new SocialConnectException('Failed to connect '.$platform.': '.$e->getMessage(), 0, $e);
         }
@@ -116,6 +118,8 @@ class SocialConnect
     {
         try {
             $accounts = $this->manager->for($platform)->connectWithCredentials($user, $data);
+        } catch (HandleClaimedException $e) {
+            throw $e; // already worded for the user
         } catch (Throwable $e) {
             throw new SocialConnectException('Failed to connect '.$platform.': '.$e->getMessage(), 0, $e);
         }
