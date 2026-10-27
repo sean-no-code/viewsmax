@@ -26,8 +26,13 @@
 
         <div class="terms">
             @if ($trialEnd)
+                @if ($activationFee > 0)
                 <b>${{ $activationFee }} today · free until {{ $trialEnd->format('j M') }}</b>
                 <span>Only the ${{ $activationFee }} activation fee is charged before {{ $trialEnd->format('j M') }}; your plan renews monthly from then. Cancel anytime.</span>
+                @else
+                <b>Free until {{ $trialEnd->format('j M') }} · nothing charged today</b>
+                <span>Your card is saved but not charged before {{ $trialEnd->format('j M') }}; your plan renews monthly from then. Cancel anytime.</span>
+                @endif
             @else
                 <b>Charged today, then monthly</b>
                 <span>Your free trial has ended, so your card is charged now. Cancel anytime.</span>
@@ -57,7 +62,7 @@
                 <div id="payment-element" style="margin-top: 18px;"></div>
                 <div id="payment-error" class="error" style="display: none; margin-top: 12px;"></div>
                 <button type="submit" class="btn btn-primary" id="billing-submit" style="margin-top: 18px;">
-                    {{ $trialEnd ? 'Start free trial — $'.$activationFee.' today' : 'Subscribe now' }}
+                    {{ $trialEnd ? ($activationFee > 0 ? 'Start free trial — $'.$activationFee.' today' : 'Start free trial — nothing charged today') : 'Subscribe now' }}
                 </button>
             @else
                 <div class="error" style="margin-top: 18px;">Payments aren't available right now. Please try again in a moment or contact support.</div>

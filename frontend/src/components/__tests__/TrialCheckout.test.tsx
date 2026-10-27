@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 // Onboarding's card step. The wording and the "due today" amount follow the
-// user's free window: open = a trial that charges the $1 activation fee now
-// and the plan price when it closes; closed = the plan price today.
+// user's free window: open = a trial that saves the card without charging it
+// and charges the plan price when it closes; closed = the plan price today.
 const authState = vi.hoisted(() => ({ user: null as null | Record<string, unknown> }));
 const api = vi.hoisted(() => ({ getPlans: vi.fn(), createStripeSetupIntent: vi.fn() }));
 
@@ -28,15 +28,16 @@ describe("TrialCheckout", () => {
     api.getPlans.mockResolvedValue({ success: true, data: [plan] });
   });
 
-  it("charges the $1 activation fee today while the free window is open", async () => {
+  it("charges nothing today while the free window is open", async () => {
     authState.user = { id: 1, email: "jane@example.com", promo_expires_at: new Date(Date.now() + 5 * 86_400_000).toISOString() };
     render(<TrialCheckout onSubscribed={() => {}} />);
 
     expect((await screen.findAllByText("Creator")).length).toBeGreaterThan(0);
-    expect(screen.getByText("$1.00")).toBeInTheDocument();
-    expect(screen.getByText(/^\$1 today · free until/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Start free trial — \$1 today/ })).toBeInTheDocument();
-    expect(screen.getByText(/A \$1 activation fee is charged now/)).toBeInTheDocument();
+    expect(screen.getByText("$0.00")).toBeInTheDocument();
+    expect(screen.getByText(/^Free until .* · nothing charged today/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Start free trial — nothing charged today/ })).toBeInTheDocument();
+    expect(screen.getByText(/Your card is saved but not charged/)).toBeInTheDocument();
+    expect(screen.queryByText(/\$1/)).toBeNull();
     expect(screen.queryByText("$29.00")).toBeNull();
   });
 

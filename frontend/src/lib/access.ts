@@ -15,11 +15,12 @@ export interface AccessUser {
 
 /**
  * Charged the day a free trial starts, as a one-time Stripe price
- * (STRIPE_ACTIVATION_FEE_PRICE_ID on the backend). Used for the amounts shown
- * at checkout; the "$1" in the prose copy is written out, so grep for it too
- * if this changes.
+ * (STRIPE_ACTIVATION_FEE_PRICE_ID on the backend). 0 since 2026-10-25: a card
+ * is required to start the trial but nothing is charged until it ends. Used
+ * for the amount shown at checkout; the prose copy in StripeTrialStep,
+ * Plans.tsx and the landing copy is written out, so revisit it if this changes.
  */
-export const ACTIVATION_FEE_USD = 1;
+export const ACTIVATION_FEE_USD = 0;
 
 /**
  * Onboarding's card step is skipped only for an admin-created promotional

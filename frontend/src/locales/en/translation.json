@@ -379,7 +379,7 @@
       "renews": "Renews <0>{{date}}</0>",
       "trialEndedIntro": "Your free trial has ended. Pick the tier that fits how you grow.",
       "trialEnds": "Free trial · ends <0>{{date}}</0>",
-      "trialIntro": "7-day free trial for a $1 activation fee, then pick the tier that fits how you grow.",
+      "trialIntro": "7-day free trial — add a card, nothing is charged until it ends — then pick the tier that fits how you grow.",
       "unexpectedError": "An unexpected error occurred. Please try again.",
       "unlimitedChannels": "Unlimited channels",
       "unlimitedOffers": "Unlimited offers",
@@ -498,9 +498,9 @@
       },
       "window": {
         "busy": "Starting trial…",
-        "cta": "Start free trial — $1 today",
-        "lead": "$1 today.",
-        "note": "A $1 activation fee is charged now. Your free trial runs until {{date}} and your plan isn't charged before then. Cancel anytime."
+        "cta": "Start free trial — nothing charged today",
+        "lead": "Nothing charged today.",
+        "note": "Your card is saved but not charged. Your free trial runs until {{date}} and your plan isn't charged before then. Cancel anytime."
       }
     },
     "period": {
@@ -509,15 +509,16 @@
     "subtitle": {
       "chargeNow": "Your free trial has ended — add your card to keep going",
       "trial": "Add your card to start your free trial",
-      "window": "Add your card — $1 today, then nothing until {{date}}"
+      "window": "Add your card — nothing charged until {{date}}"
     },
     "summary": {
       "chargedToday": "Your free trial has ended — charged today",
       "dueToday": "Due Today",
       "monthlyPrice": "Monthly Price",
-      "noChargeToday": "Free trial — $1 activation fee today",
+      "noChargeToday": "Free trial — nothing charged today",
       "subscribingAs": "Subscribing as: <0>{{email}}</0>",
-      "whatsIncluded": "What's Included:"
+      "whatsIncluded": "What's Included:",
+      "chargeOnDate": "You pay nothing today, then <0>${{price}}</0> on {{date}} unless you cancel."
     },
     "terms": {
       "cancelAnytime": "Cancel anytime from your billing page.",
@@ -1591,8 +1592,8 @@
   },
   "trial": {
     "banner": {
-      "text": "Only the $1 activation fee is charged before {{date}}. Cancel anytime.",
-      "title": "$1 today · free until {{date}}"
+      "text": "Nothing is charged before {{date}}. Cancel anytime.",
+      "title": "Free until {{date}} · nothing charged today"
     },
     "checkout": {
       "banner": {

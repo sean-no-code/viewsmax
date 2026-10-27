@@ -14,7 +14,7 @@ import { Trans, useTranslation } from "react-i18next";
 
 // Onboarding step 2: everyone adds a card here (only a promotional customer
 // skips it, see Onboarding). Inside the free window the card starts a trial:
-// the $1 activation fee today, the plan price when the window closes. After
+// nothing charged today, the plan price when the window closes. After
 // the window (reached from Billing) the plan price is charged today. Terms
 // come from checkoutTerms / the backend's User::subscriptionTrialTerms.
 

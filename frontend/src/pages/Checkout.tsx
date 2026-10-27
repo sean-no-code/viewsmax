@@ -15,7 +15,7 @@ const Checkout = () => {
   const [searchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
   const [isComplete, setIsComplete] = useState(false);
-  // What adding a card costs today: the $1 activation fee while the free
+  // What adding a card costs today: nothing while the free
   // window is open (the plan price follows when it closes), or the full price
   // once it has closed (see checkoutTerms).
   const terms = checkoutTerms(user);
@@ -74,7 +74,7 @@ const Checkout = () => {
               {chargeNow
                 ? t("checkout.subtitle.chargeNow", "Your free trial has ended — add your card to keep going")
                 : freeUntil
-                  ? t("checkout.subtitle.window", "Add your card — $1 today, then nothing until {{date}}", { date: freeUntil })
+                  ? t("checkout.subtitle.window", "Add your card — nothing charged until {{date}}", { date: freeUntil })
                   : t("checkout.subtitle.trial", "Add your card to start your free trial")}
             </p>
           </div>
@@ -110,7 +110,7 @@ const Checkout = () => {
                         <span className={`text-lg font-semibold ${chargeNow ? "text-foreground" : "text-green-600"}`}>{chargeNow ? `$${planPrice}.00` : `$${ACTIVATION_FEE_USD}.00`}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {chargeNow ? t("checkout.summary.chargedToday", "Your free trial has ended — charged today") : t("checkout.summary.noChargeToday", "Free trial — $1 activation fee today")}
+                        {chargeNow ? t("checkout.summary.chargedToday", "Your free trial has ended — charged today") : t("checkout.summary.noChargeToday", "Free trial — nothing charged today")}
                       </p>
                     </div>
                   </div>
@@ -134,7 +134,7 @@ const Checkout = () => {
                       ) : freeUntil ? (
                         <Trans
                           i18nKey="checkout.terms.chargeOnDate"
-                          defaults="You pay $1 today, then <0>${{price}}</0> on {{date}} unless you cancel."
+                          defaults="You pay nothing today, then <0>${{price}}</0> on {{date}} unless you cancel."
                           values={{ price: planPrice, date: freeUntil }}
                           components={[<strong />]}
                         />
