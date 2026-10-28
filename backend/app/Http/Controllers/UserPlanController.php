@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Plan;
 use App\Models\User;
+use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
 use Carbon\Carbon;
@@ -234,6 +235,10 @@ class UserPlanController extends Controller
                 ]);
             });
 
+            // A plan that includes analytics backfills the imports the user
+            // missed on a lower tier (the pivot fires no model events).
+            AnalyticsAccess::backfill($user);
+
             $credits = $creditService->getSubscriptionCredits($plan, $hasTrial);
             $creditService->allocateOrResetCredits($user, $credits, $uniqueId, $subscriptionId, $actionType);
 
@@ -327,6 +332,10 @@ class UserPlanController extends Controller
                         'stripe_price_id' => $targetPlan->stripe_price_id,
                         'updated_at' => now(),
                     ]);
+
+            // A plan that includes analytics backfills the imports the user
+            // missed on a lower tier (the pivot fires no model events).
+            AnalyticsAccess::backfill($user);
             }
 
             return response()->json([

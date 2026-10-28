@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use App\Models\Plan;
+use App\Models\User;
 use App\Support\SafeHttp;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
@@ -31,5 +33,35 @@ abstract class TestCase extends BaseTestCase
     {
         SafeHttp::resolveUsing(null);
         parent::tearDown();
+    }
+
+    /**
+     * A plan row by its canonical PlanSeeder name, created on demand. There is
+     * no PlanFactory on purpose: the five tier names are the product, so tests
+     * ask for one of them rather than inventing plans.
+     */
+    protected function planNamed(string $name): Plan
+    {
+        return Plan::firstOrCreate(
+            ['name' => $name],
+            [
+                'display_name' => ucfirst($name),
+                'price' => 59,
+                'currency' => 'USD',
+                'is_active' => true,
+                'stripe_price_id' => 'price_'.$name,
+            ],
+        );
+    }
+
+    /**
+     * A user whose plan includes analytics (App\Support\AnalyticsAccess), for
+     * the tests whose subject is an import or a snapshot rather than the tier
+     * gate itself. The bare factory user has an open free window but no plan,
+     * so it gets no analytics.
+     */
+    protected function analyticsUser(array $attributes = []): User
+    {
+        return User::factory()->withPlan('active', $this->planNamed('pro'))->create($attributes);
     }
 }

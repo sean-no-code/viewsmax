@@ -13,12 +13,16 @@ interface CustomUser {
   onboarding_completed_at?: string | null;
   connections_count?: number;
   has_active_subscription?: boolean;
+  card_required?: boolean;
   // Promotional access (see src/lib/access.ts).
   has_active_plan?: boolean;
   promo_expires_at?: string | null;
   access_expired?: boolean;
   is_admin?: boolean;
   is_promotional?: boolean;
+  // Analytics is the Pro tier upsell (see canUseAnalytics in src/lib/access.ts).
+  can_use_analytics?: boolean;
+  active_plan?: { name?: string } | null;
 }
 
 interface CustomSession {

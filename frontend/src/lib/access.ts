@@ -11,6 +11,8 @@ export interface AccessUser {
   promo_expires_at?: string | null;
   access_expired?: boolean;
   is_promotional?: boolean;
+  /** Backend SIGNUP_CARD_REQUIRED. false = card-free trial (see cardOptional). */
+  card_required?: boolean;
 }
 
 /**
@@ -23,12 +25,25 @@ export interface AccessUser {
 export const ACTIVATION_FEE_USD = 0;
 
 /**
- * Onboarding's card step is skipped only for an admin-created promotional
- * customer whose window is open: they count as subscribed with no plan row.
- * Mirrors the backend's User::canCompleteOnboarding.
+ * Onboarding's card step is skipped for an admin-created promotional customer
+ * whose window is open (they count as subscribed with no plan row), and — in a
+ * card-free trial (SIGNUP_CARD_REQUIRED=false) — for any signup whose 7-day
+ * window is still open: the card is asked for when the window closes and the
+ * account is sent to Billing. Mirrors the backend's User::canCompleteOnboarding.
  */
-export function skipsCardStep(user: AccessUser | null | undefined): boolean {
-  return !!user?.is_promotional && !!user?.has_active_subscription && user?.has_active_plan === false;
+export function skipsCardStep(user: AccessUser | null | undefined, now: number = Date.now()): boolean {
+  if (!!user?.is_promotional && !!user?.has_active_subscription && user?.has_active_plan === false) return true;
+  return cardOptional(user, now);
+}
+
+/**
+ * The card step is optional (backend SIGNUP_CARD_REQUIRED=false): a signup can
+ * finish onboarding without a card and use its 7-day window as a card-free
+ * trial; when the window closes it goes to Billing as usual. Mirrors the
+ * window branch of the backend's User::canCompleteOnboarding.
+ */
+export function cardOptional(user: AccessUser | null | undefined, now: number = Date.now()): boolean {
+  return user?.card_required === false && !!user?.promo_expires_at && !isAccessExpired(user, now);
 }
 
 export const PROMO_ROLE = "promotional_customer";
@@ -40,6 +55,35 @@ export const PROMO_ROLE = "promotional_customer";
  */
 export function inLimitedReleaseAudience(user: { is_admin?: boolean; is_promotional?: boolean } | null | undefined): boolean {
   return !!(user?.is_admin || user?.is_promotional);
+}
+
+/** The plan names whose tier includes analytics. Mirrors App\Support\AnalyticsAccess::PLANS. */
+export const ANALYTICS_PLANS = ["pro", "agency", "creator_pro", "creator_elite", "creator_agency"];
+
+/**
+ * The plan names whose tier includes monetization: offers, tracked links and
+ * revenue attribution. Only the pricing cards read this today — the feature
+ * itself is not gated yet (decided 2026-10-25, still to be built), so don't
+ * take this as the gate.
+ */
+export const MONETIZATION_PLANS = ["agency", "creator_agency"];
+
+/**
+ * Channel + post analytics is the Pro tier upsell: Profile Performance, Post
+ * Performance and the YouTube channel analytics page. The backend answers with
+ * `can_use_analytics` (App\Support\AnalyticsAccess); the plan-name fallback is
+ * for a session cached before that field existed, so a paying user never loses
+ * the nav on the first paint after a deploy. Admins and promotional customers
+ * are exempt, as everywhere else.
+ */
+export function canUseAnalytics(
+  user: { is_admin?: boolean; is_promotional?: boolean; can_use_analytics?: boolean; active_plan?: { name?: string } | null } | null | undefined,
+): boolean {
+  if (!user) return false;
+  if (inLimitedReleaseAudience(user)) return true;
+  if (typeof user.can_use_analytics === "boolean") return user.can_use_analytics;
+  const plan = user.active_plan?.name?.toLowerCase();
+  return !!plan && ANALYTICS_PLANS.includes(plan);
 }
 
 export function isAccessExpired(user: AccessUser | null | undefined, now: number = Date.now()): boolean {

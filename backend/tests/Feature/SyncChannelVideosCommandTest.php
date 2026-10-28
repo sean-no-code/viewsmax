@@ -32,7 +32,7 @@ class SyncChannelVideosCommandTest extends TestCase
 
     public function test_imports_latest_videos_for_each_connected_channel(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $a = $this->channel($user);
         $b = $this->channel($user);
 
@@ -53,7 +53,7 @@ class SyncChannelVideosCommandTest extends TestCase
 
     public function test_refreshes_an_expired_token_before_importing(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $channel = $this->channel($user, [
             'youtube_access_token' => 'stale-token',
             'youtube_refresh_token' => 'refresh-token',
@@ -78,7 +78,7 @@ class SyncChannelVideosCommandTest extends TestCase
 
     public function test_skips_expired_channel_with_no_refresh_token_but_still_succeeds(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $this->channel($user, [
             'youtube_refresh_token' => null,
             'youtube_token_expires_at' => now()->subHour(),
@@ -99,7 +99,7 @@ class SyncChannelVideosCommandTest extends TestCase
 
     public function test_one_channel_failing_does_not_stop_the_others(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $a = $this->channel($user);
         $b = $this->channel($user);
 
@@ -118,7 +118,7 @@ class SyncChannelVideosCommandTest extends TestCase
 
     public function test_returns_failure_when_every_channel_fails(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $this->channel($user);
 
         $this->mock(YouTubeChannelService::class, fn ($m) => $m->shouldReceive('fetchAndImportChannelVideos')
@@ -128,9 +128,25 @@ class SyncChannelVideosCommandTest extends TestCase
         $this->artisan('channels:sync-videos')->assertExitCode(1);
     }
 
+    public function test_channels_of_users_on_a_plan_without_analytics_are_not_synced(): void
+    {
+        // Analytics is the Pro tier upsell: a creator-tier user in good standing
+        // keeps the channel but costs no YouTube quota every night.
+        $pro = $this->channel($this->analyticsUser());
+        $this->channel(User::factory()->withPlan('active', $this->planNamed('creator'))->create());
+
+        $this->mock(YouTubeChannelService::class, function ($m) use ($pro) {
+            $m->shouldReceive('fetchAndImportChannelVideos')->once()
+                ->with(\Mockery::on(fn ($c) => $c->id === $pro->id), 'yt-oauth-token', \Mockery::any())
+                ->andReturn(['imported' => 0, 'updated' => 0, 'total' => 0]);
+        });
+
+        $this->artisan('channels:sync-videos')->assertExitCode(0);
+    }
+
     public function test_channels_of_users_without_access_are_not_synced(): void
     {
-        $active = $this->channel(User::factory()->create());
+        $active = $this->channel($this->analyticsUser());
         $this->channel(User::factory()->expired()->create());
         $this->channel(User::factory()->withoutWindow()->withPlan('cancelled')->create());
         $exempt = $this->channel(User::factory()->promotional()->expired()->create());

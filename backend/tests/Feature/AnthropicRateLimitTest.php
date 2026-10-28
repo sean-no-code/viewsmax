@@ -39,6 +39,8 @@ class AnthropicRateLimitTest extends TestCase
         $this->user = User::factory()->create();
         // Credit and plan gating are covered elsewhere; this is about the AI budget.
         $this->withoutMiddleware([\App\Http\Middleware\CheckCredits::class, \App\Http\Middleware\RestrictFreePlan::class]);
+        // So is the daily breakdown allowance (OutlierBreakdownQuotaTest).
+        config(['services.youtube.quota.per_user.breakdowns.free' => null]);
     }
 
     private function headers(): array

@@ -28,7 +28,8 @@ class RefreshPostMetricsCommandTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->user = User::factory()->create();
+        // Analytics is the Pro tier upsell: metrics are only refreshed for a plan that has it.
+        $this->user = $this->analyticsUser();
     }
 
     private function account(string $platform): SocialAccount
@@ -250,8 +251,30 @@ class RefreshPostMetricsCommandTest extends TestCase
     {
         $account = $this->account('x');
         $this->legacyTarget($account, 'lapsed1');
+        // Lapsed means both: the free window closed and the plan that gave this
+        // user analytics in the first place (setUp) is no longer live.
         $this->user->forceFill(['promo_expires_at' => now()->subDay()])->save();
+        $this->user->plans()->updateExistingPivot(
+            $this->user->plans()->pluck('plans.id')->all(),
+            ['status' => 'cancelled'],
+        );
         $this->fakeManager(['lapsed1' => ['likes' => 5, 'comments' => 0, 'shares' => 0, 'views' => 10]]);
+
+        $this->artisan('posts:refresh-metrics')->assertExitCode(0);
+
+        $this->assertSame(0, PostMetricSnapshot::count());
+    }
+
+    public function test_posts_of_users_on_a_plan_without_analytics_are_skipped(): void
+    {
+        // Analytics is the Pro tier upsell: a creator-tier user in good standing
+        // keeps their posts but costs no provider calls.
+        $account = $this->account('x');
+        $this->legacyTarget($account, 'creator1');
+        $this->user->plans()->detach();
+        $this->user->plans()->attach($this->planNamed('creator')->id, ['status' => 'active', 'starts_at' => now()]);
+        $this->assertSame('creator', $this->user->fresh()->activePlan()->name);
+        $this->fakeManager(['creator1' => ['likes' => 5, 'comments' => 0, 'shares' => 0, 'views' => 10]]);
 
         $this->artisan('posts:refresh-metrics')->assertExitCode(0);
 

@@ -2,6 +2,10 @@
 
 namespace App\Services;
 
+use App\Contracts\Quota\QuotaDecision;
+use App\Contracts\Quota\QuotaGate;
+use App\Support\Quota\QuotaLog;
+use App\Support\Quota\Tier;
 use App\Models\Channel;
 use App\Models\OutlierVideo;
 use App\Models\SearchTerm;
@@ -31,7 +35,8 @@ class YouTubeSearchService
     private string $apiKey;
 
     public function __construct(
-        private YouTubeChannelService $channelService
+        private YouTubeChannelService $channelService,
+        private QuotaGate $gate,
     ) {
         // Cast so a missing YOUTUBE_API_KEY doesn't break construction: this
         // service is injected into OutlierController, whose database-only
@@ -320,12 +325,19 @@ class YouTubeSearchService
      * Search for a term, fetch data if needed.
      * Word splitting (when not exact match) is handled inside fetchAndProcess.
      */
-    public function search(string $term, User $user, bool $exactMatch = false): void
+    /**
+     * Queue a fetch for the term if its results are missing or stale.
+     *
+     * @return QuotaDecision|null the denial when today's YouTube search budget
+     *                            is used up (nothing was queued; the library
+     *                            search still answers), null otherwise
+     */
+    public function search(string $term, User $user, bool $exactMatch = false): ?QuotaDecision
     {
         $term = strtolower(trim($term));
         if (empty($term) || !$this->isValidTerm($term)) {
             Log::info("Skipping invalid search term: {$term}");
-            return;
+            return null;
         }
 
         // 1. Find or create SearchTerm
@@ -338,16 +350,58 @@ class YouTubeSearchService
         ]);
 
         // 3. Check if we need to fetch data
-        if ($this->shouldFetch($searchTerm)) {
-            Log::info("Dispatching async job for term: {$term}");
+        if (! $this->shouldFetch($searchTerm)) {
+            QuotaLog::search(QuotaLog::SERVED_CACHE, $term, $user, ['reason' => $this->describeFetchState($searchTerm)]);
 
-            TermsDataFetch::updateOrCreate(
-                ['term_id' => $searchTerm->id],
-                ['status' => TermsDataFetch::STATUS_QUEUED]
-            );
-
-            ProcessYouTubeSearchTermJob::dispatch($term, $user, $exactMatch);
+            return null;
         }
+
+        $calls = $this->searchCallsPerTerm();
+        $decision = $this->gate->allows(QuotaGate::SEARCH_LIST, Tier::of($user), $calls, $user->id);
+        if (! $decision->allowed) {
+            QuotaLog::search(QuotaLog::SERVED_PAUSED, $term, $user, ['stage' => 'request', 'scope' => $decision->scope, 'used' => $decision->used, 'cap' => $decision->cap, 'resets_at' => $decision->resetsAt->format(DATE_ATOM)]);
+
+            return $decision;
+        }
+
+        QuotaLog::search(QuotaLog::SERVED_YOUTUBE, $term, $user, ['stage' => 'request', 'calls' => $calls, 'reason' => $this->describeFetchState($searchTerm)]);
+        Log::info("Dispatching async job for term: {$term}");
+
+        TermsDataFetch::updateOrCreate(
+            ['term_id' => $searchTerm->id],
+            ['status' => TermsDataFetch::STATUS_QUEUED]
+        );
+
+        ProcessYouTubeSearchTermJob::dispatch($term, $user, $exactMatch);
+        $this->gate->recordUserFetch($user->id, QuotaGate::SEARCH_LIST);
+
+        return null;
+    }
+
+    /** Why a term is or isn't being fetched, for the youtube_quota log. */
+    private function describeFetchState(SearchTerm $searchTerm): string
+    {
+        $fetch = $searchTerm->termsDataFetch;
+        if (! $fetch) {
+            return 'never fetched';
+        }
+        if ($fetch->status === TermsDataFetch::STATUS_DONE && $fetch->fetched_at) {
+            return sprintf('done, fetched %s ago (period %dd)', $fetch->fetched_at->shortAbsoluteDiffForHumans(), (int) config('services.youtube.fetch_period_days', 2));
+        }
+        if ($fetch->status === TermsDataFetch::STATUS_IN_PROGRESS) {
+            return 'in progress for '.($fetch->updated_at?->shortAbsoluteDiffForHumans() ?? '?');
+        }
+
+        return $fetch->status;
+    }
+
+    /**
+     * search.list calls one term costs: a long-form and a Shorts bucket, each
+     * paged YOUTUBE_SEARCH_PAGES deep (see searchVideosWithApiKey).
+     */
+    public function searchCallsPerTerm(): int
+    {
+        return 2 * max(1, (int) config('services.youtube.search_pages', 2));
     }
 
     private function shouldFetch(SearchTerm $searchTerm): bool
@@ -412,6 +466,24 @@ class YouTubeSearchService
             Log::info("Term '{$term}' was already fetched recently. Skipping redundant fetch.");
             return;
         }
+
+        // The spend point has its own check: sub-term jobs are dispatched from
+        // here, not from search(), and the budget may have run out since the
+        // job was queued. A denied term stays queued, which shouldFetch() reads
+        // as "fetch the next time someone asks" — after the reset.
+        $calls = $this->searchCallsPerTerm();
+        $decision = $this->gate->allows(QuotaGate::SEARCH_LIST, Tier::of($user), $calls);
+        if (! $decision->allowed) {
+            QuotaLog::search(QuotaLog::SERVED_PAUSED, $term, $user, ['stage' => 'job', 'used' => $decision->used, 'cap' => $decision->cap, 'resets_at' => $decision->resetsAt->format(DATE_ATOM)]);
+            TermsDataFetch::updateOrCreate(
+                ['term_id' => $searchTerm->id],
+                ['status' => TermsDataFetch::STATUS_QUEUED]
+            );
+
+            return;
+        }
+
+        QuotaLog::search(QuotaLog::SERVED_YOUTUBE, $term, $user, ['stage' => 'job', 'calls' => $calls]);
 
         TermsDataFetch::updateOrCreate(
             ['term_id' => $searchTerm->id],

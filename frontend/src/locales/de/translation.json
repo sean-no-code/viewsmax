@@ -311,6 +311,7 @@
   },
   "billing": {
     "includes": {
+      "analytics": "Kanal- & Beitragsanalysen",
       "beehiiv": "Beehiiv-Reichweitentracking",
       "boosts": "Boosts: Auto-Repost & Auto-Promo",
       "brands": "Marken (Kontogruppen)",
@@ -380,6 +381,7 @@
       "trialEndedIntro": "Deine kostenlose Testphase ist beendet. Wähle den Tarif, der zu deinem Wachstum passt.",
       "trialEnds": "Kostenlose Testphase · endet am <0>{{date}}</0>",
       "trialIntro": "7 Tage kostenlos testen für $0, dann wählst du den Tarif, der zu deinem Wachstum passt.",
+      "trialIntroNoCard": "7 Tage kostenlos testen – ohne Karte –, dann wählst du den Tarif, der zu deinem Wachstum passt.",
       "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten. Bitte erneut versuchen.",
       "unlimitedChannels": "Unbegrenzte Kanäle",
       "unlimitedOffers": "Unbegrenzte Angebote",

@@ -48,5 +48,8 @@
         <env name="PINTEREST_CLIENT_ID" value="" force="true"/>
         <env name="PINTEREST_CLIENT_SECRET" value="" force="true"/>
         <env name="PINTEREST_SANDBOX" value="false" force="true"/>
+        <!-- A dev box running the card-free trial (SIGNUP_CARD_REQUIRED=false)
+             must not change what the suite sees; tests that want it set config. -->
+        <env name="SIGNUP_CARD_REQUIRED" value="true" force="true"/>
     </php>
 </phpunit>

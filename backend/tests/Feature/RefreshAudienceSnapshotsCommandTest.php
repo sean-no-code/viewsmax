@@ -49,7 +49,7 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
     public function test_snapshots_follower_count_for_each_connected_account(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $this->account($user, 'x');
         $this->account($user, 'youtube');
         $this->fakeManager(['x' => 1000, 'youtube' => 2500]);
@@ -64,7 +64,7 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
     public function test_records_the_reason_when_a_supported_account_fails_and_clears_it_on_success(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $x = $this->account($user, 'x');
 
         $provider = \Mockery::mock(\App\Services\Social\Contracts\SocialProviderInterface::class);
@@ -93,7 +93,7 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
     public function test_skips_platforms_without_stats_support_without_recording_an_error(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $li = $this->account($user, 'linkedin');
         $provider = \Mockery::mock(\App\Services\Social\Contracts\SocialProviderInterface::class);
         $provider->shouldNotReceive('fetchFollowerCount');
@@ -110,7 +110,7 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
     public function test_skips_accounts_where_follower_count_is_unsupported(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $this->account($user, 'x');
         $this->account($user, 'linkedin');
         $this->fakeManager(['x' => 500]); // linkedin → null
@@ -122,7 +122,7 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
     public function test_upserts_one_row_per_account_per_day(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $this->account($user, 'x');
 
         $this->fakeManager(['x' => 1000]);
@@ -137,7 +137,7 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
     public function test_ignores_disconnected_accounts(): void
     {
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
         $this->account($user, 'x', SocialAccount::STATUS_NEEDS_REAUTH);
         $this->fakeManager(['x' => 1000]);
 
@@ -152,9 +152,22 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
         $this->artisan('audience:refresh')->assertExitCode(0);
     }
 
+    public function test_accounts_of_users_on_a_plan_without_analytics_are_not_snapshotted(): void
+    {
+        // Analytics is the Pro tier upsell: no follower polling below it.
+        $this->account($this->analyticsUser(), 'x');
+        $this->account(User::factory()->withPlan('active', $this->planNamed('creator'))->create(), 'youtube');
+        $this->fakeManager(['x' => 10, 'youtube' => 20]);
+
+        $this->artisan('audience:refresh')->assertExitCode(0);
+
+        $this->assertSame(1, AudienceSnapshot::count());
+        $this->assertSame('x', AudienceSnapshot::first()->socialAccount->platform);
+    }
+
     public function test_accounts_of_users_without_access_are_not_snapshotted(): void
     {
-        $this->account(User::factory()->create(), 'x');
+        $this->account($this->analyticsUser(), 'x');
         $this->account(User::factory()->expired()->create(), 'youtube');
         $this->fakeManager(['x' => 10, 'youtube' => 20]);
 

@@ -315,6 +315,7 @@
   },
   "billing": {
     "includes": {
+      "analytics": "Analítica de canales y publicaciones",
       "beehiiv": "Seguimiento de alcance en Beehiiv",
       "boosts": "Boosts: republicación y promoción automáticas",
       "brands": "Marcas (grupos de cuentas)",
@@ -390,6 +391,7 @@
       "trialEndedIntro": "Tu prueba gratuita ha terminado. Elige el plan que se ajuste a cómo creces.",
       "trialEnds": "Prueba gratuita · termina el <0>{{date}}</0>",
       "trialIntro": "Prueba gratuita de 7 días por $0; luego elige el plan que se ajuste a cómo creces.",
+      "trialIntroNoCard": "Prueba gratuita de 7 días, sin tarjeta; luego elige el plan que se ajuste a tu crecimiento.",
       "unexpectedError": "Ocurrió un error inesperado. Inténtalo de nuevo.",
       "unlimitedChannels": "Canales ilimitados",
       "unlimitedOffers": "Ofertas ilimitadas",

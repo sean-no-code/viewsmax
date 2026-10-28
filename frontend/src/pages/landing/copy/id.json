@@ -105,7 +105,7 @@
     "sub": "Temukan konten yang sukses, posting ke semua platform, dan lacak apa yang menghasilkan konversi (dengan dukungan langsung dari Sean).",
     "connectPlaceholder": "Hubungkan akun media sosial Anda",
     "connect": "Hubungkan",
-    "noCard": "Uji coba gratis 7 hari · aktivasi $1"
+    "noCard": "Uji coba gratis 7 hari · tanpa biaya hari ini"
   },
   "demos": {
     "tabsLabel": "Demo fitur",
@@ -193,7 +193,6 @@
         "blurb": "Luncurkan penawaran pertama Anda.",
         "feats": [
           "5 kanal",
-          "1 penawaran",
           "400 postingan/bln"
         ]
       },
@@ -201,7 +200,6 @@
         "blurb": "Untuk brand yang berjualan.",
         "feats": [
           "30 kanal",
-          "5 penawaran",
           "Postingan tanpa batas/bln"
         ]
       },
@@ -209,23 +207,23 @@
         "blurb": "Kembangkan setiap kanal.",
         "feats": [
           "Kanal tanpa batas",
-          "10 penawaran",
-          "Postingan tanpa batas/bln"
+          "Postingan tanpa batas/bln",
+          "Analitik kanal & postingan"
         ]
       },
       "Agency": {
         "blurb": "Untuk tim & agensi.",
         "feats": [
           "Kanal tanpa batas",
-          "Penawaran tanpa batas",
-          "Postingan tanpa batas/bln"
+          "Postingan tanpa batas/bln",
+          "Analitik kanal & postingan",
+          "Tautan terlacak & atribusi pendapatan"
         ]
       }
     },
     "includes": [
       "Beberapa akun per platform",
       "Brand (grup akun)",
-      "Tautan terlacak & atribusi pendapatan",
       "Riset outlier dengan analisis AI",
       "Boosts: repost & promosi otomatis",
       "Server MCP & API untuk agen AI",

@@ -3,7 +3,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import type { Appearance } from "@stripe/stripe-js";
 import { Check, Loader2, Lock } from "lucide-react";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
-import { sortPlansByPrice, formatLimit, planIncludes } from "@/lib/plan-helpers";
+import { sortPlansByPrice, planLimitLines, planIncludes } from "@/lib/plan-helpers";
 import { isMockApi } from "@/lib/mock-api";
 import { useAuth } from "@/hooks/useAuth";
 import { activateSubscription, checkoutCopy, stripePromise, type CheckoutCopy } from "@/components/StripeTrialStep";
@@ -25,18 +25,12 @@ interface TrialCheckoutProps {
 }
 
 /**
- * Feature bullets for a plan: the tier's limit lines (seeded list, else derived
- * from the numeric limits) followed by what every paid plan includes.
+ * Feature bullets for a plan: the tier's limit lines followed by what that tier
+ * includes — analytics on Pro and up, monetization on Agency
+ * (src/lib/plan-helpers.ts).
  */
 function featuresFor(plan: PlanTier, t: TFunction): string[] {
-  const limits = plan.features && plan.features.length
-    ? plan.features
-    : [
-        formatLimit(t, plan.max_channels, "channel"),
-        formatLimit(t, plan.max_offers, "offer"),
-        t("trial.checkout.postsPerMonth", "{{limit}}/mo", { limit: formatLimit(t, plan.max_posts_per_month, "post") }),
-      ];
-  return [...limits, ...planIncludes(t)];
+  return [...planLimitLines(t, plan), ...planIncludes(t, plan.name)];
 }
 
 

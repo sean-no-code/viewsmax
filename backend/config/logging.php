@@ -125,6 +125,24 @@ return [
             'permission' => 0777,
         ],
 
+        // YouTube quota (App\Support\Quota\QuotaLog): one line per outlier search
+        // saying whether it was served from cache or fetched from YouTube (or
+        // paused for quota), and one per YouTube API call with its unit cost,
+        // in storage/logs/youtube-quota.log. YOUTUBE_QUOTA_LOG_ENABLED=false silences it.
+        'youtube_quota' => [
+            'driver' => 'stack',
+            'channels' => env('YOUTUBE_QUOTA_LOG_ENABLED', true) ? ['youtube_quota_file', 'sentry'] : ['sentry'],
+            'ignore_exceptions' => false,
+        ],
+        'youtube_quota_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/youtube-quota.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'follow_us' => [
             'driver' => 'stack',
             'channels' => env('FOLLOW_US_LOG_ENABLED', true) ? ['follow_us_file', 'sentry'] : ['sentry'],

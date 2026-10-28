@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\YouTubeAnalyticsService;
 use App\Services\YouTubePublishService;
 use App\Services\YouTubeChannelService;
+use App\Support\AnalyticsAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -139,8 +140,17 @@ class YouTubeOAuthController extends Controller
                 }
 
                 // Off the request: the import waits on the YouTube API, and a
-                // failure there must not fail the connect.
-                ImportChannelVideosJob::dispatch($channel->id);
+                // failure there must not fail the connect. Analytics is the Pro
+                // tier upsell, so below-Pro connects queue nothing at all.
+                if (AnalyticsAccess::allows($user)) {
+                    ImportChannelVideosJob::dispatch($channel->id);
+                } else {
+                    AnalyticsAccess::logSkip('channel video import', [
+                        'user_id' => $user->id,
+                        'channel_id' => $channel->id,
+                        'plan' => $user->activePlan()?->name,
+                    ]);
+                }
 
             } catch (\App\Services\Social\HandleClaimedException $e) {
                 // The channel belongs to another ViewsMax account: keep nothing
@@ -216,7 +226,7 @@ class YouTubeOAuthController extends Controller
             && $existing->refresh_token
             && in_array(YouTubePublishService::UPLOAD_SCOPE, (array) $existing->scopes, true)) {
             $existing->update($profile);
-            ImportRecentPostsJob::dispatch($existing->id);
+            $this->queueRecentPostsImport($user, $existing);
             Log::warning('YouTube grant without the upload scope; kept the existing publishing token', [
                 'user_id' => $user->id,
                 'social_account_id' => $existing->id,
@@ -238,6 +248,27 @@ class YouTubeOAuthController extends Controller
         }
 
         $account = SocialAccount::updateOrCreate($key, $attrs);
+        $this->queueRecentPostsImport($user, $account);
+    }
+
+    /**
+     * Seed Post Performance from the channel's existing uploads — only for a
+     * plan that includes analytics (App\Support\AnalyticsAccess). The job
+     * re-checks, so a downgrade between queue and run spends nothing either.
+     */
+    private function queueRecentPostsImport(User $user, SocialAccount $account): void
+    {
+        if (! AnalyticsAccess::allows($user)) {
+            AnalyticsAccess::logSkip('recent posts import', [
+                'user_id' => $user->id,
+                'social_account_id' => $account->id,
+                'platform' => $account->platform,
+                'plan' => $user->activePlan()?->name,
+            ]);
+
+            return;
+        }
+
         ImportRecentPostsJob::dispatch($account->id);
     }
 

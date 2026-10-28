@@ -30,7 +30,8 @@ class ImportRecentPostsJobTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->user = User::factory()->create();
+        // Analytics is the Pro tier upsell: the import only runs for a plan that has it.
+        $this->user = $this->analyticsUser();
     }
 
     private function account(string $platform, string $status = SocialAccount::STATUS_CONNECTED): SocialAccount
@@ -176,6 +177,24 @@ class ImportRecentPostsJobTest extends TestCase
 
         Queue::assertPushed(ImportRecentPostsJob::class, 1);
         Queue::assertPushed(ImportRecentPostsJob::class, fn ($job) => $job->socialAccountId === $yt->id);
+    }
+
+    public function test_the_backfill_command_skips_accounts_without_analytics(): void
+    {
+        // Analytics is the Pro tier upsell, and this command used to select
+        // every connected account in the database with no filter at all.
+        Queue::fake();
+        $mine = $this->account('youtube');
+        $creator = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        SocialAccount::create([
+            'user_id' => $creator->id, 'platform' => 'youtube', 'platform_account_id' => 'yt-creator',
+            'name' => 'Theirs', 'access_token' => 'tok', 'status' => SocialAccount::STATUS_CONNECTED,
+        ]);
+
+        $this->artisan('posts:import-recent')->assertExitCode(0);
+
+        Queue::assertPushed(ImportRecentPostsJob::class, 1);
+        Queue::assertPushed(ImportRecentPostsJob::class, fn ($job) => $job->socialAccountId === $mine->id);
     }
 
     public function test_the_backfill_command_can_target_one_account(): void

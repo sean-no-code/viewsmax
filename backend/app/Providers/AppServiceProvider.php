@@ -54,6 +54,10 @@ class AppServiceProvider extends ServiceProvider
             \Laravel\Passport\Http\Controllers\ApproveAuthorizationController::class,
             \App\Http\Controllers\Oauth\McpApproveAuthorizationController::class,
         );
+
+        // YouTube quota gate (App\Support\Quota): the only thing the search and
+        // publish paths ask before spending YouTube API quota.
+        $this->app->bind(\App\Contracts\Quota\QuotaGate::class, \App\Support\Quota\CacheQuotaGate::class);
     }
 
     /**

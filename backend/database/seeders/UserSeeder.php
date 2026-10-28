@@ -119,6 +119,24 @@ class UserSeeder extends Seeder
             ]);
         }
 
+        // A self signup whose 7-day card-free window has just closed: no plan row
+        // (an active "free" plan would count as access), onboarding finished
+        // during the window. Logging in should land on Billing (access_expired).
+        // Reset on every run so the window is always an hour in the past.
+        $expiredTrial = User::firstOrCreate(
+            ['email' => 'expired@customer.com'],
+            ['password' => Hash::make('password')]
+        );
+        $expiredTrial->forceFill([
+            'email_verified_at' => now()->subDays(User::CARD_FREE_DAYS),
+            'onboarding_completed_at' => now()->subDays(User::CARD_FREE_DAYS),
+            'promo_expires_at' => now()->subHour(),
+        ])->save();
+        $expiredTrial->plans()->detach();
+        if ($customerRole && !$expiredTrial->hasRole('customer')) {
+            $expiredTrial->roles()->attach($customerRole->id);
+        }
+
         // Create tokens for testing
         $adminToken = $adminUser->createToken('admin-token-' . now()->timestamp)->plainTextToken;
         $freeToken = $freeCustomer->createToken('free-customer-token-' . now()->timestamp)->plainTextToken;
@@ -132,6 +150,7 @@ class UserSeeder extends Seeder
         $this->command->info("Paid customer: {$paidCustomer->email}");
         $this->command->info("Paid customer token: {$paidToken}");
         $this->command->info("Paid customer 2: {$paidCustomer2->email}");
-        $this->command->info("Paid customer 2 token: {$paidToken2}");   
+        $this->command->info("Paid customer 2 token: {$paidToken2}");
+        $this->command->info("Expired trial: {$expiredTrial->email} / password (window closed {$expiredTrial->promo_expires_at->diffForHumans()})");
     }
 }

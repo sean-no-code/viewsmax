@@ -7,7 +7,10 @@ use App\Models\OutlierBreakdown;
 use App\Models\OutlierVideo;
 use App\Models\User;
 use App\Models\UserEvent;
+use App\Contracts\Quota\QuotaGate;
 use App\Support\AnthropicRateLimit;
+use App\Support\Quota\QuotaMessage;
+use App\Support\Quota\Tier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -87,6 +90,30 @@ class OutlierBreakdownController extends Controller
         );
 
         if ($breakdown->wasRecentlyCreated || $breakdown->needsRequeue()) {
+            // Daily allowance per plan. Only a new (or failed, re-run) analysis
+            // counts; an existing breakdown above was returned for free.
+            $user = $request->user();
+            $gate = app(QuotaGate::class);
+            $decision = $gate->allows(QuotaGate::BREAKDOWNS, Tier::of($user), 1, $user?->id);
+            if (! $decision->allowed) {
+                if ($breakdown->wasRecentlyCreated) {
+                    $breakdown->delete();
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'code' => 'quota_paused',
+                    'message' => QuotaMessage::for($decision, $user),
+                    'scope' => $decision->scope,
+                    'reason' => $decision->reason,
+                    'plan' => QuotaMessage::planLabel($user),
+                    'upgrade' => QuotaMessage::offersUpgrade($decision),
+                    'used' => $decision->used,
+                    'cap' => $decision->cap,
+                    'resets_at' => $decision->resetsAt->format(DATE_ATOM),
+                ], 429);
+            }
+
             if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_breakdown')) {
                 if ($breakdown->wasRecentlyCreated) {
                     $breakdown->delete(); // don't leave a pending row no job will ever pick up
@@ -99,6 +126,9 @@ class OutlierBreakdownController extends Controller
                 $breakdown->update(['status' => OutlierBreakdown::STATUS_PENDING, 'error' => null]);
             }
             GenerateOutlierBreakdownJob::dispatch($platform, $videoId);
+            if ($user) {
+                $gate->recordUserFetch($user->id, QuotaGate::BREAKDOWNS);
+            }
         }
 
         return response()->json(['success' => true, 'data' => $this->payload($breakdown)]);

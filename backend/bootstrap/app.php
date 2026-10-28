@@ -83,6 +83,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(30)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('outliers:classify-formats scheduled run failed'));
 
+        // YouTube quota ledger (youtube_quota_spends): drop rows past retention.
+        $schedule->command('youtube-quota:prune')
+            ->dailyAt('03:30')
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('youtube-quota:prune scheduled run failed'));
+
         $schedule->command('channels:sync-videos')
             ->daily()
             ->withoutOverlapping(30)

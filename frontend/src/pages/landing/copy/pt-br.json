@@ -105,7 +105,7 @@
     "sub": "Encontre conteúdos vencedores, publique em todas as plataformas e acompanhe o que converte (com suporte humano do Sean).",
     "connectPlaceholder": "Conecte suas redes sociais",
     "connect": "Conectar",
-    "noCard": "7 dias grátis · $1 para ativar"
+    "noCard": "7 dias grátis · nada é cobrado hoje"
   },
   "demos": {
     "tabsLabel": "Demonstrações dos recursos",
@@ -193,7 +193,6 @@
         "blurb": "Lance sua primeira oferta.",
         "feats": [
           "5 canais",
-          "1 oferta",
           "400 posts/mês"
         ]
       },
@@ -201,7 +200,6 @@
         "blurb": "Para marcas que vendem.",
         "feats": [
           "30 canais",
-          "5 ofertas",
           "Posts ilimitados/mês"
         ]
       },
@@ -209,23 +207,23 @@
         "blurb": "Escale todos os canais.",
         "feats": [
           "Canais ilimitados",
-          "10 ofertas",
-          "Posts ilimitados/mês"
+          "Posts ilimitados/mês",
+          "Análises de canais e publicações"
         ]
       },
       "Agency": {
         "blurb": "Para equipes e agências.",
         "feats": [
           "Canais ilimitados",
-          "Ofertas ilimitadas",
-          "Posts ilimitados/mês"
+          "Posts ilimitados/mês",
+          "Análises de canais e publicações",
+          "Links rastreados e atribuição de receita"
         ]
       }
     },
     "includes": [
       "Várias contas por plataforma",
       "Marcas (grupos de contas)",
-      "Links rastreados e atribuição de receita",
       "Pesquisa de outliers com análises de IA",
       "Boosts: repost e promoção automáticos",
       "Servidor MCP e API para agentes de IA",

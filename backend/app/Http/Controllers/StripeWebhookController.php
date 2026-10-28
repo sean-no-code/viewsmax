@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Plan;
 use App\Models\User;
+use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
 use Carbon\Carbon;
@@ -408,6 +409,10 @@ class StripeWebhookController extends Controller
                     ->update(['plan_id' => $matchedPlan->id, 'updated_at' => now()]);
             }
         }
+
+        // A plan that includes analytics backfills the imports the user missed
+        // on a lower tier (the pivot fires no model events).
+        AnalyticsAccess::backfill($user);
 
         Log::info('Stripe webhook: Subscription updated', [
             'user_id' => $user->id,

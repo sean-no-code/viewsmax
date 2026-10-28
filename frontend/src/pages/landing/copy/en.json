@@ -105,7 +105,7 @@
     "sub": "Spot winning content, post to every platform and track what converts (with human support from Sean).",
     "connectPlaceholder": "Connect your socials",
     "connect": "Connect",
-    "noCard": "7-day free trial · card required, nothing charged today"
+    "noCard": "7-day free trial · nothing charged today"
   },
   "demos": {
     "tabsLabel": "Feature demos",
@@ -193,7 +193,6 @@
         "blurb": "Launch your first offer.",
         "feats": [
           "5 channels",
-          "1 offer",
           "400 posts/mo"
         ]
       },
@@ -201,7 +200,6 @@
         "blurb": "For brands that sell.",
         "feats": [
           "30 channels",
-          "5 offers",
           "Unlimited posts/mo"
         ]
       },
@@ -209,23 +207,23 @@
         "blurb": "Scale every channel.",
         "feats": [
           "Unlimited channels",
-          "10 offers",
-          "Unlimited posts/mo"
+          "Unlimited posts/mo",
+          "Channel & post analytics"
         ]
       },
       "Agency": {
         "blurb": "For teams & agencies.",
         "feats": [
           "Unlimited channels",
-          "Unlimited offers",
-          "Unlimited posts/mo"
+          "Unlimited posts/mo",
+          "Channel & post analytics",
+          "Tracked links & revenue attribution"
         ]
       }
     },
     "includes": [
       "Multiple accounts per platform",
       "Brands (account groups)",
-      "Tracked links & revenue attribution",
       "Outlier research with AI breakdowns",
       "Boosts: auto-repost & auto-promo",
       "MCP server & API for AI agents",

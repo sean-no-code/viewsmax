@@ -21,8 +21,11 @@ class ImportRecentPosts extends Command
 
     public function handle(SocialProviderManager $manager): int
     {
+        // Same population as the nightly analytics commands: users who may use
+        // ViewsMax right now and whose plan includes analytics.
         $accounts = SocialAccount::query()
             ->where('status', SocialAccount::STATUS_CONNECTED)
+            ->whereHas('user', fn ($u) => $u->withAccess()->withAnalytics())
             ->when($this->option('account'), fn ($q, $id) => $q->whereKey($id))
             ->get()
             ->filter(fn (SocialAccount $a) => $manager->supports($a->platform) && $manager->supportsStats($a->platform));

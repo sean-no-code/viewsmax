@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\SocialAccount;
 use App\Services\Social\PostMetricSnapshotter;
 use App\Services\Social\SocialProviderManager;
+use App\Support\AnalyticsAccess;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,6 +43,18 @@ class ImportRecentPostsJob implements ShouldQueue
         $account = SocialAccount::find($this->socialAccountId);
         if (! $account || $account->status !== SocialAccount::STATUS_CONNECTED
             || ! $manager->supports($account->platform) || ! $manager->supportsStats($account->platform)) {
+            return;
+        }
+
+        // Analytics is the Pro tier upsell, and a queued job can outlive a
+        // downgrade: re-check the owner's plan before spending a single call.
+        if (! AnalyticsAccess::allows($account->user)) {
+            AnalyticsAccess::logSkip('recent posts import', [
+                'social_account_id' => $account->id,
+                'user_id' => $account->user_id,
+                'platform' => $account->platform,
+            ]);
+
             return;
         }
 

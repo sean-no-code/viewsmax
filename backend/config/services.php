@@ -27,6 +27,80 @@ return [
         'search_pages' => env('YOUTUBE_SEARCH_PAGES', 1),
         'always_fetch_api_for_multiplier' => env('ALWAYS_FETCH_API_FOR_MULTIPLIER', false),
         'min_outlier_score' => env('YOUTUBE_MIN_OUTLIER_SCORE', 20),
+
+        // YouTube Data API quota: what each call costs and how far each tier
+        // may spend before the gate (App\Support\Quota\CacheQuotaGate) says
+        // no. Google's default is 100 search.list calls, 100 videos.insert
+        // calls and 10,000 units a day, reset at midnight Pacific; the day's
+        // counters here roll over then too. See App\Support\Quota.
+        'quota' => [
+            // YOUTUBE_QUOTA_GATE_ENABLED=false: count everything, refuse nothing.
+            'enabled' => env('YOUTUBE_QUOTA_GATE_ENABLED', true),
+            // Units per call, as Google bills them. A resource listed here is
+            // counted; analytics_reports is a separate quota, kept at 0 for visibility.
+            'units' => [
+                'search_list' => 100,
+                'videos_insert' => 1600,
+                'thumbnails_set' => 50,
+                'videos_list' => 1,
+                'channels_list' => 1,
+                'playlist_items_list' => 1,
+                'playlists_list' => 1,
+                'other' => 1,
+                'analytics_reports' => 0,
+            ],
+            // Calls the day's shared counter may reach before a tier is refused.
+            // The counter is project-wide, the thresholds per tier, so free
+            // users stop first and paid users keep headroom above them. Set an
+            // env value blank for unlimited, 0 to refuse the tier outright.
+            // Admins are never limited. Unlisted resources are counted only.
+            'thresholds' => [
+                'search_list' => [
+                    'free' => env('YOUTUBE_QUOTA_SEARCH_FREE', 48),
+                    'paid' => env('YOUTUBE_QUOTA_SEARCH_PAID', 90),
+                    'admin' => null,
+                ],
+                'videos_insert' => [
+                    'free' => env('YOUTUBE_QUOTA_UPLOAD_FREE', 10),
+                    'paid' => env('YOUTUBE_QUOTA_UPLOAD_PAID', 90),
+                    'admin' => null,
+                ],
+            ],
+            // Fresh fetches one user may trigger per day, on top of the shared
+            // counter above: a cached search costs nothing and is never
+            // limited; only a term that has to go to YouTube counts. Blank =
+            // unlimited, 0 = none. Admins are never limited.
+            'per_user' => [
+                'search_list' => [
+                    'free' => env('YOUTUBE_QUOTA_SEARCH_PER_USER_FREE', 2),
+                    'paid' => env('YOUTUBE_QUOTA_SEARCH_PER_USER_PAID', 20),
+                    'admin' => null,
+                ],
+                // YouTube uploads one user may start per day (each 1,600 units).
+                'videos_insert' => [
+                    'free' => env('YOUTUBE_QUOTA_UPLOAD_PER_USER_FREE', 1),
+                    'paid' => env('YOUTUBE_QUOTA_UPLOAD_PER_USER_PAID', 10),
+                    'admin' => null,
+                ],
+                // Outlier breakdowns one user may generate per day. Not YouTube
+                // quota — each is a Gemini video analysis (money) — but rationed
+                // by the same gate. Reusing an existing breakdown never counts.
+                'breakdowns' => [
+                    'free' => env('BREAKDOWNS_PER_USER_FREE', 2),
+                    'paid' => env('BREAKDOWNS_PER_USER_PAID', 20),
+                    'admin' => null,
+                ],
+            ],
+            // Google's daily allocation per resource — what the alerts in
+            // config/monitoring.php measure against. 100 each is the default
+            // project quota; raise these when the extension is granted.
+            'daily_limits' => [
+                'search_list' => env('YOUTUBE_QUOTA_SEARCH_DAILY_LIMIT', 100),
+                'videos_insert' => env('YOUTUBE_QUOTA_UPLOAD_DAILY_LIMIT', 100),
+            ],
+            // Days of ledger rows (youtube_quota_spends) kept by youtube-quota:prune.
+            'retention_days' => (int) env('YOUTUBE_QUOTA_RETENTION_DAYS', 90),
+        ],
     ],
 
     'outliers' => [

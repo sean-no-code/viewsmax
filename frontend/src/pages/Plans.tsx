@@ -52,13 +52,13 @@ const ctaLabels = (t: TFunction): Record<PlanCta, string> => ({
 });
 
 // Plan limit lines (null = unlimited), with real plurals per language.
+// Channels and posts, never offers: offers are monetization, the Agency tier's
+// feature (planIncludes carries that line), so a per-tier offer count on every
+// card promised the wrong thing. Mirrors planLimitLines in plan-helpers.
 const limitLines = (t: TFunction, plan: PlanTier): string[] => [
 	plan.max_channels === null
 		? t("billing.plans.unlimitedChannels", "Unlimited channels")
 		: t("billing.plans.channelCount", { count: plan.max_channels, defaultValue_one: "{{count}} channel", defaultValue_other: "{{count}} channels" }),
-	plan.max_offers === null
-		? t("billing.plans.unlimitedOffers", "Unlimited offers")
-		: t("billing.plans.offerCount", { count: plan.max_offers, defaultValue_one: "{{count}} offer", defaultValue_other: "{{count}} offers" }),
 	plan.max_posts_per_month === null
 		? t("billing.plans.unlimitedPostsPerMonth", "Unlimited posts/mo")
 		: t("billing.plans.postsPerMonthCount", { count: plan.max_posts_per_month, defaultValue_one: "{{count}} post/mo", defaultValue_other: "{{count}} posts/mo" }),
@@ -256,7 +256,9 @@ const Plans = () => {
 				period: "month",
 				description: plan.description ?? t("billing.plans.monthlySubscription", "Monthly Subscription"),
 			});
-			if (plan.features?.length) params.set("features", plan.features.join(","));
+			params.set("tier", plan.name); // so Checkout lists this tier's inclusions
+			// The card's own limit lines, not the seeded English `features` column.
+			params.set("features", limitLines(t, plan).join(","));
 			if (plan.stripe_price_id) params.set("price_id", plan.stripe_price_id);
 			navigate(`/checkout?${params.toString()}`);
 			return;
@@ -331,7 +333,9 @@ const Plans = () => {
 						<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
 							{trialUsed
 								? t("billing.plans.trialEndedIntro", "Your free trial has ended. Pick the tier that fits how you grow.")
-								: t("billing.plans.trialIntro", "7-day free trial — add a card, nothing is charged until it ends — then pick the tier that fits how you grow.")}
+								: user?.card_required === false
+									? t("billing.plans.trialIntroNoCard", "7-day free trial — no card needed — then pick the tier that fits how you grow.")
+									: t("billing.plans.trialIntro", "7-day free trial — add a card, nothing is charged until it ends — then pick the tier that fits how you grow.")}
 						</p>
 					)}
 				</div>
@@ -404,7 +408,7 @@ const Plans = () => {
 													<span className="text-muted-foreground">{line}</span>
 												</li>
 											))}
-											{planIncludes(t).map((f) => (
+											{planIncludes(t, plan.name).map((f) => (
 												<li key={f} className="flex items-start gap-3">
 													<Check className="w-5 h-5 text-green-500 flex-shrink-0" />
 													<span className="text-muted-foreground">{f}</span>

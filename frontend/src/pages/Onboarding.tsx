@@ -42,8 +42,10 @@ const Onboarding = () => {
   // Derive the starting step from the user's current state (reload mid-flow
   // resumes; an already-subscribed user completes immediately).
   // Everyone adds a card here (the free window is that plan's trial), except an
-  // admin-created promotional customer with an open window: they count as
-  // subscribed with no plan row, see the connect step and skip the card step.
+  // admin-created promotional customer with an open window, and — in a card-free
+  // trial (SIGNUP_CARD_REQUIRED=false) — any signup whose window is still open:
+  // they see the connect step and skip the card step. The card comes when the
+  // window closes and the account is sent to Billing.
   const promoOnly = skipsCardStep(user);
 
   useEffect(() => {

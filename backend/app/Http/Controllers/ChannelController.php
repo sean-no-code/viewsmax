@@ -7,6 +7,7 @@ use App\Models\Video;
 use App\Services\Social\YouTubeDisconnector;
 use App\Services\YouTubeChannelService;
 use App\Services\YouTubeAnalyticsService;
+use App\Support\AnalyticsAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -294,6 +295,16 @@ class ChannelController extends Controller
                 'channel_owner_id' => $channel->user_id
             ]);
             return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // A refresh re-runs the channel analytics fetch (playlists.list + the
+        // YouTube Analytics queries), which is the Pro tier upsell. The video
+        // list itself stays refreshable on every plan via fetchVideos().
+        if (! AnalyticsAccess::allows($request->user())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Channel analytics is part of the Pro plan. Upgrade to refresh your channel analytics.',
+            ], 403);
         }
 
         try {

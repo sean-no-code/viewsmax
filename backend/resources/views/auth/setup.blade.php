@@ -6,14 +6,14 @@
 @section('content')
     <div class="card">
         <h1 class="card-title">Connect your channels</h1>
-        <p class="card-description">
+        <div class="card-description setup-steps">
             <span class="setup-step done"><b>✓</b> Verify email</span>
             <span class="setup-step current"><b>2</b> Connect channels</span>
             @if ($needsCard)
                 <span class="setup-step"><b>3</b> Add a card</span>
             @endif
             <span class="setup-step"><b>{{ $needsCard ? 4 : 3 }}</b> {{ $hasAgent ? 'Grant '.($client ?? 'your AI agent').' access' : 'Open ViewsMax' }}</span>
-        </p>
+        </div>
 
         @if (session('error'))
             <div class="error">{{ session('error') }}</div>
@@ -36,17 +36,17 @@
                             </div>
                         </div>
                         @if ($p['uses_oauth'])
-                            <form method="get" action="{{ route('connect.start', $p['platform']) }}" class="platform-connect">
-                                @if ($p['follow_us'])
-                                    <label class="checkbox-row" style="margin: 0;">
-                                        <input type="checkbox" name="follow_us" value="1" checked>
-                                        <span class="muted">Follow us (&#64;{{ $p['follow_us'] }})</span>
-                                    </label>
-                                @endif
+                            <form method="get" action="{{ route('connect.start', $p['platform']) }}" id="connect-{{ $p['platform'] }}" class="platform-connect">
                                 <button type="submit" class="btn btn-primary btn-sm">{{ $p['accounts']->isEmpty() ? 'Connect' : 'Add account' }}</button>
                             </form>
                         @endif
                     </div>
+                    @if ($p['uses_oauth'] && $p['follow_us'])
+                        <label class="checkbox-row platform-follow">
+                            <input type="checkbox" name="follow_us" value="1" checked form="connect-{{ $p['platform'] }}">
+                            <span class="muted">Follow us (&#64;{{ $p['follow_us'] }})</span>
+                        </label>
+                    @endif
                     @if ($p['accounts']->isNotEmpty())
                         <div class="platform-accounts">
                             @foreach ($p['accounts'] as $account)
@@ -84,7 +84,7 @@
             @endforelse
         </div>
 
-        <a href="{{ $needsCard ? route('register.billing') : route('register.continue') }}" class="btn btn-primary" style="margin-top: 20px;">
+        <a href="{{ $needsCard ? route('register.billing') : route('register.continue') }}" class="btn btn-primary setup-continue">
             @if ($needsCard)
                 {{ $connectedCount > 0 ? 'Continue to add a card' : 'Skip for now, add a card' }}
             @elseif ($hasAgent)
@@ -104,7 +104,10 @@
     </div>
 
     <style>
-        .setup-step { display: inline-flex; align-items: center; gap: 6px; margin: 0 8px; color: var(--muted-foreground); }
+        /* The layout caps .card at 28rem; this page widens its column to 36rem (see the width section above). */
+        .card { max-width: none; }
+        .setup-steps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; }
+        .setup-step { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--muted-foreground); }
         .setup-step b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--border); color: var(--foreground); font-size: 12px; }
         .setup-step.current { color: var(--foreground); font-weight: 600; }
         .setup-step.current b { background: var(--vm-red); color: #fff; }
@@ -113,13 +116,15 @@
         .first-ask { margin-top: 20px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; }
         .first-ask-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
         .first-ask-prompt { margin: 6px 0 4px; font-weight: 600; }
-        .platform { border: 1px solid var(--border); border-radius: calc(var(--radius)); padding: 12px; }
+        .platform { border: 1px solid var(--border); border-radius: calc(var(--radius)); padding: 12px 14px; }
+        .platform-follow { margin: 8px 0 0 48px; font-size: 13px; }
+        .setup-continue { margin-top: 20px; text-decoration: none; }
         .platform-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .platform-id { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
         .brand-tile { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0; }
         .platform-name { font-weight: 600; font-size: 15px; }
         .platform-sub { font-size: 13px; color: var(--muted-foreground); white-space: nowrap; }
-        .platform-connect { display: flex; align-items: center; gap: 12px; margin: 0; flex-shrink: 0; }
+        .platform-connect { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin: 0; flex-shrink: 0; }
         .platform-connect .checkbox-row span { white-space: nowrap; font-size: 13px; }
         .platform-accounts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
         .platform-account { display: flex; align-items: center; gap: 8px; background: hsl(220 14% 96%); border-radius: 6px; padding: 6px 10px; font-size: 14px; }
@@ -129,6 +134,10 @@
         .platform-connected { font-size: 12.5px; font-weight: 600; color: #16A34A; white-space: nowrap; }
         .platform-credentials { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
         .platform-credentials input { margin: 0; }
+        /* Credentials row: follow-us left (wrapping on a phone), Connect right — never wider than the card. */
+        .platform-credentials .platform-connect { justify-content: space-between; flex-wrap: wrap; row-gap: 8px; flex-shrink: 1; }
+        .platform-credentials .checkbox-row { flex: 1; min-width: 0; }
+        .platform-credentials .checkbox-row span { white-space: normal; }
         .btn-sm { width: auto; height: 34px; padding: 6px 14px; font-weight: 600; }
     </style>
 @endsection

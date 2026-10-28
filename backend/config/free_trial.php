@@ -17,6 +17,14 @@
 
 return [
 
+    // SIGNUP_CARD_REQUIRED=false: a card-free trial. Onboarding finishes
+    // without a card and the whole product works until the window closes,
+    // then the account goes to Billing as before. true (the default) keeps
+    // the card step: no access past onboarding until a card is added. Users
+    // who finished onboarding while it was off keep access until their
+    // window ends either way. Read by App\Support\UserAccess::cardRequired().
+    'card_required' => (bool) env('SIGNUP_CARD_REQUIRED', true),
+
     'reminder' => [
         // FREE_TRIAL_REMINDER_ENABLED=false stops the emails without a deploy.
         'enabled' => (bool) env('FREE_TRIAL_REMINDER_ENABLED', true),

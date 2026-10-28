@@ -11,8 +11,12 @@ use App\Jobs\PublishToThreadsJob;
 use App\Jobs\PublishToTikTokJob;
 use App\Jobs\PublishToXJob;
 use App\Jobs\PublishYouTubeJob;
+use App\Contracts\Quota\QuotaGate;
 use App\Models\Post;
 use App\Models\PostTarget;
+use App\Support\Quota\QuotaMessage;
+use App\Support\Quota\Tier;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Single place that maps a post's targets to their publish jobs. Used by both
@@ -63,6 +67,40 @@ class PostPublishDispatcher
         $jobClass = self::JOBS[$target->platform] ?? null;
         if ($jobClass === null) {
             return false;
+        }
+
+        // videos.insert is 1600 units and capped per day project-wide. When the
+        // budget is gone the target stays pending (with the reset time in its
+        // meta) and posts:reconcile-stuck --requeue brings it back here every
+        // 15 minutes until the gate lets it through. Its siblings on other
+        // platforms are not held up.
+        if ($target->platform === 'youtube') {
+            $gate = app(QuotaGate::class);
+            $owner = $target->post?->user;
+            $meta = $target->meta ?? [];
+            // A target counts against its owner once: reconcile --requeue may
+            // dispatch the same one again, and that's not a second upload.
+            $counted = ! empty($meta['quota_user_counted']);
+
+            $decision = $gate->allows(QuotaGate::VIDEOS_INSERT, Tier::of($owner), 1, $counted ? null : $owner?->id);
+            if (! $decision->allowed) {
+                $target->update(['meta' => [
+                    'quota_paused_until' => $decision->resetsAt->format(DATE_ATOM),
+                    'quota_message' => QuotaMessage::for($decision, $owner),
+                ] + $meta]);
+                Log::warning('YouTube publish deferred: upload budget used up', ['post_target_id' => $target->id] + $decision->toArray());
+
+                return true;
+            }
+
+            if (! $counted && $owner) {
+                $gate->recordUserFetch($owner->id, QuotaGate::VIDEOS_INSERT);
+                unset($meta['quota_paused_until'], $meta['quota_message']);
+                $target->meta = ['quota_user_counted' => true] + $meta;
+            } elseif (isset($meta['quota_paused_until'])) {
+                unset($meta['quota_paused_until'], $meta['quota_message']);
+                $target->meta = $meta;
+            }
         }
 
         $target->update(['status' => PostTarget::STATUS_PUBLISHING]);

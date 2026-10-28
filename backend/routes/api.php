@@ -213,6 +213,12 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::post('/{id}/review', [VideoController::class, 'review'])->middleware('check.credits:'.CreditService::REVIEW_OPERATION);
     });
 
+    // YouTube API quota dashboard (admin): today's counters vs .env caps + the ledger.
+    Route::prefix('admin/youtube-quota')->middleware('role:admin')->group(function () {
+        Route::get('/summary', [App\Http\Controllers\Admin\YouTubeQuotaController::class, 'summary']);
+        Route::get('/ledger', [App\Http\Controllers\Admin\YouTubeQuotaController::class, 'ledger']);
+    });
+
     // Outlier Search Routes (protected)
     Route::prefix('outliers')->group(function () {
         Route::get('/', [App\Http\Controllers\OutlierController::class, 'index']);

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\AnalyticsAccess;
 use App\Models\Plan;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -318,6 +319,10 @@ class CreditService
                     'expires_at' => $expiresAt->toDateTimeString(),
                 ]);
             });
+
+            // A plan that includes analytics backfills the imports the user
+            // missed on a lower tier (the pivot fires no model events).
+            AnalyticsAccess::backfill($user);
         } catch (\Exception $e) {
             Log::error("Failed to attach subscription", [
                 'user_id' => $user->id,

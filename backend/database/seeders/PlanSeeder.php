@@ -21,7 +21,10 @@ class PlanSeeder extends Seeder
         // null when an env var is unset *and* the default is null (= unlimited).
         $num = fn (string $key, ?int $default = null): ?int => ($v = env($key, $default)) === null ? null : (int) $v;
 
-        // The four paid tiers from the Pricing + Features ticket.
+        // The four paid tiers from the Pricing + Features ticket. `features` lists
+        // the tier's limits for display; offers are deliberately absent — they are
+        // monetization, which is the Agency tier's feature, and the SPA builds the
+        // card bullets from the numeric limits anyway (lib/plan-helpers.ts).
         $plans = [
             [
                 'name' => 'free',
@@ -50,7 +53,6 @@ class PlanSeeder extends Seeder
                 'billing_cycle' => 'monthly',
                 'features' => [
                     '5 channels',
-                    '1 offer',
                     '400 posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_STARTER_CHANNELS', 5),
@@ -68,7 +70,6 @@ class PlanSeeder extends Seeder
                 'billing_cycle' => 'monthly',
                 'features' => [
                     '30 channels',
-                    '5 offers',
                     'Unlimited posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_CREATOR_CHANNELS', 30),
@@ -86,7 +87,6 @@ class PlanSeeder extends Seeder
                 'billing_cycle' => 'monthly',
                 'features' => [
                     'Unlimited channels',
-                    '10 offers',
                     'Unlimited posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_PRO_CHANNELS'), // null = unlimited
@@ -104,7 +104,6 @@ class PlanSeeder extends Seeder
                 'billing_cycle' => 'monthly',
                 'features' => [
                     'Unlimited channels',
-                    'Unlimited offers',
                     'Unlimited posts/mo',
                 ],
                 'max_channels' => $num('LIMIT_AGENCY_CHANNELS'), // null = unlimited

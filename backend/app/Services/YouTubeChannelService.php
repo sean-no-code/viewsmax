@@ -8,6 +8,7 @@ use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
 use App\Models\User;
 use App\Models\Video;
+use App\Support\AnalyticsAccess;
 use App\Traits\LogsYouTubeRequests;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -1175,9 +1176,19 @@ class YouTubeChannelService
             'is_oauth_exchange' => $tokenData !== null
         ]);
         
-        // Fetch and store comprehensive analytics data
-        $this->fetchAndStoreChannelAnalytics($channel, $accessToken);
-        
+        // Fetch and store comprehensive analytics data. Synchronous, and it
+        // spends playlists.list plus a handful of YouTube Analytics queries, so
+        // it only runs for a plan that includes analytics.
+        if (AnalyticsAccess::allows($user)) {
+            $this->fetchAndStoreChannelAnalytics($channel, $accessToken);
+        } else {
+            AnalyticsAccess::logSkip('channel analytics fetch', [
+                'user_id' => $user->id,
+                'channel_id' => $channel->id,
+                'plan' => $user->activePlan()?->name,
+            ]);
+        }
+
         return $channel->fresh();
     }
 

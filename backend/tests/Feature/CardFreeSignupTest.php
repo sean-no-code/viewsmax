@@ -143,6 +143,134 @@ class CardFreeSignupTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
     }
 
+    // ---- SIGNUP_CARD_REQUIRED=false: the card-free trial ----------------------
+    // The window is a trial without a card: onboarding finishes without one and
+    // the whole product works until the window closes, then the account is sent
+    // to Billing exactly as before. Flipping the switch back restores the card
+    // step for anyone who hasn't finished onboarding.
+
+    public function test_with_the_switch_off_a_signup_uses_the_product_without_a_card(): void
+    {
+        config(['free_trial.card_required' => false]);
+        $user = $this->register();
+        $headers = $this->authHeaders($user);
+
+        $this->withHeaders($headers)->getJson('/api/posts')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/social/posts')->assertOk();
+        $this->withHeaders($headers)->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.user.card_required', false);
+    }
+
+    public function test_with_the_switch_off_onboarding_finishes_without_a_card(): void
+    {
+        config(['free_trial.card_required' => false]);
+        $user = $this->register();
+
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/onboarding/complete')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+        $this->assertNotNull($user->fresh()->onboarding_completed_at);
+    }
+
+    public function test_with_the_switch_off_the_window_still_ends_in_billing(): void
+    {
+        config(['free_trial.card_required' => false]);
+        $user = $this->register();
+        $headers = $this->authHeaders($user);
+        $this->withHeaders($headers)->postJson('/api/onboarding/complete')->assertOk();
+
+        Carbon::setTestNow('2026-10-09 10:01:00');
+
+        $this->withHeaders($headers)->getJson('/api/posts')
+            ->assertForbidden()
+            ->assertJsonPath('code', 'access_expired');
+    }
+
+    public function test_background_work_follows_the_switch(): void
+    {
+        $user = $this->register(); // verified, window open, not onboarded, no card
+
+        config(['free_trial.card_required' => true]);
+        $this->assertFalse(User::withAccess()->whereKey($user->id)->exists(), 'paywalled: no syncs or publishing');
+
+        config(['free_trial.card_required' => false]);
+        $this->assertTrue(User::withAccess()->whereKey($user->id)->exists(), 'card-free trial: same as the access rule');
+
+        Carbon::setTestNow('2026-10-09 10:01:00');
+        $this->assertFalse(User::withAccess()->whereKey($user->id)->exists(), 'window closed');
+    }
+
+    public function test_the_agent_card_page_is_skipped_with_the_switch_off(): void
+    {
+        config(['free_trial.card_required' => false]);
+        $user = $this->register();
+
+        $this->actingAs($user, 'web')->get('/register/billing')->assertRedirect(route('register.continue'));
+    }
+
+    /**
+     * The end of a card-free trial, end to end: the account is onboarded and
+     * has no plan, the window has just closed. Every surface tells the user to
+     * upgrade and where — REST as a 403, MCP as the tool answer (HTTP 200).
+     */
+    private function expiredCardFreeUser(): User
+    {
+        // The Billing link is built from FRONTEND_URL; pin it so a dev .env can't change the message.
+        config(['free_trial.card_required' => false, 'app.frontend_url' => 'https://app.example.com']);
+        $user = $this->register();
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/onboarding/complete')->assertOk();
+        Carbon::setTestNow('2026-10-09 11:00:00'); // the window closed at 10:00
+
+        return $user;
+    }
+
+    public function test_after_a_card_free_trial_the_api_says_to_upgrade(): void
+    {
+        $user = $this->expiredCardFreeUser();
+        $headers = $this->authHeaders($user);
+
+        foreach (['/api/posts', '/api/outliers', '/api/social/accounts'] as $path) {
+            $this->withHeaders($headers)->getJson($path)
+                ->assertForbidden()
+                ->assertJsonPath('success', false)
+                ->assertJsonPath('code', 'access_expired')
+                ->assertJsonPath('url', 'https://app.example.com/dashboard/billing')
+                ->assertJsonPath('message', 'Your ViewsMax free trial has ended. Please upgrade to a paid subscription to continue using ViewsMax: https://app.example.com/dashboard/billing');
+        }
+        // What the app needs to show the user and take a card stays open.
+        $this->withHeaders($headers)->getJson('/api/profile')->assertOk()->assertJsonPath('data.user.access_expired', true);
+        $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
+    }
+
+    public function test_after_a_card_free_trial_mcp_tools_say_to_upgrade(): void
+    {
+        $user = $this->expiredCardFreeUser();
+        // An MCP key minted while the account still had access.
+        $key = 'vmx_'.$user->generateTokenString();
+        $user->tokens()->create(['name' => 'mcp', 'token' => hash('sha256', $key), 'abilities' => ['mcp']]);
+
+        foreach (['list_posts' => [], 'search_outliers' => ['term' => 'ai agents'], 'list_connected_accounts' => []] as $tool => $arguments) {
+            $response = $this->withHeaders(['Authorization' => 'Bearer '.$key, 'Accept' => 'application/json'])
+                ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => $tool, 'arguments' => $arguments]]);
+
+            $response->assertOk(); // never an HTTP error over MCP
+            $this->assertSame(
+                'Your ViewsMax free trial has ended. Please upgrade to a paid subscription to continue using ViewsMax: https://app.example.com/dashboard/billing',
+                $response->json('result.content.0.text'),
+                $tool
+            );
+        }
+    }
+
+    public function test_the_switch_defaults_to_requiring_a_card(): void
+    {
+        $user = $this->register();
+
+        $this->withHeaders($this->authHeaders($user))->getJson('/api/profile')
+            ->assertJsonPath('data.user.card_required', true);
+    }
+
     public function test_subscribing_after_the_window_charges_immediately(): void
     {
         $user = $this->register();

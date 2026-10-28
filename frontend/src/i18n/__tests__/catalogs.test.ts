@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import { CATALOGS, forLocale, leaves, samePlaceholders } from "@/i18n/catalog";
-import { PLAN_INCLUDES } from "@/lib/plan-helpers";
+import { PLAN_INCLUDES, PLAN_TIER_INCLUDES, planIncludesFor } from "@/lib/plan-helpers";
 
 const read = (file: string): unknown => JSON.parse(readFileSync(join(process.cwd(), file), "utf8"));
 
@@ -23,9 +23,29 @@ describe.each(CATALOGS)("$name catalog", (catalog) => {
 });
 
 describe("homepage pricing", () => {
-  it("lists the same plan inclusions as checkout", () => {
-    const en = read("src/pages/landing/copy/en.json") as { pricing: { includes: string[] } };
+  type Pricing = { pricing: { includes: string[]; tiers: Record<string, { feats: string[] }> } };
+  const en = read("src/pages/landing/copy/en.json") as Pricing;
+
+  it("lists the same shared plan inclusions as checkout", () => {
     expect(en.pricing.includes).toEqual([...PLAN_INCLUDES]);
+  });
+
+  it("lists no offer count on any tier", () => {
+    // Offers are monetization — the Agency tier's feature, sold by its own
+    // inclusion line, not as a per-tier count on every card.
+    for (const { feats } of Object.values(en.pricing.tiers)) {
+      for (const line of feats) expect(line).not.toMatch(/offer/i);
+    }
+  });
+
+  it("promises each tier-specific line on the same tiers as checkout", () => {
+    // The homepage cards render [...tier.feats, ...includes], so a line only
+    // some tiers get has to live in that tier's feats.
+    for (const [tier, { feats }] of Object.entries(en.pricing.tiers)) {
+      const expected = planIncludesFor(tier).filter((l) => !PLAN_INCLUDES.includes(l));
+      const actual = PLAN_TIER_INCLUDES.map((e) => e.line).filter((l) => feats.includes(l));
+      expect(actual).toEqual(expected);
+    }
   });
 });
 

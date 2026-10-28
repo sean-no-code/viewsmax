@@ -79,7 +79,7 @@ import { AIModelProcessingProvider } from "./contexts/AIModelProcessingContext";
 import { UserCreditsProvider } from "./contexts/UserCreditsContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProFeatureRoute from "./components/ProFeatureRoute";
-import AdminRoute from "./components/AdminRoute";
+import AnalyticsRoute from "./components/AnalyticsRoute";
 import Outliers from "./pages/Outliers";
 import OutliersLibrary from "./pages/OutliersLibrary";
 import OutlierBreakdown from "./pages/OutlierBreakdown";
@@ -239,10 +239,10 @@ const App = () => (
                   <Route path="analytics" element={<Navigate to="/dashboard/analytics/overview" replace />} />
                   <Route path="analytics/overview" element={<AnalyticsOverview />} />
                   <Route path="analytics/sources" element={<AnalyticsSources />} />
-                  {/* Admin-only while the multi-platform data pipeline is finished */}
+                  {/* Channel + post analytics is part of the Pro tier (src/lib/access.ts) */}
                   <Route path="analytics/audience-growth" element={<Navigate to="/dashboard/analytics/profile" replace />} />
-                  <Route path="analytics/profile" element={<AdminRoute allowPromo><AnalyticsPerformance tab="profile" /></AdminRoute>} />
-                  <Route path="analytics/posts" element={<AdminRoute allowPromo><AnalyticsPerformance tab="posts" /></AdminRoute>} />
+                  <Route path="analytics/profile" element={<AnalyticsRoute><AnalyticsPerformance tab="profile" /></AnalyticsRoute>} />
+                  <Route path="analytics/posts" element={<AnalyticsRoute><AnalyticsPerformance tab="posts" /></AnalyticsRoute>} />
                   <Route path="analytics/platform/:id" element={<AnalyticsPlatformDetail />} />
                   {/* Offers (formerly Landing Pages) — amalgamated with Links under Monetization */}
                   <Route path="monetization/offers" element={<Offers />} />
@@ -254,7 +254,7 @@ const App = () => (
                   <Route path="analytics/links" element={<Navigate to="/dashboard/monetization/offers" replace />} />
                   <Route path="analytics/links/:id" element={<ParamRedirect base="/dashboard/monetization/links" />} />
                   {/* Legacy YouTube channel analytics — kept, no sidebar item */}
-                  <Route path="channel-analytics" element={<Analytics />} />
+                  <Route path="channel-analytics" element={<AnalyticsRoute><Analytics /></AnalyticsRoute>} />
                   {/* Multi-platform Post composer + calendar */}
                   <Route path="post" element={<Post />} />
                   <Route path="post/:id" element={<Post />} />

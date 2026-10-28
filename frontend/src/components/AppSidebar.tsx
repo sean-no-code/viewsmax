@@ -1,6 +1,6 @@
 import { BarChart3, DollarSign, Send, Plug, Zap, CalendarDays, ScrollText, TrendingUp, Crown, type LucideIcon } from "lucide-react";
 
-type NavSubItem = { title: string; i18nKey?: string; url: string; limitedRelease?: boolean };
+type NavSubItem = { title: string; i18nKey?: string; url: string; analyticsOnly?: boolean };
 type NavItem = {
   title: string;
   i18nKey?: string;
@@ -14,7 +14,7 @@ import { NavLink, useLocation, Link } from "react-router-dom";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
-import { inLimitedReleaseAudience, isAccessExpired } from "@/lib/access";
+import { canUseAnalytics, isAccessExpired } from "@/lib/access";
 
 import {
   Sidebar,
@@ -89,8 +89,8 @@ const allNavigationItems: NavItem[] = [
     isProFeature: false,
     subItems: [
       { title: "Revenue Growth", i18nKey: "nav.revenueGrowth", url: "/dashboard/analytics/overview" },
-      { title: "Profile Performance", i18nKey: "nav.profilePerformance", url: "/dashboard/analytics/profile", limitedRelease: true },
-      { title: "Post Performance", i18nKey: "nav.postPerformance", url: "/dashboard/analytics/posts", limitedRelease: true },
+      { title: "Profile Performance", i18nKey: "nav.profilePerformance", url: "/dashboard/analytics/profile", analyticsOnly: true },
+      { title: "Post Performance", i18nKey: "nav.postPerformance", url: "/dashboard/analytics/posts", analyticsOnly: true },
     ]
   },
   { title: "Boosts", i18nKey: "nav.boosts", url: "/dashboard/boosts", icon: Zap, isProFeature: false },
@@ -106,11 +106,11 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  // Profile/Post performance are limited release for now (the multi-platform
-  // data pipeline is still being finished): admins and promotional customers only.
-  const limitedRelease = inLimitedReleaseAudience(user);
+  // Profile/Post Performance are part of the Pro tier (plus admins and
+  // promotional customers); a lower tier never sees them offered.
+  const analytics = canUseAnalytics(user);
   const baseItems = allNavigationItems.map((item) =>
-    item.subItems ? { ...item, subItems: item.subItems.filter((sub) => !sub.limitedRelease || limitedRelease) } : item,
+    item.subItems ? { ...item, subItems: item.subItems.filter((sub) => !sub.analyticsOnly || analytics) } : item,
   );
 
   // An expired promotional customer can only reach Billing until they subscribe.

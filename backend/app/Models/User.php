@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use App\Support\AnalyticsAccess;
 use Bavix\Wallet\Interfaces\Wallet;
 use Bavix\Wallet\Traits\HasWallet;
 use Illuminate\Database\Eloquent\Builder;
@@ -272,7 +273,10 @@ class User extends Authenticatable implements Wallet
      */
     public function canCompleteOnboarding(): bool
     {
-        return $this->hasActivePlan() || $this->isPromotional();
+        return $this->hasActivePlan()
+            || $this->isPromotional()
+            // Card-free trial (SIGNUP_CARD_REQUIRED=false): the open window is enough.
+            || (! \App\Support\UserAccess::cardRequired() && $this->freeWindowOpen());
     }
 
     /**
@@ -326,9 +330,31 @@ class User extends Authenticatable implements Wallet
         return $query->whereNotNull('email_verified_at')->where(function (Builder $q) use ($livePlan) {
             $q->whereHas('roles', fn (Builder $r) => $r->whereIn('name', [self::ADMIN_ROLE, self::PROMO_ROLE]))
                 ->orWhere(function (Builder $q) use ($livePlan) {
-                    $q->where(fn (Builder $q) => $q->whereHas('plans', $livePlan)->orWhere('promo_expires_at', '>', now()))
-                        ->where(fn (Builder $q) => $q->whereNotNull('onboarding_completed_at')->orWhereHas('plans', $livePlan));
+                    $q->where(fn (Builder $q) => $q->whereHas('plans', $livePlan)->orWhere('promo_expires_at', '>', now()));
+                    // The card step, as in UserAccess::denial — gone in a card-free trial.
+                    if (\App\Support\UserAccess::cardRequired()) {
+                        $q->where(fn (Builder $q) => $q->whereNotNull('onboarding_completed_at')->orWhereHas('plans', $livePlan));
+                    }
                 });
+        });
+    }
+
+    /**
+     * Users whose plan includes analytics, as a query — the SQL twin of
+     * AnalyticsAccess::allows(), for the commands that select in bulk
+     * (channels:sync-videos, audience:refresh, posts:refresh-metrics,
+     * posts:import-recent) so a below-Pro user costs no provider calls.
+     * Orthogonal to withAccess(): a lapsed Pro user passes this and fails that,
+     * so bulk selections need both. Soft-deleted users are excluded by the
+     * model's scope.
+     */
+    public function scopeWithAnalytics(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereHas('roles', fn (Builder $r) => $r->whereIn('name', [self::ADMIN_ROLE, self::PROMO_ROLE]))
+                ->orWhereHas('plans', fn (Builder $p) => $p
+                    ->whereIn('user_plans.status', self::ACTIVE_SUBSCRIPTION_STATUSES)
+                    ->whereIn('plans.name', AnalyticsAccess::PLANS));
         });
     }
 
@@ -399,10 +425,14 @@ class User extends Authenticatable implements Wallet
             'has_active_plan' => $this->hasActivePlan(),
             'promo_expires_at' => optional($this->promo_expires_at)->toIso8601String(),
             'access_expired' => $this->accessExpired(),
+            // SIGNUP_CARD_REQUIRED: the SPA offers "Skip for now" on the card step when false.
+            'card_required' => \App\Support\UserAccess::cardRequired(),
             'is_admin' => $this->isAdmin(),
             // Promotional customer: with admins, the limited-release audience
             // (SocialProviderManager::inLimitedReleaseAudience).
             'is_promotional' => $this->isPromotional(),
+            // Analytics is the Pro-tier upsell (App\Support\AnalyticsAccess).
+            'can_use_analytics' => AnalyticsAccess::allows($this),
             // Legacy extras retained for backward compatibility.
             'roles' => $this->roles,
             'active_plan' => $this->activePlan(),

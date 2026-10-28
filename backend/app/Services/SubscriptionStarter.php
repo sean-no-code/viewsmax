@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Plan;
 use App\Models\User;
+use App\Support\AnalyticsAccess;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -68,6 +69,10 @@ class SubscriptionStarter
                 ]);
             }
         });
+
+        // A plan that includes analytics backfills the imports the user missed
+        // on a lower tier (the pivot fires no model events).
+        AnalyticsAccess::backfill($user);
 
         return [
             'subscription_id' => $subscriptionId,

@@ -4,6 +4,7 @@ namespace App\Services\Social;
 
 use App\Jobs\ImportRecentPostsJob;
 use App\Models\User;
+use App\Support\AnalyticsAccess;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -102,7 +103,7 @@ class SocialConnect
         if ($followUs) {
             $this->followUs->followFrom($accounts);
         }
-        $this->queueRecentPostsImport($accounts);
+        $this->queueRecentPostsImport($user, $accounts);
 
         return $accounts;
     }
@@ -127,7 +128,7 @@ class SocialConnect
         if ($followUs) {
             $this->followUs->followFrom($accounts);
         }
-        $this->queueRecentPostsImport($accounts);
+        $this->queueRecentPostsImport($user, $accounts);
 
         return $accounts;
     }
@@ -135,11 +136,23 @@ class SocialConnect
     /**
      * Pull the account's latest posts into analytics (off the request). Only
      * platforms that can report stats are worth a job; the job re-checks.
+     * Analytics is the Pro tier upsell, so a below-Pro connect queues nothing
+     * (App\Support\AnalyticsAccess).
      *
      * @param  Collection<int, \App\Models\SocialAccount>  $accounts
      */
-    private function queueRecentPostsImport(Collection $accounts): void
+    private function queueRecentPostsImport(User $user, Collection $accounts): void
     {
+        if (! AnalyticsAccess::allows($user)) {
+            AnalyticsAccess::logSkip('recent posts import', [
+                'user_id' => $user->id,
+                'social_account_ids' => $accounts->pluck('id')->all(),
+                'plan' => $user->activePlan()?->name,
+            ]);
+
+            return;
+        }
+
         foreach ($accounts as $account) {
             if ($this->manager->supportsStats($account->platform)) {
                 ImportRecentPostsJob::dispatch($account->id);

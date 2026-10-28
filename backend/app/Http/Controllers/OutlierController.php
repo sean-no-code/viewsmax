@@ -327,7 +327,28 @@ class OutlierController extends Controller
         }
 
         // Trigger the search job(s) — respects exact_match flag
-        $this->searchService->search($term, $request->user(), $exactMatch);
+        $denied = $this->searchService->search($term, $request->user(), $exactMatch);
+
+        if ($denied) {
+            // 429: the client shows the message (the SPA as a toast with an
+            // Upgrade action, MCP as an isError result). The library — everything
+            // already ingested — still answers GET /outliers for the term; only
+            // the fresh YouTube pull waits for the daily reset.
+            return response()->json([
+                'success' => false,
+                'code' => 'quota_paused',
+                'status' => 'quota_paused',
+                'message' => \App\Support\Quota\QuotaMessage::for($denied, $request->user()),
+                'scope' => $denied->scope,
+                'reason' => $denied->reason,
+                'plan' => \App\Support\Quota\QuotaMessage::planLabel($request->user()),
+                'upgrade' => \App\Support\Quota\QuotaMessage::offersUpgrade($denied),
+                'used' => $denied->used,
+                'cap' => $denied->cap,
+                'resets_at' => $denied->resetsAt->format(DATE_ATOM),
+                'term' => $term,
+            ], 429);
+        }
 
         return response()->json([
             'message' => 'Search started',

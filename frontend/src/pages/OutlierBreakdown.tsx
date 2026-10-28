@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { RotateCcw, ExternalLink, Bookmark, Play, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import i18n from 'i18next';
 import type { TFunction } from 'i18next';
 import {
-    getOutlier, getOutlierBreakdown, requestOutlierBreakdown, getLibrary, saveOutlier, deleteSavedOutlier, fetchOutlierByUrl,
+    getOutlier, getOutlierBreakdown, requestOutlierBreakdown, getLibrary, saveOutlier, deleteSavedOutlier, fetchOutlierByUrl, asQuotaPaused,
     getOutlierCompetitors, addOutlierCompetitor, removeOutlierCompetitor, refreshOutlierMedia,
     type OutlierVideo, type OutlierBreakdown as Breakdown, type BreakdownPayload, type BreakdownStructureBeat, type OutlierPlatform,
 } from '@/lib/outlier-service';
@@ -49,6 +49,7 @@ const STEP_MS = 3500;
 
 export default function OutlierBreakdown() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const { platform = 'youtube', videoId = '' } = useParams();
     // Set when the search bar queued a background download for this video —
     // the page then polls the video in and can retry the download on failure.
@@ -97,8 +98,17 @@ export default function OutlierBreakdown() {
             pollRef.current = setInterval(poll, POLL_MS);
         } catch (e) {
             setBreakdown({ status: 'failed', payload: null, error: e instanceof Error ? e.message : i18n.t('outliers.breakdown.generationStartFailed', 'Could not start generation') });
+            // Today's breakdown allowance on this plan: the message is already on
+            // the page; the toast carries the way to a higher limit.
+            const paused = asQuotaPaused(e);
+            if (paused?.upgrade) {
+                toast.warning(paused.message, {
+                    duration: 10000,
+                    action: { label: i18n.t('outliers.search.upgradeAction', 'Upgrade'), onClick: () => navigate('/dashboard/billing') },
+                });
+            }
         }
-    }, [platform, videoId, poll, video, ingestUrl]);
+    }, [platform, videoId, poll, video, ingestUrl, navigate]);
 
     // Video meta. Mid-download the video 404s: keep polling until it lands, the
     // ingest job records a failure on the breakdown row, or we give up (5 min).

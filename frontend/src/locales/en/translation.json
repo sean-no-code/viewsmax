@@ -311,6 +311,7 @@
   },
   "billing": {
     "includes": {
+      "analytics": "Channel & post analytics",
       "beehiiv": "Beehiiv reach tracking",
       "boosts": "Boosts: auto-repost & auto-promo",
       "brands": "Brands (account groups)",
@@ -380,6 +381,7 @@
       "trialEndedIntro": "Your free trial has ended. Pick the tier that fits how you grow.",
       "trialEnds": "Free trial · ends <0>{{date}}</0>",
       "trialIntro": "7-day free trial — add a card, nothing is charged until it ends — then pick the tier that fits how you grow.",
+      "trialIntroNoCard": "7-day free trial — no card needed — then pick the tier that fits how you grow.",
       "unexpectedError": "An unexpected error occurred. Please try again.",
       "unlimitedChannels": "Unlimited channels",
       "unlimitedOffers": "Unlimited offers",

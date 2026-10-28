@@ -42,6 +42,22 @@ return [
         'retain_days' => 7,
     ],
 
+    // YouTube API quota alerts (App\Support\Quota\QuotaAlerts). Once per
+    // resource per Pacific day: when the day's calls reach alert_at % of
+    // Google's allocation (services.youtube.quota.daily_limits), when they
+    // reach 100 %, and when Google itself answers quotaExceeded. Each is an
+    // error-level line on the youtube_quota log (so Sentry sees it) and an
+    // email, sent synchronously like the heartbeat's.
+    'youtube_quota' => [
+        'enabled' => (bool) env('YOUTUBE_QUOTA_ALERTS_ENABLED', true),
+
+        // Percent of the daily allocation that triggers the first alert.
+        'alert_at' => (int) env('YOUTUBE_QUOTA_ALERT_AT', 80),
+
+        // Where the emails go. Defaults to ADMIN_EMAIL.
+        'alert_email' => env('YOUTUBE_QUOTA_ALERT_EMAIL', env('ADMIN_EMAIL')),
+    ],
+
     // Who may read /api/queue-monitor. IPs or CIDR ranges, comma-separated.
     'monitor_allowed_ips' => env('QUEUE_MONITOR_ALLOWED_IPS', '127.0.0.1,::1'),
 

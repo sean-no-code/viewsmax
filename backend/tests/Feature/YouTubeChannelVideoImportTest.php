@@ -48,7 +48,7 @@ class YouTubeChannelVideoImportTest extends TestCase
 
     private function channel(array $attrs = []): Channel
     {
-        return Channel::create($attrs + ['user_id' => User::factory()->create()->id, 'youtube_channel_id' => 'UCmine']);
+        return Channel::create($attrs + ['user_id' => $this->analyticsUser()->id, 'youtube_channel_id' => 'UCmine']);
     }
 
     private function assertImportedWith(string $token): void
@@ -147,7 +147,7 @@ class YouTubeChannelVideoImportTest extends TestCase
             ]]]),
             '*' => Http::response([], 200),
         ]);
-        $user = User::factory()->create();
+        $user = $this->analyticsUser();
 
         $this->withHeaders(['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken])
             ->postJson('/api/auth/youtube/exchange', ['code' => 'c', 'redirect_uri' => 'https://app.test/oauth/callback'])

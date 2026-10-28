@@ -161,15 +161,40 @@ function authHeaders(): Record<string, string> {
     return headers;
 }
 
+/** A non-2xx reply, with the body kept so callers can act on its `code`. */
+export class ApiError extends Error {
+    constructor(message: string, public readonly status: number, public readonly body: Record<string, unknown> | null) {
+        super(message);
+        this.name = 'ApiError';
+    }
+}
+
+/** The YouTube quota gate said no: today's fresh-search limit, for this user or the whole site. */
+export interface QuotaPaused {
+    code: 'quota_paused';
+    message: string;
+    scope: 'user' | 'project';
+    plan: string;
+    upgrade: boolean;
+    resets_at: string;
+}
+
+export function asQuotaPaused(e: unknown): QuotaPaused | null {
+    return e instanceof ApiError && e.status === 429 && e.body?.code === 'quota_paused'
+        ? (e.body as unknown as QuotaPaused)
+        : null;
+}
+
 async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${path}`, { headers: authHeaders(), ...init });
     if (!response.ok) {
         let message = `Request failed (${response.status})`;
+        let body: Record<string, unknown> | null = null;
         try {
-            const body = await response.json();
-            message = body.error || body.message || message;
+            body = await response.json();
+            message = (body?.error as string) || (body?.message as string) || message;
         } catch { /* ignore */ }
-        throw new Error(message);
+        throw new ApiError(message, response.status, body);
     }
     return response.json();
 }

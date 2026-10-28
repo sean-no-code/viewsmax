@@ -30,14 +30,15 @@ class SyncChannelVideos extends Command
 
     public function handle(YouTubeChannelService $youtube): int
     {
-        // Only channels of users who may use ViewsMax right now: a lapsed trial
-        // or cancelled plan must not keep spending YouTube quota every day.
+        // Only channels of users who may use ViewsMax right now AND whose plan
+        // includes analytics: a lapsed trial, a cancelled plan or a below-Pro
+        // tier must not keep spending YouTube quota every day.
         $channels = Channel::whereNotNull('youtube_channel_id')
             ->where(function ($q) {
                 $q->whereNotNull('youtube_access_token')
                     ->orWhereNotNull('youtube_refresh_token');
             })
-            ->whereHas('user', fn ($u) => $u->withAccess())
+            ->whereHas('user', fn ($u) => $u->withAccess()->withAnalytics())
             ->get();
 
         $maxTotal = (int) $this->option('max');

@@ -315,6 +315,7 @@
   },
   "billing": {
     "includes": {
+      "analytics": "Analytique des chaînes et des publications",
       "beehiiv": "Suivi de l'audience Beehiiv",
       "boosts": "Boosts : republication et promo auto",
       "brands": "Marques (groupes de comptes)",
@@ -390,6 +391,7 @@
       "trialEndedIntro": "Votre essai gratuit est terminé. Choisissez le forfait adapté à votre croissance.",
       "trialEnds": "Essai gratuit · se termine le <0>{{date}}</0>",
       "trialIntro": "Essai gratuit de 7 jours à $0, puis choisissez le forfait adapté à votre croissance.",
+      "trialIntroNoCard": "Essai gratuit de 7 jours, sans carte, puis choisissez le forfait adapté à votre croissance.",
       "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",
       "unlimitedChannels": "Chaînes illimitées",
       "unlimitedOffers": "Offres illimitées",

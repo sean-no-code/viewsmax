@@ -3,7 +3,7 @@ import { Check, Loader2 } from "lucide-react";
 import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { sortPlansByPrice, formatLimit } from "@/lib/plan-helpers";
+import { sortPlansByPrice, planLimitLines } from "@/lib/plan-helpers";
 import { toast } from "sonner";
 
 interface PlanSelectorProps {
@@ -13,14 +13,9 @@ interface PlanSelectorProps {
   onChange: (plan: PlanTier) => void;
 }
 
-/** The feature bullets to show on a card: prefer the seeded list, else derive from limits. */
+/** The feature bullets to show on a card: the tier's limit lines. */
 function featuresFor(plan: PlanTier, t: TFunction): string[] {
-  if (plan.features && plan.features.length) return plan.features;
-  return [
-    formatLimit(t, plan.max_channels, "channel"),
-    formatLimit(t, plan.max_offers, "offer"),
-    t("trial.checkout.postsPerMonth", "{{limit}}/mo", { limit: formatLimit(t, plan.max_posts_per_month, "post") }),
-  ];
+  return planLimitLines(t, plan);
 }
 
 /**

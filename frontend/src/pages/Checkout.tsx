@@ -36,9 +36,11 @@ const Checkout = () => {
   const planPriceId = searchParams.get("price_id") || undefined;
 
   // The tier's limit lines arrive in the URL (comma-separated, from Plans);
-  // everything else is the same on every paid plan.
+  // the rest is what that tier includes — the `tier` param is the plan's own
+  // name ("pro"), with the display name as a fallback for older links.
   const featuresParam = searchParams.get("features");
-  const features = [...(featuresParam ? featuresParam.split(",") : []), ...planIncludes(t)];
+  const tier = searchParams.get("tier") || planName;
+  const features = [...(featuresParam ? featuresParam.split(",") : []), ...planIncludes(t, tier)];
 
   // StripeTrialStep already creates the subscription, writes active_subscription
   // to localStorage, and dispatches "subscriptionUpdated". We just confirm + redirect.

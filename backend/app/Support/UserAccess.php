@@ -59,8 +59,9 @@ final class UserAccess
 
         // The paywall: onboarding isn't finished and no card has been added.
         // Accounts that finished onboarding during the card-free weeks are
-        // left alone; the end of their window handles them (above).
-        if (is_null($user->onboarding_completed_at) && ! $user->canCompleteOnboarding()) {
+        // left alone; the end of their window handles them (above). Off when
+        // SIGNUP_CARD_REQUIRED=false (a card-free trial).
+        if (self::cardRequired() && is_null($user->onboarding_completed_at) && ! $user->canCompleteOnboarding()) {
             $url = self::cardUrl($user);
 
             return new AccessDenial(
@@ -71,6 +72,12 @@ final class UserAccess
         }
 
         return null;
+    }
+
+    /** Whether a signup must add a card to get past onboarding (SIGNUP_CARD_REQUIRED). */
+    public static function cardRequired(): bool
+    {
+        return (bool) config('free_trial.card_required', true);
     }
 
     /**

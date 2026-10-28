@@ -10,7 +10,7 @@ import {
 import { countryFlag, countryName, localizedCountries } from '@/components/outliers/countries';
 import { parseProfileInput } from '@/components/outliers/profile-input';
 import {
-    searchOutliers, startSearchOutliers, getOutlierChannels, fetchOutlierByUrl, toggleOutlierFeature,
+    searchOutliers, startSearchOutliers, getOutlierChannels, fetchOutlierByUrl, toggleOutlierFeature, asQuotaPaused,
     getSavedFilters, saveFilter, deleteSavedFilter, getLibrary, saveOutlier, deleteSavedOutlier,
     addOutlierChannel, getOutlierChannelIngest,
     type OutlierVideo, type OutlierFilters, type OutlierChannelOption, type SavedFilter, type AddedChannel, type OutlierPlatform,
@@ -304,6 +304,24 @@ export default function Outliers() {
             try {
                 await startSearchOutliers(query.trim(), exactMatch);
             } catch (e) {
+                const paused = asQuotaPaused(e);
+                if (paused) {
+                    // Today's fresh-search limit (this user's, or the site's). The
+                    // library still answers, so show what we have and say why it
+                    // won't grow until the reset — with the way to a higher limit.
+                    toast.warning(paused.message, {
+                        duration: 10000,
+                        action: paused.upgrade
+                            ? { label: i18n.t('outliers.search.upgradeAction', 'Upgrade'), onClick: () => navigate('/dashboard/billing') }
+                            : undefined,
+                    });
+                    try {
+                        const res = await searchOutliers(buildFilters(1));
+                        applyResults(res.data, 1, res.total, res.last_page);
+                    } catch { /* the toast already explains */ }
+                    setLoading(false);
+                    return;
+                }
                 toast.error(e instanceof Error ? e.message : i18n.t('outliers.search.startSearchFailed', 'Failed to start search'));
             }
             let attempts = 0;
