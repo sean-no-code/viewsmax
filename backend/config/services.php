@@ -16,7 +16,7 @@ return [
 
     'youtube' => [
         'key' => env('YOUTUBE_API_KEY'),
-        'fetch_period_days' => env('YOUTUBE_FETCH_PERIOD_DAYS', 2),
+        'fetch_period_days' => env('YOUTUBE_FETCH_PERIOD_DAYS', 7),
         'video_cache_duration_hours' => env('YOUTUBE_VIDEO_CACHE_DURATION_HOURS', 1),
         'channel_cache_duration_hours' => env('YOUTUBE_CHANNEL_CACHE_DURATION_HOURS', 24),
         'sample_size' => env('YOUTUBE_AVERAGE_SAMPLE_SIZE', 30),
@@ -24,7 +24,7 @@ return [
         'max_search_results' => env('YOUTUBE_MAX_SEARCH_RESULTS', 50),
         // search.list pages per duration bucket (each page = 100 quota units;
         // a term costs 2 buckets × this many pages).
-        'search_pages' => env('YOUTUBE_SEARCH_PAGES', 2),
+        'search_pages' => env('YOUTUBE_SEARCH_PAGES', 1),
         'always_fetch_api_for_multiplier' => env('ALWAYS_FETCH_API_FOR_MULTIPLIER', false),
         'min_outlier_score' => env('YOUTUBE_MIN_OUTLIER_SCORE', 20),
     ],

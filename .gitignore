@@ -22,5 +22,6 @@ viewsmax-plugin/
 infra/
 tasks/
 features/
+docs/
 
 .claude/worktrees/

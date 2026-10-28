@@ -20,6 +20,11 @@ use Tests\TestCase;
  * YouTube OAuth exchange and by channels:sync-videos. Sentry flagged the import
  * as an N+1 (a lookup by youtube_video_id per video), so it must stay a fixed
  * number of queries, and it runs off the request so connecting stays fast.
+ *
+ * It reads the channel's uploads playlist (1 quota unit a page), never
+ * search.list (100 units, and capped at 100 calls a day project-wide — the
+ * outlier search's budget). Running daily per connected channel, the latter
+ * blew that cap on its own.
  */
 class YouTubeChannelVideoImportTest extends TestCase
 {
@@ -28,8 +33,8 @@ class YouTubeChannelVideoImportTest extends TestCase
     private function fakeVideos(array $ids, int $views = 100): void
     {
         Http::fake([
-            '*/youtube/v3/search*' => Http::response(['items' => array_map(
-                fn ($id) => ['id' => ['videoId' => $id]], $ids
+            '*/youtube/v3/playlistItems*' => Http::response(['items' => array_map(
+                fn ($id) => ['contentDetails' => ['videoId' => $id]], $ids
             )], 200),
             '*/youtube/v3/videos*' => Http::response(['items' => array_map(fn ($id) => [
                 'id' => $id,
@@ -48,7 +53,8 @@ class YouTubeChannelVideoImportTest extends TestCase
 
     private function assertImportedWith(string $token): void
     {
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/youtube/v3/search')
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/youtube/v3/playlistItems')
+            && $request['playlistId'] === 'UUmine'
             && $request->hasHeader('Authorization', 'Bearer '.$token));
     }
 
@@ -84,6 +90,50 @@ class YouTubeChannelVideoImportTest extends TestCase
         $this->assertSame(['imported' => 0, 'updated' => 0, 'total' => 0], $result);
     }
 
+    public function test_a_channel_that_never_uploaded_has_no_playlist_yet_and_imports_nothing(): void
+    {
+        Http::fake([
+            '*/youtube/v3/playlistItems*' => Http::response(['error' => ['errors' => [['reason' => 'playlistNotFound']]]], 404),
+        ]);
+
+        $result = app(YouTubeChannelService::class)->fetchAndImportChannelVideos($this->channel(), 'token');
+
+        $this->assertSame(['imported' => 0, 'updated' => 0, 'total' => 0], $result);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/youtube/v3/videos'));
+    }
+
+    public function test_the_import_never_spends_search_list_quota(): void
+    {
+        $this->fakeVideos(['v1', 'v2']);
+
+        app(YouTubeChannelService::class)->fetchAndImportChannelVideos($this->channel(), 'token');
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/youtube/v3/search'));
+        Http::assertSentCount(2); // one playlist page + one videos.list batch
+    }
+
+    public function test_private_and_unlisted_uploads_are_not_imported(): void
+    {
+        // The owner's token lists every upload; search.list only ever returned public ones.
+        Http::fake([
+            '*/youtube/v3/playlistItems*' => Http::response(['items' => [
+                ['contentDetails' => ['videoId' => 'pub']],
+                ['contentDetails' => ['videoId' => 'priv']],
+                ['contentDetails' => ['videoId' => 'unl']],
+            ]], 200),
+            '*/youtube/v3/videos*' => Http::response(['items' => [
+                ['id' => 'pub', 'snippet' => ['title' => 'Public'], 'status' => ['privacyStatus' => 'public']],
+                ['id' => 'priv', 'snippet' => ['title' => 'Private'], 'status' => ['privacyStatus' => 'private']],
+                ['id' => 'unl', 'snippet' => ['title' => 'Unlisted'], 'status' => ['privacyStatus' => 'unlisted']],
+            ]], 200),
+        ]);
+        $channel = $this->channel();
+
+        app(YouTubeChannelService::class)->fetchAndImportChannelVideos($channel, 'token');
+
+        $this->assertSame(['pub'], Video::where('channel_id', $channel->id)->pluck('youtube_video_id')->all());
+    }
+
     public function test_the_oauth_exchange_queues_the_import_instead_of_running_it(): void
     {
         Queue::fake();
@@ -106,7 +156,7 @@ class YouTubeChannelVideoImportTest extends TestCase
 
         $channel = Channel::where('youtube_channel_id', 'UCmine')->sole();
         Queue::assertPushed(ImportChannelVideosJob::class, fn ($job) => $job->channelId === $channel->id);
-        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/youtube/v3/search'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/youtube/v3/playlistItems'));
 
         // The mirrored social account gets its recent uploads pulled into analytics too.
         $account = SocialAccount::where('platform', 'youtube')->where('platform_account_id', 'UCmine')->sole();

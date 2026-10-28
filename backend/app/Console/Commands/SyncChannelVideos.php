@@ -15,10 +15,12 @@ use Illuminate\Support\Facades\Log;
  * only filled at connect-time or via the Review page's manual refresh, so new
  * uploads never appear in those pickers.
  *
- * Runs daily: getAllChannelVideos uses search.list (100 YouTube quota units per
- * call), so a tighter cadence would exhaust the shared daily quota. Users who
- * need a just-published video immediately use the picker's "Refresh from
- * YouTube" button (POST /channels/{id}/fetch-videos).
+ * Runs daily. getAllChannelVideos reads the channel's uploads playlist
+ * (playlistItems.list, 1 quota unit a page), so the whole run costs a few
+ * units per channel. It must never move to search.list: that is 100 units a
+ * call and capped at 100 calls a day project-wide, the outlier search's
+ * budget. Users who need a just-published video immediately use the picker's
+ * "Refresh from YouTube" button (POST /channels/{id}/fetch-videos).
  */
 class SyncChannelVideos extends Command
 {

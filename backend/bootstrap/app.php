@@ -74,7 +74,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Re-import each connected channel's latest uploads so the "add a video"
         // pickers stay current with videos published after connect-time. Daily
-        // because the import uses search.list (100 quota units/call); the
+        // is plenty (it reads the uploads playlist, 1 quota unit a page); the
         // picker's "Refresh from YouTube" button covers instant needs.
         // Shorts/long-form classification catch-up (rows whose follow-up job was
         // rate-limited or lost). Bounded per run; idempotent.

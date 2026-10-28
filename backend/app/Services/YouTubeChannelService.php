@@ -755,59 +755,65 @@ class YouTubeChannelService
     }
     public function getChannelVideos(string $accessToken, string $channelId, int $maxResults = 50, ?string $pageToken = null): array
     {
-        // Step 1: Get video IDs using search.list
-        $searchParams = [
-            'part' => 'snippet',
-            'channelId' => $channelId,
-            'type' => 'video',
-            'order' => 'date',
+        // Step 1: Get video IDs from the channel's uploads playlist. Every channel
+        // has one and its id is derived from the channel id (UC… → UU…), newest
+        // first. playlistItems.list costs 1 quota unit; search.list, which this
+        // used to call, costs 100 — and counts against the separate 100-calls/day
+        // search.list cap that the outlier search needs. With the owner's token
+        // the playlist also lists private/unlisted uploads, which search.list
+        // never returned; Step 2 filters those out to keep behaviour the same.
+        $playlistParams = [
+            'part' => 'contentDetails',
+            'playlistId' => 'UU' . substr($channelId, 2),
             'maxResults' => min($maxResults, 50), // API limit is 50
         ];
-        
+
         if ($pageToken) {
-            $searchParams['pageToken'] = $pageToken;
+            $playlistParams['pageToken'] = $pageToken;
         }
-        
-        $searchResponse = Http::withHeaders([
+
+        $playlistResponse = Http::withHeaders([
             'Authorization' => 'Bearer ' . $accessToken,
             'Accept' => 'application/json',
-        ])->get(self::API_BASE_URL . '/search', $searchParams);
-        
-        if (!$searchResponse->successful()) {
-            Log::error('YouTube search API error', [
-                'status' => $searchResponse->status(),
-                'body' => $searchResponse->body()
-            ]);
-            throw new \Exception('Failed to search videos: ' . $searchResponse->body());
+        ])->get(self::API_BASE_URL . '/playlistItems', $playlistParams);
+
+        // A channel that has never uploaded has no uploads playlist yet: YouTube
+        // answers 404 playlistNotFound, which search.list reported as zero items.
+        if ($playlistResponse->status() === 404) {
+            Log::info('No uploads playlist for channel', ['channel_id' => $channelId]);
+            return ['videos' => [], 'nextPageToken' => null];
         }
-        
-        $searchData = $searchResponse->json();
-        Log::info('Search data', ['searchData' => $searchData]);
-        
-        // Extract video IDs from search results
+
+        if (!$playlistResponse->successful()) {
+            Log::error('YouTube playlistItems API error', [
+                'status' => $playlistResponse->status(),
+                'body' => $playlistResponse->body()
+            ]);
+            throw new \Exception('Failed to list channel uploads: ' . $playlistResponse->body());
+        }
+
+        $playlistData = $playlistResponse->json();
+
+        // Extract video IDs from the playlist items
         $videoIds = [];
-        foreach ($searchData['items'] ?? [] as $item) {
-            if (isset($item['id']['videoId'])) {
-                $videoIds[] = $item['id']['videoId'];
+        foreach ($playlistData['items'] ?? [] as $item) {
+            if (isset($item['contentDetails']['videoId'])) {
+                $videoIds[] = $item['contentDetails']['videoId'];
             }
         }
-        
+
         Log::info('Extracted video IDs', ['videoIds' => $videoIds, 'count' => count($videoIds)]);
-        
+
         if (empty($videoIds)) {
-            Log::warning('No video IDs extracted from search results', [
-                'items_count' => count($searchData['items'] ?? []),
-                'items' => $searchData['items'] ?? []
-            ]);
             return [
                 'videos' => [],
-                'nextPageToken' => $searchData['nextPageToken'] ?? null
+                'nextPageToken' => $playlistData['nextPageToken'] ?? null
             ];
         }
-        
+
         // Step 2: Get detailed video information using videos.list
         $videoParams = [
-            'part' => 'snippet,statistics,contentDetails',
+            'part' => 'snippet,statistics,contentDetails,status',
             'id' => implode(',', $videoIds),
         ];
         
@@ -832,9 +838,15 @@ class YouTubeChannelService
             'video_ids_received' => array_column($videoData['items'] ?? [], 'id')
         ]);
         
+        // Only public uploads, matching what search.list used to return.
+        $videos = array_values(array_filter(
+            $videoData['items'] ?? [],
+            fn ($video) => ($video['status']['privacyStatus'] ?? 'public') === 'public'
+        ));
+
         return [
-            'videos' => $videoData['items'] ?? [],
-            'nextPageToken' => $searchData['nextPageToken'] ?? null
+            'videos' => $videos,
+            'nextPageToken' => $playlistData['nextPageToken'] ?? null
         ];
     }
 
