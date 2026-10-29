@@ -8,6 +8,7 @@ use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Services\Social\CaptionRules;
 use App\Services\YouTubePublishService;
+use App\Support\Quota\Actor;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -72,6 +73,7 @@ class PublishYouTubeJob implements ShouldQueue
         }
 
         $post = $target->post;
+        Actor::set($post?->user_id);
         // An in-progress resumable upload (upload_url) is left to finish; only a
         // target that hasn't started uploading can still be pulled back.
         if (empty($target->meta['upload_url']) && ($denial = $this->accessDenialFor($target))) {

@@ -113,7 +113,11 @@ day by default, reset at midnight Pacific. The app counts every YouTube call it
 makes (`App\Listeners\RecordYouTubeQuotaSpend`, from the HTTP client's
 `ResponseReceived` event — no call site reports anything) into a cache counter
 per Pacific day and a ledger (`youtube_quota_spends`, admin dashboard at
-`/api/admin/youtube-quota/*`). The two spend points — queuing an outlier search
+`/api/admin/youtube-quota/*`). Each ledger row names whose quota the call
+spent (`App\Support\Quota\Actor`): the signed-in requester, or for queued and
+scheduled work the owner of the channel / account / post it ran for — jobs and
+nightly commands call `Actor::set()` from their row, and a job queued by a
+signed-in request inherits the requester through Laravel's Context. The two spend points — queuing an outlier search
 fetch (`YouTubeSearchService`) and dispatching a YouTube publish
 (`PostPublishDispatcher`) — ask `App\Contracts\Quota\QuotaGate` first; the gate
 compares the shared counter with the tier's `.env` threshold

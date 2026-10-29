@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Channel;
 use App\Services\YouTubeChannelService;
+use App\Support\Quota\Actor;
 use App\Support\YouTubeChannelToken;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -47,6 +48,8 @@ class SyncChannelVideos extends Command
         $failed = 0;
 
         foreach ($channels as $channel) {
+            Actor::set($channel->user_id);
+
             try {
                 $accessToken = YouTubeChannelToken::for($channel, $youtube);
 

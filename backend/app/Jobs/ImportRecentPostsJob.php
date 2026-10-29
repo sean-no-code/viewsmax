@@ -6,6 +6,7 @@ use App\Models\SocialAccount;
 use App\Services\Social\PostMetricSnapshotter;
 use App\Services\Social\SocialProviderManager;
 use App\Support\AnalyticsAccess;
+use App\Support\Quota\Actor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -45,6 +46,8 @@ class ImportRecentPostsJob implements ShouldQueue
             || ! $manager->supports($account->platform) || ! $manager->supportsStats($account->platform)) {
             return;
         }
+
+        Actor::set($account->user_id);
 
         // Analytics is the Pro tier upsell, and a queued job can outlive a
         // downgrade: re-check the owner's plan before spending a single call.

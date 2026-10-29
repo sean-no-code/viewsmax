@@ -7,6 +7,7 @@ use App\Models\OutlierCompetitorChannel;
 use App\Services\CaptApiOutlierService;
 use App\Services\YouTubeChannelService;
 use App\Support\OutlierProfileInput;
+use App\Support\Quota\Actor;
 use App\Support\UserSafeError;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -44,6 +45,7 @@ class IngestOutlierChannelJob implements ShouldQueue
         }
 
         $ingest->forceFill(['status' => OutlierChannelIngest::STATUS_PROCESSING, 'started_at' => now()])->save();
+        Actor::set($ingest->user_id);
 
         try {
             if ($ingest->platform === 'youtube') {

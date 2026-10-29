@@ -8,6 +8,7 @@ use App\Models\TrackingReachSnapshot;
 use App\Models\Video;
 use App\Services\BeehiivService;
 use App\Services\YouTubeChannelService;
+use App\Support\Quota\Actor;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -72,6 +73,8 @@ class RefreshTrackingReach extends Command
 
         // 1) Owner's OAuth token, one connected channel at a time.
         foreach ($byChannel as $bucket) {
+            Actor::set($bucket['channel']->user_id);
+
             foreach (collect($bucket['ids'])->chunk($chunkSize) as $chunk) {
                 try {
                     $updated += $this->applyViews($youtube->getVideoDetails($bucket['channel'], $chunk->all()));
@@ -90,6 +93,7 @@ class RefreshTrackingReach extends Command
         // 2) Public API-key fallback for videos with no connected channel token
         // (or whose OAuth fetch failed). A missing key is no longer an error now
         // that OAuth is the primary path — those videos are simply skipped.
+        Actor::set(null); // the app's own key, not any one user's quota
         $apiKeyIds = array_values(array_unique($apiKeyIds));
         if (! empty($apiKeyIds)) {
             if (config('services.youtube.key')) {

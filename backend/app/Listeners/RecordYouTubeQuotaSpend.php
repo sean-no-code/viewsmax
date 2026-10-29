@@ -3,12 +3,12 @@
 namespace App\Listeners;
 
 use App\Models\YouTubeQuotaSpend;
+use App\Support\Quota\Actor;
 use App\Support\Quota\Keys;
 use App\Support\Quota\QuotaAlerts;
 use App\Support\Quota\QuotaLog;
 use App\Support\Quota\Resources;
 use Illuminate\Http\Client\Events\ResponseReceived;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -18,6 +18,7 @@ use Throwable;
  * the day's counter, writes a ledger row and a youtube_quota log line.
  * Observing the client means no call site has to report spend — present and
  * future ones alike. Counted on failure too: Google charges a 403 as a 200.
+ * The row's user is whoever the call was for (App\Support\Quota\Actor).
  * Auto-discovered (app/Listeners).
  */
 final class RecordYouTubeQuotaSpend
@@ -45,7 +46,7 @@ final class RecordYouTubeQuotaSpend
                 'method' => $method,
                 'status' => $status,
                 'units' => $units,
-                'user_id' => Auth::id(),
+                'user_id' => Actor::id(),
             ]);
         } catch (Throwable $e) {
             // Never let bookkeeping break the call that just succeeded.
@@ -59,7 +60,7 @@ final class RecordYouTubeQuotaSpend
             'method' => $method,
             'endpoint' => $match['endpoint'],
             'status' => $status,
-            'user_id' => Auth::id(),
+            'user_id' => Actor::id(),
             'used_today' => $used,
         ]);
 

@@ -9,6 +9,7 @@ use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
@@ -65,6 +66,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // A job queued by a signed-in request spends YouTube quota as that
+        // user: carry them into the job's payload (App\Support\Quota\Actor).
+        Context::dehydrating(\App\Support\Quota\Actor::dehydrating(...));
+
         // Every URL we generate (emailed verification links included) uses
         // APP_URL, never the request's Host header — a forged Host would
         // otherwise point a genuine email at an attacker's domain.

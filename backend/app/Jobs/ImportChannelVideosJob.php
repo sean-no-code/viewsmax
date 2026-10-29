@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Channel;
 use App\Services\YouTubeChannelService;
 use App\Support\AnalyticsAccess;
+use App\Support\Quota\Actor;
 use App\Support\YouTubeChannelToken;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,6 +40,8 @@ class ImportChannelVideosJob implements ShouldQueue
         if (! $channel?->youtube_channel_id) {
             return;
         }
+
+        Actor::set($channel->user_id);
 
         // Analytics is the Pro tier upsell, and a queued job can outlive a
         // downgrade: re-check the owner's plan before spending a single call.

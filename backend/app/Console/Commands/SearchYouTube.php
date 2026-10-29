@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Services\YouTubeSearchService;
+use App\Support\Quota\Actor;
 use Illuminate\Console\Command;
 
 class SearchYouTube extends Command
@@ -37,6 +38,8 @@ class SearchYouTube extends Command
         }
 
         $this->info("Searching for '{$term}' for user {$user->name} (ID: {$user->id})...");
+
+        Actor::set($user);
 
         try {
             $service->search($term, $user);

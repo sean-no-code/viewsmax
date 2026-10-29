@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\AudienceSnapshot;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialProviderManager;
+use App\Support\Quota\Actor;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -44,6 +45,8 @@ class RefreshAudienceSnapshots extends Command
 
                 continue;
             }
+
+            Actor::set($account->user_id);
 
             try {
                 $provider = $manager->for($account->platform);

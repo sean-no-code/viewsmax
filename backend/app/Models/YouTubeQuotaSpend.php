@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * One YouTube API call: the quota ledger behind the admin dashboard. user_id
- * is set only when a signed-in request made the call; queued work has no one
- * to attribute to.
+ * is whose quota the call spent (App\Support\Quota\Actor): the signed-in
+ * requester, or for queued and scheduled work the owner of the channel,
+ * account or post it ran for. Null only for calls nobody owns (admin
+ * backfills, the public API-key fallback).
  */
 class YouTubeQuotaSpend extends Model
 {

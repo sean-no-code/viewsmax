@@ -8,6 +8,7 @@ use App\Models\SocialAccount;
 use App\Models\SocialPostTarget;
 use App\Services\Social\PostMetricSnapshotter;
 use App\Services\Social\SocialProviderManager;
+use App\Support\Quota\Actor;
 use Illuminate\Console\Command;
 
 /**
@@ -45,6 +46,7 @@ class RefreshPostMetrics extends Command
                 continue;
             }
 
+            Actor::set($account->user_id);
             $result = $snapshotter->snapshot($account, $group->values());
             $captured += $result['captured'];
             $skipped += $result['skipped'];

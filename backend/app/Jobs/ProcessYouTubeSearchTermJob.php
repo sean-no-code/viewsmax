@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\SearchTerm;
 use App\Models\User;
+use App\Support\Quota\Actor;
 use App\Support\UserAccess;
 use App\Services\YouTubeSearchService;
 use Illuminate\Bus\Queueable;
@@ -45,6 +46,8 @@ class ProcessYouTubeSearchTermJob implements ShouldQueue
      */
     public function handle(YouTubeSearchService $searchService): void
     {
+        Actor::set($this->user);
+
         // The chain re-dispatches itself per word, so the user's access can lapse
         // between dispatch and run: stop spending YouTube quota for them.
         if (! UserAccess::allowsBackgroundWork($this->user)) {
