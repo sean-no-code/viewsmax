@@ -117,7 +117,13 @@ per Pacific day and a ledger (`youtube_quota_spends`, admin dashboard at
 spent (`App\Support\Quota\Actor`): the signed-in requester, or for queued and
 scheduled work the owner of the channel / account / post it ran for — jobs and
 nightly commands call `Actor::set()` from their row, and a job queued by a
-signed-in request inherits the requester through Laravel's Context. The two spend points — queuing an outlier search
+signed-in request inherits the requester through Laravel's Context. Each row also
+names its `source` — the unit of work that made the call (`App\Support\Quota\Source`:
+`job:…` from a queue hook, `cmd:…` from a console hook, `mcp:<tool>` from `SafeCallTool`,
+`api:<route>` for a plain request; a job is its own source, never its requester's) —
+and its `target` (playlist / first video id / query, parsed from named params so the API
+key never lands in the ledger), so ~100 `playlistItems.list` + `videos.list` pairs in a
+minute read as one search's per-channel baselines, not repeats. The two spend points — queuing an outlier search
 fetch (`YouTubeSearchService`) and dispatching a YouTube publish
 (`PostPublishDispatcher`) — ask `App\Contracts\Quota\QuotaGate` first; the gate
 compares the shared counter with the tier's `.env` threshold
@@ -140,3 +146,8 @@ resource at `YOUTUBE_QUOTA_ALERT_AT`% of Google's allocation
 (`YOUTUBE_QUOTA_SEARCH/UPLOAD_DAILY_LIMIT`), at 100 %, and when Google answers
 `quotaExceeded` — same pattern as the queue heartbeat (`config/monitoring.php`).
 Searches are deduped globally, so limit *novel fetches*, never requests.
+A multi-word term fans out to a search per word; each word passes the same per-user gate
+and is counted (function words never qualify — `YouTubeSearchService::SUB_TERM_STOP_WORDS`),
+and a word the allowance refuses is skipped, not queued. A channel's outlier baseline
+(`getOutlierChannelAverage`, 24 h cache) refreshes under a cache lock so concurrent search
+jobs fetch each channel once.

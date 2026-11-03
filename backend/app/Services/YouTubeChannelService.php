@@ -13,6 +13,7 @@ use App\Traits\LogsYouTubeRequests;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -25,6 +26,10 @@ class YouTubeChannelService
     private $videoCacheDurationHours;
     private $channelCacheDurationHours;
     private $sampleSize;
+
+    /** How long one worker may hold a channel's baseline refresh, and how long the others wait for it. */
+    private const OUTLIER_AVERAGE_LOCK_SECONDS = 30;
+    private const OUTLIER_AVERAGE_LOCK_WAIT_SECONDS = 10;
 
     public function __construct(
         private YouTubeAnalyticsService $analyticsService
@@ -434,35 +439,66 @@ class YouTubeChannelService
      * Get Channel Average for Outliers (using outlier_db)
      * Creates/Updates OutlierChannel in outlier_db.
      * Pass $prefetchedChannelData from getChannelsBatch() to skip the individual /channels API call.
+     *
+     * Concurrent search jobs share channels, so a stale channel is refreshed
+     * under a lock: whoever holds it fetches (playlistItems.list + videos.list),
+     * everyone else waits and reads the row it wrote. If the lock can't be had
+     * in time we fetch anyway rather than fail the search — the same fail-open
+     * stance as the quota gate.
      */
     public function getOutlierChannelAverage(string $youtubeChannelId, ?string $excludeVideoId = null, ?array $prefetchedChannelData = null): array
     {
-        // 1. Check OutlierChannel in outlier_db
+        if ($cached = $this->cachedOutlierAverage($youtubeChannelId, $excludeVideoId)) {
+            return $cached;
+        }
+
+        $lock = Cache::lock(self::outlierAverageLockKey($youtubeChannelId), self::OUTLIER_AVERAGE_LOCK_SECONDS);
+
+        try {
+            return $lock->block(self::OUTLIER_AVERAGE_LOCK_WAIT_SECONDS, function () use ($youtubeChannelId, $excludeVideoId, $prefetchedChannelData) {
+                // Another worker may have refreshed it while we waited.
+                return $this->cachedOutlierAverage($youtubeChannelId, $excludeVideoId)
+                    ?? $this->refreshOutlierAverage($youtubeChannelId, $excludeVideoId, $prefetchedChannelData);
+            });
+        } catch (LockTimeoutException) {
+            Log::warning("Outlier channel average lock timed out for {$youtubeChannelId}; refreshing without it");
+
+            return $this->refreshOutlierAverage($youtubeChannelId, $excludeVideoId, $prefetchedChannelData);
+        }
+    }
+
+    /** The cache lock guarding one channel's baseline refresh. */
+    public static function outlierAverageLockKey(string $youtubeChannelId): string
+    {
+        return 'outlier_channel_avg:'.$youtubeChannelId;
+    }
+
+    /** The stored average while it is younger than the channel cache window, else null. */
+    private function cachedOutlierAverage(string $youtubeChannelId, ?string $excludeVideoId): ?array
+    {
         $outlierChannel = OutlierChannel::where('youtube_channel_id', $youtubeChannelId)->first();
 
-        // Check freshness
-        $shouldRefresh = true;
-        if ($outlierChannel && $outlierChannel->average_calculated_at) {
-            if ($outlierChannel->average_calculated_at->diffInHours(now()) < $this->channelCacheDurationHours) {
-                $shouldRefresh = false;
-            }
+        if (! $outlierChannel || ! $outlierChannel->average_calculated_at
+            || $outlierChannel->average_calculated_at->diffInHours(now()) >= $this->channelCacheDurationHours) {
+            return null;
         }
 
-        // Return cached if valid
-        if ($outlierChannel && !$shouldRefresh) {
-            Log::info("Outlier channel average cache hit for {$youtubeChannelId}", [
-                'video_id'      => $excludeVideoId,
-                'average_views' => $outlierChannel->average_views,
-                'calculated_at' => $outlierChannel->average_calculated_at,
-            ]);
-            return [
-                'average' => $outlierChannel->average_views,
-                'channel' => $outlierChannel,
-                'source'  => 'db_cache',
-            ];
-        }
+        Log::info("Outlier channel average cache hit for {$youtubeChannelId}", [
+            'video_id'      => $excludeVideoId,
+            'average_views' => $outlierChannel->average_views,
+            'calculated_at' => $outlierChannel->average_calculated_at,
+        ]);
 
-        // 2. Refresh Data
+        return [
+            'average' => $outlierChannel->average_views,
+            'channel' => $outlierChannel,
+            'source'  => 'db_cache',
+        ];
+    }
+
+    /** Fetch the channel's recent uploads from the API and store their median as the baseline. */
+    private function refreshOutlierAverage(string $youtubeChannelId, ?string $excludeVideoId, ?array $prefetchedChannelData): array
+    {
         Log::info("Calculating channel average for {$youtubeChannelId} (cache miss/stale)");
 
         // Use pre-fetched batch data if available, otherwise fall back to individual API call
@@ -1420,179 +1456,4 @@ class YouTubeChannelService
             'channel_id' => $channelId
         ];
     }
-
-    /**
-     * Public method to get Channel Average using API Key (no OAuth)
-     * Uses Atomic Lock and Batch Request optimization
-     */
-    public function getChannelAveragePublic($youtubeChannelId, $excludeVideoId = null)
-    {
-        // Prioritize existing User channel
-        $channel = Channel::where('youtube_channel_id', $youtubeChannelId)
-            ->orderByRaw('user_id IS NULL') // Prefer User (False=0) over Public (True=1)
-            ->first();
-
-        if (!$channel) {
-             $channel = Channel::create([
-                'youtube_channel_id' => $youtubeChannelId,
-                'user_id' => null
-            ]);
-        }
-
-        // Check Freshness
-        $bypassCache = config('services.youtube.always_fetch_api_for_multiplier', false);
-
-        $isFresh = $channel->average_calculated_at && 
-                   $channel->average_calculated_at->diffInHours(now()) < $this->channelCacheDurationHours;
-
-        if (!$bypassCache && $isFresh) {
-            Log::info('Channel average found in cache', [
-                'channel_id' => $channel->id,
-                'average' => $channel->average_views,
-                'source' => 'cache',
-                'video_ids' => $channel->average_video_ids
-            ]);
-            return [
-                'average' => $channel->average_views,
-                'source' => 'cache',
-                'video_ids' => $channel->average_video_ids
-            ];
-        }
-
-        // Atomic Lock
-        return Cache::lock("sync_channel_avg_{$channel->id}", 10)->block(5, function () use ($channel, $youtubeChannelId, $excludeVideoId, $bypassCache) {
-            
-             $channel->refresh();
-             if (!$bypassCache && $channel->average_calculated_at && 
-                 $channel->average_calculated_at->diffInHours(now()) < $this->channelCacheDurationHours) {
-                 return [
-                    'average' => $channel->average_views,
-                    'source' => 'cache_locked',
-                    'video_ids' => $channel->average_video_ids
-                ];
-            }
-
-            Log::info("Fetching channel median for {$youtubeChannelId} from Public API");
-            $uploadsPlaylistId = 'UU' . substr($youtubeChannelId, 2);
-
-            $validVideos = collect();
-            $nextPageToken = null;
-            $pagesFetched = 0;
-            $maxPages = config('services.youtube.max_pages', 5);
-
-            do {
-                $pagesFetched++;
-                
-                // 1. Fetch Playlist Items
-                $playlistResponse = Http::get(self::API_BASE_URL . '/playlistItems', [
-                    'part' => 'snippet,contentDetails',
-                    'playlistId' => $uploadsPlaylistId,
-                    'maxResults' => 50,
-                    'key' => $this->apiKey,
-                    'pageToken' => $nextPageToken,
-                ]);
-
-                if ($playlistResponse->failed()) {
-                    Log::error("Failed to fetch playlist items: " . $playlistResponse->body());
-                    break; 
-                }
-
-                $nextPageToken = $playlistResponse->json('nextPageToken');
-                $items = collect($playlistResponse->json('items') ?? [])
-                    ->reject(fn($item) => $item['contentDetails']['videoId'] === $excludeVideoId);
-
-                if ($items->isEmpty()) {
-                    break;
-                }
-
-                $videoIds = $items->pluck('contentDetails.videoId')->toArray();
-
-                // 2. Batch Fetch Video Details (Stats + Duration)
-                $statsResponse = Http::get(self::API_BASE_URL . '/videos', [
-                    'part' => 'statistics,contentDetails,snippet',
-                    'id' => implode(',', $videoIds),
-                    'key' => $this->apiKey,
-                ]);
-
-                $statsItems = collect($statsResponse->json('items') ?? []);
-
-                // 3. Filter Long-Form Videos (>= 60s)
-                foreach ($statsItems as $item) {
-                    $durationIso = $item['contentDetails']['duration'];
-                    try {
-                        $interval = new \DateInterval($durationIso);
-                        $seconds = ($interval->d * 86400) + ($interval->h * 3600) + ($interval->i * 60) + $interval->s;
-                        
-                        // Check if Long Form (> 3 minutes)
-                        if ($seconds > 180) {
-                            $validVideos->push([
-                                'id' => $item['id'],
-                                'title' => $item['snippet']['title'],
-                                'views' => (int) ($item['statistics']['viewCount'] ?? 0),
-                                'duration' => round($seconds / 60, 1) . ' minutes',
-                            ]);
-                        }
-                    } catch (\Exception $e) {
-                         Log::warning("Failed to parse duration for video {$item['id']}: $durationIso");
-                    }
-
-                    // Stop early if we have enough
-                    if ($validVideos->count() >= $this->sampleSize) {
-                        break 2; // Break both foreach and do-while
-                    }
-                }
-
-            } while ($nextPageToken && $pagesFetched < $maxPages);
-
-            if ($validVideos->isEmpty()) {
-                 return ['average' => 0, 'source' => 'empty_valid_videos'];
-            }
-
-            // Log Details (Pretty Print)
-            Log::info("Channel Median Calculation Data (Sample: {$validVideos->count()}):\n" . json_encode($validVideos->toArray(), JSON_PRETTY_PRINT));
-
-            // Calculate Trimmed Median
-            // 1. Sort by Views (Highest to Lowest)
-            $sortedVideos = $validVideos->sortByDesc('views')->values();
-            $totalCount = $sortedVideos->count();
-            Log::info("Sorted Videos for Calc (Count: {$totalCount}):\n" . json_encode($sortedVideos->toArray(), JSON_PRETTY_PRINT));
-
-            // 2. Trim Top 15%
-            // $trimCount = (int) ceil($totalCount * 0.15);
-            // $sortedVideos = $sortedVideos->slice($trimCount);
-            
-            // Log::info("Trimmed Top 15% ({$trimCount} videos). Remaining: {$sortedVideos->count()} videos.");
-
-            // 3. Calculate Median of Remaining
-            $viewCounts = $sortedVideos->pluck('views')->sort()->values();
-            $count = $viewCounts->count();
-            
-            if ($count === 0) {
-                 $median = 0;
-            } else {
-                $middle = (int) floor($count / 2);
-
-                if ($count % 2) {
-                    $median = $viewCounts[$middle];
-                } else {
-                    $median = ($viewCounts[$middle - 1] + $viewCounts[$middle]) / 2;
-                }
-            }
-            
-            $average = $median; 
-
-            $channel->update([
-                'average_views' => (int) round($average),
-                'average_video_ids' => $sortedVideos->pluck('id')->toArray(),
-                'average_calculated_at' => now(),
-            ]);
-
-            return [
-                'average' => $average,
-                'source' => 'api_refreshed',
-                'video_ids' => $sortedVideos->pluck('id')->toArray()
-            ];
-        });
-    }
 }
-

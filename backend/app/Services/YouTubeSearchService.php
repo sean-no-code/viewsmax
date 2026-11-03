@@ -32,6 +32,18 @@ class YouTubeSearchService
         + COALESCE(NULLIF(SUBSTRING(videos.duration FROM '(\\d+)S'), '')::INTEGER, 0)
     )";
 
+    /**
+     * Words of a multi-word term that never get a search of their own: a
+     * search for "to" or "the" is 200 quota units of noise.
+     */
+    private const SUB_TERM_STOP_WORDS = [
+        'a', 'an', 'the', 'and', 'or', 'but', 'of', 'to', 'for', 'in', 'on', 'at', 'by', 'with', 'from',
+        'is', 'are', 'was', 'be', 'been', 'how', 'what', 'why', 'when', 'where', 'who', 'which',
+        'this', 'that', 'these', 'those', 'it', 'its', 'you', 'your', 'my', 'me', 'we', 'our', 'us', 'i',
+        'do', 'does', 'did', 'can', 'will', 'not', 'no', 'vs', 'than', 'as', 'up', 'out', 'about', 'into',
+        'over', 'if', 'so', 'just', 'very', 'more', 'most', 'any', 'all', 'some',
+    ];
+
     private string $apiKey;
 
     public function __construct(
@@ -349,9 +361,24 @@ class YouTubeSearchService
             'term_id' => $searchTerm->id,
         ]);
 
-        // 3. Check if we need to fetch data
+        // 3. Fetch if we need to
+        return $this->queueFetch($searchTerm, $user, $exactMatch, 'request');
+    }
+
+    /**
+     * Queue a YouTube fetch for a term unless we already hold fresh results,
+     * the day's shared search budget is gone, or the user's own allowance is.
+     * Every Google-bound fetch passes here — the term typed and each sub-term
+     * it fans out to — so each one is gated with the user and counted.
+     *
+     * @return QuotaDecision|null the denial when quota stopped the fetch, null otherwise
+     */
+    private function queueFetch(SearchTerm $searchTerm, User $user, bool $exactMatch, string $stage): ?QuotaDecision
+    {
+        $term = $searchTerm->term;
+
         if (! $this->shouldFetch($searchTerm)) {
-            QuotaLog::search(QuotaLog::SERVED_CACHE, $term, $user, ['reason' => $this->describeFetchState($searchTerm)]);
+            QuotaLog::search(QuotaLog::SERVED_CACHE, $term, $user, ['stage' => $stage, 'reason' => $this->describeFetchState($searchTerm)]);
 
             return null;
         }
@@ -359,12 +386,12 @@ class YouTubeSearchService
         $calls = $this->searchCallsPerTerm();
         $decision = $this->gate->allows(QuotaGate::SEARCH_LIST, Tier::of($user), $calls, $user->id);
         if (! $decision->allowed) {
-            QuotaLog::search(QuotaLog::SERVED_PAUSED, $term, $user, ['stage' => 'request', 'scope' => $decision->scope, 'used' => $decision->used, 'cap' => $decision->cap, 'resets_at' => $decision->resetsAt->format(DATE_ATOM)]);
+            QuotaLog::search(QuotaLog::SERVED_PAUSED, $term, $user, ['stage' => $stage, 'scope' => $decision->scope, 'used' => $decision->used, 'cap' => $decision->cap, 'resets_at' => $decision->resetsAt->format(DATE_ATOM)]);
 
             return $decision;
         }
 
-        QuotaLog::search(QuotaLog::SERVED_YOUTUBE, $term, $user, ['stage' => 'request', 'calls' => $calls, 'reason' => $this->describeFetchState($searchTerm)]);
+        QuotaLog::search(QuotaLog::SERVED_YOUTUBE, $term, $user, ['stage' => $stage, 'calls' => $calls, 'reason' => $this->describeFetchState($searchTerm)]);
         Log::info("Dispatching async job for term: {$term}");
 
         TermsDataFetch::updateOrCreate(
@@ -578,17 +605,15 @@ class YouTubeSearchService
                 ClassifyOutlierVideoFormatsJob::dispatch($savedIds);
             }
 
-            // Dispatch sub-term jobs for multi-word terms (only when not exact match)
+            // A multi-word term fans out to a search per word (unless exact
+            // match). Each word is a Google-bound fetch of its own, so it is
+            // gated with the user and counted against their allowance like
+            // the term they typed; a word the allowance refuses is skipped,
+            // not left queued, since nobody asked for it on its own.
             if (!$exactMatch) {
-                $words = explode(' ', $term);
-                if (count($words) > 1) {
-                    foreach ($words as $word) {
-                        $word = trim($word);
-                        if (strtolower($word) !== strtolower($term) && $this->isValidTerm($word)) {
-                            Log::info("now searching {$word} from {$term}");
-                            ProcessYouTubeSearchTermJob::dispatch($word, $user);
-                        }
-                    }
+                foreach ($this->subTerms($term) as $word) {
+                    Log::info("now searching {$word} from {$term}");
+                    $this->queueFetch(SearchTerm::firstOrCreate(['term' => $word]), $user, false, 'sub-term');
                 }
             }
 
@@ -614,6 +639,23 @@ class YouTubeSearchService
         }
 
         return true;
+    }
+
+    /**
+     * The words of a multi-word term worth a search of their own: each once,
+     * never a function word.
+     */
+    private function subTerms(string $term): array
+    {
+        $words = preg_split('/\s+/', strtolower(trim($term))) ?: [];
+        if (count($words) < 2) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(
+            $words,
+            fn (string $word) => $this->isValidTerm($word) && ! in_array($word, self::SUB_TERM_STOP_WORDS, true)
+        )));
     }
 
     /**

@@ -19,11 +19,12 @@ class YouTubeQuotaAdminApiTest extends TestCase
         return $this->withHeaders(['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken]);
     }
 
-    private function spend(string $resource, int $units, string $at, ?int $userId = null, int $status = 200): YouTubeQuotaSpend
+    private function spend(string $resource, int $units, string $at, ?int $userId = null, int $status = 200, ?string $source = null, ?string $target = null): YouTubeQuotaSpend
     {
         return YouTubeQuotaSpend::create([
             'resource' => $resource, 'endpoint' => '/youtube/v3/'.$resource, 'method' => 'GET',
             'status' => $status, 'units' => $units, 'user_id' => $userId, 'spent_at' => Carbon::parse($at),
+            'source' => $source, 'target' => $target,
         ]);
     }
 
@@ -66,7 +67,7 @@ class YouTubeQuotaAdminApiTest extends TestCase
         $alice = User::factory()->create();
         $this->spend('search_list', 100, '2026-10-20 10:00:00', $alice->id);
         $this->spend('search_list', 100, '2026-10-22 10:00:00', null, 403);
-        $this->spend('videos_list', 1, '2026-10-24 10:00:00', $alice->id);
+        $this->spend('videos_list', 1, '2026-10-24 10:00:00', $alice->id, source: 'job:ProcessYouTubeSearchTermJob', target: 'playlist=UUabc');
         $admin = User::factory()->admin()->create();
         $url = '/api/admin/youtube-quota/ledger';
 
@@ -74,6 +75,9 @@ class YouTubeQuotaAdminApiTest extends TestCase
         $this->as($admin)->getJson($url.'?resource=search_list')->assertJsonPath('data.total', 2);
         $this->as($admin)->getJson($url.'?user_id='.$alice->id)->assertJsonPath('data.total', 2);
         $this->as($admin)->getJson($url.'?status=403')->assertJsonPath('data.total', 1);
+        $this->as($admin)->getJson($url.'?source=job:ProcessYouTubeSearchTermJob')
+            ->assertJsonPath('data.total', 1)->assertJsonPath('data.data.0.target', 'playlist=UUabc');
+        $this->as($admin)->getJson($url.'?sort=source&dir=asc')->assertOk();
         $this->as($admin)->getJson($url.'?from=2026-10-21&to=2026-10-23')->assertJsonPath('data.total', 1);
 
         $asc = $this->as($admin)->getJson($url.'?sort=units&dir=asc')->json('data.data');

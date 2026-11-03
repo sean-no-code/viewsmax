@@ -134,6 +134,12 @@ class OutlierController extends Controller
                 return response()->json(['data' => $existing, 'queued' => false, 'video_id' => $videoId, 'platform' => $platform]);
             }
 
+            // Already being pulled in (an agent retrying fetch_outlier instead of
+            // polling get_outlier): answer as the first call did and queue nothing.
+            if (IngestOutlierByUrlJob::isInFlight($platform, $videoId)) {
+                return response()->json(['queued' => true, 'video_id' => $videoId, 'platform' => $platform], 202);
+            }
+
             // Ingest ends in a breakdown (IngestOutlierByUrlJob queues it).
             if ($limited = AnthropicRateLimit::hit($request->user(), 'outlier_fetch')) {
                 return $limited;

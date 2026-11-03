@@ -70,6 +70,14 @@ class AppServiceProvider extends ServiceProvider
         // user: carry them into the job's payload (App\Support\Quota\Actor).
         Context::dehydrating(\App\Support\Quota\Actor::dehydrating(...));
 
+        // Every ledger row also names the unit of work that made the call
+        // (App\Support\Quota\Source): jobs and commands from these hooks, MCP
+        // tools from SafeCallTool, plain requests from their route. A job is
+        // its own source, so the requester's never travels in the payload.
+        Context::dehydrating(\App\Support\Quota\Source::dehydrating(...));
+        Queue::before(\App\Support\Quota\Source::jobProcessing(...));
+        Event::listen(CommandStarting::class, \App\Support\Quota\Source::commandStarting(...));
+
         // Every URL we generate (emailed verification links included) uses
         // APP_URL, never the request's Host header — a forged Host would
         // otherwise point a genuine email at an attacker's domain.

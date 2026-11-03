@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Exceptions\GeminiVideoException;
 use App\Exceptions\TranscriptUnavailableException;
 use App\Jobs\GenerateOutlierBreakdownJob;
+use App\Jobs\IngestOutlierByUrlJob;
 use App\Models\OutlierBreakdown;
 use App\Models\OutlierChannel;
 use App\Models\OutlierVideo;
@@ -14,6 +15,7 @@ use App\Services\GeminiVideoService;
 use App\Support\VideoSource;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -193,6 +195,23 @@ class OutlierBreakdownTest extends TestCase
             ->assertOk();
 
         Queue::assertNotPushed(GenerateOutlierBreakdownJob::class);
+    }
+
+    public function test_a_second_fetch_while_the_ingest_is_in_flight_queues_nothing_more(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $token = $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password'])->json('data.token');
+        $fetch = fn () => $this->withHeaders(['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json'])
+            ->postJson('/api/outliers/fetch', ['platform' => 'youtube', 'url' => 'https://youtu.be/abc123xyz']);
+
+        // An agent retrying fetch_outlier instead of polling get_outlier.
+        $fetch()->assertStatus(202)->assertJsonPath('queued', true);
+        $fetch()->assertStatus(202)->assertJsonPath('queued', true)->assertJsonPath('video_id', 'abc123xyz');
+
+        Queue::assertPushed(IngestOutlierByUrlJob::class, 1);
+        // The repeat cost nothing, so it does not count against the user's fetch limit either.
+        $this->assertSame(1, RateLimiter::attempts('anthropic:'.$user->id));
     }
 
     public function test_job_that_crashes_outside_handle_marks_the_breakdown_failed(): void

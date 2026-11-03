@@ -10,7 +10,10 @@ use Illuminate\Database\Eloquent\Model;
  * is whose quota the call spent (App\Support\Quota\Actor): the signed-in
  * requester, or for queued and scheduled work the owner of the channel,
  * account or post it ran for. Null only for calls nobody owns (admin
- * backfills, the public API-key fallback).
+ * backfills, the public API-key fallback). source is the unit of work that
+ * made the call (App\Support\Quota\Source: job:…, cmd:…, mcp:…, api:…) and
+ * target what it asked for (playlist=UU…, id=… +49, q=…), so a run of rows
+ * reads as one search's per-channel fan-out rather than as repeats.
  */
 class YouTubeQuotaSpend extends Model
 {

@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Methods;
 
+use App\Support\Quota\Source;
 use App\Support\UserAccess;
 use App\Support\UserSafeError;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +37,11 @@ class SafeCallTool extends CallTool
 {
     public function handle(JsonRpcRequest $request, ServerContext $context)
     {
+        // The YouTube quota ledger names the tool behind each call (App\Support\Quota\Source).
+        if (($tool = (string) ($request->params['name'] ?? '')) !== '') {
+            Source::set('mcp:'.$tool);
+        }
+
         // A user who can't use ViewsMax right now (unverified email, trial
         // over — see UserAccess) gets that answer from every tools/call as a
         // plain tool result the AI can relay. Not isError: the tool didn't

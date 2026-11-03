@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
  *   youtube_quota.search  term="ai agents" served=cache   reason="done, fetched 3d ago (period 30d)"
  *   youtube_quota.search  term="ai agents" served=youtube calls=2 stage=request
  *   youtube_quota.search  term="ai agents" served=paused  used=48 cap=48 resets_at=…
- *   youtube_quota.spend   search_list 100u GET /youtube/v3/search 200 used_today=13
+ *   youtube_quota.spend   playlist_items_list 1u GET /youtube/v3/playlistItems 200 source=job:ProcessYouTubeSearchTermJob target=playlist=UUabc used_today=13
  */
 final class QuotaLog
 {

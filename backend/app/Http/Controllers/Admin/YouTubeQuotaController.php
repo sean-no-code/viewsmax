@@ -72,9 +72,10 @@ class YouTubeQuotaController extends Controller
             'resource' => ['nullable', Rule::in(Resources::all())],
             'user_id' => ['nullable', 'integer'],
             'status' => ['nullable', 'integer'],
+            'source' => ['nullable', 'string', 'max:80'],
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d'],
-            'sort' => ['nullable', Rule::in(['spent_at', 'units', 'resource', 'status', 'user_id', 'endpoint'])],
+            'sort' => ['nullable', Rule::in(['spent_at', 'units', 'resource', 'status', 'user_id', 'endpoint', 'source'])],
             'dir' => ['nullable', Rule::in(['asc', 'desc'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
@@ -83,6 +84,7 @@ class YouTubeQuotaController extends Controller
             ->when($filters['resource'] ?? null, fn ($q, $v) => $q->where('resource', $v))
             ->when(isset($filters['user_id']), fn ($q) => $q->where('user_id', $filters['user_id']))
             ->when(isset($filters['status']), fn ($q) => $q->where('status', $filters['status']))
+            ->when($filters['source'] ?? null, fn ($q, $v) => $q->where('source', $v))
             ->when($filters['from'] ?? null, fn ($q, $v) => $q->where('pt_date', '>=', $v))
             ->when($filters['to'] ?? null, fn ($q, $v) => $q->where('pt_date', '<=', $v))
             ->orderBy($filters['sort'] ?? 'spent_at', $filters['dir'] ?? 'desc')
