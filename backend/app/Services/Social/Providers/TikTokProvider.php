@@ -7,6 +7,8 @@ use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -21,6 +23,9 @@ class TikTokProvider extends AbstractSocialProvider
     protected string $platform = 'tiktok';
 
     protected const TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
+
+    // How long before the stored expiry a token is renewed; see ensureFreshToken().
+    private const REFRESH_EARLY_SECONDS = 3600;
 
     public function getAuthorizationUrl(string $redirectUri, string $state, array $options = []): string
     {
@@ -209,34 +214,102 @@ class TikTokProvider extends AbstractSocialProvider
 
     public function ensureFreshToken(SocialAccount $account): SocialAccount
     {
-        if ($account->hasValidToken() || empty($account->refresh_token)) {
+        // Renew in the token's last hour, not once it has expired. Our stored
+        // expiry is "response arrived + expires_in", a little behind TikTok's
+        // own clock, and refreshes are triggered by scheduled work at the top
+        // of a minute — so the next expiry lands exactly where scheduled posts
+        // publish. Used in that final second, TikTok rejects the token.
+        $stillFresh = fn (SocialAccount $a) => $a->hasValidToken()
+            && ! ($a->token_expires_at !== null && $a->token_expires_at->lt(now()->addSeconds(self::REFRESH_EARLY_SECONDS)));
+        if ($stillFresh($account) || empty($account->refresh_token)) {
             return $account;
         }
 
-        return $this->refreshingSafely($account, function (SocialAccount $account) {
-            $response = Http::asForm()->post(self::TOKEN_URL, [
+        return $this->refreshingSafely($account, fn (SocialAccount $a) => $this->refresh($a), $stillFresh);
+    }
+
+    /**
+     * Renew a token TikTok just rejected even though our clock says it is
+     * valid. Inside the lock: a stored token that is no longer the rejected
+     * one means another worker already renewed it, so that one is reused.
+     * The caller compares the returned token with $rejected to see whether
+     * anything changed (a transient failure or a lock timeout changes nothing).
+     */
+    public function refreshRejectedToken(SocialAccount $account, string $rejected): SocialAccount
+    {
+        if (empty($account->refresh_token)) {
+            return $account;
+        }
+
+        return $this->refreshingSafely(
+            $account,
+            fn (SocialAccount $a) => $this->refresh($a),
+            fn (SocialAccount $a) => $a->access_token !== $rejected && $a->hasValidToken(),
+        );
+    }
+
+    /**
+     * One refresh_token grant, read by its body: TikTok answers a failed
+     * refresh with a 2xx and {error, error_description, log_id} as readily as
+     * with a 4xx, so the HTTP status alone says nothing. Only invalid_grant
+     * means the user must reconnect; a 429/5xx is retried here and otherwise
+     * left for the next caller, and anything else (invalid_client, …) is our
+     * own fault and must not flag the account. A connection error that
+     * outlasts the retry propagates.
+     */
+    private function refresh(SocialAccount $account): SocialAccount
+    {
+        // 2 × 10 s + one 1 s pause stays inside refreshingSafely's 25 s lock.
+        $response = Http::asForm()
+            ->timeout(10)
+            ->connectTimeout(5)
+            ->retry(2, 1000, fn (\Throwable $e) => $e instanceof ConnectionException
+                || ($e instanceof RequestException && self::isTransientStatus($e->response->status())), throw: false)
+            ->post(self::TOKEN_URL, [
                 'client_key' => $this->clientId(),
                 'client_secret' => $this->clientSecret(),
                 'grant_type' => 'refresh_token',
                 'refresh_token' => $account->refresh_token,
             ]);
 
-            if (! $response->successful()) {
-                // Only a definitive rejection means the grant is dead; a 429/5xx
-                // must not brick the account (the daily refresh retries tomorrow).
-                if ($this->isDefinitiveAuthFailure($response->status())) {
-                    $account->markNeedsReauth('TikTok token refresh was rejected — reconnect the account.');
-                } else {
-                    Log::warning('TikTok token refresh failed transiently', [
-                        'account_id' => $account->id, 'status' => $response->status(),
-                    ]);
-                }
+        $data = $response->json();
+        $data = is_array($data) ? $data : [];
+        $error = is_array($data['error'] ?? null) ? ($data['error']['code'] ?? null) : ($data['error'] ?? null);
 
-                return $account;
-            }
+        $outcome = match (true) {
+            ! empty($data['access_token']) => 'refreshed',
+            $error === 'invalid_grant' => 'dead_grant',
+            self::isTransientStatus($response->status()),
+            in_array($error, ['server_error', 'temporarily_unavailable'], true) => 'transient',
+            default => 'unexpected',
+        };
 
-            return $this->applyTokens($account, OAuthResult::fromArray($response->json()));
-        });
+        Log::channel('social_tokens')->log(
+            match ($outcome) {
+                'refreshed' => 'info',
+                'unexpected' => 'error',
+                default => 'warning',
+            },
+            'TikTok token refresh: '.$outcome,
+            array_filter([
+                'account_id' => $account->id,
+                'status' => $response->status(),
+                'error' => $error,
+                'error_description' => $data['error_description'] ?? null,
+                'log_id' => $data['log_id'] ?? null,
+                'body' => $outcome === 'unexpected' ? $this->bodyExcerpt($response) : null,
+            ], fn ($v) => $v !== null),
+        );
+
+        if ($outcome === 'refreshed') {
+            return $this->applyTokens($account, OAuthResult::fromArray($data));
+        }
+
+        if ($outcome === 'dead_grant') {
+            $account->markNeedsReauth('TikTok token refresh was rejected — reconnect the account.');
+        }
+
+        return $account;
     }
 
     /** Where TikTok publishing lives now; see publish(). */

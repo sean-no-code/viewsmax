@@ -143,6 +143,26 @@ return [
             'permission' => 0777,
         ],
 
+        // Social token refreshes (TikTok so far): one line per refresh with
+        // the HTTP status, the provider's error / error_description / log_id
+        // and how it was read (refreshed, dead_grant, transient, unexpected),
+        // in storage/logs/social-tokens.log. Without it a rejected refresh
+        // leaves no trace of what the provider said.
+        // SOCIAL_TOKEN_LOG_ENABLED=false silences it.
+        'social_tokens' => [
+            'driver' => 'stack',
+            'channels' => env('SOCIAL_TOKEN_LOG_ENABLED', true) ? ['social_tokens_file', 'sentry'] : ['sentry'],
+            'ignore_exceptions' => false,
+        ],
+        'social_tokens_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/social-tokens.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         'follow_us' => [
             'driver' => 'stack',
             'channels' => env('FOLLOW_US_LOG_ENABLED', true) ? ['follow_us_file', 'sentry'] : ['sentry'],

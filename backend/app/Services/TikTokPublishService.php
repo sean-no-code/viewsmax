@@ -8,12 +8,14 @@ use App\Exceptions\TikTokPublishException;
 use App\Exceptions\TikTokUploadInterruptedException;
 use App\Exceptions\TransientPublishException;
 use App\Models\SocialAccount;
+use App\Services\Social\Providers\TikTokProvider;
 use App\Services\Social\SocialProviderManager;
 use App\Support\BoundedMediaStream;
 use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -63,11 +65,19 @@ class TikTokPublishService
     // file, so a .mov sent as video/mp4 is rejected.
     private const CHUNK_MIMES = ['video/mp4', 'video/quicktime', 'video/webm'];
 
-    // Error codes that mean the token is dead or lacks the publish scopes:
-    // every later post would fail the same way until the user reconnects.
-    private const AUTH_CODES = ['access_token_invalid', 'scope_not_authorized', 'scope_permission_missed'];
+    // Error codes that mean every later post would fail the same way until
+    // the user reconnects: the token is dead, or the grant lacks the publish
+    // scopes. A dead token gets one renewal first (see authed()); a missing
+    // scope does not, because renewing a token adds no permissions.
+    private const TOKEN_REJECTED = 'access_token_invalid';
+
+    private const SCOPE_CODES = ['scope_not_authorized', 'scope_permission_missed'];
 
     public const REAUTH_MESSAGE = 'TikTok no longer accepts this account\'s authorization — reconnect the account and post again.';
+
+    public const SCOPE_MESSAGE = 'TikTok says this connection is missing the permission to post — reconnect the account and approve every permission.';
+
+    public const RENEWAL_PENDING = 'Could not renew TikTok access right now — retrying automatically.';
 
     public function __construct(private SocialProviderManager $providers) {}
 
@@ -93,13 +103,91 @@ class TikTokPublishService
      * A live access token for the account, refreshing it first if needed. Multi-
      * account: TikTok tokens now live in the `social_accounts` store, refreshed
      * via the provider's ensureFreshToken (was the single-connection OAuth service).
+     *
+     * An expired token is never handed out: TikTok would answer
+     * access_token_invalid, which reads as a dead grant. If the renewal did
+     * not happen it is either for good (the grant was rejected, or there is
+     * no refresh token — reconnect) or for now (TransientPublishException).
      */
     private function freshToken(SocialAccount $account): string
     {
-        $fresh = $this->providers->for('tiktok')->ensureFreshToken($account);
-        if (! $fresh->access_token) {
-            throw new Exception('No access token available for TikTok account.');
+        try {
+            $fresh = $this->provider()->ensureFreshToken($account);
+        } catch (ConnectionException) {
+            throw new TransientPublishException(self::RENEWAL_PENDING);
         }
+
+        if ($fresh->hasValidToken()) {
+            return $fresh->access_token;
+        }
+
+        if (empty($fresh->refresh_token) && $fresh->exists && $fresh->status !== SocialAccount::STATUS_NEEDS_REAUTH) {
+            $fresh->markNeedsReauth(self::REAUTH_MESSAGE);
+        }
+        if ($fresh->status === SocialAccount::STATUS_NEEDS_REAUTH) {
+            throw new TikTokPublishException(self::REAUTH_MESSAGE);
+        }
+
+        throw new TransientPublishException(self::RENEWAL_PENDING);
+    }
+
+    private function provider(): TikTokProvider
+    {
+        return $this->providers->for('tiktok');
+    }
+
+    /**
+     * Send a bearer-authenticated call. When TikTok answers
+     * access_token_invalid, renew the token once and send again: our stored
+     * expiry runs a little behind TikTok's, so a token can be rejected while
+     * we still count it valid, and that is not a dead grant. The second
+     * answer is returned as it comes; a second rejection is the real thing.
+     *
+     * @param  callable(string): Response  $send
+     */
+    private function authed(SocialAccount $account, callable $send): Response
+    {
+        $token = $this->freshToken($account);
+        $response = $send($token);
+
+        if ($response->json('error.code') !== self::TOKEN_REJECTED) {
+            return $response;
+        }
+
+        $renewed = $this->renewRejectedToken($account, $token);
+
+        return $renewed === null ? $response : $send($renewed);
+    }
+
+    /**
+     * A replacement for a token TikTok rejected, or null when there is none
+     * to be had (no refresh token, or the grant itself was rejected) and
+     * TikTok's verdict stands.
+     *
+     * @throws TransientPublishException when the renewal could not be completed right now
+     */
+    private function renewRejectedToken(SocialAccount $account, string $rejected): ?string
+    {
+        if (empty($account->refresh_token)) {
+            return null;
+        }
+
+        try {
+            $fresh = $this->provider()->refreshRejectedToken($account, $rejected);
+        } catch (ConnectionException) {
+            throw new TransientPublishException(self::RENEWAL_PENDING);
+        }
+
+        if ($fresh->status === SocialAccount::STATUS_NEEDS_REAUTH) {
+            return null;
+        }
+        if ($fresh->access_token === $rejected || ! $fresh->hasValidToken()) {
+            throw new TransientPublishException(self::RENEWAL_PENDING);
+        }
+
+        Log::channel('social_tokens')->info('TikTok rejected a token before its stored expiry; renewed and resent', [
+            'account_id' => $account->id,
+        ]);
 
         return $fresh->access_token;
     }
@@ -143,14 +231,12 @@ class TikTokPublishService
      */
     public function creatorInfo(SocialAccount $account): array
     {
-        $token = $this->freshToken($account);
-
         // TikTok requires a JSON *object* body. Passing no data makes Laravel
         // serialize an empty array `[]`, which TikTok rejects as
         // "The request parameter type is incorrect" — send an explicit `{}`.
-        $response = Http::withToken($token)
+        $response = $this->authed($account, fn (string $token) => Http::withToken($token)
             ->withBody('{}', 'application/json; charset=UTF-8')
-            ->post(self::BASE.'/post/publish/creator_info/query/');
+            ->post(self::BASE.'/post/publish/creator_info/query/'));
 
         // Required UX 1(b). TikTok's Query Creator Info reference is explicit: "You can decide
         // whether the request is successful based on the error code. Any code
@@ -280,7 +366,6 @@ class TikTokPublishService
         $chunkSize = (int) min(self::UPLOAD_CHUNK, $videoSize);
         $totalChunks = (int) max(1, intdiv($videoSize, $chunkSize));
 
-        $token = $this->freshToken($account);
         $sourceInfo = [
             'source' => 'FILE_UPLOAD',
             'video_size' => $videoSize,
@@ -290,7 +375,7 @@ class TikTokPublishService
 
         // 1) Direct Post.
         $mode = 'direct';
-        $init = $this->initRequest($token, '/post/publish/video/init/', [
+        $init = $this->initRequest($account, '/post/publish/video/init/', [
             'post_info' => $this->videoPostInfo($caption, $options),
             'source_info' => $sourceInfo,
         ]);
@@ -299,7 +384,7 @@ class TikTokPublishService
         // 2) Fall back to Upload-to-Inbox for unaudited apps + public accounts.
         if (! $init['ok'] && $init['code'] === 'unaudited_client_can_only_post_to_private_accounts') {
             $mode = 'inbox';
-            $init = $this->initRequest($token, '/post/publish/inbox/video/init/', [
+            $init = $this->initRequest($account, '/post/publish/inbox/video/init/', [
                 'source_info' => $sourceInfo,
             ]);
             $log[] = $this->event('init:inbox', $init['status'], $init['body']);
@@ -352,8 +437,8 @@ class TikTokPublishService
     private function rejectInit(SocialAccount $account, array $init, string $what, array $log, string $mode): never
     {
         $context = ['log' => $log, 'mode' => $mode];
-        if ($this->flagReauth($account, $init['code'])) {
-            throw new TikTokPublishException(self::REAUTH_MESSAGE, $context);
+        if ($reauth = $this->flagReauth($account, $init['code'])) {
+            throw new TikTokPublishException($reauth, $context);
         }
 
         Log::error('TikTok init failed', ['mode' => $mode, 'status' => $init['status'], 'response' => $init['body']]);
@@ -367,8 +452,8 @@ class TikTokPublishService
     private function rejectUpload(SocialAccount $account, array $upload, string $range, array $log, string $mode): never
     {
         $context = ['log' => $log, 'mode' => $mode];
-        if ($this->flagReauth($account, $upload['code'])) {
-            throw new TikTokPublishException(self::REAUTH_MESSAGE, $context);
+        if ($reauth = $this->flagReauth($account, $upload['code'])) {
+            throw new TikTokPublishException($reauth, $context);
         }
 
         Log::error('TikTok chunk upload failed', ['range' => $range, 'status' => $upload['status'], 'response' => $upload['body']]);
@@ -380,18 +465,30 @@ class TikTokPublishService
     /**
      * Mark the account needs_reauth when TikTok says the token is invalid or
      * lacks the publish scopes. Without this every later scheduled post fails
-     * the same way with nothing telling the user to reconnect.
+     * the same way with nothing telling the user to reconnect. Returns the
+     * user-facing reason, or null when the code is not an auth failure.
      */
-    private function flagReauth(SocialAccount $account, ?string $code): bool
+    private function flagReauth(SocialAccount $account, ?string $code): ?string
     {
-        if (! in_array($code, self::AUTH_CODES, true)) {
-            return false;
+        $message = match (true) {
+            $code === self::TOKEN_REJECTED => self::REAUTH_MESSAGE,
+            in_array($code, self::SCOPE_CODES, true) => self::SCOPE_MESSAGE,
+            default => null,
+        };
+        if ($message === null) {
+            return null;
         }
 
         Log::warning('TikTok rejected the token; account needs reconnect', ['account_id' => $account->id, 'code' => $code]);
-        $account->markNeedsReauth(self::REAUTH_MESSAGE);
 
-        return true;
+        // The caller's copy may predate a flag set during the renewal; without
+        // re-reading, markNeedsReauth sees a status change and emails twice.
+        if ($account->exists) {
+            $account->refresh();
+        }
+        $account->markNeedsReauth($message);
+
+        return $message;
     }
 
     /**
@@ -419,11 +516,10 @@ class TikTokPublishService
         }
 
         $log = [];
-        $token = $this->freshToken($account);
         $sourceInfo = ['source' => 'PULL_FROM_URL', 'video_url' => $videoUrl];
 
         $mode = 'direct';
-        $init = $this->initRequest($token, '/post/publish/video/init/', [
+        $init = $this->initRequest($account, '/post/publish/video/init/', [
             'post_info' => $this->videoPostInfo($caption, $options),
             'source_info' => $sourceInfo,
         ], requireUploadUrl: false);
@@ -431,7 +527,7 @@ class TikTokPublishService
 
         if (! $init['ok'] && $init['code'] === 'unaudited_client_can_only_post_to_private_accounts') {
             $mode = 'inbox';
-            $init = $this->initRequest($token, '/post/publish/inbox/video/init/', [
+            $init = $this->initRequest($account, '/post/publish/inbox/video/init/', [
                 'source_info' => $sourceInfo,
             ], requireUploadUrl: false);
             $log[] = $this->event('init:inbox', $init['status'], $init['body']);
@@ -492,7 +588,6 @@ class TikTokPublishService
         }
 
         $log = [];
-        $token = $this->freshToken($account);
 
         // Photos carry a short single-line title (≤90 UTF-16 units) and a
         // longer description (the caption). Limits are in UTF-16 units.
@@ -516,7 +611,7 @@ class TikTokPublishService
 
         // 1) Direct Post (honours the privacy / interaction options).
         $mode = 'direct';
-        $init = $this->initRequest($token, '/post/publish/content/init/', [
+        $init = $this->initRequest($account, '/post/publish/content/init/', [
             'post_info' => $postInfo,
             'source_info' => $sourceInfo,
             'post_mode' => 'DIRECT_POST',
@@ -527,7 +622,7 @@ class TikTokPublishService
         // 2) Fall back to Upload-to-Inbox for unaudited apps + public accounts.
         if (! $init['ok'] && $init['code'] === 'unaudited_client_can_only_post_to_private_accounts') {
             $mode = 'inbox';
-            $init = $this->initRequest($token, '/post/publish/content/init/', [
+            $init = $this->initRequest($account, '/post/publish/content/init/', [
                 'post_info' => $postInfo,
                 'source_info' => $sourceInfo,
                 'post_mode' => 'MEDIA_UPLOAD',
@@ -666,11 +761,11 @@ class TikTokPublishService
      *
      * @return array{ok: bool, publish_id: ?string, upload_url: ?string, code: ?string, status: int, body: string}
      */
-    private function initRequest(string $token, string $endpoint, array $body, bool $requireUploadUrl = true): array
+    private function initRequest(SocialAccount $account, string $endpoint, array $body, bool $requireUploadUrl = true): array
     {
-        $response = self::retrying()->withToken($token)
+        $response = $this->authed($account, fn (string $token) => self::retrying()->withToken($token)
             ->contentType('application/json; charset=UTF-8')
-            ->post(self::BASE.$endpoint, $body);
+            ->post(self::BASE.$endpoint, $body));
 
         $publishId = $response->json('data.publish_id');
         $uploadUrl = $response->json('data.upload_url');
@@ -744,21 +839,19 @@ class TikTokPublishService
      */
     public function fetchStatus(SocialAccount $account, string $publishId): array
     {
-        $token = $this->freshToken($account);
-
         try {
-            $response = self::retrying()->withToken($token)
+            $response = $this->authed($account, fn (string $token) => self::retrying()->withToken($token)
                 ->contentType('application/json; charset=UTF-8')
                 ->post(self::BASE.'/post/publish/status/fetch/', [
                     'publish_id' => $publishId,
-                ]);
+                ]));
         } catch (ConnectionException $e) {
             throw new TransientPublishException('Could not reach TikTok to check the post status — checking again.');
         }
 
         if (! $response->successful()) {
-            if ($this->flagReauth($account, $response->json('error.code'))) {
-                throw new TikTokPublishException(self::REAUTH_MESSAGE);
+            if ($reauth = $this->flagReauth($account, $response->json('error.code'))) {
+                throw new TikTokPublishException($reauth);
             }
 
             Log::warning('TikTok status fetch failed; will poll again', ['status' => $response->status(), 'response' => $response->body()]);

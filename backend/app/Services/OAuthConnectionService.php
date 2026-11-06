@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Connection;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Services\Social\SocialProviderManager;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -67,6 +68,20 @@ class OAuthConnectionService
      */
     public function freshAccessToken(Connection $connection): string
     {
+        // One refresher per grant. Publishing holds the same TikTok grant in
+        // social_accounts, and TikTok retires a refresh token as soon as it
+        // issues the next one — so this store refreshing with its own copy
+        // either fails or kills the copy publishing depends on. Where the
+        // grant is mirrored, take the token from there and never fall back.
+        if ($account = $this->mirroredAccount($connection)) {
+            $fresh = app(SocialProviderManager::class)->for('tiktok')->ensureFreshToken($account);
+            if (! $fresh->hasValidToken()) {
+                throw new Exception('No access token available for '.$connection->provider.' connection.');
+            }
+
+            return $fresh->access_token;
+        }
+
         if ($connection->tokenIsExpired()) {
             $this->refresh($connection);
         }
@@ -76,6 +91,22 @@ class OAuthConnectionService
         }
 
         return $connection->access_token;
+    }
+
+    /**
+     * The social_accounts row holding the same TikTok grant as this connection
+     * (both are keyed on TikTok's open_id), if there is one.
+     */
+    private function mirroredAccount(Connection $connection): ?SocialAccount
+    {
+        if ($connection->provider !== 'tiktok' || empty($connection->account_id)) {
+            return null;
+        }
+
+        return SocialAccount::where('user_id', $connection->user_id)
+            ->where('platform', 'tiktok')
+            ->where('platform_account_id', $connection->account_id)
+            ->first();
     }
 
     /**

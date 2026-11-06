@@ -150,6 +150,12 @@ class ConnectionController extends Controller
                 'code' => 'creator_cannot_post',
                 'message' => \App\Support\UserSafeError::detail($e),
             ], 422);
+        } catch (\App\Exceptions\TransientPublishException $e) {
+            // The token could not be renewed this minute: an outage on
+            // TikTok's side, not a connection the user has to fix.
+            Log::warning('TikTok creator info: token renewal unavailable', ['user_id' => $request->user()->id]);
+
+            return response()->json(['message' => 'TikTok is temporarily unavailable — try again in a minute.'], 503);
         } catch (\Exception $e) {
             Log::error('TikTok creator info failed', [
                 'user_id' => $request->user()->id,

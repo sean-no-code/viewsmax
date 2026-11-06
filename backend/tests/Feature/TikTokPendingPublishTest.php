@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Exceptions\TikTokUploadInterruptedException;
 use App\Jobs\PublishToTikTokJob;
+use App\Jobs\SendReconnectEmailJob;
 use App\Models\Post;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
@@ -13,8 +14,10 @@ use App\Services\Social\Providers\TikTokProvider;
 use App\Services\TikTokPublishService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Tests\TestCase;
@@ -254,7 +257,7 @@ class TikTokPendingPublishTest extends TestCase
 
     // ---- dead token flags the account ------------------------------
 
-    public function test_access_token_invalid_on_init_flags_the_account_for_reconnect(): void
+    public function test_access_token_invalid_with_no_refresh_token_flags_the_account_for_reconnect(): void
     {
         $user = User::factory()->create();
         $account = $this->account($user);
@@ -283,7 +286,251 @@ class TikTokPendingPublishTest extends TestCase
 
         $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->refresh()->status);
         $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status, 'an auth error is not transient');
+        $this->assertSame(TikTokPublishService::SCOPE_MESSAGE, $target->error);
+    }
+
+    // ---- a token on the edge of expiry is renewed, not read as a dead grant ----
+
+    private const TOKEN_URL = 'open.tiktokapis.com/v2/oauth/token/';
+
+    /** An account that can renew its own token, as every real connection can. */
+    private function refreshable(User $user, array $extra = []): SocialAccount
+    {
+        config([
+            'social.platforms.tiktok.client_id' => 'id',
+            'social.platforms.tiktok.client_secret' => 'secret',
+            'services.tiktok.video_pull_from_url' => true,
+        ]);
+
+        return $this->account($user, array_merge(['refresh_token' => 'refresh'], $extra));
+    }
+
+    /** TikTok accepting only the renewed token, the way it does the second ours expires. */
+    private function onlyRenewedTokenWorks(array $accepted): \Closure
+    {
+        return fn (Request $r) => $r->hasHeader('Authorization', 'Bearer renewed')
+            ? Http::response($accepted, 200)
+            : Http::response(['error' => ['code' => 'access_token_invalid']], 401);
+    }
+
+    public function test_access_token_invalid_on_init_renews_the_token_and_sends_again(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user); // valid by our clock, already expired by TikTok's
+        $target = $this->videoTarget($user, $account);
+
+        Http::fake([
+            self::TOKEN_URL => Http::response(['access_token' => 'renewed', 'refresh_token' => 'rotated', 'expires_in' => 86400]),
+            '*/post/publish/video/init/' => $this->onlyRenewedTokenWorks(['data' => ['publish_id' => 'v_pub_1'], 'error' => ['code' => 'ok']]),
+        ]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->status, (string) $target->error);
+        $this->assertSame('v_pub_1', $target->meta['publish_id']);
+        $account->refresh();
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->status);
+        $this->assertSame('renewed', $account->access_token);
+        $this->assertCount(2, $this->requests('/video/init/'));
+        $this->assertCount(1, $this->requests('/oauth/token/'));
+    }
+
+    public function test_access_token_invalid_on_status_fetch_renews_the_token_and_asks_again(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user);
+        $target = $this->pendingTarget($user, $account);
+
+        Http::fake([
+            self::TOKEN_URL => Http::response(['access_token' => 'renewed', 'expires_in' => 86400]),
+            '*/post/publish/status/fetch/' => $this->onlyRenewedTokenWorks(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['9001']]]),
+        ]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status, (string) $target->error);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status);
+    }
+
+    public function test_access_token_invalid_again_after_a_renewal_flags_the_account(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user);
+        $target = $this->videoTarget($user, $account);
+
+        Http::fake([
+            self::TOKEN_URL => Http::response(['access_token' => 'renewed', 'expires_in' => 86400]),
+            '*/post/publish/video/init/' => Http::response(['error' => ['code' => 'access_token_invalid']], 401),
+        ]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->refresh()->status);
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
         $this->assertSame(TikTokPublishService::REAUTH_MESSAGE, $target->error);
+        $this->assertCount(2, $this->requests('/video/init/'), 'one renewal, one more try, then stop');
+    }
+
+    public function test_access_token_invalid_reuses_a_token_another_worker_already_renewed(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user);
+        $stale = SocialAccount::find($account->id); // what a job that started earlier holds
+        $account->forceFill(['access_token' => 'renewed', 'token_expires_at' => now()->addDay()])->save();
+
+        Http::fake([
+            '*/post/publish/video/init/' => $this->onlyRenewedTokenWorks(['data' => ['publish_id' => 'v_pub_1'], 'error' => ['code' => 'ok']]),
+        ]);
+
+        $result = app(TikTokPublishService::class)->publishVideoFromUrl($stale, 'Clip', 'https://app.test/media/clip.mp4', []);
+
+        $this->assertSame('v_pub_1', $result['publish_id']);
+        $this->assertCount(0, $this->requests('/oauth/token/'));
+    }
+
+    public function test_access_token_invalid_stays_pending_when_the_renewal_fails_for_now(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user);
+        $target = $this->videoTarget($user, $account);
+
+        Http::fake([
+            self::TOKEN_URL => Http::response(['error' => 'server_error'], 503),
+            '*/post/publish/video/init/' => Http::response(['error' => ['code' => 'access_token_invalid']], 401),
+        ]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->status, (string) $target->error);
+        $this->assertNull($target->error);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status);
+    }
+
+    public function test_an_expired_token_that_cannot_be_renewed_right_now_is_never_sent_to_tiktok(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user, ['token_expires_at' => now()->subMinute()]);
+        $target = $this->videoTarget($user, $account);
+
+        Http::fake([
+            self::TOKEN_URL => Http::response(['error' => 'server_error'], 503),
+            '*/post/publish/*' => Http::response(['error' => ['code' => 'access_token_invalid']], 401),
+        ]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->status, (string) $target->error);
+        $this->assertNull($target->error);
+        $this->assertCount(0, $this->requests('/post/publish/'), 'an expired token must not reach the publish API');
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status);
+    }
+
+    public function test_a_connection_error_during_the_renewal_keeps_the_target_pending(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user, ['token_expires_at' => now()->subMinute()]);
+        $target = $this->videoTarget($user, $account);
+
+        Http::fake([self::TOKEN_URL => fn () => Http::failedConnection()]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->refresh()->status, (string) $target->error);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status);
+    }
+
+    public function test_a_dead_grant_fails_with_the_reconnect_message_and_one_email(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $account = $this->refreshable($user, ['token_expires_at' => now()->subMinute()]);
+        $target = $this->videoTarget($user, $account);
+
+        Http::fake([self::TOKEN_URL => Http::response(['error' => 'invalid_grant', 'error_description' => 'Refresh token is invalid or expired.'], 200)]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->refresh()->status);
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame(TikTokPublishService::REAUTH_MESSAGE, $target->error);
+        $this->assertCount(0, $this->requests('/post/publish/'));
+        Queue::assertPushed(SendReconnectEmailJob::class, 1);
+    }
+
+    public function test_an_expired_token_with_no_way_to_renew_fails_with_the_reconnect_message(): void
+    {
+        Http::fake();
+        $user = User::factory()->create();
+        $account = $this->account($user, ['token_expires_at' => now()->subMinute()]);
+        $target = $this->videoTarget($user, $account);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        Http::assertNothingSent();
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->refresh()->status);
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame(TikTokPublishService::REAUTH_MESSAGE, $target->error);
+    }
+
+    public function test_scope_errors_are_not_retried_and_carry_their_own_message(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user);
+        $target = $this->videoTarget($user, $account);
+
+        Http::fake(['*/post/publish/video/init/' => Http::response(['error' => ['code' => 'scope_not_authorized']], 401)]);
+
+        (new PublishToTikTokJob($target->id))->handle(app(TikTokPublishService::class));
+
+        $this->assertCount(1, $this->requests('/video/init/'), 'renewing a token adds no permissions');
+        $this->assertCount(0, $this->requests('/oauth/token/'));
+        $account->refresh();
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->status);
+        $this->assertSame(TikTokPublishService::SCOPE_MESSAGE, $account->last_error);
+        $this->assertSame(TikTokPublishService::SCOPE_MESSAGE, $target->refresh()->error);
+    }
+
+    public function test_renewal_retries_before_the_init_are_capped_with_a_clear_message(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->refreshable($user, ['token_expires_at' => now()->subMinute()]);
+        $target = $this->videoTarget($user, $account);
+        Http::fake([self::TOKEN_URL => Http::response(['error' => 'server_error'], 503)]);
+        $job = new PublishToTikTokJob($target->id);
+
+        // The status polls share the job's attempts: an outage must not use them up.
+        for ($i = 0; $i < 10; $i++) {
+            $job->handle(app(TikTokPublishService::class));
+        }
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $target->refresh()->status, (string) $target->error);
+
+        $job->handle(app(TikTokPublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame(PublishToTikTokJob::RENEWAL_FAILED, $target->error);
+        $this->assertCount(0, $this->requests('/post/publish/'));
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status);
+    }
+
+    public function test_exhausted_attempts_never_show_the_job_class_name(): void
+    {
+        $user = User::factory()->create();
+        $target = $this->pendingTarget($user, $this->account($user));
+
+        (new PublishToTikTokJob($target->id))->failed(
+            new MaxAttemptsExceededException(PublishToTikTokJob::class.' has been attempted too many times.')
+        );
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->status);
+        $this->assertSame('Timed out waiting for TikTok to finish processing.', $target->error);
     }
 
     // ---- post URLs ------------------------------------------------

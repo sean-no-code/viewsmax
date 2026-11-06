@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Social\SocialProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 /**
@@ -30,6 +31,7 @@ class SocialTokenLifecycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Sleep::fake(); // a retried TikTok refresh pauses between attempts
         $this->user = User::factory()->create();
     }
 
@@ -133,6 +135,124 @@ class SocialTokenLifecycleTest extends TestCase
 
         Http::assertNothingSent();
         $this->assertSame('fresh-access', $result->access_token);
+    }
+
+    /* ---------- TikTok: renew early, and judge a refresh by its body ---------- */
+
+    private const TIKTOK_TOKEN_URL = 'open.tiktokapis.com/v2/oauth/token/';
+
+    private function tiktok(array $overrides = []): SocialAccount
+    {
+        config(['social.platforms.tiktok.client_id' => 'id', 'social.platforms.tiktok.client_secret' => 'secret']);
+
+        return $this->account('tiktok', $overrides);
+    }
+
+    private function tiktokTokenCalls(): int
+    {
+        return Http::recorded(fn ($r) => str_contains($r->url(), self::TIKTOK_TOKEN_URL))->count();
+    }
+
+    public function test_tiktok_renews_a_token_in_its_last_hour(): void
+    {
+        // Our stored expiry runs slightly behind TikTok's own clock, so a token
+        // used in its final second is rejected. Renew well before that.
+        Http::fake([self::TIKTOK_TOKEN_URL => Http::response(['access_token' => 'renewed', 'refresh_token' => 'rotated', 'expires_in' => 86400])]);
+        $closing = $this->tiktok(['platform_account_id' => 'tt-closing', 'token_expires_at' => now()->addMinutes(30)]);
+        $roomy = $this->tiktok(['platform_account_id' => 'tt-roomy', 'token_expires_at' => now()->addHours(2)]);
+
+        $provider = app(SocialProviderManager::class)->for('tiktok');
+        $provider->ensureFreshToken($closing);
+        $provider->ensureFreshToken($roomy);
+
+        $this->assertSame('renewed', $closing->fresh()->access_token);
+        $this->assertSame('rotated', $closing->fresh()->refresh_token);
+        $this->assertSame('access', $roomy->fresh()->access_token);
+        $this->assertSame(1, $this->tiktokTokenCalls());
+    }
+
+    public function test_tiktok_refresh_error_with_http_200_never_overwrites_the_stored_token(): void
+    {
+        // TikTok answers a failed refresh with a 2xx and an error body.
+        Http::fake([self::TIKTOK_TOKEN_URL => Http::response(['error' => 'invalid_request', 'error_description' => 'malformed', 'log_id' => 'L1'], 200)]);
+        $account = $this->tiktok();
+
+        app(SocialProviderManager::class)->for('tiktok')->ensureFreshToken($account);
+
+        $account->refresh();
+        $this->assertSame('access', $account->access_token);
+        $this->assertSame('refresh', $account->refresh_token);
+        $this->assertNotNull($account->token_expires_at);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->status);
+    }
+
+    public static function tiktokInvalidGrantStatuses(): array
+    {
+        return ['200' => [200], '400' => [400], '401' => [401]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('tiktokInvalidGrantStatuses')]
+    public function test_tiktok_invalid_grant_flags_the_account_whatever_the_status(int $status): void
+    {
+        Http::fake([self::TIKTOK_TOKEN_URL => Http::response(['error' => 'invalid_grant', 'error_description' => 'Refresh token is invalid or expired.'], $status)]);
+        $account = $this->tiktok();
+
+        app(SocialProviderManager::class)->for('tiktok')->ensureFreshToken($account);
+
+        $account->refresh();
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $account->status);
+        $this->assertSame('access', $account->access_token, 'the stored token is left as it was');
+    }
+
+    public function test_tiktok_invalid_client_does_not_flag_the_account(): void
+    {
+        // Our own credentials being wrong is not the user's grant dying: it
+        // must not ask every TikTok user to reconnect.
+        Http::fake([self::TIKTOK_TOKEN_URL => Http::response(['error' => 'invalid_client', 'error_description' => 'Client key or secret is incorrect.'], 401)]);
+        $account = $this->tiktok();
+
+        app(SocialProviderManager::class)->for('tiktok')->ensureFreshToken($account);
+
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
+        $this->assertSame(1, $this->tiktokTokenCalls(), 'a real answer from TikTok is not retried');
+    }
+
+    public function test_tiktok_refresh_retries_a_5xx_then_saves_the_new_token(): void
+    {
+        Http::fake([self::TIKTOK_TOKEN_URL => Http::sequence()
+            ->push(['error' => 'server_error'], 503)
+            ->push(['access_token' => 'renewed', 'expires_in' => 86400])]);
+        $account = $this->tiktok();
+
+        app(SocialProviderManager::class)->for('tiktok')->ensureFreshToken($account);
+
+        $this->assertSame('renewed', $account->fresh()->access_token);
+        $this->assertSame('refresh', $account->fresh()->refresh_token, 'no new refresh token was sent, so the old one stays');
+        $this->assertSame(2, $this->tiktokTokenCalls());
+    }
+
+    public function test_tiktok_renews_a_rejected_token_that_is_still_valid_by_the_clock(): void
+    {
+        Http::fake([self::TIKTOK_TOKEN_URL => Http::response(['access_token' => 'renewed', 'expires_in' => 86400])]);
+        $account = $this->tiktok(['token_expires_at' => now()->addHours(5)]);
+
+        $fresh = app(SocialProviderManager::class)->for('tiktok')->refreshRejectedToken($account, 'access');
+
+        $this->assertSame('renewed', $fresh->access_token);
+        $this->assertSame(1, $this->tiktokTokenCalls());
+    }
+
+    public function test_tiktok_rejected_token_reuses_a_refresh_another_worker_already_made(): void
+    {
+        Http::fake();
+        $account = $this->tiktok(['token_expires_at' => now()->addHours(5)]);
+        $stale = SocialAccount::find($account->id);
+        $account->forceFill(['access_token' => 'theirs', 'token_expires_at' => now()->addDay()])->save();
+
+        $fresh = app(SocialProviderManager::class)->for('tiktok')->refreshRejectedToken($stale, 'access');
+
+        Http::assertNothingSent();
+        $this->assertSame('theirs', $fresh->access_token);
     }
 
     /* ---------- proactive refresh keeps Meta-family tokens alive ---------- */

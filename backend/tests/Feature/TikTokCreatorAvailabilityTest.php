@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\TikTokPublishService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 /**
@@ -132,5 +133,28 @@ class TikTokCreatorAvailabilityTest extends TestCase
 
         $response->assertStatus(422)->assertJsonPath('code', 'creator_cannot_post');
         $this->assertStringContainsString('try again later', strtolower($response->json('message')));
+    }
+
+    /**
+     * A token that cannot be renewed this minute is an outage, not a broken
+     * connection: the composer is told to try again rather than shown nothing.
+     */
+    public function test_endpoint_reports_a_token_renewal_outage_as_temporary(): void
+    {
+        Sleep::fake();
+        config(['social.platforms.tiktok.client_id' => 'id', 'social.platforms.tiktok.client_secret' => 'secret']);
+        Http::fake(['open.tiktokapis.com/v2/oauth/token/' => Http::response(['error' => 'server_error'], 503)]);
+
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $account->update(['refresh_token' => 'refresh', 'token_expires_at' => now()->subMinute()]);
+
+        $response = $this->getJson('/api/connections/tiktok/creator-info', [
+            'Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken,
+        ]);
+
+        $response->assertStatus(503);
+        $this->assertSame('TikTok is temporarily unavailable — try again in a minute.', $response->json('message'));
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->refresh()->status);
     }
 }

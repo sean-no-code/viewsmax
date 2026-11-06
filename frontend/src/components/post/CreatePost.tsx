@@ -654,7 +654,8 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
       return;
     }
     if (status !== "draft" && c.youtubeTitleMissing) { toast.error(youtubeTitleMsg(t)); return; }
-    if (c.mediaUploading) { toast.error(t("post.composer.waitForUpload", "Wait for media to finish uploading.")); return; }
+    // The cover counts too: sent mid-upload, the post would go out without it.
+    if (c.mediaUploading || c.coverUploading) { toast.error(t("post.composer.waitForUpload", "Wait for media to finish uploading.")); return; }
     if (c.mediaFailed) { toast.error(t("post.composer.removeFailedMedia", "Remove or re-upload the failed media.")); return; }
     // TikTok accepts a video or a photo slideshow (one or more images).
     if (status !== "draft" && c.selected.includes("tiktok") && !c.media.some((m) => (m.type === "video" || m.type === "image") && m.url)) {

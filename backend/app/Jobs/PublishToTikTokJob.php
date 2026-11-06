@@ -12,6 +12,7 @@ use App\Models\SocialAccount;
 use App\Services\TikTokPublishService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +49,14 @@ class PublishToTikTokJob implements ShouldQueue
     public $tries = 40;
 
     private const POLL_SECONDS = 15;
+
+    // Every release spends one of $tries, and the status polls need most of
+    // them. Before TikTok holds the post the only thing retried is renewing
+    // the access token, so cap that: an outage of TikTok's token endpoint
+    // must not use up the polls of a post it later accepts.
+    private const MAX_INIT_RETRIES = 10;
+
+    public const RENEWAL_FAILED = 'Could not renew TikTok access after several tries, so the post was not sent — try again.';
 
     public function __construct(public int $postTargetId) {}
 
@@ -139,8 +148,20 @@ class PublishToTikTokJob implements ShouldQueue
             // Note it and let the status polls deliver TikTok's.
             $this->keepPending($target, $meta, $e->context['log'] ?? [], 'upload interrupted: '.$e->getMessage());
         } catch (TransientPublishException $e) {
-            // A status check TikTok could not answer; the post may already be
-            // live, so stay pending and ask again (bounded by $tries).
+            // Nothing handed over yet: the token could not be renewed just now.
+            // Nothing was sent, so trying again is safe — up to a point.
+            if (empty($meta['publish_id'])) {
+                $meta['init_retries'] = ($meta['init_retries'] ?? 0) + 1;
+                if ($meta['init_retries'] > self::MAX_INIT_RETRIES) {
+                    $target->meta = $meta;
+                    $this->markFailed($target, self::RENEWAL_FAILED);
+
+                    return;
+                }
+            }
+
+            // Otherwise a status check TikTok could not answer; the post may
+            // already be live, so stay pending and ask again (bounded by $tries).
             $this->keepPending($target, $meta, [], $e->getMessage());
         } catch (\Throwable $e) {
             Log::error('TikTok publish job error', [
@@ -335,7 +356,10 @@ class PublishToTikTokJob implements ShouldQueue
                     'init' => 'Timed out while handing the media to TikTok.',
                     'upload' => 'Timed out while uploading the video to TikTok.',
                     'status' => "Timed out while checking TikTok's processing status.",
-                    default => $e?->getMessage() ?: 'Timed out waiting for TikTok to finish processing.',
+                    // Out of attempts: the framework's message names the job class.
+                    default => $e instanceof MaxAttemptsExceededException || ! $e?->getMessage()
+                        ? 'Timed out waiting for TikTok to finish processing.'
+                        : $e->getMessage(),
                 },
             ])->save();
         }

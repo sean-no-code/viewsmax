@@ -9,6 +9,8 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 /**
@@ -34,6 +36,7 @@ class RefreshSocialTokensCommandTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Sleep::fake(); // TikTok retries a 429/5xx/connection error once
         $this->user = User::factory()->create();
         foreach (array_keys(self::TOKEN_URLS) as $platform) {
             config(["social.platforms.{$platform}.client_id" => 'id', "social.platforms.{$platform}.client_secret" => 'secret']);
@@ -173,6 +176,54 @@ class RefreshSocialTokensCommandTest extends TestCase
         Exceptions::assertReported(fn (ConnectionException $e) => str_contains($e->getMessage(), 'timed out'));
         $this->assertSame('new-x', $x->fresh()->access_token);
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $tiktok->fresh()->status);
+    }
+
+    // ---- --recheck-flagged: accounts a refresh wrongly asked to reconnect ----
+
+    public function test_recheck_flagged_heals_an_account_whose_grant_is_still_alive(): void
+    {
+        Queue::fake();
+        $this->fakeTokenEndpoints();
+        $flagged = $this->account('tiktok', ['status' => SocialAccount::STATUS_NEEDS_REAUTH, 'last_error' => 'reconnect']);
+        $otherPlatform = $this->account('x', ['status' => SocialAccount::STATUS_NEEDS_REAUTH]);
+
+        $this->artisan('social:refresh-tokens', ['--recheck-flagged' => true, '--platform' => 'tiktok'])
+            ->expectsOutputToContain('1 healed')
+            ->assertExitCode(0);
+
+        $flagged->refresh();
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $flagged->status);
+        $this->assertSame('new-tiktok', $flagged->access_token);
+        $this->assertNull($flagged->last_error);
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $otherPlatform->fresh()->status);
+        $this->assertSame(0, $this->refreshCallsFor('x'));
+        Queue::assertNothingPushed();
+    }
+
+    public function test_recheck_flagged_leaves_a_dead_grant_flagged_without_counting_it_again(): void
+    {
+        Queue::fake();
+        $this->fakeTokenEndpoints(['tiktok' => Http::response(['error' => 'invalid_grant'], 200)]);
+        $flagged = $this->account('tiktok', ['status' => SocialAccount::STATUS_NEEDS_REAUTH]);
+
+        $this->artisan('social:refresh-tokens', ['--recheck-flagged' => true, '--platform' => 'tiktok'])
+            ->expectsOutputToContain('0 refreshed, 0 now need reconnect, 0 errored, 0 healed')
+            ->assertExitCode(0);
+
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $flagged->fresh()->status);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_recheck_flagged_must_name_a_platform(): void
+    {
+        // Other providers flag for reasons a refresh would wrongly clear.
+        $this->fakeTokenEndpoints();
+        $flagged = $this->account('tiktok', ['status' => SocialAccount::STATUS_NEEDS_REAUTH]);
+
+        $this->artisan('social:refresh-tokens', ['--recheck-flagged' => true])->assertExitCode(1);
+
+        Http::assertNothingSent();
+        $this->assertSame(SocialAccount::STATUS_NEEDS_REAUTH, $flagged->fresh()->status);
     }
 
     public function test_tokens_of_users_without_access_are_left_alone(): void
