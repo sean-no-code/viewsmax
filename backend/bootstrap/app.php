@@ -114,14 +114,6 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(10)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-trial-reminders scheduled run failed'));
 
-        // Card-free signups: "your free trial ends tomorrow, pick a plan" a
-        // day before promo_expires_at. Hourly for the same reason as above;
-        // users.free_trial_reminder_sent_at keeps it once-only.
-        $schedule->command('subscriptions:send-free-trial-reminders')
-            ->hourly()
-            ->withoutOverlapping(10)
-            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-free-trial-reminders scheduled run failed'));
-
         // Queue heartbeat: dispatch a tiny job and email ADMIN_EMAIL when
         // heartbeats stop being processed (workers dead or queue wedged).
         // No overlap lock on purpose — the lock lives in the cache, and a cache
