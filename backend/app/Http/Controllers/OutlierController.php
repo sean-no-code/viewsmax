@@ -332,6 +332,13 @@ class OutlierController extends Controller
              return response()->json(['error' => 'Term is required'], 400);
         }
 
+        if (! is_string($term) || mb_strlen($term) > YouTubeSearchService::MAX_TERM_LENGTH) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Search terms can be at most '.YouTubeSearchService::MAX_TERM_LENGTH.' characters. Try a few keywords instead.',
+            ], 422);
+        }
+
         // Trigger the search job(s) — respects exact_match flag
         $denied = $this->searchService->search($term, $request->user(), $exactMatch);
 

@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Http\Controllers\OutlierController;
 use App\Mcp\NextSteps;
+use App\Services\YouTubeSearchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -48,7 +49,7 @@ class SearchOutliers extends ViewsMaxTool
         }
 
         $validated = Validator::validate($arguments, [
-            'term' => 'required|string|min:2|max:200',
+            'term' => 'required|string|min:2|max:'.YouTubeSearchService::MAX_TERM_LENGTH,
             'exact_match' => 'nullable|boolean',
         ]);
 

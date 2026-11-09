@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Log;
 class YouTubeSearchService
 {
     use LogsYouTubeRequests;
+
+    /** Longest search term accepted; search_terms.term is varchar(255). */
+    public const MAX_TERM_LENGTH = 200;
+
     private const API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
     /** ISO-8601 duration → seconds, Postgres only (regex SUBSTRING + ::INTEGER casts). */
     private const DURATION_SECONDS_SQL = "(
@@ -630,7 +634,7 @@ class YouTubeSearchService
     {
         // Must be at least 2 chars and contain at least one alphanumeric character
         // This prevents searches like "'", ".", "?", or single letters like "a" which are too broad/wasteful
-        if (mb_strlen($term) < 2) {
+        if (mb_strlen($term) < 2 || mb_strlen($term) > self::MAX_TERM_LENGTH) {
             return false;
         }
 

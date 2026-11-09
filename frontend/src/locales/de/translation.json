@@ -1210,6 +1210,7 @@
       "sortViews": "Aufrufe",
       "startSearchFailed": "Suche konnte nicht gestartet werden",
       "unsupportedUrl": "Diese URL sieht nicht wie ein YouTube-, TikTok- oder Instagram-Videolink aus.",
+      "termTooLong": "Suchen dürfen höchstens {{max}} Zeichen lang sein. Diese hat {{length}}, versuche es lieber mit ein paar Stichwörtern.",
       "updateFailed": "Aktualisieren fehlgeschlagen"
     }
   },

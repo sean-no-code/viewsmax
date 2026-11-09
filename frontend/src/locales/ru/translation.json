@@ -1250,6 +1250,7 @@
       "sortViews": "Просмотры",
       "startSearchFailed": "Не удалось начать поиск",
       "unsupportedUrl": "Этот URL не похож на ссылку на видео YouTube, TikTok или Instagram.",
+      "termTooLong": "Поисковый запрос может содержать не более {{max}} символов. В этом {{length}}, попробуйте несколько ключевых слов.",
       "updateFailed": "Не удалось обновить"
     }
   },

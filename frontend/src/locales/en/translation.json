@@ -1211,6 +1211,7 @@
       "sortViews": "Views",
       "startSearchFailed": "Failed to start search",
       "unsupportedUrl": "That URL doesn't look like a YouTube, TikTok or Instagram video link.",
+      "termTooLong": "Searches can be up to {{max}} characters. This one is {{length}}, so try a few keywords instead.",
       "updateFailed": "Failed to update"
     }
   },

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { countryFlag, countryName, localizedCountries } from '@/components/outliers/countries';
 import { parseProfileInput } from '@/components/outliers/profile-input';
+import { MAX_SEARCH_TERM_LENGTH, searchTermOverflow } from '@/components/outliers/search-term';
 import {
     searchOutliers, startSearchOutliers, getOutlierChannels, fetchOutlierByUrl, toggleOutlierFeature, asQuotaPaused,
     getSavedFilters, saveFilter, deleteSavedFilter, getLibrary, saveOutlier, deleteSavedOutlier,
@@ -262,6 +263,10 @@ export default function Outliers() {
         }
     };
 
+    // A keyword search over the API's limit (someone pasted a paragraph) is
+    // flagged inline and never sent; the server would refuse it with a 422.
+    const termOverflow = searchTermOverflow(query);
+
     const handleSearch = useCallback(async () => {
         stopPoll();
         // A creator profile / @handle belongs to the channel picker — hand it over
@@ -297,6 +302,7 @@ export default function Outliers() {
             }
             return;
         }
+        if (searchTermOverflow(query)) return; // the inline error under the box says why
         // A keyword search kicks off an async YouTube scrape, then polls; empty query browses.
         if (query.trim()) {
             setLoading(true);
@@ -538,10 +544,12 @@ export default function Outliers() {
             <div style={{ ...CARD, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {/* Row 1 */}
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1.5 1 260px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--paper-1)', border: '1px solid var(--line-2)', borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
+                    <div style={{ flex: '1.5 1 260px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--paper-1)', border: `1px solid ${termOverflow ? 'var(--vm-red)' : 'var(--line-2)'}`, borderRadius: 'var(--r-md)', padding: '8px 12px' }}>
                         <Search size={16} stroke="#76767F" />
                         <input
                             value={query}
+                            aria-invalid={termOverflow > 0}
+                            aria-describedby={termOverflow ? 'outlier-search-term-error' : undefined}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                             placeholder={t('outliers.search.searchPlaceholder', 'Search titles, keywords, URLs…')}
@@ -700,6 +708,15 @@ export default function Outliers() {
                         })}
                     </div>
                 </div>
+                {termOverflow > 0 && (
+                    <div id="outlier-search-term-error" role="alert" style={{ fontSize: 12.5, color: 'var(--vm-red-deep)', marginTop: -4 }}>
+                        {t('outliers.search.termTooLong', {
+                            max: MAX_SEARCH_TERM_LENGTH,
+                            length: MAX_SEARCH_TERM_LENGTH + termOverflow,
+                            defaultValue: 'Searches can be up to {{max}} characters. This one is {{length}}, so try a few keywords instead.',
+                        })}
+                    </div>
+                )}
 
                 {/* Row 2 — metric chips */}
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -753,7 +770,7 @@ export default function Outliers() {
 
                     <div style={{ width: 1, height: 22, background: 'var(--line-1)' }} />
                     <button onClick={resetFilters} style={actionBtn}><RotateCcw size={14} /> {t('outliers.search.reset', 'Reset')}</button>
-                    <button onClick={handleSearch} style={{ padding: '10px 22px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button onClick={handleSearch} disabled={termOverflow > 0} style={{ padding: '10px 22px', borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--vm-red)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: termOverflow ? 'not-allowed' : 'pointer', opacity: termOverflow ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
                         {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />} {t('outliers.search.search', 'Search')}
                     </button>
                 </div>

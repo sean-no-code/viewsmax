@@ -57,6 +57,51 @@ class OutlierSearchIngestTest extends TestCase
         ]);
     }
 
+    /**
+     * search_terms.term is varchar(255). A pasted paragraph (Sentry PHP-LARAVEL-5A:
+     * a whole breakdown dropped into the search box) used to reach the insert
+     * and 500. The REST endpoint now refuses it like the MCP tool does.
+     */
+    public function test_a_search_term_over_the_limit_is_refused_before_anything_is_stored(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $term = str_repeat('a', YouTubeSearchService::MAX_TERM_LENGTH + 1);
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken])
+            ->postJson('/api/outliers/search', ['term' => $term])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->assertSame(0, SearchTerm::count());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_a_search_term_at_the_limit_is_accepted(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $term = str_repeat('a', YouTubeSearchService::MAX_TERM_LENGTH);
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken])
+            ->postJson('/api/outliers/search', ['term' => $term, 'exact_match' => true])
+            ->assertOk();
+
+        $this->assertSame(1, SearchTerm::where('term', $term)->count());
+    }
+
+    /** The service is the last stop before the insert, so it refuses an over-long term on its own too. */
+    public function test_the_service_skips_an_over_long_term_instead_of_inserting_it(): void
+    {
+        Queue::fake();
+        $term = str_repeat('word ', 60); // 300 chars
+
+        $this->assertNull(app(YouTubeSearchService::class)->search($term, User::factory()->create()));
+
+        $this->assertSame(0, SearchTerm::count());
+        Queue::assertNothingPushed();
+    }
+
     public function test_search_ingest_dispatches_format_classification_for_saved_videos(): void
     {
         Queue::fake();
