@@ -1128,6 +1128,14 @@ class ViewsMaxApiService {
     }
   }
 
+  // Surface the backend's own sentence (e.g. the trial post limit, a caption
+  // over a platform's limit) rather than dumping the raw JSON body into a toast.
+  private async postErrorMessage(response: Response, action: 'create' | 'update'): Promise<string> {
+    const body = await response.json().catch(() => null);
+    const fieldErrors = body?.errors ? Object.values(body.errors).flat().join(' ') : '';
+    return fieldErrors || body?.message || `Failed to ${action} post (${response.status})`;
+  }
+
   async createPost(data: PostPayload): Promise<ApiResponse<Post>> {
     try {
       const response = await fetch(`${this.baseUrl}/api/posts`, {
@@ -1136,8 +1144,7 @@ class ViewsMaxApiService {
         body: JSON.stringify(data),
       });
       if (!response.ok) {
-        const errorData = await response.text();
-        return { success: false, error: `Failed to create post: ${response.status} - ${errorData}` };
+        return { success: false, error: await this.postErrorMessage(response, 'create') };
       }
       return { success: true, data: await response.json() };
     } catch (error) {
@@ -1153,8 +1160,7 @@ class ViewsMaxApiService {
         body: JSON.stringify(data),
       });
       if (!response.ok) {
-        const errorData = await response.text();
-        return { success: false, error: `Failed to update post: ${response.status} - ${errorData}` };
+        return { success: false, error: await this.postErrorMessage(response, 'update') };
       }
       return { success: true, data: await response.json() };
     } catch (error) {

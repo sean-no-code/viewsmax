@@ -6,6 +6,7 @@ use App\Models\Post;
 use App\Models\PostTarget;
 use App\Services\Social\MediaRules;
 use App\Services\Social\PostPublishDispatcher;
+use App\Support\PostAllowance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -294,6 +295,15 @@ class PostController extends Controller
                 'scheduled_at' => 'scheduled_at is in the past. The current time is '
                     .now()->utc()->toIso8601ZuluString().' — pick a later time.',
             ]);
+        }
+
+        // An account that hasn't paid yet has a fixed number of posts. Asked
+        // only when the request takes a slot (a new post, or a draft, going
+        // to scheduled/posted): editing or rescheduling a post that already
+        // holds one is free, as is publishing a scheduled post now.
+        $takesSlot = $resultingStatus !== Post::STATUS_DRAFT && (! $post || $post->status === Post::STATUS_DRAFT);
+        if ($takesSlot && ($refusal = PostAllowance::refusal(Auth::user()))) {
+            abort(response()->json(['success' => false] + $refusal, 422));
         }
 
         // Once a platform has the post live, the post can't go back to a draft

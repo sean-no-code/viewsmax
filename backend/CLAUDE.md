@@ -84,6 +84,30 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   (MCP `isError` tool result at HTTP 200 — never an HTTP error, which counts against directory ranking),
   `EnsureWebAccess` (web redirect). Console code calls `denial()` directly.
 
+- **Post allowance.** `App\Support\PostAllowance::refusal($user)` caps an account that hasn't paid yet — the
+  card-free window or the $0 Stripe trial (`trialing`) — at `config('publishing.trial_posts')` posts
+  (`TRIAL_POST_LIMIT`, default 30, blank = unlimited) scheduled or published **in total**; it lifts when the
+  pivot turns `active`, and admins + `promotional_customer` are exempt. Drafts never count. It is asked only
+  where a post takes a slot: `PostController::validatePayload` when a new post or a draft goes to
+  scheduled/posted (MCP `create_post` / `update_post` delegate there) and the legacy
+  `SocialPostController::store`. Publishing is not gated, so posts already scheduled still go out. Used =
+  `users.posts_published_count` (incremented in `Post::booted()`; a counter because posts are hard-deleted,
+  so deleting a published post frees nothing) + posts scheduled now + legacy `social_posts`. The refusal is a
+  422 `code: post_limit` ending "Upgrade to access higher limits.", which `ViewsMaxTool::userFacingError`
+  strips for MCP clients, and one line in `storage/logs/post-limit.log`. A new path that schedules or
+  publishes a post must ask it too.
+
+- **Erasure (GDPR).** `php artisan user:erase {email}` (`--dry-run`, `--yes`) runs `App\Services\UserErasure`:
+  revoke the Google grant (`YouTubeDisconnector`; other platforms have no revoke API, their rows just go),
+  delete Sanctum + Passport tokens (Claude/ChatGPT), cancel Stripe subscriptions now and delete the customer,
+  ask Klaviyo/Kit to delete/unsubscribe (best effort), delete per-user files, delete every table with a
+  `user_id` (derived from the schema, so new tables are covered; `UserErasureTest` pins the set) plus the
+  `outlier_db` and wallet tables, then scrub the user row (`erased+{id}@erased.invalid`) and soft-delete it.
+  Kept: `social_handle_claims` (the tombstone still blocks the channel — `HandleClaims::message` says so) and
+  `youtube_quota_spends` with `user_id` nulled. Remote failures are reported and exit non-zero; local data is
+  gone either way. One line per erasure in `storage/logs/user-erasure.log` (kept a year). `DELETE
+  /api/user-data` is **not** this: it only clears YouTube/Google for a user who stays.
+
 - **Analytics is the Pro tier.** `App\Support\AnalyticsAccess::allows($user)` (plans `pro`, `agency` and the
   three retired `creator_*` rows; admins + `promotional_customer` exempt) is the single rule for channel and
   post analytics, with `User::withAnalytics()` as its SQL twin for bulk selects. It is **orthogonal to

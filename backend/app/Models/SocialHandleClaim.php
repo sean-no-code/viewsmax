@@ -25,8 +25,9 @@ class SocialHandleClaim extends Model
         'last_connected_at' => 'datetime',
     ];
 
+    /** The owner, even after a GDPR erasure (UserErasure soft-deletes the row). */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 }

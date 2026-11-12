@@ -69,6 +69,11 @@ class SocialPostController extends Controller
 
         $user = Auth::user();
 
+        // Every post here is published or scheduled, so each one takes a slot.
+        if ($refusal = \App\Support\PostAllowance::refusal($user)) {
+            return response()->json(['success' => false] + $refusal, 422);
+        }
+
         if (empty($validated['content']) && empty($validated['media'])) {
             return response()->json([
                 'success' => false,

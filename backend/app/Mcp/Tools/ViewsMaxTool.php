@@ -257,7 +257,7 @@ abstract class ViewsMaxTool extends Tool
     {
         // Quota refusals (App\Support\Quota\QuotaMessage) end with an upgrade
         // nudge for the web app; the AI may hear about the limit, not the upsell.
-        $message = (string) preg_replace('/\s*Upgrade (to get higher limits|for priority access)\.$/', '', $message);
+        $message = (string) preg_replace('/\s*Upgrade (to get higher limits|to access higher limits|for priority access)\.$/', '', $message);
 
         if (preg_match("/plan's limit of (\d+) (\w+)/i", $message, $matches) === 1) {
             $noun = rtrim($matches[2], 's');

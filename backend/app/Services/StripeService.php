@@ -169,6 +169,29 @@ class StripeService
     }
 
     /**
+     * Delete a Stripe Customer (GDPR erasure, UserErasure): removes the card
+     * and email from Stripe; invoices stay for tax records. A customer Stripe
+     * no longer has counts as deleted.
+     */
+    public function deleteCustomer(string $customerId): bool
+    {
+        try {
+            $customer = Customer::retrieve($customerId);
+            $customer->delete();
+            Log::info('Stripe customer deleted', ['stripe_customer_id' => $customerId]);
+
+            return true;
+        } catch (\Stripe\Exception\InvalidRequestException $e) {
+            if ($e->getHttpStatus() === 404) {
+                return true;
+            }
+            throw new Exception('Stripe delete customer error: '.$e->getMessage(), 0, $e);
+        } catch (Exception $e) {
+            throw new Exception('Stripe delete customer error: '.$e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
      * Find or create a Stripe Customer for the given user.
      */
     public function findOrCreateCustomer(User $user): Customer

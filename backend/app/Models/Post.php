@@ -31,6 +31,28 @@ class Post extends Model
         'failure_notified_at' => 'datetime',
     ];
 
+    /**
+     * Count every post that goes out on its owner (users.posts_published_count),
+     * whichever path published it — "post now" or posts:publish-due. The count
+     * outlives the post, which is what App\Support\PostAllowance needs.
+     */
+    protected static function booted(): void
+    {
+        $count = fn (Post $post) => User::whereKey($post->user_id)->increment('posts_published_count');
+
+        static::created(function (Post $post) use ($count) {
+            if ($post->status === self::STATUS_POSTED) {
+                $count($post);
+            }
+        });
+
+        static::updated(function (Post $post) use ($count) {
+            if ($post->status === self::STATUS_POSTED && $post->wasChanged('status')) {
+                $count($post);
+            }
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

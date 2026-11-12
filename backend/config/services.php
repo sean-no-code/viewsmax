@@ -341,6 +341,14 @@ return [
         'timeout' => env('PERPLEXITY_TIMEOUT', 600),
     ],
 
+    'klaviyo' => [
+        // Marketing list: consenting signups are subscribed at registration
+        // (SubscribeToKlaviyo) and erased users are deleted (UserErasure).
+        'api_key' => env('KLAVIYO_API_KEY'),
+        'api_url' => env('KLAVIYO_API_URL', 'https://a.klaviyo.com'),
+        'list_id' => env('KLAVIYO_LIST_ID'),
+    ],
+
     'kit' => [
         // Newsletter: consenting signups are subscribed with this tag at registration
         // (AuthController::register). Leave KIT_API_KEY unset outside production so

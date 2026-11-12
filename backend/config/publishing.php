@@ -22,4 +22,20 @@ return [
 
     'tiktok_per_minute' => (int) env('PUBLISH_TIKTOK_PER_MINUTE', 100),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Posts before the first payment
+    |--------------------------------------------------------------------------
+    |
+    | How many posts an account may schedule or publish in total while it has
+    | not paid yet: the card-free signup window and the $0 Stripe trial. The
+    | cap lifts once the subscription is active; admins and promotional
+    | customers are exempt; drafts never count (App\Support\PostAllowance).
+    |
+    | TRIAL_POST_LIMIT= (blank) removes the cap; 0 allows drafts only.
+    |
+    */
+
+    'trial_posts' => env('TRIAL_POST_LIMIT', 30),
+
 ];

@@ -18,6 +18,53 @@ class KlaviyoService
         $this->listId = config('services.klaviyo.list_id');
     }
 
+    public function configured(): bool
+    {
+        return ! empty($this->apiKey);
+    }
+
+    /**
+     * Ask Klaviyo to delete a profile and everything it holds about it (GDPR
+     * erasure, UserErasure). Klaviyo runs the deletion as a job; a 202 means
+     * it was accepted. Never throws: false = refused or unreachable.
+     */
+    public function deleteProfile(string $email): bool
+    {
+        if (! $this->configured()) {
+            return false;
+        }
+
+        $url = rtrim($this->apiUrl ?: 'https://a.klaviyo.com', '/').'/api/data-privacy-deletion-jobs';
+        $payload = [
+            'data' => [
+                'type' => 'data-privacy-deletion-job',
+                'attributes' => [
+                    'profile' => ['data' => ['type' => 'profile', 'attributes' => ['email' => $email]]],
+                ],
+            ],
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Klaviyo-API-Key '.$this->apiKey,
+                'Revision' => '2024-02-15',
+                'Content-Type' => 'application/vnd.api+json',
+                'Accept' => 'application/vnd.api+json',
+            ])->post($url, $payload);
+
+            if ($response->successful()) {
+                return true;
+            }
+            Log::error("Klaviyo refused the deletion job for {$email}: ".$response->body());
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error("Klaviyo deletion job for {$email} failed: ".$e->getMessage());
+
+            return false;
+        }
+    }
+
     /**
      * Subscribe a user profile to a list.
      *

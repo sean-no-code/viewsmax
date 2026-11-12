@@ -30,6 +30,40 @@ class KitService
         $this->tagName = config('services.kit.tag', 'viewsmax');
     }
 
+    public function configured(): bool
+    {
+        return ! empty($this->apiSecret);
+    }
+
+    /**
+     * Unsubscribe an address from every form, sequence and tag (GDPR erasure,
+     * UserErasure). Kit's v3 API has no delete-by-email, and unsubscribe is
+     * what it documents for removal requests. Takes the secret key. Never
+     * throws: false = refused or unreachable.
+     */
+    public function unsubscribe(string $email): bool
+    {
+        if (! $this->configured()) {
+            return false;
+        }
+
+        try {
+            $response = Http::acceptJson()->timeout(15)
+                ->put(self::BASE.'/unsubscribe', ['api_secret' => $this->apiSecret, 'email' => $email]);
+
+            if ($response->successful()) {
+                return true;
+            }
+            Log::error("Kit refused to unsubscribe {$email}: ".$response->body());
+
+            return false;
+        } catch (\Throwable $e) {
+            Log::error("Kit unsubscribe for {$email} failed: ".$e->getMessage());
+
+            return false;
+        }
+    }
+
     /**
      * Subscribe an email (with optional first name) and apply the configured
      * tag, plus any $extraTags (each applied with its own subscribe call —

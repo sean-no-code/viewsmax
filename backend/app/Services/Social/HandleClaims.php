@@ -52,6 +52,14 @@ final class HandleClaims
     {
         $label = CaptionRules::PLATFORM_LABELS[$platform] ?? ucfirst($platform);
         $account = $handle ? " ({$handle})" : '';
+
+        // The owner was erased (UserErasure): the claim still blocks, but there
+        // is no account to sign in to and the tombstone email must not show.
+        if ($owner?->trashed()) {
+            return "This {$label} account{$account} was connected to a ViewsMax account that has since been deleted, "
+                ."so it can't be connected to a new one. Contact support if this is your account.";
+        }
+
         $signIn = $owner?->email ? ' ('.self::maskEmail($owner->email).')' : '';
 
         return "This {$label} account{$account} is already connected to another ViewsMax account. "

@@ -483,6 +483,26 @@ class McpServerTest extends TestCase
         $this->assertSame(1, Post::count());
     }
 
+    public function test_create_post_reports_the_trial_post_limit_without_the_offer_rewording(): void
+    {
+        // App\Support\PostAllowance. The AI is told about the limit as written:
+        // userFacingError's "Delete an existing …" rewrite is for offer caps.
+        config(['publishing.trial_posts' => 1]);
+        $key = $this->mcpKey(User::factory()->create());
+        $scheduled = ['platforms' => ['x'], 'status' => 'scheduled', 'scheduled_at' => '2030-01-15T08:55:00Z'];
+
+        $this->toolJson($this->callTool($key, 'create_post', ['caption' => 'One'] + $scheduled));
+        $response = $this->callTool($key, 'create_post', ['caption' => 'Two'] + $scheduled);
+
+        $this->assertToolError($response, 'all 1 posts included on your current plan');
+        $this->assertStringNotContainsString('Delete an existing', $response->json('result.content.0.text'));
+        $this->assertStringNotContainsStringIgnoringCase('upgrade', $response->json('result.content.0.text'));
+        $this->assertSame(1, Post::count());
+
+        // Drafts stay open.
+        $this->toolJson($this->callTool($key, 'create_post', ['caption' => 'Draft', 'platforms' => ['x']]));
+    }
+
     public function test_upload_media_has_its_own_hourly_limit(): void
     {
         Storage::fake('public');

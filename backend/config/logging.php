@@ -143,6 +143,43 @@ return [
             'permission' => 0777,
         ],
 
+        // Trial post limit (App\Support\PostAllowance): one line per refused
+        // schedule/publish with the user id, how many posts they have used and
+        // their cap, in storage/logs/post-limit.log.
+        // POST_LIMIT_LOG_ENABLED=false silences it.
+        'post_limit' => [
+            'driver' => 'stack',
+            'channels' => env('POST_LIMIT_LOG_ENABLED', true) ? ['post_limit_file', 'sentry'] : ['sentry'],
+            'ignore_exceptions' => false,
+        ],
+        'post_limit_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/post-limit.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
+        // GDPR erasure (App\Services\UserErasure, `user:erase`): one line per
+        // erased user with the row counts, what was revoked and which remote
+        // steps failed, in storage/logs/user-erasure.log. Kept 365 days: it is
+        // the record that a deletion request was carried out.
+        // USER_ERASURE_LOG_ENABLED=false silences it.
+        'user_erasure' => [
+            'driver' => 'stack',
+            'channels' => env('USER_ERASURE_LOG_ENABLED', true) ? ['user_erasure_file', 'sentry'] : ['sentry'],
+            'ignore_exceptions' => false,
+        ],
+        'user_erasure_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/user-erasure.log'),
+            'level' => 'debug',
+            'days' => 365,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         // Social token refreshes (TikTok so far): one line per refresh with
         // the HTTP status, the provider's error / error_description / log_id
         // and how it was read (refreshed, dead_grant, transient, unexpected),
