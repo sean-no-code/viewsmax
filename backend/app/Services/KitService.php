@@ -54,11 +54,12 @@ class KitService
             if ($response->successful()) {
                 return true;
             }
-            Log::error("Kit refused to unsubscribe {$email}: ".$response->body());
+            // No email in these lines: they are written during an erasure.
+            Log::error("Kit refused an erasure unsubscribe ({$response->status()}): ".$response->body());
 
             return false;
         } catch (\Throwable $e) {
-            Log::error("Kit unsubscribe for {$email} failed: ".$e->getMessage());
+            Log::error('Kit erasure unsubscribe failed: '.$e->getMessage());
 
             return false;
         }

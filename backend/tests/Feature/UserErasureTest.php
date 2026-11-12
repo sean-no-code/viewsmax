@@ -230,11 +230,9 @@ class UserErasureTest extends TestCase
         ]);
         $user = $this->fullUser();
         $this->expectStripeCleanup();
-        $warnings = [];
-        Event::listen(MessageLogged::class, function (MessageLogged $e) use (&$warnings) {
-            if ($e->level === 'warning') {
-                $warnings[] = $e->message;
-            }
+        $logged = [];
+        Event::listen(MessageLogged::class, function (MessageLogged $e) use (&$logged) {
+            $logged[] = [$e->level, $e->message.' '.json_encode($e->context)];
         });
 
         $result = app(UserErasure::class)->erase($user);
@@ -242,7 +240,10 @@ class UserErasureTest extends TestCase
         $this->assertSame('failed', $result['steps']['klaviyo']);
         $this->assertSame('failed', $result['steps']['kit']);
         $this->assertSame([], $result['failures']);
-        $this->assertCount(2, array_filter($warnings, fn ($m) => str_contains($m, 'mailing list')));
+        $this->assertCount(2, array_filter($logged, fn ($l) => $l[0] === 'warning' && str_contains($l[1], 'mailing list')));
+        foreach ($logged as [, $line]) {
+            $this->assertStringNotContainsString('erase.me@example.com', $line, 'an erasure must not log the address it erases');
+        }
         $this->assertTrue(User::withTrashed()->find($user->id)->trashed());
     }
 

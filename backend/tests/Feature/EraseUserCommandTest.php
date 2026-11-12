@@ -78,6 +78,18 @@ class EraseUserCommandTest extends TestCase
             ->assertExitCode(1);
     }
 
+    public function test_the_original_email_of_an_erased_user_points_at_recent_erasures(): void
+    {
+        $user = $this->userWithPost();
+        $this->artisan('user:erase', ['email' => 'gone@example.com', '--yes' => true])->assertExitCode(0);
+
+        $this->artisan('user:erase', ['email' => 'gone@example.com', '--yes' => true])
+            ->expectsOutputToContain('not found')
+            ->expectsOutputToContain("user {$user->id}")
+            ->expectsOutputToContain('user-erasure-YYYY-MM-DD.log')
+            ->assertExitCode(1);
+    }
+
     public function test_an_already_erased_user_is_reported_not_rerun(): void
     {
         $user = $this->userWithPost();

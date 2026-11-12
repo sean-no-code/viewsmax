@@ -145,7 +145,7 @@ return [
 
         // Trial post limit (App\Support\PostAllowance): one line per refused
         // schedule/publish with the user id, how many posts they have used and
-        // their cap, in storage/logs/post-limit.log.
+        // their cap, in storage/logs/post-limit-YYYY-MM-DD.log.
         // POST_LIMIT_LOG_ENABLED=false silences it.
         'post_limit' => [
             'driver' => 'stack',
@@ -163,7 +163,7 @@ return [
 
         // GDPR erasure (App\Services\UserErasure, `user:erase`): one line per
         // erased user with the row counts, what was revoked and which remote
-        // steps failed, in storage/logs/user-erasure.log. Kept 365 days: it is
+        // steps failed, in storage/logs/user-erasure-YYYY-MM-DD.log. Kept 365 days: it is
         // the record that a deletion request was carried out.
         // USER_ERASURE_LOG_ENABLED=false silences it.
         'user_erasure' => [

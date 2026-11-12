@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
  * runs App\Services\UserErasure. `--dry-run` only prints. Local deletion is
  * all-or-nothing; a failed Stripe or Google step is listed and makes the exit
  * code non-zero so the request is followed up. Klaviyo/Kit refusals only show
- * as "failed" in the steps table and a line in storage/logs/user-erasure.log.
+ * as "failed" in the steps table and a line in storage/logs/user-erasure-YYYY-MM-DD.log.
  */
 class EraseUser extends Command
 {
@@ -29,6 +29,7 @@ class EraseUser extends Command
 
         if (! $user) {
             $this->error("User not found: {$email}");
+            $this->printRecentErasures();
 
             return self::FAILURE;
         }
@@ -78,6 +79,31 @@ class EraseUser extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Erasure scrubs the email, so a second run with the original address
+     * finds nothing. Name the latest erasures so staff can tell "already done"
+     * from "typo"; the per-step outcome is in the log by user id.
+     */
+    private function printRecentErasures(): void
+    {
+        $recent = User::onlyTrashed()
+            ->where('email', 'like', 'erased+%@'.UserErasure::ERASED_EMAIL_DOMAIN)
+            ->where('deleted_at', '>=', now()->subDays(7))
+            ->latest('deleted_at')
+            ->limit(5)
+            ->get(['id', 'deleted_at']);
+
+        if ($recent->isEmpty()) {
+            return;
+        }
+
+        $this->line('An erased account no longer has its email. Erased in the last 7 days:');
+        foreach ($recent as $erased) {
+            $this->line("  user {$erased->id} at {$erased->deleted_at->toDateTimeString()}");
+        }
+        $this->line('Each one\'s step outcomes are in storage/logs/user-erasure-YYYY-MM-DD.log ("User erased", by user_id).');
     }
 
     private function printPlan(array $plan): void

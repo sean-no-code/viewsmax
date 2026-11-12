@@ -55,11 +55,12 @@ class KlaviyoService
             if ($response->successful()) {
                 return true;
             }
-            Log::error("Klaviyo refused the deletion job for {$email}: ".$response->body());
+            // No email in these lines: they are written during an erasure.
+            Log::error("Klaviyo refused an erasure deletion job ({$response->status()}): ".$response->body());
 
             return false;
         } catch (\Exception $e) {
-            Log::error("Klaviyo deletion job for {$email} failed: ".$e->getMessage());
+            Log::error('Klaviyo erasure deletion job failed: '.$e->getMessage());
 
             return false;
         }

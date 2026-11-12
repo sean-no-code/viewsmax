@@ -1256,11 +1256,32 @@
   },
   "post": {
     "calendar": {
+      "cancel": "Отмена",
       "clearPlatforms": "Сбросить платформы",
+      "confirmDelete": "Нажмите ещё раз, чтобы удалить",
+      "delete": "Удалить публикацию",
+      "editPost": "Редактировать",
       "eyebrow": "КОНТЕНТ",
       "filterOnlyPlatform": "Показывать только публикации для {{platform}}",
+      "newTime": "Новые дата и время",
+      "nextMonth": "Следующий месяц",
       "postFallbackTitle": "Публикация",
-      "title": "Календарь."
+      "prevMonth": "Предыдущий месяц",
+      "preview": "Предпросмотр: {{platform}}",
+      "reschedule": "Перенести",
+      "rescheduleFailed": "Не удалось перенести публикацию.",
+      "rescheduled": "Публикация перенесена.",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "statusDraft": "Черновик",
+      "statusPosted": "Опубликовано",
+      "statusScheduled": "Запланировано",
+      "title": "Календарь.",
+      "typeCarousel": "Карусель",
+      "typeImage": "Изображение",
+      "typeText": "Текст",
+      "typeVideo": "Видео",
+      "viewOn": "Открыть в {{platform}}"
     },
     "composer": {
       "addComment": "+ Добавить комментарий",

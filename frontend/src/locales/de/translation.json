@@ -1216,11 +1216,32 @@
   },
   "post": {
     "calendar": {
+      "cancel": "Abbrechen",
       "clearPlatforms": "Plattformen zurücksetzen",
+      "confirmDelete": "Zum Löschen erneut klicken",
+      "delete": "Post löschen",
+      "editPost": "Post bearbeiten",
       "eyebrow": "INHALTE",
       "filterOnlyPlatform": "Nur Posts für {{platform}} anzeigen",
+      "newTime": "Neues Datum und Uhrzeit",
+      "nextMonth": "Nächster Monat",
       "postFallbackTitle": "Post",
-      "title": "Kalender."
+      "prevMonth": "Vorheriger Monat",
+      "preview": "{{platform}}-Vorschau",
+      "reschedule": "Verschieben",
+      "rescheduleFailed": "Der Post konnte nicht verschoben werden.",
+      "rescheduled": "Post verschoben.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "statusDraft": "Entwurf",
+      "statusPosted": "Veröffentlicht",
+      "statusScheduled": "Geplant",
+      "title": "Kalender.",
+      "typeCarousel": "Karussell",
+      "typeImage": "Bild",
+      "typeText": "Text",
+      "typeVideo": "Video",
+      "viewOn": "Auf {{platform}} ansehen"
     },
     "composer": {
       "addComment": "+ Kommentar hinzufügen",

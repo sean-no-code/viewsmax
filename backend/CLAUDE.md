@@ -94,7 +94,7 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `users.posts_published_count` (incremented in `Post::booted()`; a counter because posts are hard-deleted,
   so deleting a published post frees nothing) + posts scheduled now + legacy `social_posts`. The refusal is a
   422 `code: post_limit` ending "Upgrade to access higher limits.", which `ViewsMaxTool::userFacingError`
-  strips for MCP clients, and one line in `storage/logs/post-limit.log`. A new path that schedules or
+  strips for MCP clients, and one line in `storage/logs/post-limit-YYYY-MM-DD.log`. A new path that schedules or
   publishes a post must ask it too.
 
 - **Erasure (GDPR).** `php artisan user:erase {email}` (`--dry-run`, `--yes`) runs `App\Services\UserErasure`:
@@ -105,7 +105,7 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `outlier_db` and wallet tables, then scrub the user row (`erased+{id}@erased.invalid`) and soft-delete it.
   Kept: `social_handle_claims` (the tombstone still blocks the channel — `HandleClaims::message` says so) and
   `youtube_quota_spends` with `user_id` nulled. Google/Stripe failures are reported and exit non-zero;
-  Klaviyo/Kit refusals are only logged (warning in the erasure log). Local data is gone either way. One line per erasure in `storage/logs/user-erasure.log` (kept a year). `DELETE
+  Klaviyo/Kit refusals are only logged (warning in the erasure log). Local data is gone either way. One line per erasure in `storage/logs/user-erasure-YYYY-MM-DD.log` (daily file, kept a year). `DELETE
   /api/user-data` is **not** this: it only clears YouTube/Google for a user who stays.
 
 - **Analytics is the Pro tier.** `App\Support\AnalyticsAccess::allows($user)` (plans `pro`, `agency` and the

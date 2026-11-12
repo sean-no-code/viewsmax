@@ -1217,11 +1217,32 @@
   },
   "post": {
     "calendar": {
+      "cancel": "Cancel",
       "clearPlatforms": "Clear platforms",
+      "confirmDelete": "Click again to delete",
+      "delete": "Delete post",
+      "editPost": "Edit post",
       "eyebrow": "CONTENT",
       "filterOnlyPlatform": "Only show posts going to {{platform}}",
+      "newTime": "New date and time",
+      "nextMonth": "Next month",
       "postFallbackTitle": "Post",
-      "title": "Calendar."
+      "prevMonth": "Previous month",
+      "preview": "{{platform}} preview",
+      "reschedule": "Reschedule",
+      "rescheduleFailed": "Couldn't reschedule the post.",
+      "rescheduled": "Post rescheduled.",
+      "save": "Save",
+      "saving": "Saving…",
+      "statusDraft": "Draft",
+      "statusPosted": "Posted",
+      "statusScheduled": "Scheduled",
+      "title": "Calendar.",
+      "typeCarousel": "Carousel",
+      "typeImage": "Image",
+      "typeText": "Text",
+      "typeVideo": "Video",
+      "viewOn": "View on {{platform}}"
     },
     "composer": {
       "addComment": "+ Add comment",

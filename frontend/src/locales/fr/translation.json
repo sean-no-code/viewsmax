@@ -1236,11 +1236,32 @@
   },
   "post": {
     "calendar": {
+      "cancel": "Annuler",
       "clearPlatforms": "Effacer les plateformes",
+      "confirmDelete": "Cliquez à nouveau pour supprimer",
+      "delete": "Supprimer la publication",
+      "editPost": "Modifier la publication",
       "eyebrow": "CONTENU",
       "filterOnlyPlatform": "Afficher uniquement les publications pour {{platform}}",
+      "newTime": "Nouvelle date et heure",
+      "nextMonth": "Mois suivant",
       "postFallbackTitle": "Publication",
-      "title": "Calendrier."
+      "prevMonth": "Mois précédent",
+      "preview": "Aperçu {{platform}}",
+      "reschedule": "Reprogrammer",
+      "rescheduleFailed": "Impossible de reprogrammer la publication.",
+      "rescheduled": "Publication reprogrammée.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "statusDraft": "Brouillon",
+      "statusPosted": "Publiée",
+      "statusScheduled": "Programmée",
+      "title": "Calendrier.",
+      "typeCarousel": "Carrousel",
+      "typeImage": "Image",
+      "typeText": "Texte",
+      "typeVideo": "Vidéo",
+      "viewOn": "Voir sur {{platform}}"
     },
     "composer": {
       "addComment": "+ Ajouter un commentaire",

@@ -22,7 +22,7 @@ use Throwable;
  * customer id is scrubbed, local rows, then the user row last. Remote steps
  * are best effort — a provider outage is never a reason to keep the data.
  * Google and Stripe failures go in the result's failures; a Klaviyo/Kit
- * refusal is only logged to storage/logs/user-erasure.log.
+ * refusal is only logged to storage/logs/user-erasure-YYYY-MM-DD.log.
  *
  * What survives, on purpose:
  *  - social_handle_claims: still point at the tombstone, so the same channel
