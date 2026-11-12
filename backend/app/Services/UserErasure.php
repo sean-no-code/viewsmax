@@ -20,8 +20,9 @@ use Throwable;
  *
  * Order: remote revokes first (they need the tokens), Stripe before the
  * customer id is scrubbed, local rows, then the user row last. Remote steps
- * are best effort — a provider outage is reported in the result and logged to
- * storage/logs/user-erasure.log, never a reason to keep the data.
+ * are best effort — a provider outage is never a reason to keep the data.
+ * Google and Stripe failures go in the result's failures; a Klaviyo/Kit
+ * refusal is only logged to storage/logs/user-erasure.log.
  *
  * What survives, on purpose:
  *  - social_handle_claims: still point at the tombstone, so the same channel
@@ -163,9 +164,10 @@ final class UserErasure
             }
         }
 
-        // 4. Mailing lists.
-        $steps['klaviyo'] = $this->remote('klaviyo', fn () => $this->klaviyo->configured() ? $this->klaviyo->deleteProfile($email) : null, $fail);
-        $steps['kit'] = $this->remote('kit', fn () => $this->kit->configured() ? $this->kit->unsubscribe($email) : null, $fail);
+        // 4. Mailing lists. A refusal (often: the address was never on the
+        //    list, or is already gone) is logged, not a failure.
+        $steps['klaviyo'] = $this->mailingList($user, 'klaviyo', fn () => $this->klaviyo->configured() ? $this->klaviyo->deleteProfile($email) : null);
+        $steps['kit'] = $this->mailingList($user, 'kit', fn () => $this->kit->configured() ? $this->kit->unsubscribe($email) : null);
 
         // 5. Files.
         foreach ($plan['files'] as $location) {
@@ -260,22 +262,26 @@ final class UserErasure
         return ! empty(config('services.stripe.secret'));
     }
 
-    /** Run a best-effort remote step: null = skipped, false = failed, true = ok. */
-    private function remote(string $step, callable $call, callable $fail): string
+    /**
+     * Run a mailing-list removal: null = skipped, false = refused, true = ok.
+     * A refusal or exception is logged and the step marked failed, but it
+     * never reaches the result's failures, so the command still exits 0.
+     */
+    private function mailingList(User $user, string $step, callable $call): string
     {
         try {
             $outcome = $call();
+            $why = 'the provider refused the request (its response is in laravel.log)';
         } catch (Throwable $e) {
-            $fail($step, $e);
-
-            return 'failed';
+            $outcome = false;
+            $why = $e->getMessage();
         }
 
         if ($outcome === null) {
             return 'skipped';
         }
         if ($outcome === false) {
-            $fail($step, 'the provider refused the request (see the log)');
+            Log::channel('user_erasure')->warning("Erasure: {$step} mailing list removal failed", ['user_id' => $user->id, 'reason' => $why]);
 
             return 'failed';
         }

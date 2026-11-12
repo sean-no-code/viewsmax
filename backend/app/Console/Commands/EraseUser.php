@@ -9,8 +9,9 @@ use Illuminate\Console\Command;
 /**
  * GDPR erasure for one account, by email. Prints what will go, asks, then
  * runs App\Services\UserErasure. `--dry-run` only prints. Local deletion is
- * all-or-nothing; a failed remote step (Stripe, Google, Klaviyo, Kit) is
- * listed and makes the exit code non-zero so the request is followed up.
+ * all-or-nothing; a failed Stripe or Google step is listed and makes the exit
+ * code non-zero so the request is followed up. Klaviyo/Kit refusals only show
+ * as "failed" in the steps table and a line in storage/logs/user-erasure.log.
  */
 class EraseUser extends Command
 {

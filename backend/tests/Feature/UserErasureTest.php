@@ -19,7 +19,9 @@ use App\Services\Social\HandleClaims;
 use App\Services\StripeService;
 use App\Services\UserErasure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
@@ -212,11 +214,36 @@ class UserErasureTest extends TestCase
         $this->assertSame('failed', $result['steps']['klaviyo']);
         $this->assertSame('failed', $result['steps']['kit']);
         $this->assertSame(0, $result['google_revoked']);
-        $this->assertNotEmpty($result['failures']);
+        $this->assertSame(['google', 'stripe'], array_map(fn ($f) => strstr($f, ':', true), $result['failures']));
 
         $this->assertSame(0, DB::table('social_accounts')->where('user_id', $id)->count());
         $this->assertSame(0, DB::table('posts')->where('user_id', $id)->count());
         $this->assertTrue(User::withTrashed()->find($id)->trashed());
+    }
+
+    public function test_a_mailing_list_refusal_is_logged_not_a_failure(): void
+    {
+        Http::fake([
+            GoogleGrantRevoker::REVOKE_URL => Http::response('', 200),
+            self::KLAVIYO_DELETE_URL => Http::response('', 500),
+            self::KIT_UNSUBSCRIBE_URL => Http::response(['error' => 'Not Found'], 404),
+        ]);
+        $user = $this->fullUser();
+        $this->expectStripeCleanup();
+        $warnings = [];
+        Event::listen(MessageLogged::class, function (MessageLogged $e) use (&$warnings) {
+            if ($e->level === 'warning') {
+                $warnings[] = $e->message;
+            }
+        });
+
+        $result = app(UserErasure::class)->erase($user);
+
+        $this->assertSame('failed', $result['steps']['klaviyo']);
+        $this->assertSame('failed', $result['steps']['kit']);
+        $this->assertSame([], $result['failures']);
+        $this->assertCount(2, array_filter($warnings, fn ($m) => str_contains($m, 'mailing list')));
+        $this->assertTrue(User::withTrashed()->find($user->id)->trashed());
     }
 
     public function test_remote_services_without_keys_are_skipped(): void

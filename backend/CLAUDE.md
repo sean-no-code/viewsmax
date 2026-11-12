@@ -104,8 +104,8 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `user_id` (derived from the schema, so new tables are covered; `UserErasureTest` pins the set) plus the
   `outlier_db` and wallet tables, then scrub the user row (`erased+{id}@erased.invalid`) and soft-delete it.
   Kept: `social_handle_claims` (the tombstone still blocks the channel — `HandleClaims::message` says so) and
-  `youtube_quota_spends` with `user_id` nulled. Remote failures are reported and exit non-zero; local data is
-  gone either way. One line per erasure in `storage/logs/user-erasure.log` (kept a year). `DELETE
+  `youtube_quota_spends` with `user_id` nulled. Google/Stripe failures are reported and exit non-zero;
+  Klaviyo/Kit refusals are only logged (warning in the erasure log). Local data is gone either way. One line per erasure in `storage/logs/user-erasure.log` (kept a year). `DELETE
   /api/user-data` is **not** this: it only clears YouTube/Google for a user who stays.
 
 - **Analytics is the Pro tier.** `App\Support\AnalyticsAccess::allows($user)` (plans `pro`, `agency` and the
