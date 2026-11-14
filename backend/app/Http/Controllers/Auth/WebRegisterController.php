@@ -160,9 +160,19 @@ class WebRegisterController extends Controller
         return redirect()->route('register.verify')->with('status', 'Verification email sent to '.$user->email.'.');
     }
 
-    /** Continue to the consent screen (or the app's sign-in when nothing was pending). */
+    /**
+     * Continue to the consent screen (or the app's sign-in when nothing was
+     * pending). This is where the agent flow finishes onboarding, so it stamps
+     * onboarding_completed_at the way the SPA's wizard does through
+     * OnboardingController; access.web has already held anyone without a card.
+     */
     public function continue(Request $request)
     {
+        $user = $request->user();
+        if (is_null($user->onboarding_completed_at) && $user->canCompleteOnboarding()) {
+            $user->forceFill(['onboarding_completed_at' => now()])->save();
+        }
+
         $this->rememberAgent($request);
         $authorizeUrl = $request->session()->pull(self::SESSION_AUTHORIZE_URL);
         $request->session()->forget([self::SESSION_CLIENT, 'url.intended']);
