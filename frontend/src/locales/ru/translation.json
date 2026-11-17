@@ -357,6 +357,17 @@
       "cancelledAccessUntil": "Отменена — доступ до <0>{{date}}</0>.",
       "cancelledUntil": "Подписка отменена. Доступ сохранится до {{date}}.",
       "cancelling": "Отмена...",
+      "cancelCommentPlaceholder": "Хотите что-нибудь добавить? (необязательно)",
+      "cancelReasonPrompt": "Какова основная причина отмены?",
+      "cancelReasons": {
+        "too_expensive": "Слишком дорого",
+        "unused": "Я мало им пользуюсь",
+        "missing_features": "Не хватает нужных функций",
+        "switched_service": "Я перехожу на другой сервис",
+        "too_complex": "Слишком сложно пользоваться",
+        "low_quality": "Работает недостаточно хорошо",
+        "other": "Другое"
+      },
       "cancelSubscription": "Отменить подписку",
       "changeFailed": "Не удалось сменить тариф",
       "changeRequested": "Запрос на смену тарифа отправлен — он обновится после подтверждения Stripe.",

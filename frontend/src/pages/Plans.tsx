@@ -5,7 +5,10 @@ import { Check, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { viewsMaxApi, type PlanTier } from "@/lib/api-service";
+import { viewsMaxApi, type PlanTier, type CancellationFeedback } from "@/lib/api-service";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -29,6 +32,17 @@ import {
 	planIncludes,
 	type PlanCta,
 } from "@/lib/plan-helpers";
+
+/** Reasons offered in the cancel dialog, in display order. Values are Stripe's feedback enum. */
+const CANCEL_REASONS: { value: CancellationFeedback; label: string }[] = [
+	{ value: "too_expensive", label: "It's too expensive" },
+	{ value: "unused", label: "I'm not using it enough" },
+	{ value: "missing_features", label: "It's missing features I need" },
+	{ value: "switched_service", label: "I'm switching to another tool" },
+	{ value: "too_complex", label: "It's too hard to use" },
+	{ value: "low_quality", label: "It doesn't work well enough" },
+	{ value: "other", label: "Something else" },
+];
 
 // Helper to get initial subscription from localStorage
 const getInitialSubscription = (): { subscriptionId: string; details?: { status?: string; plan_id?: string; billing_info?: { next_billing_time?: string } }; cancelled_at?: string; expires_at?: string; createdAt?: number } | null => {
@@ -79,6 +93,8 @@ const Plans = () => {
 	const [changingPriceId, setChangingPriceId] = useState<string | null>(null);
 	const [isCancelling, setIsCancelling] = useState(false);
 	const [showCancelDialog, setShowCancelDialog] = useState(false);
+	const [cancelFeedback, setCancelFeedback] = useState<CancellationFeedback | null>(null);
+	const [cancelComment, setCancelComment] = useState("");
 	// A plan change is a billed action (Stripe prorates immediately), so confirm
 	// before firing. Holds the tier + whether it's an upgrade or downgrade.
 	const [pendingChange, setPendingChange] = useState<{ plan: PlanTier; cta: PlanCta } | null>(null);
@@ -278,13 +294,11 @@ const Plans = () => {
 
 	const handleCancelSubscription = async () => {
 		if (!active?.subscriptionId) { toast.error(t("billing.plans.noActiveSubscription", "No active subscription found")); return; }
+		if (!cancelFeedback) return;
 		let expiresAt = active?.expires_at || active?.details?.billing_info?.next_billing_time;
 		setIsCancelling(true);
 		try {
-			const result = await viewsMaxApi.cancelSubscription(
-				active.subscriptionId,
-				"User requested cancellation from billing page"
-			);
+			const result = await viewsMaxApi.cancelSubscription(active.subscriptionId, cancelFeedback, cancelComment);
 			if (result.success) {
 				try {
 					const refreshed = await viewsMaxApi.getCurrentPlan();
@@ -317,6 +331,8 @@ const Plans = () => {
 		} finally {
 			setIsCancelling(false);
 			setShowCancelDialog(false);
+			setCancelFeedback(null);
+			setCancelComment("");
 		}
 	};
 
@@ -466,13 +482,35 @@ const Plans = () => {
 																	<AlertTriangle className="w-5 h-5 text-destructive" />
 																	{t("billing.plans.cancelConfirmTitle", "Are you sure you want to cancel?")}
 																</AlertDialogTitle>
-																<AlertDialogDescription className="space-y-3">
-																	<p>{t("billing.plans.cancelConfirmBody", "You'll keep access to {{plan}} until your billing period ends, then move to the Free plan.", { plan: plan.display_name })}</p>
+																<AlertDialogDescription>
+																	{t("billing.plans.cancelConfirmBody", "You'll keep access to {{plan}} until your billing period ends, then move to the Free plan.", { plan: plan.display_name })}
 																</AlertDialogDescription>
 															</AlertDialogHeader>
+															<div className="space-y-3">
+																<p className="text-sm font-medium">{t("billing.plans.cancelReasonPrompt", "What's the main reason you're leaving?")}</p>
+																<RadioGroup value={cancelFeedback ?? ""} onValueChange={(v) => setCancelFeedback(v as CancellationFeedback)} disabled={isCancelling}>
+																	{CANCEL_REASONS.map((r) => (
+																		<div key={r.value} className="flex items-center gap-2">
+																			<RadioGroupItem value={r.value} id={`cancel-reason-${r.value}`} />
+																			<Label htmlFor={`cancel-reason-${r.value}`} className="font-normal cursor-pointer">
+																				{t(`billing.plans.cancelReasons.${r.value}`, r.label)}
+																			</Label>
+																		</div>
+																	))}
+																</RadioGroup>
+																<Textarea
+																	value={cancelComment}
+																	onChange={(e) => setCancelComment(e.target.value)}
+																	maxLength={1000}
+																	rows={3}
+																	disabled={isCancelling}
+																	placeholder={t("billing.plans.cancelCommentPlaceholder", "Anything else you'd like to tell us? (optional)")}
+																	aria-label={t("billing.plans.cancelCommentPlaceholder", "Anything else you'd like to tell us? (optional)")}
+																/>
+															</div>
 															<AlertDialogFooter>
 																<AlertDialogCancel disabled={isCancelling}>{t("billing.plans.keepSubscription", "Keep Subscription")}</AlertDialogCancel>
-																<AlertDialogAction onClick={handleCancelSubscription} disabled={isCancelling} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+																<AlertDialogAction onClick={handleCancelSubscription} disabled={isCancelling || !cancelFeedback} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
 																	{isCancelling ? t("billing.plans.cancelling", "Cancelling...") : t("billing.plans.yesCancel", "Yes, Cancel")}
 																</AlertDialogAction>
 															</AlertDialogFooter>

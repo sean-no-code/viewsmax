@@ -350,6 +350,17 @@
       "cancelledAccessUntil": "Cancelada: acceso hasta el <0>{{date}}</0>.",
       "cancelledUntil": "Suscripción cancelada correctamente. Tendrás acceso hasta el {{date}}.",
       "cancelling": "Cancelando...",
+      "cancelCommentPlaceholder": "¿Algo más que quieras contarnos? (opcional)",
+      "cancelReasonPrompt": "¿Cuál es el motivo principal por el que te vas?",
+      "cancelReasons": {
+        "too_expensive": "Es demasiado caro",
+        "unused": "No lo uso lo suficiente",
+        "missing_features": "Le faltan funciones que necesito",
+        "switched_service": "Me cambio a otra herramienta",
+        "too_complex": "Es demasiado difícil de usar",
+        "low_quality": "No funciona lo bastante bien",
+        "other": "Otro motivo"
+      },
       "cancelSubscription": "Cancelar suscripción",
       "changeFailed": "No se pudo cambiar el plan",
       "changeRequested": "Cambio de plan solicitado: se actualizará cuando Stripe lo confirme.",

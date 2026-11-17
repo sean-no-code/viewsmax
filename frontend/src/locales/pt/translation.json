@@ -350,6 +350,17 @@
       "cancelledAccessUntil": "Cancelada — acesso até <0>{{date}}</0>.",
       "cancelledUntil": "Assinatura cancelada com sucesso. Você terá acesso até {{date}}.",
       "cancelling": "Cancelando...",
+      "cancelCommentPlaceholder": "Mais alguma coisa que queira nos contar? (opcional)",
+      "cancelReasonPrompt": "Qual é o principal motivo do cancelamento?",
+      "cancelReasons": {
+        "too_expensive": "É caro demais",
+        "unused": "Não uso o suficiente",
+        "missing_features": "Faltam recursos de que preciso",
+        "switched_service": "Estou mudando para outra ferramenta",
+        "too_complex": "É difícil demais de usar",
+        "low_quality": "Não funciona bem o suficiente",
+        "other": "Outro motivo"
+      },
       "cancelSubscription": "Cancelar assinatura",
       "changeFailed": "Não foi possível mudar de plano",
       "changeRequested": "Mudança de plano solicitada — ela será aplicada assim que a Stripe confirmar.",

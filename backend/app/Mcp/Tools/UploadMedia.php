@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Support\PostAllowance;
 use App\Support\SafeHttp;
 use App\Support\UnsafeUrlException;
 use Illuminate\Support\Facades\Storage;
@@ -53,6 +54,10 @@ class UploadMedia extends ViewsMaxTool
     {
         if ($limited = $this->hourlyLimit('upload_media')) {
             return $limited;
+        }
+
+        if ($refusal = PostAllowance::refusal($this->user(), 'upload')) {
+            return ToolResult::error($this->userFacingError($refusal['message']));
         }
 
         $validated = Validator::validate($arguments, ['url' => 'required|url']);

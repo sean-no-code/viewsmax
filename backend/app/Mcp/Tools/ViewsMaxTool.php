@@ -253,7 +253,7 @@ abstract class ViewsMaxTool extends Tool
         return $offer;
     }
 
-    private function userFacingError(string $message): string
+    protected function userFacingError(string $message): string
     {
         // Quota refusals (App\Support\Quota\QuotaMessage) end with an upgrade
         // nudge for the web app; the AI may hear about the limit, not the upsell.

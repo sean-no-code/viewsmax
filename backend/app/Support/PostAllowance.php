@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Log;
  *                into scheduled or posted (create_post / update_post delegate
  *                there)
  *  - Legacy      SocialPostController::store
+ *  - Uploads     PostMediaController::store, PostMediaDirectUploadController::store
+ *                and MCP upload_media: at the cap there is nothing left to post
+ *                media to, and unattached uploads are never cleaned up. (A
+ *                direct upload already started may still complete or abort.)
  *
  * Publishing itself is not gated: a post that is already scheduled goes out
  * (posts:publish-due, the publish jobs, retries), so the cap only ever refuses
@@ -59,11 +63,11 @@ final class PostAllowance
 
     /**
      * Null when the user may schedule or publish one more post, otherwise the
-     * refusal to return (422).
+     * refusal to return (422). $for ('post' | 'upload') only labels the log line.
      *
      * @return array{code: string, message: string, used: int, cap: int}|null
      */
-    public static function refusal(User $user): ?array
+    public static function refusal(User $user, string $for = 'post'): ?array
     {
         $cap = self::cap($user);
 
@@ -77,7 +81,7 @@ final class PostAllowance
             return null;
         }
 
-        Log::channel('post_limit')->info('Post refused: trial post limit reached', [
+        Log::channel('post_limit')->info(ucfirst($for).' refused: trial post limit reached', [
             'user_id' => $user->id,
             'used' => $used,
             'cap' => $cap,

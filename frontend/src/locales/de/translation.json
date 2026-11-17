@@ -343,6 +343,17 @@
       "cancelledAccessUntil": "Gekündigt – Zugriff bis <0>{{date}}</0>.",
       "cancelledUntil": "Abo erfolgreich gekündigt. Du hast Zugriff bis {{date}}.",
       "cancelling": "Wird gekündigt...",
+      "cancelCommentPlaceholder": "Möchtest du uns noch etwas mitteilen? (optional)",
+      "cancelReasonPrompt": "Was ist der Hauptgrund für deine Kündigung?",
+      "cancelReasons": {
+        "too_expensive": "Es ist zu teuer",
+        "unused": "Ich nutze es zu selten",
+        "missing_features": "Mir fehlen Funktionen, die ich brauche",
+        "switched_service": "Ich wechsle zu einem anderen Tool",
+        "too_complex": "Es ist zu kompliziert",
+        "low_quality": "Es funktioniert nicht gut genug",
+        "other": "Etwas anderes"
+      },
       "cancelSubscription": "Abo kündigen",
       "changeFailed": "Planwechsel fehlgeschlagen",
       "changeRequested": "Planwechsel angefordert – er wird übernommen, sobald Stripe bestätigt.",

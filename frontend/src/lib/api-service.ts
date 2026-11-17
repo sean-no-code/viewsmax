@@ -58,6 +58,11 @@ interface ApiResponse<T = unknown> {
 /**
  * A pricing tier returned by GET /api/plans. NULL limits mean "unlimited".
  */
+/** Stripe's cancellation_details.feedback values (backend: StripeService::CANCELLATION_FEEDBACK). */
+export type CancellationFeedback =
+  | 'too_expensive' | 'unused' | 'missing_features' | 'switched_service'
+  | 'too_complex' | 'low_quality' | 'customer_service' | 'other';
+
 export interface PlanTier {
   id: number;
   name: string;
@@ -1337,7 +1342,12 @@ class ViewsMaxApiService {
               resolve({ success: false, error: 'Upload succeeded but the server response was invalid.' });
             }
           } else {
-            resolve({ success: false, error: `Failed to upload media: ${xhr.status} - ${xhr.responseText}` });
+            // Validation and the trial post limit (422 code post_limit) carry
+            // a readable message; anything else falls back to the status.
+            let body: { message?: string; errors?: Record<string, string[]> } | null = null;
+            try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+            const fieldErrors = body?.errors ? Object.values(body.errors).flat().join(' ') : '';
+            resolve({ success: false, error: fieldErrors || body?.message || `Failed to upload media (${xhr.status})` });
           }
         };
         xhr.onerror = () => resolve({ success: false, error: 'Network error during upload. Check your connection and try again.' });
@@ -4562,16 +4572,13 @@ class ViewsMaxApiService {
 
   // Subscription Management
   /**
-   * Cancel a PayPal subscription
-   * 
-   * This sends a request to the backend to cancel the subscription via PayPal's API.
-   * The backend should call PayPal's POST /v1/billing/subscriptions/{subscription_id}/cancel endpoint.
-   * 
-   * @param subscriptionId - The PayPal subscription ID to cancel
-   * @param reason - Optional reason for cancellation
-   * @returns ApiResponse indicating success or failure
+   * Cancel a Stripe subscription at period end.
+   *
+   * @param subscriptionId - The Stripe subscription ID to cancel
+   * @param feedback - Why they're leaving: one of Stripe's cancellation feedback values
+   * @param comment - Optional free text from the user
    */
-  async cancelSubscription(subscriptionId: string, reason?: string): Promise<ApiResponse<{ message: string }>> {
+  async cancelSubscription(subscriptionId: string, feedback: CancellationFeedback, comment?: string): Promise<ApiResponse<{ message: string }>> {
     try {
       const response = await fetch(`${this.baseUrl}/api/subscriptions/${subscriptionId}/cancel`, {
         method: 'POST',
@@ -4580,8 +4587,8 @@ class ViewsMaxApiService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          subscription_id: subscriptionId,
-          reason: reason || 'User requested cancellation',
+          feedback,
+          reason: comment?.trim() || undefined,
         }),
       });
 

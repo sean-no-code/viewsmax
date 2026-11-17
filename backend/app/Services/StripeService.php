@@ -88,28 +88,39 @@ class StripeService
     }
 
     /**
-     * Cancel a subscription. Default cancels at period end (graceful);
-     * set $immediately = true to cancel now.
+     * Stripe's fixed set for cancellation_details.feedback. Stripe shows it on the
+     * subscription and groups churn by it in its reports.
      */
-    public function cancelSubscription(string $subscriptionId, string $reason = 'User requested cancellation', bool $immediately = false): array
+    public const CANCELLATION_FEEDBACK = [
+        'customer_service', 'low_quality', 'missing_features', 'other',
+        'switched_service', 'too_complex', 'too_expensive', 'unused',
+    ];
+
+    /**
+     * Cancel a subscription. Default cancels at period end (graceful);
+     * set $immediately = true to cancel now. $reason is the free-text comment,
+     * $feedback one of CANCELLATION_FEEDBACK.
+     */
+    public function cancelSubscription(string $subscriptionId, ?string $reason = null, bool $immediately = false, ?string $feedback = null): array
     {
         Log::info('Stripe cancel subscription request', [
             'subscription_id' => $subscriptionId,
             'reason' => $reason,
+            'feedback' => $feedback,
             'immediately' => $immediately,
         ]);
+
+        $details = array_filter(['comment' => $reason, 'feedback' => $feedback], fn ($v) => $v !== null && $v !== '');
 
         try {
             if ($immediately) {
                 $subscription = Subscription::retrieve($subscriptionId);
-                $result = $subscription->cancel([
-                    'cancellation_details' => ['comment' => $reason],
-                ]);
+                $result = $subscription->cancel($details ? ['cancellation_details' => $details] : []);
             } else {
-                $result = Subscription::update($subscriptionId, [
+                $result = Subscription::update($subscriptionId, array_filter([
                     'cancel_at_period_end' => true,
-                    'cancellation_details' => ['comment' => $reason],
-                ]);
+                    'cancellation_details' => $details ?: null,
+                ]));
             }
 
             Log::info('Stripe cancel subscription response', [

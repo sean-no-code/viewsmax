@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\PostMediaDirectUpload;
+use App\Support\PostAllowance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -51,6 +52,10 @@ class PostMediaDirectUploadController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        if ($refusal = PostAllowance::refusal($request->user(), 'upload')) {
+            return response()->json(['success' => false] + $refusal, 422);
+        }
+
         $data = $request->validate([
             'type' => 'required|string|in:image,video',
             'filename' => 'required|string|max:255',

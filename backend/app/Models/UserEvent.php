@@ -23,6 +23,9 @@ class UserEvent extends Model
 
     public const OUTLIER_BREAKDOWN_VIEWED = 'outlier_breakdown.viewed';
 
+    /** metadata: feedback (Stripe's enum or null), comment, plan, stripe_subscription_id. */
+    public const SUBSCRIPTION_CANCELLED = 'subscription.cancelled';
+
     protected $fillable = ['user_id', 'event_name', 'metadata', 'created_at'];
 
     protected static function booted(): void

@@ -503,6 +503,21 @@ class McpServerTest extends TestCase
         $this->toolJson($this->callTool($key, 'create_post', ['caption' => 'Draft', 'platforms' => ['x']]));
     }
 
+    public function test_upload_media_is_refused_at_the_trial_post_limit(): void
+    {
+        Storage::fake('public');
+        config(['filesystems.media_disk' => 'public', 'publishing.trial_posts' => 0]);
+        Http::fake();
+        $key = $this->mcpKey(User::factory()->create());
+
+        $response = $this->callTool($key, 'upload_media', ['url' => 'https://example.com/pic.png']);
+
+        $this->assertToolError($response, 'all 0 posts included on your current plan');
+        $this->assertStringNotContainsStringIgnoringCase('upgrade', $response->json('result.content.0.text'));
+        Http::assertNothingSent();
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
     public function test_upload_media_has_its_own_hourly_limit(): void
     {
         Storage::fake('public');

@@ -6,7 +6,9 @@ use App\Models\Post;
 use App\Models\PostTarget;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -160,6 +162,43 @@ class TrialPostLimitTest extends TestCase
 
         $this->assertSame(3, $user->posts()->where('status', Post::STATUS_POSTED)->count());
         $this->assertSame(3, $user->fresh()->posts_published_count);
+    }
+
+    private function upload(User $user): TestResponse
+    {
+        return $this->withHeaders($this->auth($user))->post('/api/posts/media', [
+            'type' => 'image',
+            'file' => UploadedFile::fake()->image('pic.png'),
+        ]);
+    }
+
+    public function test_uploads_are_refused_at_the_cap(): void
+    {
+        Storage::fake('media');
+        config(['filesystems.media_disk' => 'media']);
+        $user = User::factory()->create();
+        $this->schedule($user);
+        $this->schedule($user);
+
+        $this->assertRefused($this->upload($user));
+        $this->assertRefused($this->withHeaders($this->auth($user))->postJson('/api/posts/media/direct', [
+            'type' => 'image', 'filename' => 'pic.png', 'mime' => 'image/png', 'size' => 1000,
+        ]));
+        $this->assertSame([], Storage::disk('media')->allFiles());
+    }
+
+    public function test_uploads_work_below_the_cap_and_for_paying_users(): void
+    {
+        Storage::fake('media');
+        config(['filesystems.media_disk' => 'media']);
+        $window = User::factory()->create();
+        $this->schedule($window);
+        $paying = User::factory()->withPlan('active')->create();
+        $this->schedule($paying);
+        $this->schedule($paying);
+
+        $this->upload($window)->assertSuccessful();
+        $this->upload($paying)->assertSuccessful();
     }
 
     public function test_legacy_social_posts_endpoint_is_capped_too(): void

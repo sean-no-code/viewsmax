@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Plan;
 use App\Models\User;
+use App\Models\UserEvent;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -110,6 +111,76 @@ class SubscriptionLifecycleTest extends TestCase
             $expiry->toDateString(),
             \Illuminate\Support\Carbon::parse($pivot->expires_at)->toDateString()
         );
+    }
+
+    // --- Cancellation reason -----------------------------------------------
+
+    public function test_cancel_reason_reaches_stripe_and_is_recorded(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_pro');
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('cancelSubscription')->once()
+                ->with('sub_pro', 'Moving to a cheaper tool', false, 'too_expensive')
+                ->andReturn(['status' => 'active']);
+        });
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/subscriptions/sub_pro/cancel', [
+                'feedback' => 'too_expensive',
+                'reason' => 'Moving to a cheaper tool',
+            ])
+            ->assertOk();
+
+        $event = UserEvent::where('user_id', $user->id)
+            ->where('event_name', UserEvent::SUBSCRIPTION_CANCELLED)
+            ->sole();
+        $this->assertSame([
+            'feedback' => 'too_expensive',
+            'comment' => 'Moving to a cheaper tool',
+            'plan' => 'pro',
+            'stripe_subscription_id' => 'sub_pro',
+        ], $event->metadata);
+    }
+
+    public function test_cancel_rejects_unknown_feedback(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_pro');
+
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldNotReceive('cancelSubscription'));
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/subscriptions/sub_pro/cancel', ['feedback' => 'bored'])
+            ->assertStatus(422);
+
+        $this->assertNull($this->pivot($user, $plan)->cancelled_at);
+    }
+
+    public function test_cancel_without_feedback_still_cancels(): void
+    {
+        // An SPA bundle cached from before the reason step sends no feedback.
+        // Cancelling must never be blocked by it.
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_pro');
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('cancelSubscription')->once()
+                ->with('sub_pro', null, false, null)
+                ->andReturn(['status' => 'active']);
+        });
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/subscriptions/sub_pro/cancel')
+            ->assertOk();
+
+        $this->assertNotNull($this->pivot($user, $plan)->cancelled_at);
+        $this->assertSame(['feedback' => null, 'comment' => null, 'plan' => 'pro', 'stripe_subscription_id' => 'sub_pro'],
+            UserEvent::where('user_id', $user->id)->sole()->metadata);
     }
 
     // --- Expiry job --------------------------------------------------------

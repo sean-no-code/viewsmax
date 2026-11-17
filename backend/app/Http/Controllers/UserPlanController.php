@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Plan;
 use App\Models\User;
+use App\Models\UserEvent;
 use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class UserPlanController extends Controller
 {
@@ -409,7 +411,10 @@ class UserPlanController extends Controller
         Log::info('Cancel subscription via Stripe request', ['user_id' => $request->user()?->id, 'subscription_id' => $request->route('subscriptionId')]);
 
         $validator = Validator::make($request->all(), [
-            'reason' => 'nullable|string|max:255',
+            // Both optional here: the SPA requires a reason, but a bundle cached from
+            // before the reason step sends none, and cancelling must never be blocked.
+            'feedback' => ['nullable', Rule::in(StripeService::CANCELLATION_FEEDBACK)],
+            'reason' => 'nullable|string|max:1000',
             'immediately' => 'nullable|boolean',
         ]);
 
@@ -423,7 +428,8 @@ class UserPlanController extends Controller
 
         try {
             $user = $request->user();
-            $reason = $request->input('reason', 'User requested cancellation');
+            $reason = $request->input('reason');
+            $feedback = $request->input('feedback');
             $immediately = (bool) $request->input('immediately', false);
 
             $userPlan = $user->plans()
@@ -446,10 +452,17 @@ class UserPlanController extends Controller
             }
 
             $stripeService = app(StripeService::class);
-            $stripeService->cancelSubscription($subscriptionId, $reason, $immediately);
+            $stripeService->cancelSubscription($subscriptionId, $reason, $immediately, $feedback);
 
             $user->plans()->updateExistingPivot($userPlan->id, [
                 'cancelled_at' => now(),
+            ]);
+
+            UserEvent::record($user, UserEvent::SUBSCRIPTION_CANCELLED, [
+                'feedback' => $feedback,
+                'comment' => $reason,
+                'plan' => $userPlan->name,
+                'stripe_subscription_id' => $subscriptionId,
             ]);
 
             return response()->json([

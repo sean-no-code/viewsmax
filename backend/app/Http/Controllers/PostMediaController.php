@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\PostAllowance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,10 @@ class PostMediaController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        if ($refusal = PostAllowance::refusal(Auth::user(), 'upload')) {
+            return response()->json(['success' => false] + $refusal, 422);
+        }
+
         $data = $request->validate([
             'type' => 'required|string|in:image,video',
             // Video up to ~512MB; image up to 10MB. mimes kept broad but constrained.

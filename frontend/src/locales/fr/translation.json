@@ -350,6 +350,17 @@
       "cancelledAccessUntil": "Annulé — accès jusqu'au <0>{{date}}</0>.",
       "cancelledUntil": "Abonnement annulé avec succès. Vous conserverez l'accès jusqu'au {{date}}.",
       "cancelling": "Annulation...",
+      "cancelCommentPlaceholder": "Autre chose à nous dire ? (facultatif)",
+      "cancelReasonPrompt": "Quelle est la principale raison de votre départ ?",
+      "cancelReasons": {
+        "too_expensive": "C'est trop cher",
+        "unused": "Je ne l'utilise pas assez",
+        "missing_features": "Il manque des fonctionnalités dont j'ai besoin",
+        "switched_service": "Je passe à un autre outil",
+        "too_complex": "C'est trop compliqué à utiliser",
+        "low_quality": "Ça ne fonctionne pas assez bien",
+        "other": "Autre raison"
+      },
       "cancelSubscription": "Annuler l'abonnement",
       "changeFailed": "Échec du changement de forfait",
       "changeRequested": "Changement de forfait demandé — il sera appliqué dès confirmation par Stripe.",

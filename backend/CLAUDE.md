@@ -90,7 +90,9 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   pivot turns `active`, and admins + `promotional_customer` are exempt. Drafts never count. It is asked only
   where a post takes a slot: `PostController::validatePayload` when a new post or a draft goes to
   scheduled/posted (MCP `create_post` / `update_post` delegate there) and the legacy
-  `SocialPostController::store`. Publishing is not gated, so posts already scheduled still go out. Used =
+  `SocialPostController::store`. At the cap, uploads are refused too (`PostMediaController::store`,
+  `PostMediaDirectUploadController::store`, MCP `upload_media`; a direct upload already started may still
+  complete/abort), since unattached media is never cleaned up. Publishing is not gated, so posts already scheduled still go out. Used =
   `users.posts_published_count` (incremented in `Post::booted()`; a counter because posts are hard-deleted,
   so deleting a published post frees nothing) + posts scheduled now + legacy `social_posts`. The refusal is a
   422 `code: post_limit` ending "Upgrade to access higher limits.", which `ViewsMaxTool::userFacingError`
