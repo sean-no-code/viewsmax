@@ -585,6 +585,24 @@
       "groupsEyebrow": "GRUPPEN",
       "intro": "Verbinde die Plattformen, auf denen du veröffentlichst. Danach erscheinen sie als Ziele unter „Post erstellen“ und als Quellen in Analytics.",
       "title": "Verbindungen."
+    },
+    "telegram": {
+      "cancel": "Abbrechen",
+      "checkAgain": "Erneut prüfen",
+      "codeExpired": "Dieser Code ist abgelaufen. Hol dir einen neuen.",
+      "codeFailed": "Es konnte kein Code abgerufen werden. Versuch es noch einmal.",
+      "connectFailed": "Telegram konnte nicht verbunden werden.",
+      "connected": "Telegram verbunden!",
+      "copy": "Kopieren",
+      "description": "Veröffentliche über den ViewsMax-Bot in einem Telegram-Kanal oder einer Gruppe. Beweise, dass der Chat dir gehört, indem du dort einen Einmalcode postest.",
+      "newCode": "Neuen Code holen",
+      "openBot": "{{bot}} öffnen",
+      "paused": "Prüfung angehalten. Code gepostet? Klicke auf „Erneut prüfen“.",
+      "stepAddBot": "Füge {{bot}} deinem Kanal oder deiner Gruppe als Administrator hinzu. Aktiviere in einem Kanal das Recht „Nachrichten posten“.",
+      "stepPost": "Poste diese Nachricht in diesem Kanal oder dieser Gruppe:",
+      "stepWait": "Komm hierher zurück. ViewsMax erkennt die Nachricht, verknüpft den Chat und entfernt die Nachricht. Der Code gilt 15 Minuten.",
+      "title": "Telegram verbinden",
+      "waitingNote": "Warte darauf, dass der Code in deinem Kanal oder deiner Gruppe erscheint …"
     }
   },
   "dashboard": {
@@ -1379,6 +1397,10 @@
       "selectWhoCanView": "Auswählen, wer es sehen kann…",
       "shortenLinks": "Links kürzen & tracken",
       "shortenLinksHint": "URLs in deiner Caption und deinen Kommentaren werden beim Speichern durch kurze ViewsMax-Links ersetzt, damit jeder Klick gezählt wird.",
+      "telegram": {
+        "textAfterMedia": "Telegram-Bildunterschriften fassen {{max}} Zeichen, daher wird dieser Text auf Telegram als eigene Nachricht direkt nach den Medien gesendet.",
+        "tooManyMedia": "Telegram erlaubt bis zu {{max}} Fotos und Videos pro Beitrag. Entferne einige, um dort zu veröffentlichen."
+      },
       "textPost": "Text-Post",
       "textPostHint": "Nur Text. Angezeigt werden nur Plattformen, die ohne Medien posten können.",
       "threadLimit": "Threads sind auf 25 Tweets begrenzt.",

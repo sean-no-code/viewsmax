@@ -596,6 +596,24 @@
       "groupsEyebrow": "GRUPOS",
       "intro": "Conecta las plataformas en las que publicas. Una vez vinculadas, aparecen como destinos en Crear publicación y como fuentes en Analítica.",
       "title": "Conexiones."
+    },
+    "telegram": {
+      "cancel": "Cancelar",
+      "checkAgain": "Comprobar de nuevo",
+      "codeExpired": "Este código ha caducado. Obtén uno nuevo.",
+      "codeFailed": "No se pudo obtener un código. Inténtalo de nuevo.",
+      "connectFailed": "No se pudo conectar Telegram.",
+      "connected": "¡Telegram conectado!",
+      "copy": "Copiar",
+      "description": "Publica en un canal o grupo de Telegram a través del bot de ViewsMax. Demuestra que el chat es tuyo publicando en él un código de un solo uso.",
+      "newCode": "Obtener un código nuevo",
+      "openBot": "Abrir {{bot}}",
+      "paused": "Se dejó de comprobar. ¿Publicaste el código? Pulsa «Comprobar de nuevo».",
+      "stepAddBot": "Añade {{bot}} a tu canal o grupo como administrador. En un canal, activa su permiso «Publicar mensajes».",
+      "stepPost": "Publica este mensaje en ese canal o grupo:",
+      "stepWait": "Vuelve aquí. ViewsMax detecta el mensaje, vincula el chat y elimina el mensaje. El código vale durante 15 minutos.",
+      "title": "Conectar Telegram",
+      "waitingNote": "Esperando a que el código aparezca en tu canal o grupo…"
     }
   },
   "dashboard": {
@@ -1405,6 +1423,10 @@
       "selectWhoCanView": "Elige quién puede verla…",
       "shortenLinks": "Acortar y rastrear enlaces",
       "shortenLinksHint": "Las URL del texto y los comentarios se reemplazan por enlaces cortos de ViewsMax al guardar la publicación, para contar cada clic.",
+      "telegram": {
+        "textAfterMedia": "Los pies de foto de Telegram admiten {{max}} caracteres, así que en Telegram este texto se envía como un mensaje aparte justo después de los archivos.",
+        "tooManyMedia": "Telegram admite hasta {{max}} fotos y vídeos por publicación. Quita algunos para publicar allí."
+      },
       "textPost": "Publicación de texto",
       "textPostHint": "Solo texto. Solo se muestran las plataformas que permiten publicar sin contenido multimedia.",
       "threadLimit": "Los hilos admiten hasta 25 tuits.",

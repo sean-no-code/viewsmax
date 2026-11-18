@@ -59,7 +59,7 @@ class PostController extends Controller
      * per-platform results.
      *
      * @bodyParam caption string The post text / caption. Example: Big news today!
-     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest. Example: ["tiktok","instagram"]
+     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest, telegram. Example: ["tiktok","instagram"]
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
@@ -370,6 +370,19 @@ class PostController extends Controller
             foreach (array_unique($platformList) as $platform) {
                 if ($error = MediaRules::error($platform, $effectiveMedia)) {
                     abort(response()->json(['message' => $error], 422));
+                }
+            }
+
+            // A Telegram message needs something in it: text, a photo or a video.
+            if (in_array('telegram', $platformList, true)) {
+                $override = $effectiveOverrides['telegram'] ?? '';
+                $text = $override !== '' && $override !== null ? (string) $override : $effectiveCaption;
+                $hasMedia = collect($effectiveMedia)
+                    ->contains(fn ($m) => in_array($m['type'] ?? null, ['image', 'video'], true) && ! empty($m['url']));
+                if (trim($text) === '' && ! $hasMedia) {
+                    abort(response()->json([
+                        'message' => 'Telegram needs text, a photo or a video before publishing or scheduling.',
+                    ], 422));
                 }
             }
 

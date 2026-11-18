@@ -119,8 +119,8 @@ class SocialConnect
     {
         try {
             $accounts = $this->manager->for($platform)->connectWithCredentials($user, $data);
-        } catch (HandleClaimedException $e) {
-            throw $e; // already worded for the user
+        } catch (SocialConnectException $e) {
+            throw $e; // already worded for the user (claimed, refused, pending)
         } catch (Throwable $e) {
             throw new SocialConnectException('Failed to connect '.$platform.': '.$e->getMessage(), 0, $e);
         }

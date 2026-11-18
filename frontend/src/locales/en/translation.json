@@ -586,6 +586,24 @@
       "groupsEyebrow": "GROUPS",
       "intro": "Connect the platforms you publish to. Once linked, they appear as targets in Create Post and as sources in Analytics.",
       "title": "Connections."
+    },
+    "telegram": {
+      "cancel": "Cancel",
+      "checkAgain": "Check again",
+      "codeExpired": "This code has expired. Get a new one.",
+      "codeFailed": "Couldn't get a code. Try again.",
+      "connectFailed": "Failed to connect Telegram.",
+      "connected": "Telegram connected!",
+      "copy": "Copy",
+      "description": "Publish to a Telegram channel or group through the ViewsMax bot. Prove the chat is yours by posting a one-time code in it.",
+      "newCode": "Get a new code",
+      "openBot": "Open {{bot}}",
+      "paused": "Stopped checking. Posted the code? Press Check again.",
+      "stepAddBot": "Add {{bot}} to your channel or group as an administrator. In a channel, turn on its \"Post messages\" right.",
+      "stepPost": "Post this message in that channel or group:",
+      "stepWait": "Come back here. ViewsMax spots the message, links the chat and removes the message. The code works for 15 minutes.",
+      "title": "Connect Telegram",
+      "waitingNote": "Waiting for the code to appear in your channel or group…"
     }
   },
   "dashboard": {
@@ -1380,6 +1398,10 @@
       "selectWhoCanView": "Select who can view…",
       "shortenLinks": "Shorten & track links",
       "shortenLinksHint": "URLs in your caption and comments are replaced with short ViewsMax links when the post is saved, so every click gets counted.",
+      "telegram": {
+        "textAfterMedia": "Telegram captions hold {{max}} characters, so on Telegram this text is sent as its own message right after the media.",
+        "tooManyMedia": "Telegram takes up to {{max}} photos and videos per post. Remove some to publish there."
+      },
       "textPost": "Text post",
       "textPostHint": "Text-only. Only platforms that can post without media are shown.",
       "threadLimit": "Threads are limited to 25 tweets.",

@@ -6,6 +6,7 @@ use App\Http\Resources\SocialAccountResource;
 use App\Models\SocialAccount;
 use App\Services\Social\SocialConnect;
 use App\Services\Social\SocialConnectException;
+use App\Services\Social\SocialConnectPending;
 use App\Services\Social\SocialProviderManager;
 use App\Services\Social\YouTubeDisconnector;
 use Illuminate\Http\Request;
@@ -121,7 +122,10 @@ class SocialAccountController extends Controller
     }
 
     /**
-     * Connect a non-OAuth platform (e.g. Bluesky) with direct credentials.
+     * Connect a non-OAuth platform with direct credentials: Bluesky takes
+     * identifier + password; Telegram takes the one-time `code` from
+     * POST /api/social/telegram/connect-code and answers 202 with
+     * `pending: true` until the code has been posted in the chat.
      */
     public function connectWithCredentials(Request $request, string $platform)
     {
@@ -145,6 +149,9 @@ class SocialAccountController extends Controller
 
         try {
             $accounts = $this->connect->connectWithCredentials(Auth::user(), $platform, $request->all(), $request->boolean('follow_us'));
+        } catch (SocialConnectPending $e) {
+            // Not an error: e.g. the Telegram code hasn't been posted yet. The client polls again.
+            return response()->json(['success' => false, 'pending' => true, 'message' => $e->getMessage()], 202);
         } catch (SocialConnectException $e) {
             return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 422);
         }

@@ -25,6 +25,7 @@ trait ResolvesTargetAccount
         'facebook' => 'Facebook',
         'bluesky' => 'Bluesky',
         'pinterest' => 'Pinterest',
+        'telegram' => 'Telegram',
         'tiktok' => 'TikTok',
         'youtube' => 'YouTube',
     ];

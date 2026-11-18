@@ -23,6 +23,7 @@ import { BrandIcon } from "@/components/post/brand-icons";
 import { PMAP, PAvatar } from "@/components/post/composer";
 import { refreshAccountDirectory } from "@/components/post/useAccountDirectory";
 import { BeehiivIntegration } from "@/components/BeehiivIntegration";
+import { TelegramConnectDialog } from "@/components/TelegramConnectDialog";
 import {
   connectProvider,
   connectSocialPlatform,
@@ -62,6 +63,7 @@ const PROVIDERS: ProviderEntry[] = [
   { key: "facebook", system: "social" },
   { key: "bluesky", system: "social" },
   { key: "pinterest", system: "social" },
+  { key: "telegram", system: "social" },
   { key: "youtube", system: "social", connectVia: "legacy" },
 ];
 
@@ -78,6 +80,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
   const [blueskyOpen, setBlueskyOpen] = useState(false);
   const [blueskyId, setBlueskyId] = useState("");
   const [blueskyPassword, setBlueskyPassword] = useState("");
+  const [telegramOpen, setTelegramOpen] = useState(false);
   // "Follow us" is ticked by default; this holds the platforms the user unticked.
   const [noFollow, setNoFollow] = useState<Record<string, boolean>>({});
 
@@ -143,6 +146,11 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
       setBlueskyOpen(true);
       return;
     }
+    // Telegram has no OAuth either — the user posts a one-time code in the chat.
+    if (e.key === "telegram") {
+      setTelegramOpen(true);
+      return;
+    }
     setBusyKey(e.key);
     try {
       // Connect method can differ from the listing system (see ProviderEntry).
@@ -177,6 +185,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     await loadAll();
     refreshAccountDirectory();
     toast.success(t("connections.bluesky.connected", "Bluesky connected!"));
+    onAnyConnected?.();
+  };
+
+  const handleTelegramConnected = async () => {
+    setTelegramOpen(false);
+    await loadAll();
+    refreshAccountDirectory();
+    toast.success(t("connections.telegram.connected", "Telegram connected!"));
     onAnyConnected?.();
   };
 
@@ -394,6 +410,8 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
       <div className="rounded-lg border p-3">
         <BeehiivIntegration />
       </div>
+
+      <TelegramConnectDialog open={telegramOpen} onOpenChange={setTelegramOpen} onConnected={handleTelegramConnected} />
 
       {/* Bluesky connects with a handle + app password, not OAuth. */}
       <Dialog open={blueskyOpen} onOpenChange={setBlueskyOpen}>

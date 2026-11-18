@@ -142,6 +142,11 @@ class WebRegisterController extends Controller
             // button): there's nothing to approve, so Continue goes to the app.
             'hasAgent' => $request->session()->has(self::SESSION_AUTHORIZE_URL),
             'platforms' => $platforms,
+            // Telegram connects by posting a one-time code in the chat (no OAuth).
+            'telegram' => $platforms->contains('platform', 'telegram') ? [
+                'code' => app(\App\Services\Social\Telegram\TelegramConnectCodes::class)->currentOrIssue($user)['code'],
+                'bot' => app(\App\Services\Social\Telegram\TelegramBotApi::class)->botUsername(),
+            ] : null,
             'connectedCount' => $user->socialAccounts()->count(),
             // Step 3 is the card (WebBillingController) while the paywall applies.
             'needsCard' => UserAccess::denial($user)?->code === UserAccess::PAYMENT_REQUIRED,

@@ -73,7 +73,7 @@ export function graphemeLength(text: string): number {
 /**
  * Per-platform effective length: X is URL-weighted, Threads is counted in
  * UTF-8 bytes (Meta's rule for its 500 limit), Bluesky counts graphemes,
- * everything else plain.
+ * Telegram counts UTF-16 code units (JS string length), everything else plain.
  */
 export function platformLength(id: string, text: string): number {
   switch (id) {
@@ -83,6 +83,8 @@ export function platformLength(id: string, text: string): number {
       return graphemeLength(text);
     case "threads":
       return new TextEncoder().encode(normalize(text)).length;
+    case "telegram":
+      return normalize(text).length;
     default:
       return plainLength(text);
   }
