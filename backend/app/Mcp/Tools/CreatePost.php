@@ -43,6 +43,7 @@ class CreatePost extends ViewsMaxTool
         'facebook' => 5000,
         'bluesky' => 300,
         'pinterest' => 800,
+        'discord' => 2000,
     ];
 
     /**
@@ -76,6 +77,18 @@ class CreatePost extends ViewsMaxTool
                 . 'options.pinterest.board_ids {social_account_id: board_id} (several). '
                 . 'Send title, link and alt_text only when the user gives them; empty means '
                 . 'the Pin has none. A video Pin also needs options.pinterest.cover_url. '
+            : '';
+    }
+
+    /** Discord's destination + media rule, only while Discord is set up. */
+    public static function discordRule(): string
+    {
+        return in_array('discord', self::availablePlatforms(), true)
+            ? 'Each connected Discord account is one channel, chosen on Discord\'s screen when it was '
+                . 'connected. platforms ["discord"] works only while one channel is connected; with '
+                . 'several, ask the user which channel(s) and use brand_id for a brand holding them. '
+                . 'A Discord post needs text and/or up to 10 image or video urls, each file up to 20 MB '
+                . 'and 25 MB per message. @everyone, @here and role mentions in the text do not ping. '
             : '';
     }
 
@@ -114,6 +127,7 @@ class CreatePost extends ViewsMaxTool
             . 'video title, so it must not be empty when publishing or scheduling. '
             . 'Instagram needs an image or video url. '
             . self::pinterestRule()
+            . self::discordRule()
             . 'TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, '
             . 'default false) to let TikTok auto-add its recommended background music; '
             . 'there is no music option for video posts or for Instagram. '

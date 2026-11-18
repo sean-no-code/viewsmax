@@ -62,6 +62,8 @@ const PROVIDERS: ProviderEntry[] = [
   { key: "facebook", system: "social" },
   { key: "bluesky", system: "social" },
   { key: "pinterest", system: "social" },
+  // One account per channel: Discord's own screen picks the server + channel.
+  { key: "discord", system: "social" },
   { key: "youtube", system: "social", connectVia: "legacy" },
 ];
 
@@ -252,7 +254,10 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     click that does nothing. */}
                 {configured && (
                   <Button size="sm" className="shrink-0" disabled={isBusy} onClick={() => handleConnect(entry)}>
-                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? t("connections.accounts.addAccount", "Add account") : t("connections.accounts.connect", "Connect")}
+                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : !accts.length ? t("connections.accounts.connect", "Connect")
+                      : entry.key === "discord" ? t("connections.accounts.addChannel", "Add channel")
+                      : t("connections.accounts.addAccount", "Add account")}
                   </Button>
                 )}
               </div>

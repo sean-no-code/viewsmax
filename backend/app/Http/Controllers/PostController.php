@@ -59,7 +59,7 @@ class PostController extends Controller
      * per-platform results.
      *
      * @bodyParam caption string The post text / caption. Example: Big news today!
-     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest. Example: ["tiktok","instagram"]
+     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest, discord. Example: ["tiktok","instagram"]
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
@@ -373,6 +373,18 @@ class PostController extends Controller
                 }
             }
 
+            // Discord refuses an empty message: it needs text or a file.
+            if (in_array('discord', $platformList, true)) {
+                $override = $effectiveOverrides['discord'] ?? '';
+                $text = $override !== '' && $override !== null ? (string) $override : $effectiveCaption;
+                $hasFile = collect($effectiveMedia)->contains(fn ($m) => ! empty($m['url']));
+                if (trim($text) === '' && ! $hasFile) {
+                    abort(response()->json([
+                        'message' => 'Discord needs text or an image or video before publishing or scheduling.',
+                    ], 422));
+                }
+            }
+
             // Comments post as X replies, so each body must fit a tweet.
             if (in_array('x', $platformList, true)) {
                 $effectiveComments = $data['comments']
@@ -469,6 +481,24 @@ class PostController extends Controller
                         'message' => 'Choose a Pinterest board for every Pinterest account before publishing or scheduling.',
                     ], 422));
                 }
+            }
+        }
+
+        // A Discord account is one channel, so the channel is the audience. A
+        // target with no account would publish to whichever channel was
+        // connected last; with several connected, the user must choose.
+        if ($publishing && in_array('discord', $platformList, true)) {
+            if (isset($data['targets'])) {
+                $unpinned = collect($data['targets'])->contains(fn ($t) => $t['platform'] === 'discord' && empty($t['social_account_id']));
+            } elseif (isset($data['platforms'])) {
+                $unpinned = true;
+            } else {
+                $unpinned = (bool) $post?->targets()->where('platform', 'discord')->whereNull('social_account_id')->exists();
+            }
+            if ($unpinned && Auth::user()->socialAccounts()->where('platform', 'discord')->count() > 1) {
+                abort(response()->json([
+                    'message' => 'Several Discord channels are connected. Choose which Discord channel(s) to post to.',
+                ], 422));
             }
         }
 

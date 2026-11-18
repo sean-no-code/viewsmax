@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\SocialAccountResource;
 use App\Models\SocialAccount;
+use App\Services\Social\DiscordDisconnector;
 use App\Services\Social\SocialConnect;
 use App\Services\Social\SocialConnectException;
 use App\Services\Social\SocialProviderManager;
@@ -167,6 +168,9 @@ class SocialAccountController extends Controller
         // it (this row, the channel, the legacy connection, the user tokens).
         if ($account->platform === 'youtube') {
             YouTubeDisconnector::disconnect(Auth::user(), $account->platform_account_id);
+        } elseif ($account->platform === 'discord') {
+            // Also deletes the channel's webhook in Discord.
+            DiscordDisconnector::disconnect(Auth::user(), $account->id);
         } else {
             $account->delete();
         }

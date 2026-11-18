@@ -30,6 +30,7 @@ const NETWORK_LIST: Network[] = [
   { id: "facebook", name: "Facebook", color: "var(--data-teal)", badge: "#1877F2" },
   { id: "bluesky", name: "Bluesky", color: "var(--data-amber)", badge: "#0085FF" },
   { id: "pinterest", name: "Pinterest", color: "var(--data-red)", badge: "#E60023" },
+  { id: "discord", name: "Discord", color: "var(--data-indigo)", badge: "#5865F2" },
   { id: "google_business", name: "Google Business", color: "var(--data-blue)", badge: "#4285F4" },
 ];
 export const NETWORKS: Record<string, Network> = Object.fromEntries(NETWORK_LIST.map((n) => [n.id, n]));

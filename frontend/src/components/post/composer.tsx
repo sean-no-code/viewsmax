@@ -30,6 +30,7 @@ export const PLATFORMS: Platform[] = [
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
   { id: "pinterest", name: "Pinterest", glyph: "P", handle: "@creatorlab", accent: "#E60023", limit: 800, followers: "15.4K", kind: "Pin" },
+  { id: "discord", name: "Discord", glyph: "DC", handle: "#announcements", accent: "#5865F2", limit: 2000, followers: "3.1K", kind: "Message" },
 ];
 export const PMAP: Record<string, Platform> = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
 
@@ -38,6 +39,7 @@ const kindLabel = (t: TFunction, kind: string): string =>
   kind === "Video" ? t("post.preview.kindVideo", "Video")
   : kind === "Reel / Post" ? t("post.preview.kindReelPost", "Reel / Post")
   : kind === "Post" ? t("post.preview.kindPost", "Post")
+  : kind === "Message" ? t("post.preview.kindMessage", "Message")
   : kind;
 
 // What each platform's API can actually publish in this codebase. Drives the
@@ -57,6 +59,8 @@ export const PLATFORM_CAPS: Record<string, { text: boolean; image: boolean; vide
   bluesky: { text: true, image: true, video: false },
   // Every Pin is an image or a video; there are no text-only Pins.
   pinterest: { text: false, image: true, video: true },
+  // A Discord message: text, up to 10 files (images and video), or both.
+  discord: { text: true, image: true, video: true },
 };
 export type PostType = "media" | "text";
 export function platformAllowedForType(id: string, postType: PostType): boolean {

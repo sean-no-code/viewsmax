@@ -148,6 +148,21 @@ return [
             ],
         ],
 
+        'discord' => [
+            'label' => 'Discord',
+            'enabled' => env('DISCORD_ENABLED', true),
+            'client_id' => env('DISCORD_CLIENT_ID'),
+            'client_secret' => env('DISCORD_CLIENT_SECRET'),
+            // webhook.incoming: Discord's consent screen has the user pick a
+            // server and channel and returns a webhook for it — one connected
+            // account per channel, no bot user. guilds: read the server's
+            // name and icon once at connect time (the webhook carries ids only).
+            'scopes' => [
+                'webhook.incoming',
+                'guilds',
+            ],
+        ],
+
         'bluesky' => [
             'label' => 'Bluesky',
             'enabled' => env('BLUESKY_ENABLED', true),

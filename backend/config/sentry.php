@@ -56,6 +56,11 @@ return [
     // Configures which data is collected automatically, `null` keeps collecting data based on `send_default_pii`
     'data_collection' => null,
 
+    // Strip secrets carried in outgoing request URLs (Discord webhook tokens)
+    // from HTTP breadcrumbs and spans.
+    'before_breadcrumb' => [App\Support\SentryScrubber::class, 'breadcrumb'],
+    'before_send_transaction' => [App\Support\SentryScrubber::class, 'transaction'],
+
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore_exceptions
     // 'ignore_exceptions' => [],
 

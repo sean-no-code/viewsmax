@@ -38,6 +38,7 @@ class TrackingLink extends Model
         'threads',
         'bluesky',
         'pinterest',
+        'discord',
     ];
 
     protected $fillable = [

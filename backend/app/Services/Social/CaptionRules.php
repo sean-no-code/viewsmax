@@ -23,6 +23,7 @@ final class CaptionRules
         'threads' => 500,
         'bluesky' => 300,
         'pinterest' => 800,
+        'discord' => 2000,
     ];
 
     /** On X every URL counts as a fixed 23 chars (t.co wrapping). */
@@ -223,6 +224,7 @@ final class CaptionRules
         'threads' => 'Threads',
         'bluesky' => 'Bluesky',
         'pinterest' => 'Pinterest',
+        'discord' => 'Discord',
     ];
 
     private static function normalize(string $text): string

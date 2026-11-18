@@ -5,6 +5,7 @@ namespace App\Services\Social;
 use App\Models\User;
 use App\Services\Social\Contracts\SocialProviderInterface;
 use App\Services\Social\Providers\BlueskyProvider;
+use App\Services\Social\Providers\DiscordProvider;
 use App\Services\Social\Providers\FacebookProvider;
 use App\Services\Social\Providers\GoogleBusinessProvider;
 use App\Services\Social\Providers\InstagramProvider;
@@ -28,6 +29,7 @@ class SocialProviderManager
         'linkedin' => LinkedInProvider::class,
         'bluesky' => BlueskyProvider::class,
         'pinterest' => PinterestProvider::class,
+        'discord' => DiscordProvider::class,
         'x' => XProvider::class,
         'tiktok' => TikTokProvider::class,
         'youtube' => YouTubeProvider::class,

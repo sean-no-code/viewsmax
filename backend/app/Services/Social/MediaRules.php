@@ -30,6 +30,8 @@ class MediaRules
         'linkedin' => ['max_videos' => 0],
         // Bluesky video (app.bsky.video) is not wired up yet either.
         'bluesky' => ['max_images' => 4, 'max_videos' => 0, 'mixed' => false],
+        // One Discord message carries at most 10 files (images and video mixed).
+        'discord' => ['max' => 10],
     ];
 
     /**

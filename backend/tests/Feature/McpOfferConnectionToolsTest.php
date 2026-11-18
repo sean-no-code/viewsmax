@@ -319,6 +319,25 @@ class McpOfferConnectionToolsTest extends TestCase
         \Illuminate\Support\Facades\Http::assertSent(fn ($r) => $r->url() === \App\Services\Social\GoogleGrantRevoker::REVOKE_URL && $r['token'] === 'refresh-1');
     }
 
+    public function test_disconnect_discord_deletes_each_channels_webhook(): void
+    {
+        \Illuminate\Support\Facades\Http::fake(['discord.com/api/v10/webhooks/*' => \Illuminate\Support\Facades\Http::response(null, 204)]);
+        $user = User::factory()->create();
+        foreach (['111' => '333', '112' => '334'] as $webhookId => $channelId) {
+            SocialAccount::create([
+                'user_id' => $user->id, 'platform' => 'discord', 'platform_account_id' => $channelId, 'name' => 'Server',
+                'access_token' => "token-{$webhookId}", 'status' => 'connected', 'metadata' => ['webhook_id' => (string) $webhookId],
+            ]);
+        }
+
+        $key = $this->mcpKey($user);
+        $this->toolJson($this->callTool($key, 'disconnect_account', ['platform' => 'discord']));
+
+        $this->assertSame(0, SocialAccount::where('user_id', $user->id)->count());
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => $r->method() === 'DELETE' && $r->url() === 'https://discord.com/api/v10/webhooks/111/token-111');
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => $r->method() === 'DELETE' && $r->url() === 'https://discord.com/api/v10/webhooks/112/token-112');
+    }
+
     public function test_disconnect_account_errors_when_nothing_connected(): void
     {
         $key = $this->mcpKey(User::factory()->create());

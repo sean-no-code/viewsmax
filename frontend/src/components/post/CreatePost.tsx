@@ -59,7 +59,7 @@ const privacyLabels = (t: TFunction): Record<string, string> => ({
 // Platforms surfaced in the "Publishing to" picker — the ones the connections
 // screen can actually connect today. Order follows the PLATFORMS catalog.
 const SUPPORTED_PLATFORM_IDS = ["youtube", "tiktok", "instagram", "x", "linkedin", "facebook", "threads", "bluesky"];
-const SHOWN_WHEN_CONNECTED_IDS = ["pinterest"];
+const SHOWN_WHEN_CONNECTED_IDS = ["pinterest", "discord"];
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -674,6 +674,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
       toast.error(t("post.composer.pinterest.needsMedia", "Pinterest needs an uploaded image or video.")); return;
     }
     if (status !== "draft" && pinterestBlockReason) { toast.error(pinterestBlockReason); return; }
+    // Discord refuses an empty message: it needs text, a file, or both.
+    if (status !== "draft" && c.selected.includes("discord") && !c.textFor("discord").trim()
+      && !(c.postType === "media" && c.media.some((m) => m.url))) {
+      toast.error(t("post.composer.discord.needsContent", "Discord needs text or an uploaded image or video.")); return;
+    }
     setSaving(true);
     // The date + time inputs are the user's LOCAL wall-clock. Convert to a UTC
     // ISO string (…Z) so the backend stores UTC and every view renders it back

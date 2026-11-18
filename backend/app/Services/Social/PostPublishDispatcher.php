@@ -3,6 +3,7 @@
 namespace App\Services\Social;
 
 use App\Jobs\PublishToBlueskyJob;
+use App\Jobs\PublishToDiscordJob;
 use App\Jobs\PublishToFacebookJob;
 use App\Jobs\PublishToInstagramJob;
 use App\Jobs\PublishToLinkedInJob;
@@ -39,6 +40,7 @@ class PostPublishDispatcher
         'facebook' => PublishToFacebookJob::class,
         'bluesky' => PublishToBlueskyJob::class,
         'pinterest' => PublishToPinterestJob::class,
+        'discord' => PublishToDiscordJob::class,
     ];
 
     /**

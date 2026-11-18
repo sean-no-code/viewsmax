@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Social\DiscordDisconnector;
 use App\Services\Social\YouTubeDisconnector;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ use Throwable;
  * Order: remote revokes first (they need the tokens), Stripe before the
  * customer id is scrubbed, local rows, then the user row last. Remote steps
  * are best effort — a provider outage is never a reason to keep the data.
- * Google and Stripe failures go in the result's failures; a Klaviyo/Kit
+ * Google, Discord and Stripe failures go in the result's failures; a Klaviyo/Kit
  * refusal is only logged to storage/logs/user-erasure-YYYY-MM-DD.log.
  *
  * What survives, on purpose:
@@ -93,7 +94,7 @@ final class UserErasure
             'tables' => $tables,
             'outlier_tables' => $outlier,
             'platforms' => $platforms,
-            'local_only_platforms' => array_values(array_diff($platforms, ['youtube'])),
+            'local_only_platforms' => array_values(array_diff($platforms, ['youtube', 'discord'])),
             'stripe_subscriptions' => $this->stripeSubscriptionIds($user),
             'stripe_customer_id' => $user->stripe_customer_id,
             'tokens' => [
@@ -128,8 +129,8 @@ final class UserErasure
             $failures[] = $step.': '.($why instanceof Throwable ? $why->getMessage() : $why);
         };
 
-        // 1. Remote grants. Google is the only provider with a revoke call;
-        //    the rest only lose their rows here (reported as local_only).
+        // 1. Remote grants. Google and Discord have a revoke call; the rest
+        //    only lose their rows here (reported as local_only).
         $google = ['revoked' => 0];
         try {
             $google = YouTubeDisconnector::disconnect($user);
@@ -139,6 +140,23 @@ final class UserErasure
             }
         } catch (Throwable $e) {
             $fail('google', $e);
+        }
+
+        //    Discord: delete each connected channel's webhook (its token is
+        //    posting rights in that channel), then the rows.
+        if (! in_array('discord', $plan['platforms'], true)) {
+            $steps['discord'] = 'skipped';
+        } else {
+            try {
+                $discord = DiscordDisconnector::disconnect($user);
+                $steps['discord'] = $discord['webhooks_deleted'] === $discord['social_accounts'] ? 'ok' : 'failed';
+                if ($steps['discord'] === 'failed') {
+                    $failures[] = 'discord: '.($discord['social_accounts'] - $discord['webhooks_deleted'])
+                        .' webhook(s) could not be deleted in Discord; remove them under the channel\'s Integrations settings';
+                }
+            } catch (Throwable $e) {
+                $fail('discord', $e);
+            }
         }
 
         // 2. Agent access: Sanctum (login + vmx_ key) and Passport (Claude/ChatGPT).

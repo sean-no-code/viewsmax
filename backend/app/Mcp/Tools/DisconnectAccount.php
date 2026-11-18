@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Services\Social\DiscordDisconnector;
 use App\Services\Social\YouTubeDisconnector;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -49,6 +50,10 @@ class DisconnectAccount extends ViewsMaxTool
             // Revokes the Google grant and clears every store that shares it.
             $result = YouTubeDisconnector::disconnect($user);
             $removed += $result['social_accounts'] + $result['connections'] + $result['channels'];
+        }
+        if ($platform === 'discord') {
+            // Deletes each channel's webhook in Discord, then the rows.
+            $removed += DiscordDisconnector::disconnect($user)['social_accounts'];
         }
         $removed += $user->socialAccounts()->where('platform', $platform)->delete()
             + $user->connections()->where('provider', $platform)->delete();
