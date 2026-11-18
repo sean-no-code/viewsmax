@@ -1,9 +1,9 @@
 # Social Publishing — Architecture & API
 
 Connect and post to Facebook, Instagram, Threads, LinkedIn, Bluesky, X, TikTok,
-YouTube, Pinterest and Google My Business from one set of endpoints.
+YouTube, Pinterest, VK and Google My Business from one set of endpoints.
 
-> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`.
+> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`; VK: `README/VK_SETUP.md`.
 > **Frontend integration contract:** see `tasks/frontend-todo.md`.
 
 ## Components
@@ -58,7 +58,7 @@ GET    /social/accounts                  list connected accounts (?platform=)
 DELETE /social/accounts/{id}             disconnect
 GET    /social/accounts/{id}/boards      Pinterest: the account's boards (live)
 GET    /social/{platform}/auth-url       begin OAuth (returns authorization_url + state)
-POST   /social/{platform}/exchange       finish OAuth (code + state → account[])
+POST   /social/{platform}/exchange       finish OAuth (code + state [+ device_id for VK] → account[])
 POST   /social/{platform}/connect        non-OAuth connect (Bluesky: identifier + password)
 GET    /social/posts                     list posts (paginated)
 POST   /social/posts                     create + publish/schedule

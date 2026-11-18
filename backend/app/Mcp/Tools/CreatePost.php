@@ -43,6 +43,7 @@ class CreatePost extends ViewsMaxTool
         'facebook' => 5000,
         'bluesky' => 300,
         'pinterest' => 800,
+        'vk' => 15895,
     ];
 
     /**
@@ -76,6 +77,15 @@ class CreatePost extends ViewsMaxTool
                 . 'options.pinterest.board_ids {social_account_id: board_id} (several). '
                 . 'Send title, link and alt_text only when the user gives them; empty means '
                 . 'the Pin has none. A video Pin also needs options.pinterest.cover_url. '
+            : '';
+    }
+
+    /** Where a VK post goes, only while VK is set up. */
+    public static function vkRule(): string
+    {
+        return in_array('vk', self::availablePlatforms(), true)
+            ? 'VK posts go to the connected person\'s own VK wall (community walls are not '
+                . 'supported): text, up to 10 images and videos, or both. '
             : '';
     }
 
@@ -114,6 +124,7 @@ class CreatePost extends ViewsMaxTool
             . 'video title, so it must not be empty when publishing or scheduling. '
             . 'Instagram needs an image or video url. '
             . self::pinterestRule()
+            . self::vkRule()
             . 'TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, '
             . 'default false) to let TikTok auto-add its recommended background music; '
             . 'there is no music option for video posts or for Instagram. '

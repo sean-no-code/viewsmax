@@ -23,6 +23,9 @@ final class CaptionRules
         'threads' => 500,
         'bluesky' => 300,
         'pinterest' => 800,
+        // VK's wall.post docs state no text limit; 15,895 characters is the
+        // regular-post maximum cited in published VK limit round-ups (unofficial).
+        'vk' => 15895,
     ];
 
     /** On X every URL counts as a fixed 23 chars (t.co wrapping). */
@@ -223,6 +226,7 @@ final class CaptionRules
         'threads' => 'Threads',
         'bluesky' => 'Bluesky',
         'pinterest' => 'Pinterest',
+        'vk' => 'VK',
     ];
 
     private static function normalize(string $text): string

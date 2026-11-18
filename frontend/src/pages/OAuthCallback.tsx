@@ -12,6 +12,8 @@ const OAuthCallback = () => {
       const code = urlParams.get('code');
       const error = urlParams.get('error');
       const state = urlParams.get('state');
+      // VK ID adds a device_id next to the code; its token exchange needs it.
+      const deviceId = urlParams.get('device_id');
 
       // The provider is encoded as the prefix of `state` (e.g. "tiktok_169...").
       // Defaults to youtube for back-compat with the legacy flow.
@@ -57,7 +59,8 @@ const OAuthCallback = () => {
             type: 'OAUTH_SUCCESS',
             provider,
             state,
-            code: code
+            code: code,
+            ...(deviceId ? { deviceId } : {})
           }, window.location.origin);
           // ...plus the legacy YouTube message for back-compat.
           if (provider === 'youtube') {

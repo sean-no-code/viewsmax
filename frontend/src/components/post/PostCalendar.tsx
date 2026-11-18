@@ -80,7 +80,7 @@ const TILE_BG: Record<string, string> = {
 // Native media shape per platform, for the preview mockup.
 const RATIO: Record<string, string> = {
   instagram: "4/5", tiktok: "3/4", youtube: "16/9", linkedin: "1/1", x: "16/9",
-  facebook: "1/1", threads: "1/1", bluesky: "16/9", pinterest: "3/4",
+  facebook: "1/1", threads: "1/1", bluesky: "16/9", pinterest: "3/4", vk: "1/1",
 };
 
 export function PlatformTile({ id, size, overlap, ring = true }: { id: string; size: number; overlap?: boolean; ring?: boolean }) {

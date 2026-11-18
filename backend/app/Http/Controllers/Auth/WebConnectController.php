@@ -50,7 +50,7 @@ class WebConnectController extends Controller
         }
 
         try {
-            $accounts = $this->connect->complete($request->user(), $platform, $request->input('code'), $request->input('state'), route('connect.callback', $platform));
+            $accounts = $this->connect->complete($request->user(), $platform, $request->input('code'), $request->input('state'), route('connect.callback', $platform), $request->string('device_id')->toString() ?: null);
         } catch (SocialConnectException $e) {
             return redirect()->route('register.setup')->with('error', $e->getMessage());
         }

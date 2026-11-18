@@ -59,7 +59,7 @@ const privacyLabels = (t: TFunction): Record<string, string> => ({
 // Platforms surfaced in the "Publishing to" picker — the ones the connections
 // screen can actually connect today. Order follows the PLATFORMS catalog.
 const SUPPORTED_PLATFORM_IDS = ["youtube", "tiktok", "instagram", "x", "linkedin", "facebook", "threads", "bluesky"];
-const SHOWN_WHEN_CONNECTED_IDS = ["pinterest"];
+const SHOWN_WHEN_CONNECTED_IDS = ["pinterest", "vk"];
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (

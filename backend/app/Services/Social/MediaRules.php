@@ -30,6 +30,8 @@ class MediaRules
         'linkedin' => ['max_videos' => 0],
         // Bluesky video (app.bsky.video) is not wired up yet either.
         'bluesky' => ['max_images' => 4, 'max_videos' => 0, 'mixed' => false],
+        // A VK wall post takes at most 10 photos and videos, mixed freely.
+        'vk' => ['max' => 10],
     ];
 
     /**

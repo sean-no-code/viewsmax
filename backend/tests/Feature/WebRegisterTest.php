@@ -329,7 +329,7 @@ class WebRegisterTest extends TestCase
         $user = User::factory()->create();
         $authorizeUrl = $this->authorizeUrl();
         $connect = \Mockery::mock(SocialConnect::class);
-        $connect->shouldReceive('complete')->once()->with(\Mockery::on(fn ($u) => $u->is($user)), 'x', 'the-code', 'abc', route('connect.callback', 'x'))
+        $connect->shouldReceive('complete')->once()->with(\Mockery::on(fn ($u) => $u->is($user)), 'x', 'the-code', 'abc', route('connect.callback', 'x'), null)
             ->andReturn(collect([new SocialAccount(['platform' => 'x'])]));
         $this->app->instance(SocialConnect::class, $connect);
 

@@ -148,6 +148,25 @@ return [
             ],
         ],
 
+        // VK ID (OAuth 2.1 + PKCE, id.vk.ru) for the user's own wall. Set up as
+        // a confidential VK ID app: the code exchange and every refresh send
+        // the app's service token. wall / photos / video are VK "extended"
+        // accesses that VK grants only on request (see README/VK_SETUP.md).
+        'vk' => [
+            'label' => 'VK',
+            'enabled' => env('VK_ENABLED', true),
+            'client_id' => env('VK_CLIENT_ID'),
+            'service_token' => env('VK_SERVICE_TOKEN'),
+            // VK API version every call pins (the `v` parameter).
+            'api_version' => '5.199',
+            'scopes' => [
+                'vkid.personal_info',
+                'wall',
+                'photos',
+                'video',
+            ],
+        ],
+
         'bluesky' => [
             'label' => 'Bluesky',
             'enabled' => env('BLUESKY_ENABLED', true),

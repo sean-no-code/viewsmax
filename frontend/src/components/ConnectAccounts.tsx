@@ -62,6 +62,7 @@ const PROVIDERS: ProviderEntry[] = [
   { key: "facebook", system: "social" },
   { key: "bluesky", system: "social" },
   { key: "pinterest", system: "social" },
+  { key: "vk", system: "social" },
   { key: "youtube", system: "social", connectVia: "legacy" },
 ];
 

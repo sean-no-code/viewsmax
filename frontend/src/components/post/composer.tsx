@@ -30,6 +30,7 @@ export const PLATFORMS: Platform[] = [
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
   { id: "pinterest", name: "Pinterest", glyph: "P", handle: "@creatorlab", accent: "#E60023", limit: 800, followers: "15.4K", kind: "Pin" },
+  { id: "vk", name: "VK", glyph: "VK", handle: "Creator Lab", accent: "#0077FF", limit: 15895, followers: "9.8K", kind: "Post" },
 ];
 export const PMAP: Record<string, Platform> = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
 
@@ -57,6 +58,8 @@ export const PLATFORM_CAPS: Record<string, { text: boolean; image: boolean; vide
   bluesky: { text: true, image: true, video: false },
   // Every Pin is an image or a video; there are no text-only Pins.
   pinterest: { text: false, image: true, video: true },
+  // A VK wall post takes text, up to 10 photos and videos, or both.
+  vk: { text: true, image: true, video: true },
 };
 export type PostType = "media" | "text";
 export function platformAllowedForType(id: string, postType: PostType): boolean {

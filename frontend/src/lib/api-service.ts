@@ -5319,7 +5319,8 @@ class ViewsMaxApiService {
   }
 
   // Exchange the authorization code (returned to the popup) for stored tokens.
-  async exchangeSocialCode(platform: string, payload: { code: string; state?: string; redirectUri?: string }): Promise<ApiResponse<SocialAccount[]>> {
+  // `deviceId` is the device_id VK ID returns next to the code.
+  async exchangeSocialCode(platform: string, payload: { code: string; state?: string; redirectUri?: string; deviceId?: string }): Promise<ApiResponse<SocialAccount[]>> {
     if (isMockApi()) return { success: false, error: 'Not available in demo mode.' };
     try {
       const response = await fetch(`${this.baseUrl}/api/social/${platform}/exchange`, {
@@ -5329,6 +5330,7 @@ class ViewsMaxApiService {
           code: payload.code,
           ...(payload.state ? { state: payload.state } : {}),
           ...(payload.redirectUri ? { redirect_uri: payload.redirectUri } : {}),
+          ...(payload.deviceId ? { device_id: payload.deviceId } : {}),
         }),
       });
       const result = await response.json().catch(() => ({}));

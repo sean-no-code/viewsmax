@@ -12,6 +12,7 @@ use App\Services\Social\Providers\LinkedInProvider;
 use App\Services\Social\Providers\PinterestProvider;
 use App\Services\Social\Providers\ThreadsProvider;
 use App\Services\Social\Providers\TikTokProvider;
+use App\Services\Social\Providers\VkProvider;
 use App\Services\Social\Providers\XProvider;
 use App\Services\Social\Providers\YouTubeProvider;
 use InvalidArgumentException;
@@ -28,6 +29,7 @@ class SocialProviderManager
         'linkedin' => LinkedInProvider::class,
         'bluesky' => BlueskyProvider::class,
         'pinterest' => PinterestProvider::class,
+        'vk' => VkProvider::class,
         'x' => XProvider::class,
         'tiktok' => TikTokProvider::class,
         'youtube' => YouTubeProvider::class,
@@ -99,6 +101,11 @@ class SocialProviderManager
         // Bluesky needs no app credentials (handle + app password at connect time).
         if ($platform === 'bluesky') {
             return true;
+        }
+
+        // A confidential VK ID app authenticates with its service token, not a client secret.
+        if ($platform === 'vk') {
+            return ! empty($config['client_id']) && ! empty($config['service_token']);
         }
 
         return ! empty($config['client_id']) && ! empty($config['client_secret']);

@@ -181,7 +181,8 @@ export const connectProvider = async (provider: OAuthProvider): Promise<Connecti
 // handling client-side and reuses the fully-built provider on the server.
 // ---------------------------------------------------------------------------
 
-const waitForCallbackByState = (popup: Window, expectedState: string): Promise<{ code: string; state: string }> => {
+// `deviceId` is the device_id VK ID adds to its redirect; absent for other providers.
+const waitForCallbackByState = (popup: Window, expectedState: string): Promise<{ code: string; state: string; deviceId?: string }> => {
   return new Promise((resolve, reject) => {
     const checkClosed = setInterval(() => {
       if (popup.closed) {
@@ -201,7 +202,7 @@ const waitForCallbackByState = (popup: Window, expectedState: string): Promise<{
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
         popup.close();
-        resolve({ code: data.code, state: data.state });
+        resolve({ code: data.code, state: data.state, deviceId: data.deviceId || undefined });
       } else if (data.type === "OAUTH_ERROR") {
         clearInterval(checkClosed);
         window.removeEventListener("message", messageHandler);
@@ -237,9 +238,9 @@ export const connectSocialPlatform = async (platform: string, followUs = false) 
   const { authorization_url, state, redirect_uri } = urlRes.data;
   popup.location.href = authorization_url;
 
-  const { code } = await waitForCallbackByState(popup, state);
+  const { code, deviceId } = await waitForCallbackByState(popup, state);
 
-  const result = await viewsMaxApi.exchangeSocialCode(platform, { code, state, redirectUri: redirect_uri });
+  const result = await viewsMaxApi.exchangeSocialCode(platform, { code, state, redirectUri: redirect_uri, deviceId });
   // An empty array is a truthy value but means nothing was actually connected
   // (e.g. an Instagram login with no Business account linked to a Page).
   if (!result.success || !result.data || result.data.length === 0) {

@@ -18,6 +18,9 @@ use Throwable;
  */
 class SocialConnect
 {
+    /** Platforms whose OAuth needs a PKCE verifier. */
+    private const PKCE_PLATFORMS = ['x', 'vk'];
+
     public function __construct(protected SocialProviderManager $manager, protected FollowUs $followUs) {}
 
     /**
@@ -36,8 +39,8 @@ class SocialConnect
             'redirect_uri' => $redirectUri,
         ];
 
-        // X requires PKCE: keep the verifier server-side, send the challenge.
-        if ($platform === 'x') {
+        // X and VK ID require PKCE: keep the verifier server-side, send the challenge.
+        if (in_array($platform, self::PKCE_PLATFORMS, true)) {
             $verifier = Str::random(64);
             $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
             $options['code_challenge'] = $challenge;
@@ -61,15 +64,17 @@ class SocialConnect
 
     /**
      * Exchange the provider's code for tokens and store the account(s).
+     * $deviceId is the `device_id` VK ID adds to its redirect next to the
+     * code; its token exchange and refreshes need it.
      *
      * @return Collection<int, \App\Models\SocialAccount>
      *
      * @throws SocialConnectException with a message safe to show the user
      */
-    public function complete(User $user, string $platform, string $code, ?string $state, ?string $redirectUri = null): Collection
+    public function complete(User $user, string $platform, string $code, ?string $state, ?string $redirectUri = null, ?string $deviceId = null): Collection
     {
         $redirectUri ??= config('social.default_redirect_uri');
-        $options = [];
+        $options = array_filter(['device_id' => $deviceId, 'state' => $state]);
         $followUs = false;
 
         if (! empty($state)) {

@@ -101,6 +101,8 @@ class SocialAccountController extends Controller
             'code' => 'required|string',
             'state' => 'nullable|string',
             'redirect_uri' => 'nullable|string|url',
+            // VK ID returns it with the code; its token exchange needs it.
+            'device_id' => 'nullable|string|max:255',
         ]);
 
         if (! $this->ensureConfigured($platform, $response)) {
@@ -108,7 +110,7 @@ class SocialAccountController extends Controller
         }
 
         try {
-            $accounts = $this->connect->complete(Auth::user(), $platform, $validated['code'], $validated['state'] ?? null, $validated['redirect_uri'] ?? null);
+            $accounts = $this->connect->complete(Auth::user(), $platform, $validated['code'], $validated['state'] ?? null, $validated['redirect_uri'] ?? null, $validated['device_id'] ?? null);
         } catch (SocialConnectException $e) {
             return response()->json(['success' => false, 'message' => \App\Support\UserSafeError::detail($e)], 422);
         }

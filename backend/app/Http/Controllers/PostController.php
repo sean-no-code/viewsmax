@@ -18,7 +18,7 @@ use Carbon\Carbon;
  * @group Posts
  *
  * Compose multi-platform posts (YouTube, TikTok, X, LinkedIn, Threads,
- * Instagram, Bluesky) as drafts, publish immediately, or schedule. One post
+ * Instagram, Bluesky, Pinterest, VK) as drafts, publish immediately, or schedule. One post
  * fans out to per-platform targets that each report their own publish
  * status — publishing is asynchronous, so poll GET /api/posts/{id}.
  */
@@ -59,7 +59,7 @@ class PostController extends Controller
      * per-platform results.
      *
      * @bodyParam caption string The post text / caption. Example: Big news today!
-     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest. Example: ["tiktok","instagram"]
+     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest, vk. Example: ["tiktok","instagram"]
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
