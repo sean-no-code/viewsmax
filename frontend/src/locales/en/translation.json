@@ -1429,7 +1429,13 @@
       "youtubePrivate": "Private (only you)",
       "youtubePublic": "Public",
       "youtubeTitleMissing": "YouTube needs a title — add one in YouTube options, or write a caption (its first 100 characters become the title).",
-      "youtubeUnlisted": "Unlisted (anyone with the link)"
+      "youtubeUnlisted": "Unlisted (anyone with the link)",
+      "youtubeMadeWithAi": "Made with AI (realistic altered or synthetic content)",
+      "youtubeMadeWithAiHint": "Turn this on if the video shows realistic people, places or events that were made or changed with AI. YouTube then labels it as altered or synthetic content. Not needed for animation or clearly unrealistic content.",
+      "coverWrongType": "The cover must be a JPEG or PNG image.",
+      "youtubeCoverVerified": "Custom thumbnails need a phone-verified YouTube channel (youtube.com/verify).",
+      "youtubeCoverShorts": "YouTube may ignore a custom thumbnail on videos it treats as Shorts.",
+      "youtubeCoverRejected": "If YouTube rejects the thumbnail, the video is still published."
     },
     "drafts": {
       "empty": "No drafts yet — start one from New Post.",
@@ -1448,7 +1454,7 @@
       "commentsPostedFailed_other": "{{posted}}/{{count}} comments posted · {{failed}} failed",
       "empty": "No posts yet. Published and scheduled posts show up here with their per-platform status.",
       "eyebrow": "Publishing",
-      "inboxNote": "Sent to the TikTok inbox — open the TikTok app, find the video in your notifications, and finish posting there. Captions can't be attached to inbox deliveries, so paste yours in the app.",
+      "inboxNote": "Sent to the TikTok inbox — open the TikTok app, find the post in your notifications, and finish posting there. A video arrives without its caption, so paste yours in the app; photo posts keep their title and description.",
       "liveOnPlatform": "Live on the platform.",
       "liveOnPlatformAt": "Live on the platform ({{when}}).",
       "noCaption": "No caption",

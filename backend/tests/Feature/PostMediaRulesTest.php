@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -187,5 +189,84 @@ class PostMediaRulesTest extends TestCase
         $this->createPost(['caption' => 'hi', 'platforms' => ['tiktok'], 'media' => [], 'status' => 'posted'])
             ->assertStatus(422)
             ->assertJsonFragment(['message' => 'TikTok requires an uploaded video or one or more images before publishing or scheduling.']);
+    }
+
+    // ── TikTok photo sizes ────────────────────────────────────────────────
+
+    private function fakeMediaDisk(): void
+    {
+        config(['filesystems.media_disk' => 'r2test']);
+        Storage::fake('r2test');
+    }
+
+    /** A stored PNG of the given size on the (faked) media disk, as a media entry. */
+    private function storedImage(string $name, int $width, int $height): array
+    {
+        $img = imagecreatetruecolor($width, $height);
+        ob_start();
+        imagepng($img);
+        Storage::disk('r2test')->put("posts/1/{$name}.png", ob_get_clean());
+        imagedestroy($img);
+
+        // No 'disk' key: the post payload's validation keeps type/url/path only,
+        // so the check reads from the media disk, as the publish jobs do.
+        return ['type' => 'image', 'url' => "https://cdn.example/{$name}.png", 'path' => "posts/1/{$name}.png"];
+    }
+
+    private function tiktokPhotos(array $media, string $status = 'scheduled')
+    {
+        $payload = ['caption' => 'hi', 'platforms' => ['tiktok'], 'media' => $media, 'options' => ['tiktok' => ['privacy_level' => 'SELF_ONLY']]];
+
+        return $this->createPost($status === 'draft' ? $payload + ['status' => 'draft'] : $this->scheduled($payload));
+    }
+
+    public function test_tiktok_photo_over_1080_on_the_shorter_side_is_rejected_and_named(): void
+    {
+        $this->fakeMediaDisk();
+        $media = [$this->storedImage('ok', 1080, 1920), $this->storedImage('big', 1200, 1600)];
+
+        $response = $this->tiktokPhotos($media);
+
+        $response->assertStatus(422);
+        $this->assertSame(
+            'Image 2 of 2 is 1200x1600 pixels. TikTok allows at most 1080px on the shorter side of a photo. Resize it and upload it again.',
+            $response->json('message'),
+        );
+        $this->assertSame(0, Post::count());
+    }
+
+    public function test_tiktok_photos_at_or_under_1080_on_the_shorter_side_are_accepted(): void
+    {
+        $this->fakeMediaDisk();
+
+        $this->tiktokPhotos([$this->storedImage('portrait', 1080, 1920), $this->storedImage('landscape', 1920, 1080)])
+            ->assertStatus(201);
+    }
+
+    public function test_tiktok_photo_size_is_not_checked_on_drafts_or_video_posts(): void
+    {
+        $this->fakeMediaDisk();
+        $big = $this->storedImage('big', 2172, 2896);
+
+        $this->tiktokPhotos([$big], 'draft')->assertStatus(201);
+        // A video post sends the video, not the images.
+        $this->tiktokPhotos([$this->video(), $big])->assertStatus(201);
+    }
+
+    public function test_tiktok_photo_whose_size_cannot_be_read_is_allowed_and_logged(): void
+    {
+        $this->fakeMediaDisk();
+        Storage::disk('r2test')->put('posts/1/broken.png', 'not an image');
+        Log::spy();
+
+        $this->tiktokPhotos([
+            ['type' => 'image', 'url' => 'https://cdn.example/broken.png', 'path' => 'posts/1/broken.png'],
+            ['type' => 'image', 'url' => 'https://cdn.example/missing.png', 'path' => 'posts/1/missing.png'],
+            ['type' => 'image', 'url' => 'https://cdn.example/external.png'], // no path: never fetched
+        ])->assertStatus(201);
+
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn ($message) => str_contains($message, 'could not read image dimensions'))
+            ->twice();
     }
 }

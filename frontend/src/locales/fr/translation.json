@@ -1455,7 +1455,13 @@
       "youtubePrivate": "Privée (vous uniquement)",
       "youtubePublic": "Publique",
       "youtubeTitleMissing": "YouTube nécessite un titre — ajoutez une légende, elle sert de titre à la vidéo.",
-      "youtubeUnlisted": "Non répertoriée (toute personne disposant du lien)"
+      "youtubeUnlisted": "Non répertoriée (toute personne disposant du lien)",
+      "youtubeMadeWithAi": "Créé avec l'IA (contenu réaliste modifié ou synthétique)",
+      "youtubeMadeWithAiHint": "Activez cette option si la vidéo montre des personnes, des lieux ou des événements réalistes créés ou modifiés avec l'IA. YouTube l'indiquera alors comme contenu modifié ou synthétique. Inutile pour l'animation ou un contenu manifestement irréaliste.",
+      "coverWrongType": "La couverture doit être une image JPEG ou PNG.",
+      "youtubeCoverVerified": "Les miniatures personnalisées nécessitent une chaîne YouTube validée par téléphone (youtube.com/verify).",
+      "youtubeCoverShorts": "YouTube peut ignorer une miniature personnalisée sur les vidéos qu'il traite comme des Shorts.",
+      "youtubeCoverRejected": "Si YouTube refuse la miniature, la vidéo est quand même publiée."
     },
     "drafts": {
       "empty": "Aucun brouillon — commencez-en un depuis Nouvelle publication.",
@@ -1476,7 +1482,7 @@
       "commentsPostedFailed_other": "{{posted}}/{{count}} commentaires publiés · {{failed}} en échec",
       "empty": "Aucune publication pour l'instant. Les publications publiées et programmées apparaissent ici avec leur statut par plateforme.",
       "eyebrow": "Publication",
-      "inboxNote": "Envoyée dans la boîte de réception TikTok — ouvrez l'app TikTok, trouvez la vidéo dans vos notifications et terminez la publication depuis l'app. Les légendes ne peuvent pas être jointes aux envois en boîte de réception : collez la vôtre dans l'app.",
+      "inboxNote": "Envoyée dans la boîte de réception TikTok — ouvrez l'app TikTok, trouvez la publication dans vos notifications et terminez la publication depuis l'app. Une vidéo arrive sans sa légende : collez la vôtre dans l'app. Les publications photo gardent leur titre et leur description.",
       "liveOnPlatform": "En ligne sur la plateforme.",
       "liveOnPlatformAt": "En ligne sur la plateforme ({{when}}).",
       "noCaption": "Aucune légende",

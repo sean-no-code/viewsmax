@@ -619,6 +619,23 @@ class McpServerTest extends TestCase
         $this->assertStringContainsStringIgnoringCase('default false', $desc);
     }
 
+    public function test_create_post_advertises_youtube_made_with_ai_and_the_tiktok_inbox_caption_gap(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+        $tools = collect($this->rpc($key, 'tools/list', ['per_page' => 50])->assertOk()->json('result.tools'))
+            ->keyBy('name');
+
+        // YouTube's altered or synthetic content disclosure, off unless the user says yes.
+        foreach (['create_post', 'update_post'] as $tool) {
+            $options = $tools[$tool]['inputSchema']['properties']['options']['description'];
+            $this->assertStringContainsString('made_with_ai (boolean, default false', $options, $tool);
+            $this->assertStringContainsString('set it only when they say yes', $options, $tool);
+        }
+
+        // A TikTok video delivered to the inbox loses its caption.
+        $this->assertStringContainsString("a video delivered that way arrives without its caption", $tools['create_post']['description']);
+    }
+
     public function test_create_post_creates_draft_with_targets(): void
     {
         $user = User::factory()->create();

@@ -84,6 +84,9 @@ const todayStr = () => {
 // Extra messages posted after the post goes live: X reply threads, LinkedIn /
 // Instagram comments, Threads replies. Each comment can wait a delay after the
 // previous message in the chain (presets + custom minutes).
+// Cover images (YouTube thumbnail / Instagram Reel cover): YouTube only takes JPEG or PNG.
+const COVER_MIME_TYPES = ["image/jpeg", "image/png"];
+
 const youtubeTitleMsg = (t: TFunction) =>
   t("post.composer.youtubeTitleMissing", "YouTube needs a title — add one in YouTube options, or write a caption (its first 100 characters become the title).");
 
@@ -438,6 +441,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    // YouTube's thumbnails.set takes JPEG or PNG only; the backend refuses others too.
+    if (!COVER_MIME_TYPES.includes(file.type)) {
+      toast.error(t("post.composer.coverWrongType", "The cover must be a JPEG or PNG image."));
+      return;
+    }
     const res = await c.uploadCover(file);
     if (!res.success) toast.error(res.error || t("post.composer.coverUploadFailed", "Cover upload failed."));
   };
@@ -621,11 +629,19 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
 
   // Shared cover uploader — one uploaded image drives both the YouTube thumbnail
   // and the Instagram Reel cover, so the same control renders in either tab.
-  const coverUploaderBlock = (label: string) => (
+  const coverUploaderBlock = (label: string, youtubeHints = false) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <span style={{ fontSize: 12, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>{t("post.composer.customCoverFor", "Custom cover image for {{platform}}.", { platform: label })}</span>
+      {/* What YouTube does with a custom thumbnail, which we cannot check in advance. */}
+      {youtubeHints && (
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+          <li>{t("post.composer.youtubeCoverVerified", "Custom thumbnails need a phone-verified YouTube channel (youtube.com/verify).")}</li>
+          <li>{t("post.composer.youtubeCoverShorts", "YouTube may ignore a custom thumbnail on videos it treats as Shorts.")}</li>
+          <li>{t("post.composer.youtubeCoverRejected", "If YouTube rejects the thumbnail, the video is still published.")}</li>
+        </ul>
+      )}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <input ref={coverInput} type="file" accept="image/*" hidden onChange={onPickCover} />
+        <input ref={coverInput} type="file" accept={COVER_MIME_TYPES.join(",")} hidden onChange={onPickCover} />
         {c.cover?.url ? (
           <div style={{ position: "relative", width: 96, height: 96, borderRadius: 12, overflow: "hidden", background: `center/cover no-repeat url(${resolveMediaUrl(c.cover.url)})`, boxShadow: "inset 0 0 0 1px rgba(0,0,0,.06)" }}>
             <button onClick={c.removeCover} title={t("post.composer.removeCover", "Remove cover")} style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(10,10,12,.62)", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: 1, display: "grid", placeItems: "center" }}>✕</button>
@@ -1286,7 +1302,14 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         />
                       </span>
                     </div>
-                    {mediaVideoPost && coverUploaderBlock("YouTube")}
+                    {/* YouTube's altered or synthetic content disclosure (status.containsSyntheticMedia). */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <Toggle label={t("post.composer.youtubeMadeWithAi", "Made with AI (realistic altered or synthetic content)")} checked={!!c.youtube.made_with_ai} onChange={(v) => c.patchYoutube({ made_with_ai: v })} />
+                      <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+                        {t("post.composer.youtubeMadeWithAiHint", "Turn this on if the video shows realistic people, places or events that were made or changed with AI. YouTube then labels it as altered or synthetic content. Not needed for animation or clearly unrealistic content.")}
+                      </span>
+                    </div>
+                    {mediaVideoPost && coverUploaderBlock("YouTube", true)}
                   </div>
                 )}
 

@@ -203,6 +203,66 @@ class YouTubeResumableUploadTest extends TestCase
         $this->upload('fake-video-bytes');
     }
 
+    /**
+     * Google's "Video Uploads per day" refusal, in the shape a public
+     * google-api-python-client issue (#2753) reports: a 429 with the same
+     * `rateLimitExceeded` reason as a short-term rate limit.
+     */
+    private static function dailyUploadQuotaError(): array
+    {
+        return [
+            'code' => 429,
+            'message' => "Quota exceeded for quota metric 'Video Uploads' and limit 'Video Uploads per day' of service 'youtube.googleapis.com' for consumer 'project_number:123'.",
+            'errors' => [['message' => 'Quota exceeded.', 'domain' => 'global', 'reason' => 'rateLimitExceeded']],
+        ];
+    }
+
+    public function test_the_daily_upload_quota_fails_at_once_without_retrying(): void
+    {
+        Http::fake([
+            self::INIT => Http::response(['error' => self::dailyUploadQuotaError()], 429),
+        ]);
+
+        try {
+            $this->upload('fake-video-bytes');
+            $this->fail('Expected the refusal to throw.');
+        } catch (TransientPublishException $e) {
+            $this->fail('The daily upload quota must not be retried: '.$e->getMessage());
+        } catch (\RuntimeException $e) {
+            $this->assertSame(YouTubePublishService::DAILY_UPLOAD_QUOTA, $e->getMessage());
+        }
+
+        Http::assertSentCount(1); // no Http::retry repeats either
+    }
+
+    public function test_the_daily_upload_quota_is_recognised_by_its_limit_id_whatever_the_status(): void
+    {
+        $error = [
+            'code' => 403,
+            'message' => 'Quota exceeded.',
+            'errors' => [['reason' => 'rateLimitExceeded', 'domain' => 'global']],
+            'details' => [['@type' => 'type.googleapis.com/google.rpc.ErrorInfo', 'metadata' => ['quota_limit' => 'defaultVideoInsertPerDayPerProject']]],
+        ];
+
+        $this->assertSame(YouTubePublishService::DAILY_UPLOAD_QUOTA, YouTubePublishService::refusalMessage(403, $error));
+        $this->assertSame(YouTubePublishService::DAILY_UPLOAD_QUOTA, YouTubePublishService::refusalMessage(429, self::dailyUploadQuotaError()));
+        // A plain short-term rate limit keeps its "wait a little" advice.
+        $this->assertStringContainsString('too quickly', YouTubePublishService::refusalMessage(403, [
+            'message' => 'Rate limit exceeded.', 'errors' => [['reason' => 'rateLimitExceeded']],
+        ]));
+    }
+
+    public function test_a_plain_429_on_session_init_is_still_transient(): void
+    {
+        Http::fake([
+            self::INIT => Http::response(['error' => ['message' => 'Rate limit exceeded.', 'errors' => [['reason' => 'rateLimitExceeded']]]], 429),
+        ]);
+
+        $this->expectException(TransientPublishException::class);
+
+        $this->upload('fake-video-bytes');
+    }
+
     public function test_data_api_reasons_become_plain_advice(): void
     {
         $cases = [
@@ -267,7 +327,8 @@ class YouTubeResumableUploadTest extends TestCase
     public function test_thumbnail_refusals_are_mapped(): void
     {
         $cases = [
-            [['reason' => 'forbidden', 'domain' => 'youtube.thumbnail'], 'not verified'],
+            // The video is already live: point at verification + Studio, never "try again".
+            [['reason' => 'forbidden', 'domain' => 'youtube.thumbnail'], 'youtube.com/verify, then set this video\'s thumbnail in YouTube Studio'],
             [['reason' => 'imageFormatUnsupported', 'domain' => 'youtube.thumbnail'], 'JPEG or PNG'],
             [['reason' => 'imageTooTall', 'domain' => 'youtube.thumbnail'], 'too tall'],
             [['reason' => 'imageTooWide', 'domain' => 'youtube.thumbnail'], 'too wide'],

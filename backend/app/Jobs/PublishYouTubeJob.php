@@ -152,7 +152,8 @@ class PublishYouTubeJob implements ShouldQueue
                 $result = $youtube->uploadVideo(
                     $accessToken, $stream, $size, $snippet, $privacy,
                     fn (string $step, ?string $uploadUrl = null) => $this->recordUploadStep($target, $step, $uploadUrl),
-                    $target->meta['upload_url'] ?? null
+                    $target->meta['upload_url'] ?? null,
+                    ! empty($options['made_with_ai'])
                 );
             } finally {
                 if (is_resource($stream)) {

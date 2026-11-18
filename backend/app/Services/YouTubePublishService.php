@@ -43,6 +43,36 @@ class YouTubePublishService
     public const SESSION_EXPIRED = 'Your YouTube session expired or was revoked. Reconnect YouTube from the Connections page, then try again.';
 
     /**
+     * thumbnails.set refused because the channel is not phone-verified. The
+     * video is already published by then, so there is nothing to retry: the
+     * user verifies the channel and sets the thumbnail in YouTube Studio.
+     */
+    public const THUMBNAIL_NEEDS_VERIFIED_CHANNEL = "Custom thumbnails need a phone-verified YouTube channel. Verify the channel at youtube.com/verify, then set this video's thumbnail in YouTube Studio.";
+
+    /**
+     * Google's per-project "Video Uploads per day" limit. It is not retried:
+     * a retry the same day cannot succeed.
+     */
+    public const DAILY_UPLOAD_QUOTA = "YouTube's daily video upload quota is used up, so this video was not uploaded. Reschedule the post for after midnight Pacific time, when the quota resets.";
+
+    /**
+     * Whether a refusal is the daily upload quota. Google reports it with
+     * the same `rateLimitExceeded` reason as a short-term rate limit (and,
+     * reportedly, a 429), so it is told apart by the limit named in the body:
+     * the limit id `defaultVideoInsertPerDayPerProject`, or the "Video Uploads
+     * per day" wording of the message.
+     *
+     * @param  Response|array<string, mixed>  $error  the response, or Google's `error` object
+     */
+    public static function isDailyUploadQuota(Response|array $error): bool
+    {
+        $body = $error instanceof Response ? $error->body() : (string) json_encode($error);
+
+        return str_contains($body, 'defaultVideoInsertPerDayPerProject')
+            || stripos($body, 'Video Uploads per day') !== false;
+    }
+
+    /**
      * Advice for a failed Data API call. Google doesn't keep refusals to
      * 401/403: a channel over its own upload cap comes back as a 400
      * `uploadLimitExceeded`, a bad title as a 400 `invalidTitle`.
@@ -75,6 +105,8 @@ class YouTubePublishService
         }
 
         return match (true) {
+            self::isDailyUploadQuota($error)
+                => self::DAILY_UPLOAD_QUOTA,
             in_array($reason, ['quotaExceeded', 'dailyLimitExceeded'], true)
                 => "YouTube's daily API quota is used up, so the upload was refused. It resets at midnight Pacific time; try again after that.",
             in_array($reason, ['rateLimitExceeded', 'userRateLimitExceeded'], true)
@@ -104,7 +136,7 @@ class YouTubePublishService
             $reason === 'failedPrecondition'
                 => 'The thumbnail is too large for YouTube (2 MB maximum).',
             $domain === 'youtube.thumbnail'
-                => 'This channel is not verified, so YouTube does not allow custom thumbnails. Verify the channel on YouTube, then try again.',
+                => self::THUMBNAIL_NEEDS_VERIFIED_CHANNEL,
             in_array($status, [401, 403], true)
                 => self::RECONNECT_FOR_UPLOAD.($reason !== '' ? " (YouTube said: {$reason}.)" : ''),
             default => "YouTube rejected the {$what}: ".($message !== '' ? $message : "HTTP {$status}"),
@@ -172,11 +204,12 @@ class YouTubePublishService
      * @param  resource  $videoStream  positioned at byte 0
      * @param  callable(string, ?string): void|null  $onStep  told the step name ("session-init", "probe", "upload") before each call so the job can persist it; the "upload" step also carries the session URI to persist for a resume
      * @param  string|null  $resumeUrl  the session URI a previous attempt persisted, if any
+     * @param  bool  $madeWithAi  the user declared realistic altered or synthetic content: sends status.containsSyntheticMedia = true (nothing is sent when false)
      * @return array{video_id: ?string, video_url: ?string, response: mixed}
      *
      * @throws TransientPublishException on a 429/5xx or a dropped connection mid-upload: the session stays resumable, so the job retries and resumes from the committed offset
      */
-    public function uploadVideo(string $accessToken, $videoStream, int $size, array $snippet, string $privacyStatus, ?callable $onStep = null, ?string $resumeUrl = null): array
+    public function uploadVideo(string $accessToken, $videoStream, int $size, array $snippet, string $privacyStatus, ?callable $onStep = null, ?string $resumeUrl = null, bool $madeWithAi = false): array
     {
         if (! in_array($privacyStatus, self::PRIVACY, true)) {
             $privacyStatus = 'private';
@@ -201,12 +234,17 @@ class YouTubePublishService
 
         if ($uploadUrl === null) {
             $step('session-init');
+            $status = [
+                'privacyStatus' => $privacyStatus,
+                'selfDeclaredMadeForKids' => false,
+            ];
+            if ($madeWithAi) {
+                // YouTube's altered or synthetic content disclosure.
+                $status['containsSyntheticMedia'] = true;
+            }
             $uploadUrl = $this->openSession($accessToken, $size, [
                 'snippet' => $snippet,
-                'status' => [
-                    'privacyStatus' => $privacyStatus,
-                    'selfDeclaredMadeForKids' => false,
-                ],
+                'status' => $status,
             ]);
         }
 
@@ -224,7 +262,7 @@ class YouTubePublishService
      */
     private function openSession(string $accessToken, int $size, array $metadata): string
     {
-        $init = Http::retry(3, 5000, fn (Throwable $e) => self::isTransient($e), throw: false)
+        $init = Http::retry(3, 5000, fn (Throwable $e) => self::isTransient($e) && ! self::isDailyUploadQuotaError($e), throw: false)
             ->withToken($accessToken)
             ->withHeaders([
                 'X-Upload-Content-Type' => 'video/*',
@@ -233,6 +271,10 @@ class YouTubePublishService
             ])
             ->post('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', $metadata);
 
+        // Checked before the transient statuses: it may come as a 429.
+        if (! $init->successful() && self::isDailyUploadQuota($init)) {
+            throw new RuntimeException(self::failureMessage($init));
+        }
         if (self::isTransientStatus($init->status())) {
             throw self::transient($init->status(), 'opening the upload session');
         }
@@ -332,6 +374,9 @@ class YouTubePublishService
             if ($upload->successful()) {
                 return $upload;
             }
+            if (self::isDailyUploadQuota($upload)) {
+                throw new RuntimeException(self::failureMessage($upload));
+            }
             if (self::isTransientStatus($upload->status())) {
                 throw self::transient($upload->status(), "uploading the video (byte {$offset} of {$size})");
             }
@@ -408,6 +453,11 @@ class YouTubePublishService
     {
         return $e instanceof ConnectionException
             || ($e instanceof RequestException && self::isTransientStatus($e->response->status()));
+    }
+
+    private static function isDailyUploadQuotaError(Throwable $e): bool
+    {
+        return $e instanceof RequestException && self::isDailyUploadQuota($e->response);
     }
 
     /**

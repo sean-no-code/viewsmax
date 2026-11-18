@@ -32,6 +32,8 @@ class PublishDuePosts extends Command
             ->where('status', Post::STATUS_SCHEDULED)
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<=', now())
+            ->orderBy('scheduled_at')
+            ->orderBy('id')
             ->get();
 
         if ($due->isEmpty()) {
@@ -40,6 +42,7 @@ class PublishDuePosts extends Command
 
         $dispatched = 0;
         $drafted = 0;
+        $skipped = 0;
         foreach ($due as $post) {
             try {
                 // A lapsed trial / cancelled plan / deleted owner: never publish on
@@ -53,8 +56,17 @@ class PublishDuePosts extends Command
                     continue;
                 }
 
-                // Flip status first so a subsequent tick can't re-dispatch this post.
-                $post->update(['status' => Post::STATUS_POSTED]);
+                // Claim the post with one conditional update. The copy in $due may
+                // be stale: the user can "Post now" (already dispatched),
+                // reschedule or move it to drafts between the query above and
+                // this post's turn. If the row is no longer scheduled and due,
+                // the claim changes nothing and the post is skipped.
+                if (! $post->claimForPublishing()) {
+                    $skipped++;
+                    $this->line("Post {$post->id} skipped: changed since it was loaded.");
+
+                    continue;
+                }
 
                 PostPublishDispatcher::dispatch($post);
 
@@ -73,7 +85,7 @@ class PublishDuePosts extends Command
         }
 
         // Observable even though the scheduler runs this with output to /dev/null.
-        Log::info('posts:publish-due ran', ['due' => $due->count(), 'dispatched' => $dispatched, 'drafted_no_access' => $drafted]);
+        Log::info('posts:publish-due ran', ['due' => $due->count(), 'dispatched' => $dispatched, 'drafted_no_access' => $drafted, 'skipped_changed' => $skipped]);
 
         return self::SUCCESS;
     }

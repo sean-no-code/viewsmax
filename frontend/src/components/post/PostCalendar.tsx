@@ -9,6 +9,7 @@ import { Check, ChevronLeft, ChevronRight, Clock, ExternalLink, Image as ImageIc
 import { Btn } from "@/components/analytics/primitives";
 import { PMAP } from "@/components/post/composer";
 import { BrandIcon, hasBrandIcon } from "@/components/post/brand-icons";
+import { YouTubeMark } from "@/components/post/YouTubeMark";
 import { publishedUrl } from "@/components/post/PostList";
 import { useAccountDirectory } from "@/components/post/useAccountDirectory";
 import { resolveMediaUrl, type Post, type PostTarget } from "@/lib/api-service";
@@ -83,9 +84,22 @@ const RATIO: Record<string, string> = {
   facebook: "1/1", threads: "1/1", bluesky: "16/9", pinterest: "3/4",
 };
 
+// YouTube is the official mark (YouTubeMark), not a glyph on a tile: at least
+// 20px high, so wider than the other tiles, and never covered by the next one.
+// Every caller sits inside a clickable cell or button, so it does not link.
 export function PlatformTile({ id, size, overlap, ring = true }: { id: string; size: number; overlap?: boolean; ring?: boolean }) {
   const p = PMAP[id];
   if (!p) return null;
+  if (id === "youtube") {
+    return (
+      <span style={{
+        display: "inline-flex", flex: "none", borderRadius: 3, background: "var(--paper-0)",
+        marginLeft: overlap ? -Math.round(size * 0.25) : 0, boxShadow: ring ? "0 0 0 1.5px var(--paper-0)" : "none",
+      }}>
+        <YouTubeMark size={size} link={false} />
+      </span>
+    );
+  }
   return (
     <span style={{
       width: size, height: size, borderRadius: Math.round(size * 0.3), background: TILE_BG[id] || p.accent,
@@ -300,7 +314,7 @@ function CalendarEntry({ post, active, onOpen, onLeave }: {
           )}
         </span>
         <span style={{ display: "flex", alignItems: "center" }}>
-          {targets.slice(0, 3).map((tg, i) => <PlatformTile key={tg.id} id={tg.platform} size={18} overlap={i > 0} />)}
+          {targets.slice(0, 3).map((tg, i) => <PlatformTile key={tg.id} id={tg.platform} size={18} overlap={i > 0 && targets[i - 1].platform !== "youtube"} />)}
           {targets.length > 3 && (
             <span style={{ marginLeft: 4, fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>+{targets.length - 3}</span>
           )}
@@ -371,7 +385,7 @@ function NativePreview({ post, onSelect, onReschedule, onDelete, onDone }: {
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 12px", background: "var(--paper-1)", borderBottom: "1px solid var(--line-1)" }}>
         {targets.map((tg, i) => (
           <button key={tg.id} onClick={() => setTab(i)} title={PMAP[tg.platform].name} aria-pressed={tg === active}
-            style={{ border: "none", background: "none", padding: 3, borderRadius: 10, cursor: "pointer", display: "grid", outline: tg === active ? "2px solid var(--ink-on-paper-1)" : "none", opacity: tg === active ? 1 : 0.45 }}>
+            style={{ border: "none", background: "none", padding: 3, borderRadius: 10, cursor: "pointer", display: "grid", outline: tg === active ? "2px solid var(--ink-on-paper-1)" : "none", opacity: tg === active || tg.platform === "youtube" ? 1 : 0.45 /* the YouTube mark is never dimmed */ }}>
             <PlatformTile id={tg.platform} size={24} ring={false} />
           </button>
         ))}

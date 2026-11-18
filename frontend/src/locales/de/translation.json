@@ -1428,7 +1428,13 @@
       "youtubePrivate": "Privat (nur du)",
       "youtubePublic": "Öffentlich",
       "youtubeTitleMissing": "YouTube benötigt einen Titel – füge eine Caption hinzu, sie wird als Videotitel verwendet.",
-      "youtubeUnlisted": "Nicht gelistet (alle mit dem Link)"
+      "youtubeUnlisted": "Nicht gelistet (alle mit dem Link)",
+      "youtubeMadeWithAi": "Mit KI erstellt (realistische veränderte oder synthetische Inhalte)",
+      "youtubeMadeWithAiHint": "Aktiviere das, wenn das Video realistische Personen, Orte oder Ereignisse zeigt, die mit KI erstellt oder verändert wurden. YouTube kennzeichnet es dann als veränderte oder synthetische Inhalte. Für Animationen oder eindeutig unrealistische Inhalte nicht nötig.",
+      "coverWrongType": "Das Cover muss ein JPEG- oder PNG-Bild sein.",
+      "youtubeCoverVerified": "Eigene Thumbnails erfordern einen per Telefon bestätigten YouTube-Kanal (youtube.com/verify).",
+      "youtubeCoverShorts": "Bei Videos, die YouTube als Shorts behandelt, kann ein eigenes Thumbnail ignoriert werden.",
+      "youtubeCoverRejected": "Lehnt YouTube das Thumbnail ab, wird das Video trotzdem veröffentlicht."
     },
     "drafts": {
       "empty": "Noch keine Entwürfe – starte einen über „Neuer Post“.",
@@ -1447,7 +1453,7 @@
       "commentsPostedFailed_other": "{{posted}}/{{count}} Kommentare gepostet · {{failed}} fehlgeschlagen",
       "empty": "Noch keine Posts. Veröffentlichte und geplante Posts erscheinen hier mit ihrem Status pro Plattform.",
       "eyebrow": "Veröffentlichung",
-      "inboxNote": "An den TikTok-Posteingang gesendet – öffne die TikTok-App, such das Video in deinen Benachrichtigungen und schließ das Posten dort ab. Captions können an Posteingang-Zustellungen nicht angehängt werden, füge deine also in der App ein.",
+      "inboxNote": "An den TikTok-Posteingang gesendet – öffne die TikTok-App, such den Beitrag in deinen Benachrichtigungen und schließ das Posten dort ab. Ein Video kommt ohne Caption an, füge deine also in der App ein; Fotobeiträge behalten Titel und Beschreibung.",
       "liveOnPlatform": "Live auf der Plattform.",
       "liveOnPlatformAt": "Live auf der Plattform ({{when}}).",
       "noCaption": "Keine Caption",

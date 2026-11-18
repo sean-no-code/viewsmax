@@ -9,6 +9,7 @@ import {
 } from '@/lib/outlier-service';
 import OutlierCard from '@/components/outliers/OutlierCard';
 import { BrandIcon } from '@/components/post/brand-icons';
+import { YouTubeMark } from '@/components/post/YouTubeMark';
 import { cardVariant } from '@/components/outliers/format';
 
 const CARD: CSSProperties = {
@@ -190,7 +191,10 @@ export default function OutliersLibrary() {
                                     background: active ? 'var(--vm-red-tint-l)' : 'var(--paper-0)',
                                 }}
                             >
-                                <BrandIcon platform={p} size={17} color={active ? 'var(--vm-red-deep)' : '#76767F'} />
+                                {/* YouTube branding: the official mark in its own colours, never tinted; the border shows the state. */}
+                                {p === 'youtube'
+                                    ? <YouTubeMark size={28} link={false} />
+                                    : <BrandIcon platform={p} size={17} color={active ? 'var(--vm-red-deep)' : '#76767F'} />}
                             </button>
                         );
                     })}

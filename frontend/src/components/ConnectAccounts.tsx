@@ -20,6 +20,7 @@ import {
   type SocialPlatformInfo,
 } from "@/lib/api-service";
 import { BrandIcon } from "@/components/post/brand-icons";
+import { YouTubeMark } from "@/components/post/YouTubeMark";
 import { PMAP, PAvatar } from "@/components/post/composer";
 import { refreshAccountDirectory } from "@/components/post/useAccountDirectory";
 import { BeehiivIntegration } from "@/components/BeehiivIntegration";
@@ -235,9 +236,14 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
             <div key={entry.key} className="rounded-lg border p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: accent }}>
-                    <BrandIcon platform={entry.key} size={18} color="#fff" />
-                  </span>
+                  {entry.key === "youtube" ? (
+                    // YouTube branding: the official mark only, never a glyph in a circle.
+                    <YouTubeMark size={36} />
+                  ) : (
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: accent }}>
+                      <BrandIcon platform={entry.key} size={18} color="#fff" />
+                    </span>
+                  )}
                   <div className="min-w-0">
                     <p className="truncate font-medium">{labelFor(entry.key)}</p>
                     {accts.length === 0 && (
@@ -273,7 +279,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     return (
                       <div key={a.id} className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-1.5">
                         <div className="flex min-w-0 items-center gap-2">
-                          <PAvatar id={entry.key} size={28} avatarUrl={a.avatar_url} />
+                          <PAvatar id={entry.key} size={28} avatarUrl={a.avatar_url} channel={a.profile_url || a.platform_account_id} markLink />
                           <span className="truncate text-sm">{a.name || (a.username ? `@${a.username}` : t("connections.accounts.accountFallback", "Account {{id}}", { id: a.id }))}</span>
                           {stale ? (
                             <span className="flex items-center gap-1 text-xs text-amber-600">
@@ -319,7 +325,10 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
           >
             <div className="flex min-w-0 flex-1 items-center gap-3">
               {connected && accountAvatar(entry) ? (
-                <PAvatar id={entry.key} size={36} avatarUrl={accountAvatar(entry)} />
+                <PAvatar id={entry.key} size={36} avatarUrl={accountAvatar(entry)} markLink />
+              ) : entry.key === "youtube" ? (
+                // YouTube branding: the official mark only, never a glyph in a circle.
+                <YouTubeMark size={36} />
               ) : (
                 <span
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full"

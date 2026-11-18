@@ -364,6 +364,47 @@ class PostCaptionLimitsTest extends TestCase
         $this->assertStringContainsString('< or >', $response->json('message'));
     }
 
+    public function test_youtube_made_with_ai_is_saved_on_the_target_and_must_be_a_boolean(): void
+    {
+        $id = $this->createPost([
+            'caption' => 'x',
+            'platforms' => ['youtube'],
+            'options' => ['youtube' => ['title' => 'T', 'made_with_ai' => true]],
+            'status' => 'draft',
+        ])->assertStatus(201)->json('id');
+
+        $target = \App\Models\PostTarget::where('post_id', $id)->where('platform', 'youtube')->first();
+        $this->assertTrue($target->options['made_with_ai']);
+
+        $this->createPost([
+            'caption' => 'x',
+            'platforms' => ['youtube'],
+            'options' => ['youtube' => ['made_with_ai' => 'definitely']],
+            'status' => 'draft',
+        ])->assertStatus(422);
+    }
+
+    public function test_youtube_thumbnail_must_be_jpeg_or_png_even_on_drafts(): void
+    {
+        $thumb = fn (string $path, string $mime) => ['url' => "https://cdn.example/{$path}", 'path' => $path, 'disk' => 'r2', 'mime' => $mime];
+        $post = fn (array $thumbnail) => $this->createPost([
+            'caption' => 'x',
+            'platforms' => ['youtube'],
+            'options' => ['youtube' => ['title' => 'T', 'thumbnail' => $thumbnail]],
+            'status' => 'draft',
+        ]);
+
+        $post($thumb('posts/1/cover.jpg', 'image/jpeg'))->assertStatus(201);
+        $post($thumb('posts/1/cover.jpeg', 'image/jpeg'))->assertStatus(201);
+        $post($thumb('posts/1/cover.png', 'image/png'))->assertStatus(201);
+
+        foreach ([['posts/1/cover.webp', 'image/webp'], ['posts/1/cover.gif', 'image/gif'], ['posts/1/cover.webp', 'image/jpeg'], ['posts/1/cover.jpg', 'image/webp']] as [$path, $mime]) {
+            $post($thumb($path, $mime))
+                ->assertStatus(422)
+                ->assertJsonFragment(['message' => 'The YouTube thumbnail must be a JPEG or PNG image.']);
+        }
+    }
+
     /* ---------- Bluesky counts graphemes, not code points ---------- */
 
     public function test_bluesky_counts_graphemes_so_emoji_sequences_and_combining_marks_fit(): void

@@ -600,6 +600,9 @@ export interface YouTubeOptions {
   // The composer's confirmation that the video follows YouTube's Community
   // Guidelines; publishing to YouTube is blocked until it is given.
   community_guidelines_accepted?: boolean;
+  // Declares realistic altered or AI-generated content; the upload then sends
+  // YouTube's status.containsSyntheticMedia. Off (and not sent) by default.
+  made_with_ai?: boolean;
 }
 
 export interface LinkedInOptions {

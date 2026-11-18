@@ -7,13 +7,17 @@ import { ArrowRight, Check, Link2 } from "lucide-react";
 import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { Accordion, CARD, H2, OUTLINE_BTN, PRIMARY_BTN } from "@/components/agents/primitives";
 import { BrandIcon } from "@/components/post/brand-icons";
+import { YouTubeMark } from "@/components/post/YouTubeMark";
 import { useSeo } from "@/hooks/useSeo";
 import { CHANNELS, CHANNEL_LIST, CHANNELS_PATH, buildChannelJsonLd, type ChannelConfig, type ChannelKey } from "@/lib/channel-pages";
 
 const SIGNUP = "/auth?tab=signup";
 const OG_IMAGE = "https://viewsmax.com/og-image.png";
 
-export function ChannelTile({ cfg, size = 56 }: { cfg: ChannelConfig; size?: number }) {
+// YouTube is the official mark (YouTubeMark), never a glyph on a coloured tile.
+// `link`: only where the tile is not already inside a link.
+export function ChannelTile({ cfg, size = 56, link = false }: { cfg: ChannelConfig; size?: number; link?: boolean }) {
+  if (cfg.key === "youtube") return <YouTubeMark size={size} link={link} />;
   return (
     <span className="grid shrink-0 place-items-center rounded-2xl text-white shadow-md" style={{ width: size, height: size, background: cfg.color }} aria-hidden>
       <BrandIcon platform={cfg.key} size={Math.round(size * 0.5)} />
@@ -81,7 +85,7 @@ export default function ChannelPage({ channel }: { channel: ChannelKey }) {
         <section className="grid gap-10 lg:grid-cols-[1.3fr_1fr] lg:items-center">
           <div>
             <div className="flex items-center gap-4">
-              <ChannelTile cfg={cfg} />
+              <ChannelTile cfg={cfg} link />
               <span className="inline-flex items-center rounded-full border border-line-1 bg-paper-0 px-3.5 py-[7px] text-xs font-bold text-ink-on-paper-2">
                 {cfg.name} scheduler
               </span>

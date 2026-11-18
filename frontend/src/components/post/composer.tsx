@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Icon } from "@/components/analytics/primitives";
 import { BrandIcon, hasBrandIcon } from "@/components/post/brand-icons";
+import { YouTubeMark } from "@/components/post/YouTubeMark";
 import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type PinterestOptions, type Post, type PostMediaItem } from "@/lib/api-service";
 import { platformLength, splitXThread, xThreadStatus, xWeightedLength, X_LIMIT, X_MAX_IMAGES, type XThreadStatus } from "@/lib/text-metrics";
 
@@ -466,7 +467,12 @@ export type Composer = ReturnType<typeof usePostComposer>;
 // `avatarUrl` swaps the brand-glyph circle for the account's real profile photo
 // with a small platform badge pinned bottom-right (badge only when size > 20 —
 // smaller than that it's unreadable). Broken/missing images fall back to the glyph.
-export function PAvatar({ id, size = 40, ring, dim, badge, connect, avatarUrl }: { id: string; size?: number; ring?: boolean; dim?: boolean; badge?: string | null; connect?: boolean; avatarUrl?: string | null }) {
+// YouTube is never drawn as a glyph in a coloured circle: its branding rules
+// allow only the official mark (YouTubeMark), in full colour (never greyed out
+// when muted), at least 20px high. It replaces the circle, or is the badge next
+// to a profile photo. `markLink` makes it link to `channel` (or youtube.com);
+// leave it off where the avatar sits inside a button, link or clickable row.
+export function PAvatar({ id, size = 40, ring, dim, badge, connect, avatarUrl, channel, markLink = false }: { id: string; size?: number; ring?: boolean; dim?: boolean; badge?: string | null; connect?: boolean; avatarUrl?: string | null; channel?: string | null; markLink?: boolean }) {
   const p = PMAP[id];
   const [imgFailed, setImgFailed] = useState(false);
   if (!p) return null;
@@ -474,6 +480,23 @@ export function PAvatar({ id, size = 40, ring, dim, badge, connect, avatarUrl }:
   const iconColor = muted ? "var(--ink-on-paper-3)" : "#fff";
   const showImg = !!avatarUrl && !imgFailed && !connect;
   const badgeSize = Math.max(14, Math.round(size * 0.44));
+  const youtube = id === "youtube";
+  // Corner badges sit beside the YouTube mark instead of covering it.
+  const cornerOffset = youtube && !showImg ? -18 : -3;
+  if (youtube && !showImg) {
+    return (
+      <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+        <span style={{
+          display: "inline-flex", borderRadius: 4, transition: "all var(--dur)",
+          boxShadow: connect ? "0 0 0 2px var(--paper-0), 0 0 0 4px var(--vm-red)"
+            : ring ? `0 0 0 2px var(--paper-0), 0 0 0 4px ${p.accent}` : "none",
+        }}>
+          <YouTubeMark size={size} channel={channel} link={markLink} />
+        </span>
+        {pavatarBadges({ connect, badge, offset: cornerOffset })}
+      </span>
+    );
+  }
   return (
     <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
       <span style={{
@@ -488,7 +511,12 @@ export function PAvatar({ id, size = 40, ring, dim, badge, connect, avatarUrl }:
           ? <img src={avatarUrl!} alt="" onError={() => setImgFailed(true)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           : hasBrandIcon(id) ? <BrandIcon platform={id} size={Math.round(size * 0.52)} color={iconColor} /> : p.glyph}
       </span>
-      {showImg && size > 20 && !connect && (
+      {showImg && size > 20 && !connect && youtube && (
+        <span style={{ position: "absolute", bottom: -4, right: -12, display: "inline-flex", padding: 1, borderRadius: 4, background: "var(--paper-0)" }}>
+          <YouTubeMark channel={channel} link={markLink} />
+        </span>
+      )}
+      {showImg && size > 20 && !connect && !youtube && (
         <span style={{
           position: "absolute", bottom: -3, right: -3, width: badgeSize, height: badgeSize,
           borderRadius: "50%", background: muted ? "var(--paper-2)" : p.accent, border: "2px solid var(--paper-0)",
@@ -499,23 +527,29 @@ export function PAvatar({ id, size = 40, ring, dim, badge, connect, avatarUrl }:
             : <span style={{ color: iconColor, fontSize: badgeSize * 0.55, fontFamily: "var(--font-display)", fontWeight: 800 }}>{p.glyph}</span>}
         </span>
       )}
-      {connect ? (
-        <span style={{
-          position: "absolute", bottom: -3, right: -3, width: 18, height: 18,
-          borderRadius: 999, background: "var(--vm-red)", border: "2px solid var(--paper-0)",
-          display: "grid", placeItems: "center",
-        }}>
-          <Icon name="plus" size={11} stroke="#fff" />
-        </span>
-      ) : badge != null ? (
-        <span style={{
-          position: "absolute", top: -3, right: -3, minWidth: 16, height: 16, padding: "0 4px",
-          borderRadius: 999, background: "var(--vm-red)", color: "#fff", border: "2px solid var(--paper-0)",
-          fontFamily: "var(--font-mono)", fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center",
-        }}>{badge}</span>
-      ) : null}
+      {pavatarBadges({ connect, badge, offset: cornerOffset })}
     </span>
   );
+}
+
+// PAvatar's corner badges: the red "+" of a platform that is not connected,
+// or a short notice such as "!" for an over-limit caption.
+function pavatarBadges({ connect, badge, offset }: { connect?: boolean; badge?: string | null; offset: number }) {
+  return connect ? (
+    <span style={{
+      position: "absolute", bottom: -3, right: offset, width: 18, height: 18,
+      borderRadius: 999, background: "var(--vm-red)", border: "2px solid var(--paper-0)",
+      display: "grid", placeItems: "center",
+    }}>
+      <Icon name="plus" size={11} stroke="#fff" />
+    </span>
+  ) : badge != null ? (
+    <span style={{
+      position: "absolute", top: -3, right: offset, minWidth: 16, height: 16, padding: "0 4px",
+      borderRadius: 999, background: "var(--vm-red)", color: "#fff", border: "2px solid var(--paper-0)",
+      fontFamily: "var(--font-mono)", fontSize: 9, fontWeight: 700, display: "grid", placeItems: "center",
+    }}>{badge}</span>
+  ) : null;
 }
 
 /* ---------------- Media thumbnail ---------------- */
@@ -703,7 +737,7 @@ export function PostPreview({ id, text, media, compact, handle }: { id: string; 
   return (
     <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.05)", fontFamily: "var(--font-body)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: compact ? "10px 12px" : "13px 14px" }}>
-        <PAvatar id={id} size={compact ? 30 : 36} />
+        <PAvatar id={id} size={compact ? 30 : 36} markLink />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: compact ? 12.5 : 13.5, color: "var(--ink-on-paper-1)", display: "flex", alignItems: "center", gap: 5 }}>
             {p.handle.startsWith("@") ? p.handle.replace("@", "") : p.handle}

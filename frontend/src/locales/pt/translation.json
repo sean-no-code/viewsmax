@@ -1455,7 +1455,13 @@
       "youtubePrivate": "Privado (só você)",
       "youtubePublic": "Público",
       "youtubeTitleMissing": "O YouTube exige um título — adicione uma legenda, ela será usada como título do vídeo.",
-      "youtubeUnlisted": "Não listado (qualquer pessoa com o link)"
+      "youtubeUnlisted": "Não listado (qualquer pessoa com o link)",
+      "youtubeMadeWithAi": "Feito com IA (conteúdo realista alterado ou sintético)",
+      "youtubeMadeWithAiHint": "Ative se o vídeo mostrar pessoas, lugares ou acontecimentos realistas criados ou alterados com IA. O YouTube então o identifica como conteúdo alterado ou sintético. Não é necessário para animações ou conteúdo claramente irreal.",
+      "coverWrongType": "A capa precisa ser uma imagem JPEG ou PNG.",
+      "youtubeCoverVerified": "Miniaturas personalizadas exigem um canal do YouTube verificado por telefone (youtube.com/verify).",
+      "youtubeCoverShorts": "O YouTube pode ignorar a miniatura personalizada em vídeos que ele trata como Shorts.",
+      "youtubeCoverRejected": "Se o YouTube recusar a miniatura, o vídeo é publicado mesmo assim."
     },
     "drafts": {
       "empty": "Nenhum rascunho ainda — comece um em Nova publicação.",
@@ -1476,7 +1482,7 @@
       "commentsPostedFailed_other": "{{posted}}/{{count}} comentários publicados · {{failed}} com falha",
       "empty": "Nenhuma publicação ainda. Publicações feitas e agendadas aparecem aqui com o status de cada plataforma.",
       "eyebrow": "Publicação",
-      "inboxNote": "Enviado para a caixa de entrada do TikTok — abra o app do TikTok, encontre o vídeo nas notificações e conclua a publicação por lá. Não é possível anexar legendas a envios para a caixa de entrada, então cole a sua no app.",
+      "inboxNote": "Enviado para a caixa de entrada do TikTok — abra o app do TikTok, encontre a publicação nas notificações e conclua a publicação por lá. Um vídeo chega sem a legenda, então cole a sua no app; publicações de fotos mantêm o título e a descrição.",
       "liveOnPlatform": "No ar na plataforma.",
       "liveOnPlatformAt": "No ar na plataforma ({{when}}).",
       "noCaption": "Sem legenda",

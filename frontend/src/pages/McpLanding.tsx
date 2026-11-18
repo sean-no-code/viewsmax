@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { BrandIcon } from "@/components/post/brand-icons";
+import { YouTubeMark } from "@/components/post/YouTubeMark";
 import { Accordion, CARD, CodeBlock, CopyLabelsContext, H2, OUTLINE_BTN, PRIMARY_BTN, PromptBox, useCopy } from "@/components/agents/primitives";
 import { useSeo } from "@/hooks/useSeo";
 import { AGENT_LIST, MCP_ENDPOINT, PLATFORMS } from "@/lib/agent-pages";
@@ -144,7 +145,10 @@ function McpPage({ content }: { content: McpContent }) {
             {p.badge}
           </span>
           <span className="flex gap-1.5" aria-label={p.platformsAria}>
-            {PLATFORMS.map((pl) => (
+            {PLATFORMS.map((pl) => pl.icon === "youtube" ? (
+              // YouTube branding: the official mark, never a glyph on a coloured tile.
+              <span key={pl.name} className="grid h-7 place-items-center"><YouTubeMark size={28} /></span>
+            ) : (
               <span key={pl.name} title={pl.name} className="grid h-7 w-7 place-items-center rounded-lg text-white shadow-sm" style={{ background: pl.color }}>
                 <BrandIcon platform={pl.icon} size={14} />
               </span>
@@ -277,9 +281,13 @@ function McpPage({ content }: { content: McpContent }) {
           <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PLATFORMS.map((pl) => (
               <li key={pl.name} className={`${CARD} flex items-start gap-3 p-4`}>
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white shadow-sm" style={{ background: pl.color }}>
-                  <BrandIcon platform={pl.icon} size={18} />
-                </span>
+                {pl.icon === "youtube" ? (
+                  <span className="grid h-9 shrink-0 place-items-center"><YouTubeMark size={36} /></span>
+                ) : (
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white shadow-sm" style={{ background: pl.color }}>
+                    <BrandIcon platform={pl.icon} size={18} />
+                  </span>
+                )}
                 <span>
                   <span className="block font-bold">{pl.name}</span>
                   <span className="mt-0.5 block text-sm leading-[1.45] text-ink-on-paper-2">{c.platformNotes[pl.icon as keyof typeof c.platformNotes] ?? pl.note}</span>

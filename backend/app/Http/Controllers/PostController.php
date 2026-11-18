@@ -74,6 +74,8 @@ class PostController extends Controller
      * @bodyParam options.youtube.privacy_status string public, unlisted, or private. Example: public
      * @bodyParam options.youtube.title string Video title (max 100, no < or >). Empty = the caption's first 100 characters. Example: My new video
      * @bodyParam options.youtube.community_guidelines_accepted boolean The composer's confirmation that the video follows YouTube's Community Guidelines. Example: true
+     * @bodyParam options.youtube.thumbnail object Custom thumbnail from POST /api/posts/media ({url, path, disk, mime}). JPEG or PNG only.
+     * @bodyParam options.youtube.made_with_ai boolean Declares realistic altered or AI-generated content (YouTube's altered or synthetic content label). Defaults to false. Example: false
      * @bodyParam options.instagram.cover_url string Public cover image URL for an Instagram Reel.
      * @bodyParam options.linkedin.first_comment string A comment auto-posted right after publishing.
      * @bodyParam options.pinterest.board_ids object Board per Pinterest account, keyed by social_account_id (boards from GET /api/social/accounts/{id}/boards). Required to publish; never chosen for you.
@@ -237,9 +239,21 @@ class PostController extends Controller
         // rules in the one above would strip every other platform's options
         // from the validated data.
         // YouTube's own title limit applies as typed (the upload would refuse more).
+        // thumbnails.set takes JPEG or PNG only; anything else would upload and
+        // then be dropped with a warning, so refuse it here. Uploaded files are
+        // stored under a content-derived extension, so the path tells the type.
         Validator::make($request->input('options.youtube') ?? [], [
             'title' => 'nullable|string|max:'.\App\Services\Social\CaptionRules::YOUTUBE_TITLE_MAX,
             'community_guidelines_accepted' => 'nullable|boolean',
+            'made_with_ai' => 'nullable|boolean',
+            'thumbnail' => ['nullable', 'array', function (string $attribute, mixed $thumb, \Closure $fail) {
+                $path = (string) ($thumb['path'] ?? '');
+                $mime = $thumb['mime'] ?? null;
+                if (($path !== '' && ! preg_match('/\.(jpe?g|png)$/i', $path))
+                    || ($mime !== null && ! in_array($mime, ['image/jpeg', 'image/png'], true))) {
+                    $fail('The YouTube thumbnail must be a JPEG or PNG image.');
+                }
+            }],
         ])->validate();
 
         Validator::make($request->input('options.pinterest') ?? [], [
@@ -399,6 +413,12 @@ class PostController extends Controller
                 abort(response()->json([
                     'message' => 'TikTok requires an uploaded video or one or more images before publishing or scheduling.',
                 ], 422));
+            }
+
+            // TikTok refuses photos over 1080px on the shorter side, but only
+            // at publish time; measure the stored images now instead.
+            if ($photoError = MediaRules::tiktokPhotoError($data['media'] ?? [])) {
+                abort(response()->json(['message' => $photoError], 422));
             }
 
             // TikTok audit compliance: the user must have explicitly chosen a

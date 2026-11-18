@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { TrendingUp, Eye, Heart, Bookmark, MessageCircle, BarChart3, Star } from 'lucide-react';
 import type { OutlierVideo } from '@/lib/outlier-service';
 import { BrandIcon, hasBrandIcon } from '@/components/post/brand-icons';
+import { YouTubeMark } from '@/components/post/YouTubeMark';
 import { formatCompact, formatDuration, formatScore, timeAgo, scoreTier, bestThumbnail, fallbackThumbnail, cardVariant } from './format';
 
 interface Props {
@@ -74,7 +75,13 @@ export default function OutlierCard({ video, variant, saved, onToggleSave, emoji
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     />
                 )}
-                {hasBrandIcon(video.platform) && (
+                {video.platform === 'youtube' ? (
+                    // YouTube branding: the official mark, at least 20px high, never in a circle.
+                    // No link: the whole card opens the outlier.
+                    <span style={{ position: 'absolute', left: 8, bottom: 8, display: 'inline-flex' }}>
+                        <YouTubeMark link={false} />
+                    </span>
+                ) : hasBrandIcon(video.platform) && (
                     <span style={{ position: 'absolute', left: 8, bottom: 8, width: 24, height: 24, borderRadius: '50%', background: 'rgba(6,6,8,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={video.platform}>
                         <BrandIcon platform={video.platform} size={13} color="#fff" />
                     </span>

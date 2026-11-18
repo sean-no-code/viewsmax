@@ -38,19 +38,49 @@ class Post extends Model
      */
     protected static function booted(): void
     {
-        $count = fn (Post $post) => User::whereKey($post->user_id)->increment('posts_published_count');
-
-        static::created(function (Post $post) use ($count) {
+        static::created(function (Post $post) {
             if ($post->status === self::STATUS_POSTED) {
-                $count($post);
+                $post->countAsPublished();
             }
         });
 
-        static::updated(function (Post $post) use ($count) {
+        static::updated(function (Post $post) {
             if ($post->status === self::STATUS_POSTED && $post->wasChanged('status')) {
-                $count($post);
+                $post->countAsPublished();
             }
         });
+    }
+
+    private function countAsPublished(): void
+    {
+        User::whereKey($this->user_id)->increment('posts_published_count');
+    }
+
+    /**
+     * Atomically move a due scheduled post to posted, for posts:publish-due.
+     * One conditional UPDATE: it changes the row only if the post is still
+     * scheduled and still due, so a post the user published with "Post now",
+     * rescheduled or moved to drafts after the command loaded it is left
+     * alone (returns false) instead of being overwritten and dispatched.
+     * On success the model is refreshed from the row.
+     */
+    public function claimForPublishing(): bool
+    {
+        $claimed = static::whereKey($this->getKey())
+            ->where('status', self::STATUS_SCHEDULED)
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<=', now())
+            ->update(['status' => self::STATUS_POSTED]);
+
+        if ($claimed === 0) {
+            return false;
+        }
+
+        // A query-builder update fires no model events, so count it here.
+        $this->countAsPublished();
+        $this->refresh();
+
+        return true;
     }
 
     public function user(): BelongsTo

@@ -9,6 +9,7 @@ import { Check, ChevronRight, Copy, ExternalLink, FileText, Plus } from "lucide-
 import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { Accordion, CARD, CodeBlock, H2, OUTLINE_BTN, PRIMARY_BTN, PromptBox, useCopy, type CopyFn } from "@/components/agents/primitives";
 import { BrandIcon } from "@/components/post/brand-icons";
+import { YouTubeMark } from "@/components/post/YouTubeMark";
 import { useSeo } from "@/hooks/useSeo";
 import {
   AGENTS,
@@ -103,7 +104,10 @@ export default function AgentPage({ agent }: { agent: AgentKey }) {
             ViewsMax
           </span>
           <span className="flex gap-1.5" aria-label={`Posts to ${PLATFORMS.map((p) => p.name).join(", ")}`}>
-            {PLATFORMS.map((p) => (
+            {PLATFORMS.map((p) => p.icon === "youtube" ? (
+              // YouTube branding: the official mark, never a glyph on a coloured tile.
+              <span key={p.name} className="grid h-7 place-items-center"><YouTubeMark size={28} /></span>
+            ) : (
               <span key={p.name} title={p.name} className="grid h-7 w-7 place-items-center rounded-lg text-white shadow-sm" style={{ background: p.color }}>
                 <BrandIcon platform={p.icon} size={14} />
               </span>
@@ -244,9 +248,13 @@ export default function AgentPage({ agent }: { agent: AgentKey }) {
             {PLATFORMS.map((p) => (
               <div key={p.name} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5">
                 <span className="flex w-32 shrink-0 items-center gap-2.5 font-bold">
-                  <span className="grid h-6 w-6 place-items-center rounded-md text-white" style={{ background: p.color }}>
-                    <BrandIcon platform={p.icon} size={12} />
-                  </span>
+                  {p.icon === "youtube" ? (
+                    <YouTubeMark />
+                  ) : (
+                    <span className="grid h-6 w-6 place-items-center rounded-md text-white" style={{ background: p.color }}>
+                      <BrandIcon platform={p.icon} size={12} />
+                    </span>
+                  )}
                   {p.name}
                 </span>
                 <span className="text-[15px] text-ink-on-paper-2">{p.note}</span>

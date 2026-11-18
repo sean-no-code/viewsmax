@@ -17,6 +17,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
@@ -621,10 +622,76 @@ class TikTokPendingPublishTest extends TestCase
 
         $this->artisan('posts:resolve-tiktok-ids')->assertSuccessful();
 
-        $this->assertCount(1, $this->requests('/status/fetch/'), 'only the public, recent, direct target is asked about');
-        $this->assertSame('v_pub_file~1', json_decode($this->requests('/status/fetch/')->first()->body(), true)['publish_id']);
+        // The id lookup asks only about the public, recent, direct target; the
+        // inbox target is asked once more by the inbox check, never for an id.
+        $asked = $this->requests('/status/fetch/')->map(fn (Request $r) => json_decode($r->body(), true)['publish_id'])->values()->all();
+        $this->assertSame(['v_pub_file~1', 'v_inbox_file~4'], $asked);
         $this->assertNull($waiting->refresh()->platform_post_id);
         $this->assertSame(PostTarget::STATUS_PUBLISHED, $waiting->status);
+        $this->assertNull($inbox->refresh()->platform_post_id);
+        $this->assertSame('PUBLISH_COMPLETE', $inbox->meta['inbox_final_status']);
+        $this->assertArrayNotHasKey('warning', $inbox->meta);
+    }
+
+    // ---- inbox deliveries that TikTok fails afterwards ----------
+
+    private function inboxTarget(User $user, SocialAccount $account, string $publishId, $publishedAt): PostTarget
+    {
+        $target = $this->pendingTarget($user, $account, $publishId);
+        $target->forceFill([
+            'status' => PostTarget::STATUS_PUBLISHED,
+            'published_at' => $publishedAt,
+            'error' => 'Sent to your TikTok inbox — open TikTok to finish posting.',
+            'meta' => ['publish_id' => $publishId, 'mode' => 'inbox'],
+        ])->save();
+
+        return $target;
+    }
+
+    public function test_an_inbox_delivery_tiktok_fails_later_gets_a_warning_and_a_log_line(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $target = $this->inboxTarget($user, $account, 'v_inbox_url~9', now()->subHour());
+        Log::spy();
+        Http::fake(['*/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'FAILED', 'fail_reason' => 'video_pull_failed']], 200)]);
+
+        $this->artisan('posts:resolve-tiktok-ids')->assertSuccessful();
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, 'what reached the inbox stays published');
+        $this->assertSame('FAILED', $target->meta['inbox_final_status']);
+        $this->assertSame(
+            'TikTok later reported that this inbox delivery failed: '.TikTokPublishService::errorMessage('video_pull_failed').' Post it again if it is not in your TikTok app.',
+            $target->meta['warning'],
+        );
+        Log::shouldHaveReceived('warning')
+            ->withArgs(fn ($message, $context = []) => $message === 'TikTok inbox delivery failed after reaching the inbox'
+                && ($context['response']['fail_reason'] ?? null) === 'video_pull_failed'
+                && $context['post_target_id'] === $target->id)
+            ->once();
+
+        // A final status is not asked about again.
+        $this->artisan('posts:resolve-tiktok-ids')->assertSuccessful();
+        $this->assertCount(1, $this->requests('/status/fetch/'));
+    }
+
+    public function test_an_inbox_delivery_still_waiting_or_too_old_is_left_alone(): void
+    {
+        $user = User::factory()->create();
+        $account = $this->account($user);
+        $waiting = $this->inboxTarget($user, $account, 'v_inbox_url~10', now()->subHour());
+        $old = $this->inboxTarget($user, $account, 'v_inbox_url~11', now()->subDays(2));
+        Http::fake(['*/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'SEND_TO_USER_INBOX']], 200)]);
+
+        $this->artisan('posts:resolve-tiktok-ids')->assertSuccessful();
+        $this->artisan('posts:resolve-tiktok-ids')->assertSuccessful();
+
+        $asked = $this->requests('/status/fetch/')->map(fn (Request $r) => json_decode($r->body(), true)['publish_id'])->values()->all();
+        $this->assertSame(['v_inbox_url~10', 'v_inbox_url~10'], $asked, 'still in the inbox: asked again next run; the old one never');
+        $this->assertArrayNotHasKey('inbox_final_status', $waiting->refresh()->meta);
+        $this->assertArrayNotHasKey('warning', $waiting->meta);
+        $this->assertSame(['publish_id' => 'v_inbox_url~11', 'mode' => 'inbox'], $old->refresh()->meta);
     }
 
     // ---- the legacy SocialPost path ---------------------------------

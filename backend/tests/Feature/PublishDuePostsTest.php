@@ -93,6 +93,98 @@ class PublishDuePostsTest extends TestCase
         Queue::assertPushed(PublishToXJob::class, 2);
     }
 
+    // ---- Posts changed while the batch runs ----
+
+    /**
+     * Run publish-due with two due posts, $first then $second. When $first's
+     * target is dispatched (flipped to publishing), $change runs against
+     * $second, i.e. after the command has loaded both posts but before it
+     * reaches $second. $second targets LinkedIn so its job can be told apart.
+     */
+    private function runWithChangeBeforeSecondPost(callable $change): array
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $first = $this->scheduledPost($user, now()->subMinutes(10));
+        $second = $this->scheduledPost($user, now()->subMinutes(5), 'linkedin');
+
+        $done = false;
+        PostTarget::updated(function (PostTarget $target) use ($first, $second, $change, &$done) {
+            if (! $done && $target->post_id === $first->id && $target->status === PostTarget::STATUS_PUBLISHING) {
+                $done = true;
+                $change(Post::find($second->id));
+            }
+        });
+
+        $this->artisan('posts:publish-due')->assertExitCode(0);
+
+        return [$first->refresh(), $second->refresh(), $user->refresh()];
+    }
+
+    public function test_a_post_moved_to_draft_mid_batch_is_not_published(): void
+    {
+        [$first, $second] = $this->runWithChangeBeforeSecondPost(
+            fn (Post $post) => $post->update(['status' => Post::STATUS_DRAFT, 'scheduled_at' => null]),
+        );
+
+        $this->assertSame(Post::STATUS_POSTED, $first->status);
+        $this->assertSame(Post::STATUS_DRAFT, $second->status);
+        Queue::assertPushed(PublishToXJob::class, 1);
+        Queue::assertNotPushed(\App\Jobs\PublishToLinkedInJob::class);
+    }
+
+    public function test_a_post_rescheduled_mid_batch_keeps_its_new_time(): void
+    {
+        $later = now()->addDay()->startOfMinute();
+        [, $second] = $this->runWithChangeBeforeSecondPost(
+            fn (Post $post) => $post->update(['scheduled_at' => $later]),
+        );
+
+        $this->assertSame(Post::STATUS_SCHEDULED, $second->status);
+        $this->assertTrue($second->scheduled_at->equalTo($later));
+        Queue::assertNotPushed(\App\Jobs\PublishToLinkedInJob::class);
+    }
+
+    public function test_a_post_already_posted_mid_batch_is_not_dispatched_again(): void
+    {
+        // "Post now" flips the post to posted and dispatches it itself.
+        [, $second, $user] = $this->runWithChangeBeforeSecondPost(
+            fn (Post $post) => $post->update(['status' => Post::STATUS_POSTED]),
+        );
+
+        $this->assertSame(Post::STATUS_POSTED, $second->status);
+        Queue::assertNotPushed(\App\Jobs\PublishToLinkedInJob::class);
+        // Counted once by "Post now", once for the first post: not twice for the second.
+        $this->assertSame(2, $user->posts_published_count);
+    }
+
+    public function test_a_due_post_is_dispatched_exactly_once_and_counted_once(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $post = $this->scheduledPost($user, now()->subMinute());
+
+        $this->artisan('posts:publish-due')->assertExitCode(0);
+        $this->artisan('posts:publish-due')->assertExitCode(0);
+
+        $this->assertSame(Post::STATUS_POSTED, $post->refresh()->status);
+        $this->assertSame(PostTarget::STATUS_PUBLISHING, $post->targets()->first()->status);
+        Queue::assertPushed(PublishToXJob::class, 1);
+        $this->assertSame(1, $user->refresh()->posts_published_count);
+    }
+
+    public function test_claim_refuses_a_stale_copy(): void
+    {
+        $user = User::factory()->create();
+        $post = $this->scheduledPost($user, now()->subMinute());
+        $stale = Post::find($post->id);
+
+        $this->assertTrue($post->claimForPublishing());
+        $this->assertSame(Post::STATUS_POSTED, $post->status);
+        $this->assertFalse($stale->claimForPublishing());
+        $this->assertSame(1, $user->refresh()->posts_published_count);
+    }
+
     // ---- Owners without access ----
 
     public function test_a_lapsed_owners_due_post_goes_back_to_draft_instead_of_publishing(): void

@@ -120,6 +120,9 @@ class CreatePost extends ViewsMaxTool
             . 'Publishing/scheduling to TikTok requires options.tiktok.privacy_level '
             . '(one of PUBLIC_TO_EVERYONE, MUTUAL_FOLLOW_FRIENDS, FOLLOWER_OF_CREATOR, '
             . 'SELF_ONLY) — there is no default; branded_content cannot be SELF_ONLY. '
+            . 'TikTok may deliver a post to the creator\'s TikTok inbox for them to finish in '
+            . 'the TikTok app instead of posting it; a video delivered that way arrives without '
+            . 'its caption, so tell the user they may need to paste the caption in the app. '
             . self::privacyRules() . ' '
             . 'Caption character limits: ' . self::formatCharLimits() . '. '
             . 'Publishing is asynchronous: check per-platform results with get_post. '
@@ -170,7 +173,8 @@ class CreatePost extends ViewsMaxTool
                     . 'Known keys — tiktok: { privacy_level, disable_comment, disable_duet, '
                     . 'disable_stitch, auto_add_music (boolean, default false — auto-adds '
                     . "TikTok's recommended music to photo slideshows; ignored for video) }; "
-                    . 'youtube: { privacy_status: public|unlisted|private, title (video title, max 100 chars, no < or >; empty = the caption\'s first 100 characters) }; '
+                    . 'youtube: { privacy_status: public|unlisted|private, title (video title, max 100 chars, no < or >; empty = the caption\'s first 100 characters), '
+                    . 'made_with_ai (boolean, default false — discloses realistic altered or AI-generated content; YouTube asks for it only when the content looks realistic, not for animation or clearly unrealistic content. If the video was made or altered with AI, ask the user and set it only when they say yes) }; '
                     . 'instagram: { cover_url }; linkedin: { first_comment }'
                     . self::pinterestOptions() . '.',
             ])

@@ -118,14 +118,15 @@ const statusTone = (t: TFunction): Record<string, { bg: string; fg: string; labe
   inbox: { bg: "rgba(255,176,32,.16)", fg: "var(--warn)", label: t("post.history.statusInbox", "In TikTok inbox") },
 });
 
-// TikTok inbox uploads report "published" but the video is really sitting in
+// TikTok inbox uploads report "published" but the post is really sitting in
 // the creator's TikTok app inbox (unaudited apps can't direct-post to public
-// accounts, and the inbox API accepts no caption).
+// accounts). The video inbox API accepts no caption; photo slideshows keep
+// their title and description.
 export const isInboxDelivery = (t: PostTarget): boolean =>
   t.delivery_mode === "inbox" || t.meta?.mode === "inbox";
 
 export const inboxNote = (t: TFunction) =>
-  t("post.history.inboxNote", "Sent to the TikTok inbox — open the TikTok app, find the video in your notifications, and finish posting there. Captions can't be attached to inbox deliveries, so paste yours in the app.");
+  t("post.history.inboxNote", "Sent to the TikTok inbox — open the TikTok app, find the post in your notifications, and finish posting there. A video arrives without its caption, so paste yours in the app; photo posts keep their title and description.");
 
 // The live URL of a published post, when the platform gave us one. IG / X /
 // LinkedIn / Threads store meta.url; YouTube stores meta.video_url; the generic

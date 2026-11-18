@@ -67,7 +67,8 @@ class UpdatePost extends ViewsMaxTool
                     . 'Known keys — tiktok: { privacy_level, disable_comment, disable_duet, '
                     . 'disable_stitch, auto_add_music (boolean, default false — auto-adds '
                     . "TikTok's recommended music to photo slideshows; ignored for video) }; "
-                    . 'youtube: { privacy_status: public|unlisted|private, title (video title, max 100 chars, no < or >; empty = the caption\'s first 100 characters) }; '
+                    . 'youtube: { privacy_status: public|unlisted|private, title (video title, max 100 chars, no < or >; empty = the caption\'s first 100 characters), '
+                    . 'made_with_ai (boolean, default false — discloses realistic altered or AI-generated content; YouTube asks for it only when the content looks realistic, not for animation or clearly unrealistic content. If the video was made or altered with AI, ask the user and set it only when they say yes) }; '
                     . 'instagram: { cover_url }; linkedin: { first_comment }'
                     . CreatePost::pinterestOptions() . '.',
             ])

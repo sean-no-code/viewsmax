@@ -101,6 +101,26 @@ class PublishYouTubeJobTest extends TestCase
         }
     }
 
+    public function test_the_daily_upload_quota_fails_the_target_with_a_reschedule_message(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response(['error' => [
+                'code' => 429,
+                'message' => "Quota exceeded for quota metric 'Video Uploads' and limit 'Video Uploads per day' of service 'youtube.googleapis.com'.",
+                'errors' => [['domain' => 'global', 'reason' => 'rateLimitExceeded']],
+            ]], 429),
+        ]);
+        $user = User::factory()->create();
+        $target = $this->pendingTarget($user, $this->ytAccount($user));
+
+        // Not a TransientPublishException: the queue must not retry it.
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_FAILED, $target->refresh()->status);
+        $this->assertSame(YouTubePublishService::DAILY_UPLOAD_QUOTA, $target->error);
+        $this->assertStringContainsString('Reschedule', $target->error);
+    }
+
     public function test_legacy_social_post_path_is_retired_with_a_pointer_to_the_posts_api(): void
     {
         // It used to download the whole video into memory before the PUT.
@@ -273,7 +293,7 @@ class PublishYouTubeJobTest extends TestCase
         $this->assertNull($target->error);
         $this->assertFalse($target->meta['thumbnail_set']);
         $this->assertSame(
-            'We uploaded your video but could not set the thumbnail: This channel is not verified, so YouTube does not allow custom thumbnails. Verify the channel on YouTube, then try again.',
+            'We uploaded your video but could not set the thumbnail: '.YouTubePublishService::THUMBNAIL_NEEDS_VERIFIED_CHANNEL,
             $target->meta['warning']
         );
     }
@@ -379,6 +399,41 @@ class PublishYouTubeJobTest extends TestCase
         Http::assertSent(fn (Request $r) => $r->method() === 'POST'
             && $r['snippet']['title'] === 'Chosen title'
             && $r['snippet']['description'] === 'My video');
+    }
+
+    public function test_made_with_ai_sends_the_synthetic_media_disclosure_and_nothing_when_off(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['id' => 'yt-vid-1'], 200),
+        ]);
+        $user = User::factory()->create();
+        $account = $this->ytAccount($user);
+        $post = $this->videoPost($user);
+        $on = $post->targets()->create([
+            'platform' => 'youtube', 'social_account_id' => $account->id, 'status' => PostTarget::STATUS_PENDING,
+            'options' => ['privacy_status' => 'public', 'made_with_ai' => true],
+        ]);
+
+        (new PublishYouTubeJob($on->id))->handle(app(YouTubePublishService::class));
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $on->refresh()->status, (string) $on->error);
+        Http::assertSent(fn (Request $r) => $r->method() === 'POST'
+            && ($r['status']['containsSyntheticMedia'] ?? null) === true);
+
+        foreach ([['privacy_status' => 'public', 'made_with_ai' => false], ['privacy_status' => 'public']] as $options) {
+            $off = $this->videoPost($user)->targets()->create([
+                'platform' => 'youtube', 'social_account_id' => $account->id, 'status' => PostTarget::STATUS_PENDING,
+                'options' => $options,
+            ]);
+            (new PublishYouTubeJob($off->id))->handle(app(YouTubePublishService::class));
+            $this->assertSame(PostTarget::STATUS_PUBLISHED, $off->refresh()->status, (string) $off->error);
+        }
+
+        $inits = Http::recorded(fn (Request $r) => $r->method() === 'POST')->map(fn ($pair) => $pair[0]['status'])->values();
+        $this->assertCount(3, $inits);
+        $this->assertArrayNotHasKey('containsSyntheticMedia', $inits[1]);
+        $this->assertArrayNotHasKey('containsSyntheticMedia', $inits[2]);
     }
 
     public function test_without_a_title_option_the_caption_is_cut_at_youtubes_100_not_shorter(): void

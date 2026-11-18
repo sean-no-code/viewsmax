@@ -1455,7 +1455,13 @@
       "youtubePrivate": "Privado (solo tú)",
       "youtubePublic": "Público",
       "youtubeTitleMissing": "YouTube necesita un título: añade un texto, se usa como título del video.",
-      "youtubeUnlisted": "No listado (cualquiera con el enlace)"
+      "youtubeUnlisted": "No listado (cualquiera con el enlace)",
+      "youtubeMadeWithAi": "Creado con IA (contenido realista alterado o sintético)",
+      "youtubeMadeWithAiHint": "Actívalo si el vídeo muestra personas, lugares o hechos realistas creados o modificados con IA. YouTube lo etiquetará como contenido alterado o sintético. No es necesario para animaciones ni para contenido claramente irreal.",
+      "coverWrongType": "La portada debe ser una imagen JPEG o PNG.",
+      "youtubeCoverVerified": "Las miniaturas personalizadas requieren un canal de YouTube verificado por teléfono (youtube.com/verify).",
+      "youtubeCoverShorts": "YouTube puede ignorar la miniatura personalizada en los vídeos que trata como Shorts.",
+      "youtubeCoverRejected": "Si YouTube rechaza la miniatura, el vídeo se publica igualmente."
     },
     "drafts": {
       "empty": "Aún no hay borradores. Crea uno desde Nueva publicación.",
@@ -1476,7 +1482,7 @@
       "commentsPostedFailed_other": "{{posted}}/{{count}} comentarios publicados · {{failed}} con fallo",
       "empty": "Aún no hay publicaciones. Las publicaciones publicadas y programadas aparecen aquí con su estado en cada plataforma.",
       "eyebrow": "Publicación",
-      "inboxNote": "Enviado a la bandeja de entrada de TikTok: abre la app de TikTok, busca el video en tus notificaciones y termina de publicarlo allí. No se puede adjuntar el texto a los envíos a la bandeja, así que pégalo en la app.",
+      "inboxNote": "Enviado a la bandeja de entrada de TikTok: abre la app de TikTok, busca la publicación en tus notificaciones y termina de publicarla allí. Los videos llegan sin su texto, así que pégalo en la app; las publicaciones de fotos conservan su título y descripción.",
       "liveOnPlatform": "Publicada en la plataforma.",
       "liveOnPlatformAt": "Publicada en la plataforma ({{when}}).",
       "noCaption": "Sin texto",
