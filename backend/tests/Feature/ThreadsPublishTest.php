@@ -313,6 +313,10 @@ class ThreadsPublishTest extends TestCase
                 ['message' => 'The media could not be fetched from this URI: https://cdn.example/x.jpg', 'code' => 24],
                 "One of the media URLs is invalid or inaccessible, make sure it's uploaded to ViewsMax first",
             ],
+            'invalid link attachment' => [
+                ['message' => 'Invalid Link Attachment', 'code' => 100, 'error_subcode' => 4279047, 'is_transient' => false],
+                'Threads rejected the link in this post as an invalid link attachment. Check the link and try again.',
+            ],
             'text over 500' => [
                 ['message' => 'Invalid parameter: text must be at most 500 characters', 'code' => 100],
                 'Post text exceeds 500 characters limit',

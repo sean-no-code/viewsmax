@@ -278,6 +278,38 @@ class PublishYouTubeJobTest extends TestCase
         );
     }
 
+    public function test_the_thumbnail_is_read_from_the_server_media_disk_not_a_disk_named_in_the_post(): void
+    {
+        Http::fake([
+            'googleapis.com/upload/youtube/v3/videos*' => Http::response('', 200, ['Location' => 'https://upload.youtube/session']),
+            'upload.youtube/*' => Http::response(['id' => 'yt-vid-1'], 200),
+            'googleapis.com/upload/youtube/v3/thumbnails/set*' => function ($request) use (&$sentThumbnail) {
+                $sentThumbnail = $request->body();
+
+                return Http::response(['kind' => 'youtube#thumbnailSetResponse'], 200);
+            },
+        ]);
+        $sentThumbnail = null;
+        $user = User::factory()->create();
+        $post = $this->videoPost($user); // media disk is r2test
+        // The same key on another disk: only the media disk's copy may be used.
+        Storage::disk('local')->put('posts/1/cover.jpg', 'secret-from-local-disk');
+        Storage::disk('r2test')->put('posts/1/cover.jpg', 'media-disk-jpeg');
+        $target = $post->targets()->create([
+            'platform' => 'youtube',
+            'social_account_id' => $this->ytAccount($user)->id,
+            'status' => PostTarget::STATUS_PENDING,
+            'options' => ['privacy_status' => 'public', 'thumbnail' => ['path' => 'posts/1/cover.jpg', 'disk' => 'local', 'mime' => 'image/jpeg']],
+        ]);
+
+        (new PublishYouTubeJob($target->id))->handle(app(YouTubePublishService::class));
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+        $this->assertTrue($target->meta['thumbnail_set']);
+        $this->assertSame('media-disk-jpeg', $sentThumbnail);
+    }
+
     public function test_workspace_policy_refresh_rejections_get_their_own_message(): void
     {
         $cases = [

@@ -6,11 +6,12 @@ use App\Jobs\GenerateFlux2ImageJob;
 use App\Models\GeneratedImage;
 use App\Services\CreditService;
 use App\Services\Flux2Service;
+use App\Support\UnsafeUrlException;
+use App\Support\UploadedImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -27,91 +28,25 @@ class ImageGenerationController extends Controller
     ) {}
 
     /**
-     * Validate and download an image from URL
+     * Download the base image from a user-supplied URL and store it.
      *
-     * @param string $url The URL to download the image from
-     * @param int $userId The user ID for path generation
-     * @return array{path: string, url: string}|null Returns path and url, or null on failure
+     * The fetch goes through UploadedImage::fromUrl (SafeHttp): public http(s)
+     * addresses only, every redirect re-checked, size capped, and the bytes
+     * must really be a JPEG/PNG/WebP/GIF. The extension comes from the detected
+     * type, never from the URL.
+     *
+     * @return array{path: string, url: string}
+     *
+     * @throws \App\Support\UnsafeUrlException when the URL is refused or is not an image
      */
-    private function validateAndDownloadImageFromUrl(string $url, int $userId): ?array
+    private function downloadBaseImageFromUrl(string $url, int $userId): array
     {
-        try {
-            // Use HEAD request to check if URL is accessible without downloading entire file
-            $response = Http::timeout(10)->head($url);
+        $image = UploadedImage::fromUrl($url);
 
-            if (!$response->successful()) {
-                Log::warning('Image URL not accessible', [
-                    'url' => $url,
-                    'status' => $response->status(),
-                ]);
-                return null;
-            }
+        $path = "generated-images/{$userId}/inputs/base_{$userId}_".time().'.'.$image['extension'];
+        Storage::disk('public')->put($path, $image['body']);
 
-            // Check if content type is an image
-            $contentType = $response->header('Content-Type');
-            if ($contentType && !str_starts_with($contentType, 'image/')) {
-                Log::warning('URL does not point to an image', [
-                    'url' => $url,
-                    'content_type' => $contentType,
-                ]);
-                return null;
-            }
-
-            // Download the image content
-            $imageContent = file_get_contents($url);
-
-            if ($imageContent === false) {
-                Log::error('Failed to download image from URL', ['url' => $url]);
-                return null;
-            }
-
-            // Verify it's actually an image by checking the content
-            $imageInfo = @getimagesizefromstring($imageContent);
-            if ($imageInfo === false) {
-                Log::warning('Downloaded content is not a valid image', ['url' => $url]);
-                return null;
-            }
-
-            // Detect extension from URL or content type
-            $extension = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
-            if (!$extension || !in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                // Try to get extension from mime type
-                $mimeToExt = [
-                    'image/jpeg' => 'jpg',
-                    'image/png' => 'png',
-                    'image/gif' => 'gif',
-                    'image/webp' => 'webp',
-                ];
-                $extension = $mimeToExt[$imageInfo['mime']] ?? 'png';
-            }
-
-            $filename = 'base_' . $userId . '_' . time() . '.' . $extension;
-            $path = "generated-images/{$userId}/inputs/{$filename}";
-
-            Storage::disk('public')->put($path, $imageContent);
-
-            Log::info('Image downloaded from URL successfully', [
-                'url' => $url,
-                'path' => $path,
-                'size' => strlen($imageContent),
-                'mime_type' => $imageInfo['mime'],
-            ]);
-
-            return ['path' => $path, 'url' => $url];
-
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::error('Cannot connect to image URL', [
-                'url' => $url,
-                'error' => $e->getMessage(),
-            ]);
-            return null;
-        } catch (\Exception $e) {
-            Log::error('Failed to process image URL', [
-                'url' => $url,
-                'error' => $e->getMessage(),
-            ]);
-            return null;
-        }
+        return ['path' => $path, 'url' => $url];
     }
 
     /**
@@ -199,7 +134,7 @@ class ImageGenerationController extends Controller
      *
      * @response 400 {"success":false,"message":"Reference image is required for head swap. You can upload a default image at /user/default-image."}
      *
-     * @response 400 {"success":false,"message":"Failed to download or validate base image from URL. Please check the URL and try again."}
+     * @response 400 {"success":false,"message":"Failed to download or validate base image from URL: Only public http(s) URLs are allowed."}
      *
      * @response 503 {"success":false,"message":"Image generation feature is not enabled"}
      */
@@ -288,11 +223,13 @@ class ImageGenerationController extends Controller
             // Handle base_image from URL if provided
             $baseImageUrl = null;
             if ($request->filled('base_image_url')) {
-                $downloaded = $this->validateAndDownloadImageFromUrl($request->input('base_image_url'), $user->id);
-                if ($downloaded === null) {
+                try {
+                    $downloaded = $this->downloadBaseImageFromUrl((string) $request->input('base_image_url'), $user->id);
+                } catch (UnsafeUrlException $e) {
+                    // UnsafeUrlException messages are written for users ("Only public http(s) URLs are allowed.").
                     return response()->json([
                         'success' => false,
-                        'message' => 'Failed to download or validate base image from URL. Please check the URL and try again.',
+                        'message' => 'Failed to download or validate base image from URL: '.$e->getMessage(),
                     ], 400);
                 }
                 $basePath = $downloaded['path'];

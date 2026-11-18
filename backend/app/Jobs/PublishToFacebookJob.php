@@ -72,6 +72,8 @@ class PublishToFacebookJob implements ShouldQueue
             $socialPost = new SocialPost([
                 'content' => $target->caption_override ?: ($post->caption ?? ''),
                 'media' => $post->media ?? [],
+                // options.facebook.link: the link preview card (Graph `link`).
+                'link' => ($target->options ?? [])['link'] ?? null,
             ]);
 
             $result = $provider->publish($account, $socialPost);

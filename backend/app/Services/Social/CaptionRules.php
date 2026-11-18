@@ -51,19 +51,64 @@ final class CaptionRules
 
     /**
      * Effective length against a platform's limit (X is weighted separately by
-     * xLength). Meta counts the Threads 500 in UTF-8 bytes, so emoji, curly
-     * quotes and accents weigh more there than their code-point count;
-     * Bluesky's 300 counts graphemes, so an emoji ZWJ sequence or a letter
-     * plus combining mark is one unit. Mirrors platformLength() in
-     * text-metrics.ts.
+     * xLength). Threads counts characters with emoji weighed in UTF-8 bytes
+     * (threadsLength); Bluesky's 300 counts graphemes, so an emoji ZWJ
+     * sequence or a letter plus combining mark is one unit. Mirrors
+     * platformLength() in text-metrics.ts.
      */
     public static function lengthFor(string $platform, string $text): int
     {
         return match ($platform) {
             'bluesky' => (int) grapheme_strlen(self::normalize($text)),
-            'threads' => strlen(self::normalize($text)),
+            'threads' => self::threadsLength($text),
             default => self::plainLength($text),
         };
+    }
+
+    /** ICU UProperty values (IntlChar has no named constants for these two). */
+    private const UCHAR_REGIONAL_INDICATOR = 62;
+
+    private const UCHAR_EXTENDED_PICTOGRAPHIC = 64;
+
+    /**
+     * Threads' 500 limit, as Meta's Threads API documentation states it (Posts
+     * → Limitations): "Text posts are limited to 500 characters" and "Emojis
+     * are counted as the number of UTF-8 bytes". So Cyrillic, CJK, accented
+     * letters and curly quotes count one per code point, and a grapheme that
+     * holds an emoji (an Extended_Pictographic code point, or a flag's
+     * regional indicators) counts its UTF-8 bytes, joiners and skin-tone
+     * modifiers included. Mirrors threadsLength() in text-metrics.ts.
+     */
+    public static function threadsLength(string $text): int
+    {
+        $text = self::normalize($text);
+        if (preg_match_all('/\X/u', $text, $matches) === false) {
+            return strlen($text); // not valid UTF-8: bytes is the safe upper bound
+        }
+
+        $length = 0;
+        foreach ($matches[0] as $grapheme) {
+            $length += self::isEmojiGrapheme($grapheme) ? strlen($grapheme) : mb_strlen($grapheme, 'UTF-8');
+        }
+
+        return $length;
+    }
+
+    private static function isEmojiGrapheme(string $grapheme): bool
+    {
+        if (strlen($grapheme) === 1) {
+            return false; // ASCII
+        }
+
+        foreach (mb_str_split($grapheme, 1, 'UTF-8') as $char) {
+            $cp = mb_ord($char, 'UTF-8');
+            if (\IntlChar::hasBinaryProperty($cp, self::UCHAR_EXTENDED_PICTOGRAPHIC)
+                || \IntlChar::hasBinaryProperty($cp, self::UCHAR_REGIONAL_INDICATOR)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

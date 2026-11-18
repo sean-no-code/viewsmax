@@ -172,10 +172,20 @@ class PostCaptionLimitsTest extends TestCase
         ])->assertStatus(201);
     }
 
-    public function test_threads_limit_counts_utf8_bytes(): void
+    public function test_threads_accepts_500_cyrillic_characters(): void
     {
-        // 497 ASCII + one emoji: 498 code points, but 501 bytes — Meta counts
-        // bytes and would reject it with "text must be at most 500 characters".
+        // 500 characters but 1000 UTF-8 bytes: refused while bytes were counted.
+        $this->createPost([
+            'caption' => str_repeat('я', 500),
+            'platforms' => ['threads'],
+            'status' => 'posted',
+        ])->assertStatus(201);
+    }
+
+    public function test_threads_limit_counts_emoji_in_utf8_bytes(): void
+    {
+        // 497 ASCII + one emoji: 498 code points, but Meta counts an emoji as
+        // its UTF-8 bytes (4), so 501 — over the 500 limit.
         $response = $this->createPost([
             'caption' => str_repeat('a', 497).'😀',
             'platforms' => ['threads'],
@@ -187,7 +197,7 @@ class PostCaptionLimitsTest extends TestCase
         $this->assertStringContainsString('1 character over', $response->json('message'));
     }
 
-    public function test_threads_accepts_exactly_500_bytes(): void
+    public function test_threads_accepts_exactly_500_with_an_emoji_counted_as_bytes(): void
     {
         $this->createPost([
             'caption' => str_repeat('a', 496).'😀',
@@ -392,12 +402,12 @@ class PostCaptionLimitsTest extends TestCase
         $this->assertStringContainsString("1 character over Bluesky's 300 limit", $response->json('message'));
     }
 
-    public function test_the_same_caption_is_graphemes_on_bluesky_and_bytes_on_threads(): void
+    public function test_the_same_caption_is_graphemes_on_bluesky_and_code_points_on_threads(): void
     {
         $caption = str_repeat("e\u{0301}", 251); // 502 code points, 251 graphemes, 753 UTF-8 bytes
 
         $this->assertSame(251, \App\Services\Social\CaptionRules::lengthFor('bluesky', $caption));
-        $this->assertSame(753, \App\Services\Social\CaptionRules::lengthFor('threads', $caption));
+        $this->assertSame(502, \App\Services\Social\CaptionRules::lengthFor('threads', $caption));
         $this->assertSame(502, \App\Services\Social\CaptionRules::lengthFor('instagram', $caption));
         $this->assertNull(\App\Services\Social\CaptionRules::captionError('bluesky', $caption));
         $this->assertNotNull(\App\Services\Social\CaptionRules::captionError('threads', $caption));

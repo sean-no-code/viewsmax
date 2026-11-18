@@ -2,12 +2,14 @@
 
 namespace App\Services\Social\Providers;
 
+use App\Exceptions\TransientPublishException;
 use App\Models\SocialAccount;
 use App\Models\SocialPost;
 use App\Models\User;
 use App\Services\Social\Data\OAuthResult;
 use App\Services\Social\Data\PublishResult;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -32,6 +34,21 @@ class PinterestProvider extends AbstractSocialProvider
 
     /** Images per carousel Pin (Pinterest API: 2-5); extra images are left out, like X's 4. */
     public const CAROUSEL_MAX_IMAGES = 5;
+
+    /**
+     * Pinterest refusals worth putting in plain words, keyed by a fragment of
+     * the error's `message`. Anything else falls back to Pinterest's own
+     * message sentence (errorMessage).
+     */
+    public const ERRORS = [
+        // Seen on the real API; not in Pinterest's API description.
+        'same width/height ratio' => 'Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image.',
+        // code 9 on pin create (Postiz 3422bef1).
+        'blocked this link because it may lead to spam' => 'Pinterest blocked the link on this Pin because it may lead to spam. Check the link, or contact Pinterest about your website.',
+    ];
+
+    /** Body text of Pinterest's intermittent server-side error, retried like a 5xx. */
+    public const RETRYABLE_BODY_MARKER = 'Something went wrong on our end';
 
     protected function apiBase(): string
     {
@@ -168,7 +185,11 @@ class PinterestProvider extends AbstractSocialProvider
             ]));
 
             if (! $response->successful()) {
-                $this->fail('board list', $response->status(), $response->body());
+                $this->throwIfUnauthorized($account, $response, 'board list');
+                $this->throwIfRetryable($response, 'board list');
+                Log::error('[Pinterest] board list failed', ['account_id' => $account->id, 'status' => $response->status(), 'body' => $this->bodyExcerpt($response, 1000)]);
+
+                throw new \RuntimeException($this->errorMessage($response, 'Pinterest could not load your boards'));
             }
 
             foreach ((array) $response->json('items', []) as $board) {
@@ -205,6 +226,7 @@ class PinterestProvider extends AbstractSocialProvider
         ], fn ($v) => $v !== null && $v !== ''));
 
         if (! $response->successful()) {
+            $this->throwIfUnauthorized($account, $response, 'board create');
             Log::warning('[Pinterest] create board failed', [
                 'account_id' => $account->id, 'status' => $response->status(), 'body' => $response->body(),
             ]);
@@ -232,9 +254,64 @@ class PinterestProvider extends AbstractSocialProvider
         }
 
         $board = $this->api($account)->get($this->apiBase().'/boards/'.rawurlencode($boardId));
+        $this->throwIfUnauthorized($account, $board, 'board lookup');
         $owner = strtolower((string) $board->json('owner.username'));
 
         return $board->successful() && $owner !== '' && $owner === strtolower((string) $account->username);
+    }
+
+    /**
+     * The user-facing reason for a refused call: a known Pinterest error in
+     * plain words, else Pinterest's own `message` sentence after $prefix, else
+     * the HTTP status. The raw JSON body is never shown (Postiz 3422bef1).
+     */
+    protected function errorMessage(Response $response, string $prefix): string
+    {
+        $message = trim((string) $response->json('message'));
+
+        foreach (self::ERRORS as $needle => $reason) {
+            if ($message !== '' && str_contains($message, $needle)) {
+                return $reason;
+            }
+        }
+
+        return $message !== ''
+            ? $prefix.': '.rtrim($message, '.').'.'
+            : $prefix.' (HTTP '.$response->status().').';
+    }
+
+    /**
+     * Ask the queue to retry (TransientPublishException) on a rate limit, a
+     * 5xx, or Pinterest's intermittent {"code":2787,"message":"Sorry!
+     * Something went wrong on our end."}, which succeeds when sent again a
+     * few minutes later (Postiz 18a312b6).
+     *
+     * @throws TransientPublishException
+     */
+    protected function throwIfRetryable(Response $response, string $action): void
+    {
+        $this->throwIfTransient($response, $action);
+
+        if (str_contains((string) $response->body(), self::RETRYABLE_BODY_MARKER)) {
+            Log::warning("[Pinterest] {$action} failed transiently; queue will retry", [
+                'status' => $response->status(),
+                'body' => $this->bodyExcerpt($response),
+            ]);
+
+            throw new TransientPublishException("Pinterest reported a temporary error on its side during {$action} — retrying automatically.");
+        }
+    }
+
+    /**
+     * A 401 means the token was revoked or has expired: flag the account (the
+     * user gets one reconnect email) and stop with the reconnect message, for
+     * calls that throw rather than return a PublishResult.
+     */
+    protected function throwIfUnauthorized(SocialAccount $account, Response $response, string $action): void
+    {
+        if ($this->failReauthIfUnauthorized($account, $response, $action)) {
+            throw new \RuntimeException((string) $account->last_error);
+        }
     }
 
     public function publish(SocialAccount $account, SocialPost $post): PublishResult
@@ -304,14 +381,19 @@ class PinterestProvider extends AbstractSocialProvider
             $response = $this->api($account)->post($this->apiBase().'/pins', ['media_source' => $inline] + $payload);
         }
 
-        if (! $response->successful() && str_contains((string) $response->json('message'), 'same width/height ratio')) {
-            return PublishResult::failure('Pinterest carousel images must all have the same shape (width-to-height ratio). Crop them to match, or post one image.', $response->json() ?? []);
+        if (! $response->successful() && $this->failReauthIfUnauthorized($account, $response, 'pin create')) {
+            return PublishResult::failure((string) $account->last_error);
+        }
+
+        // A refused create made no Pin, so the queue may safely try again.
+        if (! $response->successful()) {
+            $this->throwIfRetryable($response, 'pin create');
         }
 
         if (! $response->successful()) {
-            Log::error('[Pinterest] create pin failed', $log + ['status' => $response->status(), 'body' => $response->body()]);
+            Log::error('[Pinterest] create pin failed', $log + ['status' => $response->status(), 'body' => $this->bodyExcerpt($response, 1000)]);
 
-            return PublishResult::failure('Pinterest Pin creation failed: '.$response->body(), $response->json() ?? []);
+            return PublishResult::failure($this->errorMessage($response, 'Pinterest could not create the Pin'), $response->json() ?? []);
         }
 
         $pinId = (string) $response->json('id');
@@ -402,7 +484,13 @@ class PinterestProvider extends AbstractSocialProvider
 
         $register = $this->api($account)->post($this->apiBase().'/media', ['media_type' => 'video']);
         if (! $register->successful()) {
-            return [null, 'Pinterest video upload could not start: '.$register->body()];
+            if ($this->failReauthIfUnauthorized($account, $register, 'media register')) {
+                return [null, (string) $account->last_error];
+            }
+            $this->throwIfRetryable($register, 'media register');
+            Log::error('[Pinterest] media register failed', ['account_id' => $account->id, 'status' => $register->status(), 'body' => $this->bodyExcerpt($register, 1000)]);
+
+            return [null, $this->errorMessage($register, 'Pinterest video upload could not start')];
         }
 
         $mediaId = (string) $register->json('media_id');

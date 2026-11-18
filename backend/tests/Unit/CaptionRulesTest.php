@@ -32,13 +32,23 @@ class CaptionRulesTest extends TestCase
 
     /* ---------------- per-platform length ---------------- */
 
-    public function test_length_for_threads_counts_utf8_bytes(): void
+    /**
+     * Meta's Threads API docs (Posts → Limitations): "Text posts are limited to
+     * 500 characters" and "Emojis are counted as the number of UTF-8 bytes".
+     */
+    public function test_length_for_threads_counts_characters_with_emoji_in_utf8_bytes(): void
     {
-        $this->assertSame(4, CaptionRules::lengthFor('threads', '😀'));
-        $this->assertSame(3, CaptionRules::lengthFor('threads', '“'));
-        $this->assertSame(2, CaptionRules::lengthFor('threads', 'é'));
         $this->assertSame(5, CaptionRules::lengthFor('threads', 'hello'));
-        // CRLF normalises to one byte, like every other platform.
+        $this->assertSame(1, CaptionRules::lengthFor('threads', '“'));
+        $this->assertSame(1, CaptionRules::lengthFor('threads', 'é'));
+        $this->assertSame(6, CaptionRules::lengthFor('threads', 'Привет'));
+        $this->assertSame(5, CaptionRules::lengthFor('threads', 'こんにちは'));
+        $this->assertSame(2, CaptionRules::lengthFor('threads', '你好'));
+        $this->assertSame(4, CaptionRules::lengthFor('threads', '😀'));
+        $this->assertSame(8, CaptionRules::lengthFor('threads', '🇺🇸'));
+        $this->assertSame(8, CaptionRules::lengthFor('threads', '👍🏽'));
+        $this->assertSame(18, CaptionRules::lengthFor('threads', "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"));
+        // CRLF normalises to one character, like every other platform.
         $this->assertSame(3, CaptionRules::lengthFor('threads', "a\r\nb"));
     }
 
@@ -48,8 +58,13 @@ class CaptionRulesTest extends TestCase
         $this->assertSame(1, CaptionRules::lengthFor('linkedin', '“'));
     }
 
-    public function test_caption_error_uses_bytes_for_threads(): void
+    public function test_caption_error_for_threads_allows_500_non_latin_characters(): void
     {
+        // Was capped at ~250 Cyrillic / ~166 CJK characters while bytes were counted.
+        $this->assertNull(CaptionRules::captionError('threads', str_repeat('я', 500)));
+        $this->assertNull(CaptionRules::captionError('threads', str_repeat('中', 500)));
+        $this->assertSame("Caption is 1 character over Threads's 500 limit.", CaptionRules::captionError('threads', str_repeat('я', 501)));
+        // Emoji still weigh their UTF-8 bytes.
         $this->assertNull(CaptionRules::captionError('threads', str_repeat('a', 496).'😀'));
         $this->assertSame("Caption is 1 character over Threads's 500 limit.", CaptionRules::captionError('threads', str_repeat('a', 497).'😀'));
         $this->assertNull(CaptionRules::captionError('instagram', str_repeat('😀', 2200)));

@@ -37,7 +37,17 @@ class Channel extends Model
         'average_calculated_at'
     ];
 
+    /** Google OAuth tokens never leave the server (GET /channels returns these models). */
+    protected $hidden = [
+        'youtube_access_token',
+        'youtube_refresh_token',
+    ];
+
     protected $casts = [
+        // Encrypted at rest like the other OAuth token tables (social_accounts,
+        // connections). Existing rows: 2026_11_17_120000_encrypt_youtube_tokens.
+        'youtube_access_token' => 'encrypted',
+        'youtube_refresh_token' => 'encrypted',
         'subscriber_count' => 'integer',
         'video_count' => 'integer',
         'view_count' => 'integer',

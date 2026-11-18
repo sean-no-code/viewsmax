@@ -71,15 +71,15 @@ class PostMediaRulesTest extends TestCase
         $this->createPost(['caption' => 'hi', 'platforms' => ['instagram'], 'status' => 'draft'])->assertStatus(201);
     }
 
-    public function test_instagram_allows_up_to_ten_media_items(): void
+    public function test_instagram_allows_up_to_twenty_media_items(): void
     {
-        $this->createPost($this->scheduled(['caption' => 'hi', 'platforms' => ['instagram'], 'media' => $this->images(10)]))
+        $this->createPost($this->scheduled(['caption' => 'hi', 'platforms' => ['instagram'], 'media' => $this->images(20)]))
             ->assertStatus(201);
 
-        $response = $this->createPost($this->scheduled(['caption' => 'hi', 'platforms' => ['instagram'], 'media' => $this->images(11)]));
+        $response = $this->createPost($this->scheduled(['caption' => 'hi', 'platforms' => ['instagram'], 'media' => $this->images(21)]));
         $response->assertStatus(422);
         $this->assertStringContainsString('Instagram', $response->json('message'));
-        $this->assertStringContainsString('10', $response->json('message'));
+        $this->assertStringContainsString('20', $response->json('message'));
     }
 
     // ── X ─────────────────────────────────────────────────────────────────

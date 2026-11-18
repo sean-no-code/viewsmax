@@ -70,9 +70,35 @@ export function graphemeLength(text: string): number {
   return n;
 }
 
+// An emoji: an Extended_Pictographic code point or a flag's regional indicator.
+const EMOJI_RE = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+const utf8 = new TextEncoder();
+
 /**
- * Per-platform effective length: X is URL-weighted, Threads is counted in
- * UTF-8 bytes (Meta's rule for its 500 limit), Bluesky counts graphemes,
+ * Threads' 500 limit, as Meta's Threads API documentation states it (Posts →
+ * Limitations): "Text posts are limited to 500 characters" and "Emojis are
+ * counted as the number of UTF-8 bytes". Cyrillic, CJK, accents and curly
+ * quotes count one per code point; a grapheme holding an emoji counts its
+ * UTF-8 bytes, joiners and skin-tone modifiers included. Mirrors
+ * CaptionRules::threadsLength.
+ */
+export function threadsLength(text: string): number {
+  const normalized = normalize(text);
+  // Without Intl.Segmenter each code point is judged on its own (a joiner or
+  // skin-tone modifier inside an emoji then counts 1 instead of its bytes).
+  const units: string[] = graphemeSegmenter
+    ? Array.from(graphemeSegmenter.segment(normalized), (s) => (s as { segment: string }).segment)
+    : [...normalized];
+  let n = 0;
+  for (const unit of units) {
+    n += EMOJI_RE.test(unit) ? utf8.encode(unit).length : [...unit].length;
+  }
+  return n;
+}
+
+/**
+ * Per-platform effective length: X is URL-weighted, Threads counts characters
+ * with emoji in UTF-8 bytes (threadsLength), Bluesky counts graphemes,
  * everything else plain.
  */
 export function platformLength(id: string, text: string): number {
@@ -82,7 +108,7 @@ export function platformLength(id: string, text: string): number {
     case "bluesky":
       return graphemeLength(text);
     case "threads":
-      return new TextEncoder().encode(normalize(text)).length;
+      return threadsLength(text);
     default:
       return plainLength(text);
   }

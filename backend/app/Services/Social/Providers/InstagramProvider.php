@@ -25,7 +25,7 @@ use Illuminate\Support\Sleep;
  * account — no Facebook Page required. The flow mirrors Threads: authorize on
  * instagram.com, exchange for a short-lived token, upgrade to a long-lived
  * (~60 day) token, then publish via the graph.instagram.com create-container →
- * publish two-step (polling containers until processed; 2–10 media become a
+ * publish two-step (polling containers until processed; 2–20 media become a
  * carousel of child containers). Graph errors go through MetaGraphErrors +
  * ERRORS: transient ones throw TransientPublishException for the queue, dead
  * tokens and checkpoints flag the account, everything else fails with a
@@ -38,15 +38,23 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
     /**
      * Container polling budget, shared by every container of one publish (a
      * Reel, or each carousel child plus the carousel itself) so a long post
-     * still finishes under PublishToInstagramJob's 600 s timeout:
-     * 16 × 30 s = 8 minutes.
+     * still finishes under PublishToInstagramJob's 600 s timeout: 16 answers
+     * of "still processing", with a 30 s wait between them, so at most 15
+     * waits (7.5 minutes). A poll that finds its container already FINISHED
+     * costs nothing, so a 20-item carousel (21 containers) whose items are
+     * ready is never cut short by the budget.
      */
     public const CONTAINER_POLL_ATTEMPTS = 16;
 
     public const CONTAINER_POLL_INTERVAL_SECONDS = 30;
 
-    /** Instagram carousels hold 2–10 items. MediaRules rejects more at save time; the API call is guarded anyway. */
-    public const CAROUSEL_MAX_ITEMS = 10;
+    /**
+     * Instagram carousels hold 2–20 items ("Carousels are limited to 20 images,
+     * videos, or a mix of the two": Meta's content publishing guide, Create a
+     * carousel container). MediaRules rejects more at save time; the API call
+     * is guarded anyway.
+     */
+    public const CAROUSEL_MAX_ITEMS = 20;
 
     /**
      * Instagram-specific Graph errors for MetaGraphErrors, keyed by
@@ -78,6 +86,8 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         2207050 => [MetaGraphOutcome::FAIL, 'Instagram user is restricted'],
         '"error_subcode":2207051' => [MetaGraphOutcome::FAIL, 'Instagram blocked your request'],
         2207001 => [MetaGraphOutcome::FAIL, 'Instagram detected that your post is spam, please try again with different content'],
+        // "Instagram Comment Not Added", from the comment call after the post went live (Postiz 454553c4).
+        1772107 => [MetaGraphOutcome::FAIL, 'Instagram did not add the comment. The post itself was published. Try again with different comment text.'],
         // rate limits (not a reconnect, even though Meta sends them as OAuthException)
         2207042 => [MetaGraphOutcome::FAIL, 'You have reached the maximum of 25 posts per day, allowed for your account'],
         'Page request limit reached' => [MetaGraphOutcome::FAIL, 'Instagram posting for today is limited, please try again tomorrow'],
@@ -94,15 +104,19 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         2207026 => [MetaGraphOutcome::FAIL, 'Unsupported video format'],
         2207028 => [MetaGraphOutcome::FAIL, 'Carousel validation failed'],
         2207032 => [MetaGraphOutcome::FAIL, 'Failed to create media, please try again'],
-        2207052 => [MetaGraphOutcome::FAIL, 'Media fetch failed, please try again'],
+        // Instagram could not download the media this time; the same URL usually works on a retry (Postiz b95e1e2c).
+        2207052 => [MetaGraphOutcome::RETRY, 'Media fetch failed, please try again'],
         2207053 => [MetaGraphOutcome::FAIL, "Instagram failed to upload the video. If it exceeds Instagram's limits (300MB, 1920px width, 25Mbps bitrate), export a smaller version and try again"],
         2207057 => [MetaGraphOutcome::FAIL, 'Invalid thumbnail offset for video'],
         2207077 => [MetaGraphOutcome::FAIL, 'Instagram Video download failed'],
         2207085 => [MetaGraphOutcome::FAIL, 'Instagram could not process the video, please check the video format, duration and resolution and try again'],
         36001 => [MetaGraphOutcome::FAIL, 'Invalid Instagram image resolution max: 1920x1080px'],
         36003 => [MetaGraphOutcome::FAIL, 'Aspect ratio not supported, must be between 4:5 to 1.91:1'],
-        'too little or too many attachments' => [MetaGraphOutcome::FAIL, 'Instagram carousel should have between 2 and 10 media attachments'],
+        'too little or too many attachments' => [MetaGraphOutcome::FAIL, 'Instagram carousel should have between 2 and 20 media attachments'],
     ];
+
+    /** media_publish subcode Instagram sometimes returns for a post it did publish (Postiz ae0a642b). */
+    public const PUBLISHED_ANYWAY_SUBCODE = 2207051;
 
     /** Polls left for the publish in progress; reset by publish(). */
     private int $pollsLeft = self::CONTAINER_POLL_ATTEMPTS;
@@ -379,6 +393,14 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         ]);
 
         if (! $publish->successful()) {
+            // Instagram sometimes answers 2207051 ("action is blocked") and
+            // publishes the container anyway. Ask before failing a live post,
+            // which the user would otherwise repost as a duplicate.
+            if ((int) $publish->json('error.error_subcode') === self::PUBLISHED_ANYWAY_SUBCODE
+                && ($mediaId = $this->mediaIdIfPublishedAnyway($account, $creationId, $log))) {
+                return PublishResult::success($mediaId, null, ['id' => $mediaId, 'recovered_from' => $publish->json()]);
+            }
+
             $outcome = $this->handleGraphError($account, MetaGraphErrors::fromResponse($publish, self::ERRORS), 'publish', $log + ['creation_id' => $creationId])
                 ->throwIfRetry();
 
@@ -389,6 +411,52 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
         Log::info('[Instagram] publish success', $log + ['media_id' => $mediaId]);
 
         return PublishResult::success($mediaId, null, $publish->json());
+    }
+
+    /**
+     * After media_publish was refused with 2207051: the id of the media
+     * Instagram made from the container if the container reports PUBLISHED
+     * (GET /{container-id}?fields=status_code, values EXPIRED, ERROR, FINISHED,
+     * IN_PROGRESS, PUBLISHED per Meta's content publishing guide), else null.
+     * The refused call returns no media id, so the account's newest media is
+     * used. Any failure of these probes leaves the original error standing.
+     */
+    protected function mediaIdIfPublishedAnyway(SocialAccount $account, string $creationId, array $log): ?string
+    {
+        $log += ['creation_id' => $creationId];
+
+        try {
+            $status = Http::get($this->graphBase()."/{$creationId}", [
+                'fields' => 'status_code',
+                'access_token' => $account->access_token,
+            ]);
+            if (! $status->successful() || $status->json('status_code') !== 'PUBLISHED') {
+                Log::info('[Instagram] 2207051 on publish: container not published', $log + ['status_code' => $status->json('status_code'), 'http_status' => $status->status()]);
+
+                return null;
+            }
+
+            $newest = Http::get($this->graphBase()."/{$account->platform_account_id}/media", [
+                'fields' => 'id',
+                'limit' => 1,
+                'access_token' => $account->access_token,
+            ]);
+            $mediaId = $newest->successful() ? $newest->json('data.0.id') : null;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+
+        if (! is_string($mediaId) || $mediaId === '') {
+            Log::error('[Instagram] 2207051 on publish: container PUBLISHED but no media id found', $log + ['http_status' => $newest->status()]);
+
+            return null;
+        }
+
+        Log::info('[Instagram] 2207051 on publish but the container was published', $log + ['media_id' => $mediaId]);
+
+        return $mediaId;
     }
 
     /**
@@ -416,7 +484,7 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
     }
 
     /**
-     * Carousel (2–10 items): one container per item flagged is_carousel_item,
+     * Carousel (2–20 items): one container per item flagged is_carousel_item,
      * every child processed, then a CAROUSEL container listing the children —
      * the caption goes on the carousel only. Returns the carousel container
      * id, ready to publish.
@@ -480,7 +548,7 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
     {
         $log += ['creation_id' => $creationId];
 
-        while ($this->pollsLeft-- > 0) {
+        while (true) {
             $response = Http::get($this->graphBase()."/{$creationId}", [
                 'fields' => 'status_code,status',
                 'access_token' => $account->access_token,
@@ -504,7 +572,12 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
             if ($status === 'ERROR' || $status === 'EXPIRED') {
                 // Wrapped as an error message so the classifier's fallback shows
                 // Meta's own reason; the raw body keeps the subcode for the table.
-                $reason = trim((string) $response->json('status')) ?: 'Instagram could not process the media';
+                // Meta sometimes repeats the bare status code ("ERROR") as the
+                // status text: that says nothing, so it counts as no detail.
+                $reason = trim((string) $response->json('status'));
+                if ($reason === '' || strcasecmp($reason, $status) === 0) {
+                    $reason = 'Instagram could not process the media';
+                }
                 $outcome = $this->handleGraphError(
                     $account,
                     MetaGraphErrors::classify(200, ['error' => ['message' => $reason]], self::ERRORS, $response->body()),
@@ -515,9 +588,11 @@ class InstagramProvider extends AbstractSocialProvider implements SupportsCommen
                 return PublishResult::failure($outcome->message, $response->json() ?? []);
             }
 
-            if ($this->pollsLeft > 0) {
-                Sleep::for(self::CONTAINER_POLL_INTERVAL_SECONDS)->seconds();
+            // Still processing: this answer spends one from the shared budget.
+            if (--$this->pollsLeft <= 0) {
+                break;
             }
+            Sleep::for(self::CONTAINER_POLL_INTERVAL_SECONDS)->seconds();
         }
 
         Log::error('[Instagram] container still processing after the polling budget', $log);

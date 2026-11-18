@@ -93,6 +93,51 @@ class FacebookPublishTest extends TestCase
         $this->assertStringContainsString('facebook.com', (string) data_get($target->meta, 'url'));
     }
 
+    /* ---------------- options.facebook.link (Postiz 10bb71da) ---------------- */
+
+    public function test_the_facebook_link_option_is_sent_as_the_link_preview(): void
+    {
+        Http::fake(['graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_777'])]);
+        $account = $this->connectPage();
+        $target = $this->makeTarget('Read this', [], $account->id);
+        $target->forceFill(['options' => ['link' => 'https://example.com/article']])->save();
+
+        $this->runJob($target);
+
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->refresh()->status, (string) $target->error);
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/page-1/feed')
+            && $r['link'] === 'https://example.com/article' && $r['message'] === 'Read this');
+    }
+
+    public function test_without_the_option_no_link_is_sent(): void
+    {
+        Http::fake(['graph.facebook.com/*/page-1/feed' => Http::response(['id' => 'page-1_777'])]);
+        $account = $this->connectPage();
+
+        $this->runJob($this->makeTarget('Plain', [], $account->id));
+
+        Http::assertSent(fn ($r) => str_ends_with($r->url(), '/page-1/feed') && ! isset($r['link']));
+    }
+
+    public function test_the_api_stores_a_valid_facebook_link_and_refuses_a_bad_one(): void
+    {
+        $this->connectPage();
+        $headers = ['Authorization' => 'Bearer '.$this->user->createToken('t')->plainTextToken, 'Accept' => 'application/json'];
+
+        $id = $this->withHeaders($headers)->postJson('/api/posts', [
+            'caption' => 'Draft', 'platforms' => ['facebook'],
+            'options' => ['facebook' => ['link' => 'https://example.com/a']],
+        ])->assertCreated()->json('id');
+        $this->assertSame(['link' => 'https://example.com/a'], Post::find($id)->targets()->first()->options);
+
+        foreach (['javascript:alert(1)', 'ftp://example.com/file', 'not a url'] as $bad) {
+            $this->withHeaders($headers)->postJson('/api/posts', [
+                'caption' => 'Draft', 'platforms' => ['facebook'],
+                'options' => ['facebook' => ['link' => $bad]],
+            ])->assertStatus(422)->assertJsonValidationErrors(['link']);
+        }
+    }
+
     public function test_image_post_publishes_a_photo(): void
     {
         Http::fake([

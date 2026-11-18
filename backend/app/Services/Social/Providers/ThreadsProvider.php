@@ -48,6 +48,8 @@ class ThreadsProvider extends AbstractSocialProvider implements SupportsComments
     public const ERRORS = [
         2207051 => [MetaGraphOutcome::FAIL, 'Error from Meta: We restrict certain activity to protect our community'],
         4279013 => [MetaGraphOutcome::FAIL, 'User restricted'],
+        // Invalid Link Attachment; Meta marks it is_transient: false (Postiz fb6f29c9).
+        4279047 => [MetaGraphOutcome::FAIL, 'Threads rejected the link in this post as an invalid link attachment. Check the link and try again.'],
         // threads_publish raced the container: the queue retries the whole post.
         4279009 => [MetaGraphOutcome::RETRY, 'Threads could not find the media container yet, please try again in a few seconds'],
         'The media could not be fetched from this URI' => [MetaGraphOutcome::FAIL, "One of the media URLs is invalid or inaccessible, make sure it's uploaded to ViewsMax first"],

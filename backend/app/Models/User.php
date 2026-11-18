@@ -126,6 +126,10 @@ class User extends Authenticatable implements Wallet
             'free_trial_reminder_sent_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            // Encrypted at rest like the other OAuth token tables (social_accounts,
+            // connections). Existing rows: 2026_11_17_120000_encrypt_youtube_tokens.
+            'youtube_access_token' => 'encrypted',
+            'youtube_refresh_token' => 'encrypted',
             'youtube_token_expires_at' => 'datetime',
             'privacy_consent_at' => 'datetime',
             'marketing_consented_at' => 'datetime',

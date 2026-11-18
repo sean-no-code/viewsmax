@@ -518,6 +518,42 @@ class McpServerTest extends TestCase
         $this->assertSame([], Storage::disk('public')->allFiles());
     }
 
+    public function test_create_post_accepts_its_own_upload_media_path_and_refuses_another_users(): void
+    {
+        Storage::fake('public');
+        config(['filesystems.media_disk' => 'public']);
+        Http::fake(['example.com/*' => Http::response($this->pngBytes(), 200, ['Content-Type' => 'image/png'])]);
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $key = $this->mcpKey($user);
+
+        $media = $this->toolJson($this->callTool($key, 'upload_media', ['url' => 'https://example.com/a.png']));
+        $this->assertStringStartsWith("posts/{$user->id}/", $media['path']);
+        $this->toolJson($this->callTool($key, 'create_post', ['caption' => 'Mine', 'platforms' => ['x'], 'media' => [$media]]));
+
+        $theirs = ['type' => 'image', 'url' => 'https://cdn.example/b.png', 'path' => "posts/{$other->id}/b.png"];
+        $this->assertToolError(
+            $this->callTool($key, 'create_post', ['caption' => 'Theirs', 'platforms' => ['x'], 'media' => [$theirs]]),
+            'not uploaded from your account'
+        );
+        $this->assertSame(1, Post::count());
+    }
+
+    public function test_create_post_passes_the_facebook_link_option_and_documents_it(): void
+    {
+        $key = $this->mcpKey(User::factory()->create());
+
+        $description = collect($this->rpc($key, 'tools/list')->json('result.tools'))->firstWhere('name', 'create_post')['inputSchema']['properties']['options']['description'];
+        $this->assertStringContainsString('facebook: { link', $description);
+
+        $post = $this->toolJson($this->callTool($key, 'create_post', [
+            'caption' => 'Read this', 'platforms' => ['facebook'],
+            'options' => ['facebook' => ['link' => 'https://example.com/article']],
+        ]));
+
+        $this->assertSame(['link' => 'https://example.com/article'], Post::find($post['id'])->targets()->first()->options);
+    }
+
     public function test_upload_media_has_its_own_hourly_limit(): void
     {
         Storage::fake('public');

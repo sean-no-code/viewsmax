@@ -68,7 +68,9 @@ class UpdatePost extends ViewsMaxTool
                     . 'disable_stitch, auto_add_music (boolean, default false — auto-adds '
                     . "TikTok's recommended music to photo slideshows; ignored for video) }; "
                     . 'youtube: { privacy_status: public|unlisted|private, title (video title, max 100 chars, no < or >; empty = the caption\'s first 100 characters) }; '
-                    . 'instagram: { cover_url }; linkedin: { first_comment }'
+                    . 'instagram: { cover_url }; linkedin: { first_comment }; '
+                    . 'facebook: { link (http(s) URL shown as a link preview card; a URL only inside the caption gets no card; '
+                    . 'used on text and multi-photo posts, not on a single photo or a video) }'
                     . CreatePost::pinterestOptions() . '.',
             ])
             ->raw('comments', [

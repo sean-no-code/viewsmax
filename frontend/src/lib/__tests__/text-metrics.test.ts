@@ -6,11 +6,19 @@ describe("platformLength", () => {
   const family = "\u{1F468}‍\u{1F469}‍\u{1F467}"; // 👨‍👩‍👧: 5 code points, 1 grapheme
   const eWithAccent = "é"; // e + combining acute: 2 code points, 1 grapheme
 
-  it("counts Threads in UTF-8 bytes, as Meta does for its 500 limit", () => {
-    expect(platformLength("threads", "😀")).toBe(4);
-    expect(platformLength("threads", "“")).toBe(3); // curly quote
-    expect(platformLength("threads", "é")).toBe(2);
+  // Meta's Threads API docs: "Text posts are limited to 500 characters" and
+  // "Emojis are counted as the number of UTF-8 bytes".
+  it("counts Threads in characters, with emoji weighed in UTF-8 bytes", () => {
     expect(platformLength("threads", "hello")).toBe(5);
+    expect(platformLength("threads", "“")).toBe(1); // curly quote
+    expect(platformLength("threads", "é")).toBe(1);
+    expect(platformLength("threads", "Привет")).toBe(6);
+    expect(platformLength("threads", "你好")).toBe(2);
+    expect(platformLength("threads", "я".repeat(500))).toBe(500);
+    expect(platformLength("threads", "😀")).toBe(4);
+    expect(platformLength("threads", "🇺🇸")).toBe(8);
+    expect(platformLength("threads", "👍🏽")).toBe(8);
+    expect(platformLength("threads", family)).toBe(18);
     expect(platformLength("threads", "a".repeat(497) + "😀")).toBe(501);
   });
 

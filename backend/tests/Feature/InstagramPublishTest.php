@@ -19,7 +19,7 @@ use Tests\TestCase;
 /**
  * InstagramProvider::publish against a faked Graph API: container status
  * reasons reach the user, the polling budget fits the job timeout, transient
- * errors are handed to the queue, and 2–10 media become a carousel.
+ * errors are handed to the queue, and 2–20 media become a carousel.
  */
 class InstagramPublishTest extends TestCase
 {
@@ -258,6 +258,138 @@ class InstagramPublishTest extends TestCase
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
     }
 
+    /* ---------------- 2207052 media fetch failed is retried (Postiz b95e1e2c) ---------------- */
+
+    public function test_media_fetch_failed_on_container_creation_is_handed_to_the_queue(): void
+    {
+        Http::fake(['*/media' => Http::response(['error' => [
+            'message' => 'The media could not be fetched from this uri', 'type' => 'OAuthException', 'code' => 9004, 'error_subcode' => 2207052,
+        ]], 400)]);
+        $account = $this->account();
+
+        try {
+            (new InstagramProvider)->publish($account, $this->reel());
+            $this->fail('Expected a TransientPublishException.');
+        } catch (TransientPublishException $e) {
+            $this->assertStringContainsString('Media fetch failed', $e->getMessage());
+        }
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
+    }
+
+    public function test_media_fetch_failed_in_the_container_status_is_handed_to_the_queue(): void
+    {
+        Http::fake([
+            '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::response(['status_code' => 'ERROR', 'status' => 'Error: Media download has failed. Error code: 2207052']),
+        ]);
+
+        $this->expectException(TransientPublishException::class);
+
+        (new InstagramProvider)->publish($this->account(), $this->reel());
+    }
+
+    /* ---------------- bare "ERROR" status text (Postiz 38918c2f) ---------------- */
+
+    /** @return array<string, array{string, string}> */
+    public static function bareStatusTexts(): array
+    {
+        return [
+            'ERROR repeated' => ['ERROR', 'ERROR'],
+            'EXPIRED repeated' => ['EXPIRED', 'EXPIRED'],
+            'lower case' => ['ERROR', 'error'],
+            'empty' => ['ERROR', ''],
+        ];
+    }
+
+    #[DataProvider('bareStatusTexts')]
+    public function test_a_status_text_equal_to_the_status_code_shows_the_fallback_message(string $code, string $text): void
+    {
+        Http::fake([
+            '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::response(['status_code' => $code, 'status' => $text]),
+        ]);
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->reel());
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Meta rejected the post: Instagram could not process the media', $result->error);
+    }
+
+    /* ---------------- 2207051 on media_publish (Postiz ae0a642b) ---------------- */
+
+    private const BLOCKED = ['error' => ['message' => 'Action is blocked', 'type' => 'OAuthException', 'code' => 4, 'error_subcode' => 2207051]];
+
+    private function blockedPublish(string $containerStatus, array $newestMedia = ['data' => [['id' => 'media-77']]]): array
+    {
+        Http::fake([
+            '*/media_publish' => Http::response(self::BLOCKED, 400),
+            '*/ig-1/media?*' => Http::response($newestMedia),
+            '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::sequence()
+                ->push(['status_code' => 'FINISHED'])
+                ->push(['status_code' => $containerStatus]),
+        ]);
+        $account = $this->account();
+
+        return [(new InstagramProvider)->publish($account, $this->socialPost([['type' => 'image', 'url' => 'https://cdn.example/a.jpg']])), $account];
+    }
+
+    public function test_2207051_with_a_published_container_is_recorded_as_published(): void
+    {
+        [$result, $account] = $this->blockedPublish('PUBLISHED');
+
+        $this->assertTrue($result->success, (string) $result->error);
+        $this->assertSame('media-77', $result->remotePostId);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
+        $this->assertSame([
+            ['POST', 'ig-1/media', ['caption' => 'A caption', 'image_url' => 'https://cdn.example/a.jpg']],
+            ['GET', 'container-1', []],
+            ['POST', 'ig-1/media_publish', ['creation_id' => 'container-1']],
+            ['GET', 'container-1', []],
+            ['GET', 'ig-1/media', []],
+        ], $this->sent());
+        Http::assertSent(fn (Request $r) => $r->method() === 'GET' && str_contains($r->url(), 'container-1') && str_contains($r->url(), 'fields=status_code&'));
+    }
+
+    /** @return array<string, array{string}> */
+    public static function unpublishedContainerStatuses(): array
+    {
+        return ['FINISHED' => ['FINISHED'], 'ERROR' => ['ERROR'], 'EXPIRED' => ['EXPIRED'], 'IN_PROGRESS' => ['IN_PROGRESS']];
+    }
+
+    #[DataProvider('unpublishedContainerStatuses')]
+    public function test_2207051_with_any_other_container_status_stays_failed(string $status): void
+    {
+        [$result] = $this->blockedPublish($status);
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Instagram blocked your request', $result->error);
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'ig-1/media?'));
+    }
+
+    public function test_2207051_with_a_published_container_but_no_media_id_stays_failed(): void
+    {
+        [$result] = $this->blockedPublish('PUBLISHED', ['data' => []]);
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Instagram blocked your request', $result->error);
+    }
+
+    public function test_other_media_publish_errors_never_probe_the_container(): void
+    {
+        Http::fake([
+            '*/media_publish' => Http::response(['error' => ['message' => 'spam', 'type' => 'OAuthException', 'code' => 4, 'error_subcode' => 2207001]], 400),
+            '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::sequence()->push(['status_code' => 'FINISHED'])->push(['status_code' => 'PUBLISHED']),
+        ]);
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost([['type' => 'image', 'url' => 'https://cdn.example/a.jpg']]));
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Instagram detected that your post is spam, please try again with different content', $result->error);
+        $this->assertCount(1, collect($this->sent())->where(1, 'container-1'));
+    }
+
     /* ---------------- single image ---------------- */
 
     public function test_a_single_image_waits_for_its_container_before_publishing(): void
@@ -314,7 +446,7 @@ class InstagramPublishTest extends TestCase
         ], $this->sent());
     }
 
-    public function test_two_to_ten_media_publish_as_a_carousel(): void
+    public function test_two_to_twenty_media_publish_as_a_carousel(): void
     {
         Http::fake([
             '*/media_publish' => Http::response(['id' => 'media-1']),
@@ -379,16 +511,48 @@ class InstagramPublishTest extends TestCase
         $this->assertSame(InstagramProvider::CONTAINER_POLL_ATTEMPTS, Http::recorded(fn (Request $r) => $r->method() === 'GET')->count());
     }
 
-    public function test_more_than_ten_media_fail_before_any_graph_call(): void
+    public function test_more_than_twenty_media_fail_before_any_graph_call(): void
     {
         Http::fake();
-        $media = array_map(fn (int $i) => ['type' => 'image', 'url' => "https://cdn.example/{$i}.jpg"], range(1, 11));
+        $media = array_map(fn (int $i) => ['type' => 'image', 'url' => "https://cdn.example/{$i}.jpg"], range(1, 21));
 
         $result = (new InstagramProvider)->publish($this->account(), $this->socialPost($media));
 
         $this->assertFalse($result->success);
-        $this->assertStringContainsString('at most 10', (string) $result->error);
+        $this->assertStringContainsString('at most 20', (string) $result->error);
         Http::assertNothingSent();
+    }
+
+    /**
+     * Meta's content publishing guide: "Carousels are limited to 20 images,
+     * videos, or a mix of the two". 21 containers are checked, more than the
+     * 16-answer budget, which only "still processing" answers spend.
+     */
+    public function test_a_twenty_item_carousel_publishes_within_the_poll_budget(): void
+    {
+        $ids = array_map(fn (int $i) => "c{$i}", range(1, 20));
+        $sequence = Http::sequence();
+        foreach ([...$ids, 'carousel-1'] as $id) {
+            $sequence->push(['id' => $id]);
+        }
+        Http::fake([
+            '*/media_publish' => Http::response(['id' => 'media-20']),
+            '*/media' => $sequence,
+            // c1 takes two polls; every other container is ready at once.
+            '*/c1?*' => Http::sequence()->push(['status_code' => 'IN_PROGRESS'])->push(['status_code' => 'FINISHED']),
+            '*' => Http::response(['status_code' => 'FINISHED']),
+        ]);
+        $media = array_map(fn (int $i) => ['type' => 'image', 'url' => "https://cdn.example/{$i}.jpg"], range(1, 20));
+
+        $result = (new InstagramProvider)->publish($this->account(), $this->socialPost($media));
+
+        $this->assertTrue($result->success, (string) $result->error);
+        $this->assertSame('media-20', $result->remotePostId);
+        $this->assertSame(22, Http::recorded(fn (Request $r) => $r->method() === 'GET')->count());
+        Http::assertSent(fn (Request $r) => str_ends_with(strtok($r->url(), '?'), '/ig-1/media')
+            && ($r->data()['media_type'] ?? null) === 'CAROUSEL'
+            && $r->data()['children'] === implode(',', $ids));
+        Sleep::assertSleptTimes(1);
     }
 
     /* ---------------- comments ---------------- */
@@ -404,6 +568,22 @@ class InstagramPublishTest extends TestCase
         $this->assertFalse($result->success);
         $this->assertStringContainsString('HTTP 502', (string) $result->error);
         $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
+    }
+
+    public function test_a_comment_instagram_did_not_add_says_the_post_itself_was_published(): void
+    {
+        Http::fake(['*/comments' => Http::response(['error' => [
+            'message' => 'Instagram Comment Not Added', 'type' => 'OAuthException', 'code' => 100, 'error_subcode' => 1772107,
+        ]], 400)]);
+        $account = $this->account();
+
+        $result = (new InstagramProvider)->comment($account, 'media-1', 'nice');
+
+        $this->assertFalse($result->success);
+        $this->assertSame('Instagram did not add the comment. The post itself was published. Try again with different comment text.', $result->error);
+        $this->assertStringNotContainsStringIgnoringCase('retry', (string) $result->error);
+        $this->assertSame(SocialAccount::STATUS_CONNECTED, $account->fresh()->status);
+        $this->assertSame(\App\Services\Social\Data\MetaGraphOutcome::FAIL, InstagramProvider::ERRORS[1772107][0]);
     }
 
     public function test_comment_with_a_dead_token_flags_the_account(): void

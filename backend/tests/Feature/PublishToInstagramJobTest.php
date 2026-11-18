@@ -61,6 +61,26 @@ class PublishToInstagramJobTest extends TestCase
         (new PublishToInstagramJob($target->id))->handle(app(SocialProviderManager::class));
     }
 
+    public function test_a_post_instagram_published_despite_2207051_is_recorded_as_published(): void
+    {
+        Http::fake([
+            '*/media_publish' => Http::response(['error' => ['message' => 'Action is blocked', 'code' => 4, 'error_subcode' => 2207051]], 400),
+            '*/ig-1/media?*' => Http::response(['data' => [['id' => 'media-77']]]),
+            '*/media' => Http::response(['id' => 'container-1']),
+            '*/container-1?*' => Http::sequence()->push(['status_code' => 'FINISHED'])->push(['status_code' => 'PUBLISHED']),
+        ]);
+        $user = User::factory()->create();
+        $this->connectInstagram($user);
+        $target = $this->makeTarget($user);
+
+        $this->runJob($target);
+
+        $target->refresh();
+        $this->assertSame(PostTarget::STATUS_PUBLISHED, $target->status, (string) $target->error);
+        $this->assertSame('media-77', $target->platform_post_id);
+        $this->assertNull($target->error);
+    }
+
     public function test_transient_graph_error_rethrows_so_the_queue_retries(): void
     {
         Http::fake(['*/media' => Http::response('Service Unavailable', 503)]);

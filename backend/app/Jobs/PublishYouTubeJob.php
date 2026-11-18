@@ -226,7 +226,10 @@ class PublishYouTubeJob implements ShouldQueue
             return null;
         }
 
-        $disk = $thumb['disk'] ?? config('filesystems.media_disk', config('filesystems.default'));
+        // Always the server's media disk: the thumbnail object came from our
+        // own upload endpoints, and a disk name stored from the request is
+        // client input (it could point at any configured disk).
+        $disk = config('filesystems.media_disk') ?: config('filesystems.default');
         $path = $thumb['path'];
         if (! Storage::disk($disk)->exists($path)) {
             Log::warning('YouTube thumbnail file missing', ['post_target_id' => $target->id, 'path' => $path]);

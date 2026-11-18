@@ -63,7 +63,7 @@ class PostController extends Controller
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
-     * @bodyParam media[].path string Storage path (YouTube requires a video path). Example: posts/1/clip.mp4
+     * @bodyParam media[].path string Storage path returned by the upload endpoint; must be one of your own uploads (posts/{your user id}/...). YouTube requires a video path. Example: posts/1/clip.mp4
      * @bodyParam status string draft (default), scheduled, or posted. Example: draft
      * @bodyParam scheduled_at string ISO-8601 datetime; required when status is scheduled. Example: 2026-07-20T18:30:00Z
      * @bodyParam brand_id integer The brand selected in the composer (informational). Example: 1
@@ -76,6 +76,7 @@ class PostController extends Controller
      * @bodyParam options.youtube.community_guidelines_accepted boolean The composer's confirmation that the video follows YouTube's Community Guidelines. Example: true
      * @bodyParam options.instagram.cover_url string Public cover image URL for an Instagram Reel.
      * @bodyParam options.linkedin.first_comment string A comment auto-posted right after publishing.
+     * @bodyParam options.facebook.link string An http(s) URL Facebook shows as a link preview card. Used on text posts and multi-photo posts; a single photo or a video post cannot carry one. Example: https://example.com/article
      * @bodyParam options.pinterest.board_ids object Board per Pinterest account, keyed by social_account_id (boards from GET /api/social/accounts/{id}/boards). Required to publish; never chosen for you.
      * @bodyParam options.pinterest.board_id string Board for a single Pinterest account, instead of board_ids. Example: 1234567890
      * @bodyParam options.pinterest.title string Pin title (max 100). Empty = no title.
@@ -206,6 +207,39 @@ class PostController extends Controller
         return $post->fresh('targets');
     }
 
+    /**
+     * Storage paths a post may reference. The publish jobs read media.*.path
+     * (and the YouTube thumbnail's path) straight from storage and upload the
+     * file to the caller's own channel, so a path must be one our upload
+     * endpoints handed to this user. All of them store under posts/{user_id}/:
+     * POST /posts/media (PostMediaController), the direct upload
+     * (PostMediaDirectUploadController) and MCP upload_media; the composer's
+     * cover image goes through the same endpoints. Only the paths in this
+     * request are checked; posts saved earlier are not rewritten.
+     */
+    private function validateOwnMediaPaths(array $data): void
+    {
+        $prefix = 'posts/'.Auth::id().'/';
+        $isOwn = fn (string $path) => str_starts_with($path, $prefix) && ! str_contains($path, '..');
+
+        $errors = [];
+        foreach ($data['media'] ?? [] as $i => $item) {
+            $path = is_array($item) ? ($item['path'] ?? null) : null;
+            if (is_string($path) && $path !== '' && ! $isOwn($path)) {
+                $errors["media.{$i}.path"] = 'This media file was not uploaded from your account. Upload it again and retry.';
+            }
+        }
+
+        $thumbPath = data_get($data, 'options.youtube.thumbnail.path');
+        if ($thumbPath !== null && $thumbPath !== '' && (! is_string($thumbPath) || ! $isOwn($thumbPath))) {
+            $errors['options.youtube.thumbnail.path'] = 'The cover image was not uploaded from your account. Upload it again and retry.';
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
     private function validatePayload(Request $request, ?Post $post = null): array
     {
         $data = $request->validate([
@@ -242,6 +276,12 @@ class PostController extends Controller
             'community_guidelines_accepted' => 'nullable|boolean',
         ])->validate();
 
+        // Facebook's link preview card (Graph `link`): a URL only inside the
+        // caption is published as plain text with no card.
+        Validator::make($request->input('options.facebook') ?? [], [
+            'link' => 'nullable|url:http,https|max:2048',
+        ])->validate();
+
         Validator::make($request->input('options.pinterest') ?? [], [
             'board_id' => 'nullable|string|max:64',
             'board_ids' => 'nullable|array',
@@ -261,6 +301,7 @@ class PostController extends Controller
 
         $this->validatePlatforms($data);
         $this->validateTargetAccounts($data['targets'] ?? null);
+        $this->validateOwnMediaPaths($data);
 
         // Honour the offset: "18:00+07:00" is 11:00 UTC. The datetime cast
         // alone keeps the wall-clock and drops the zone, so a REST caller in

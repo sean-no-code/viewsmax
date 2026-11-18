@@ -2,6 +2,8 @@
 
 namespace App\Services\Social;
 
+use App\Services\Social\Providers\InstagramProvider;
+
 /**
  * Per-platform media rules enforced when a post is scheduled or published
  * (PostController::validatePayload), so the user learns about missing media,
@@ -22,7 +24,8 @@ class MediaRules
      *  - mixed:      whether images and a video may share one post
      */
     public const RULES = [
-        'instagram' => ['min' => 1, 'max' => 10],
+        // Carousels hold up to 20 items (Meta's content publishing guide).
+        'instagram' => ['min' => 1, 'max' => InstagramProvider::CAROUSEL_MAX_ITEMS],
         // X video is not supported by ViewsMax yet, so a video is rejected
         // outright with the same wording PublishToXJob uses.
         'x' => ['max_images' => 4, 'max_videos' => 0, 'mixed' => false],

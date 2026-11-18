@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TransientPublishException;
 use App\Jobs\Concerns\ResolvesTargetAccount;
 use App\Models\PostTarget;
 use App\Models\SocialAccount;
@@ -100,6 +101,10 @@ class PublishToPinterestJob implements ShouldQueue
             }
 
             $this->markFailed($target, $result->error ?: 'Pinterest publish failed.');
+        } catch (TransientPublishException $e) {
+            // 5xx / 429 / "Something went wrong on our end": no Pin was made,
+            // so rethrow and let $tries / $backoff send it again.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Pinterest publish job error', [
                 'post_target_id' => $target->id,
