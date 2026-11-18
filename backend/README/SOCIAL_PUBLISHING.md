@@ -1,9 +1,9 @@
 # Social Publishing — Architecture & API
 
 Connect and post to Facebook, Instagram, Threads, LinkedIn, Bluesky, X, TikTok,
-YouTube, Pinterest and Google My Business from one set of endpoints.
+YouTube, Pinterest, Slack and Google My Business from one set of endpoints.
 
-> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`.
+> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`; Slack: `README/SLACK_SETUP.md`.
 > **Frontend integration contract:** see `tasks/frontend-todo.md`.
 
 ## Components
@@ -55,7 +55,7 @@ Routes, controllers, job and UI contract are platform-agnostic — no other chan
 ```
 GET    /social/platforms                 list platforms + configured flag
 GET    /social/accounts                  list connected accounts (?platform=)
-DELETE /social/accounts/{id}             disconnect
+DELETE /social/accounts/{id}             disconnect (Slack: revokes the bot token with the workspace's last channel)
 GET    /social/accounts/{id}/boards      Pinterest: the account's boards (live)
 GET    /social/{platform}/auth-url       begin OAuth (returns authorization_url + state)
 POST   /social/{platform}/exchange       finish OAuth (code + state → account[])

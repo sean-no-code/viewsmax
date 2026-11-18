@@ -59,7 +59,7 @@ class PostController extends Controller
      * per-platform results.
      *
      * @bodyParam caption string The post text / caption. Example: Big news today!
-     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest. Example: ["tiktok","instagram"]
+     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest, slack. Example: ["tiktok","instagram"]
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
@@ -469,6 +469,37 @@ class PostController extends Controller
                         'message' => 'Choose a Pinterest board for every Pinterest account before publishing or scheduling.',
                     ], 422));
                 }
+            }
+        }
+
+        // Each Slack account is one channel, and none is picked for the user:
+        // a target without an account is only allowed while exactly one
+        // Slack channel is connected.
+        if ($publishing && in_array('slack', $platformList, true)) {
+            if (isset($data['targets'])) {
+                $slackTargets = array_filter($data['targets'], fn ($t) => $t['platform'] === 'slack');
+            } elseif (isset($data['platforms'])) {
+                $slackTargets = [['platform' => 'slack']];
+            } else {
+                $slackTargets = $post?->targets()->where('platform', 'slack')->get(['social_account_id'])->toArray() ?? [];
+            }
+            $unpinned = array_filter($slackTargets, fn ($t) => empty($t['social_account_id']));
+            $channels = Auth::user()->socialAccounts()->where('platform', 'slack')
+                ->where('status', \App\Models\SocialAccount::STATUS_CONNECTED)->count();
+            if ($unpinned !== [] && $channels > 1) {
+                abort(response()->json([
+                    'message' => 'Several Slack channels are connected. Choose which Slack channel to post to before publishing or scheduling.',
+                ], 422));
+            }
+
+            // Slack has nothing to post without text or a file. ($effective*
+            // come from the publish-time caption/media checks above.)
+            $slackText = trim((string) (($effectiveOverrides['slack'] ?? '') !== '' ? $effectiveOverrides['slack'] : $effectiveCaption));
+            $slackMedia = array_filter($effectiveMedia, fn ($m) => ! empty($m['url']));
+            if ($slackText === '' && $slackMedia === []) {
+                abort(response()->json([
+                    'message' => 'Slack needs a caption or media before publishing or scheduling.',
+                ], 422));
             }
         }
 

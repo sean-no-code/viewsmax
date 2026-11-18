@@ -62,6 +62,8 @@ const PROVIDERS: ProviderEntry[] = [
   { key: "facebook", system: "social" },
   { key: "bluesky", system: "social" },
   { key: "pinterest", system: "social" },
+  // Each Slack account is one channel: "Add channel" connects another.
+  { key: "slack", system: "social" },
   { key: "youtube", system: "social", connectVia: "legacy" },
 ];
 
@@ -252,7 +254,7 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
                     click that does nothing. */}
                 {configured && (
                   <Button size="sm" className="shrink-0" disabled={isBusy} onClick={() => handleConnect(entry)}>
-                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? t("connections.accounts.addAccount", "Add account") : t("connections.accounts.connect", "Connect")}
+                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : accts.length ? (entry.key === "slack" ? t("connections.accounts.addChannel", "Add channel") : t("connections.accounts.addAccount", "Add account")) : t("connections.accounts.connect", "Connect")}
                   </Button>
                 )}
               </div>

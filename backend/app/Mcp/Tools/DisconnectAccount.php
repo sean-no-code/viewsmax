@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Services\Social\SocialProviderManager;
 use App\Services\Social\YouTubeDisconnector;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
@@ -49,6 +50,14 @@ class DisconnectAccount extends ViewsMaxTool
             // Revokes the Google grant and clears every store that shares it.
             $result = YouTubeDisconnector::disconnect($user);
             $removed += $result['social_accounts'] + $result['connections'] + $result['channels'];
+        }
+        if ($platform === 'slack') {
+            // Every channel goes; the workspace's bot token is revoked with the last one.
+            $provider = app(SocialProviderManager::class)->for('slack');
+            foreach ($user->socialAccounts()->where('platform', 'slack')->get() as $account) {
+                $provider->disconnect($account);
+                $removed++;
+            }
         }
         $removed += $user->socialAccounts()->where('platform', $platform)->delete()
             + $user->connections()->where('provider', $platform)->delete();

@@ -167,6 +167,9 @@ class SocialAccountController extends Controller
         // it (this row, the channel, the legacy connection, the user tokens).
         if ($account->platform === 'youtube') {
             YouTubeDisconnector::disconnect(Auth::user(), $account->platform_account_id);
+        } elseif ($account->platform === 'slack') {
+            // Revokes the workspace's bot token once its last channel goes.
+            $this->manager->for('slack')->disconnect($account);
         } else {
             $account->delete();
         }

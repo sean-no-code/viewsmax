@@ -30,6 +30,8 @@ export const PLATFORMS: Platform[] = [
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
   { id: "pinterest", name: "Pinterest", glyph: "P", handle: "@creatorlab", accent: "#E60023", limit: 800, followers: "15.4K", kind: "Pin" },
+  // Slack asks for at most 4,000 characters per chat.postMessage.
+  { id: "slack", name: "Slack", glyph: "S", handle: "#general", accent: "#4A154B", limit: 4000, followers: "", kind: "Message" },
 ];
 export const PMAP: Record<string, Platform> = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
 
@@ -38,6 +40,7 @@ const kindLabel = (t: TFunction, kind: string): string =>
   kind === "Video" ? t("post.preview.kindVideo", "Video")
   : kind === "Reel / Post" ? t("post.preview.kindReelPost", "Reel / Post")
   : kind === "Post" ? t("post.preview.kindPost", "Post")
+  : kind === "Message" ? t("post.preview.kindMessage", "Message")
   : kind;
 
 // What each platform's API can actually publish in this codebase. Drives the
@@ -57,6 +60,8 @@ export const PLATFORM_CAPS: Record<string, { text: boolean; image: boolean; vide
   bluesky: { text: true, image: true, video: false },
   // Every Pin is an image or a video; there are no text-only Pins.
   pinterest: { text: false, image: true, video: true },
+  // A channel message, with up to 10 images/videos attached in the same message.
+  slack: { text: true, image: true, video: true },
 };
 export type PostType = "media" | "text";
 export function platformAllowedForType(id: string, postType: PostType): boolean {
@@ -696,9 +701,9 @@ export function PostPreview({ id, text, media, compact, handle }: { id: string; 
   const verticalVideo = first?.type === "video" && (id === "tiktok" || id === "youtube" || id === "instagram" || id === "pinterest");
   const aspect = verticalVideo ? "9 / 16"
     : id === "youtube" ? "16 / 9"
-    : (id === "x" || id === "linkedin" || id === "facebook" || id === "threads") ? "16 / 10"
+    : (id === "x" || id === "linkedin" || id === "facebook" || id === "threads" || id === "slack") ? "16 / 10"
     : "4 / 5";
-  const textFirst = id === "x" || id === "threads" || id === "linkedin" || id === "facebook";
+  const textFirst = id === "x" || id === "threads" || id === "linkedin" || id === "facebook" || id === "slack";
   const captionAfter = id === "instagram" || id === "tiktok" || id === "youtube";
   return (
     <div style={{ background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 2px rgba(10,10,12,.05)", fontFamily: "var(--font-body)" }}>

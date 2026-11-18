@@ -43,6 +43,7 @@ class CreatePost extends ViewsMaxTool
         'facebook' => 5000,
         'bluesky' => 300,
         'pinterest' => 800,
+        'slack' => 4000,
     ];
 
     /**
@@ -76,6 +77,18 @@ class CreatePost extends ViewsMaxTool
                 . 'options.pinterest.board_ids {social_account_id: board_id} (several). '
                 . 'Send title, link and alt_text only when the user gives them; empty means '
                 . 'the Pin has none. A video Pin also needs options.pinterest.cover_url. '
+            : '';
+    }
+
+    /** Slack's channel rule, only while Slack is set up. */
+    public static function slackRule(): string
+    {
+        return in_array('slack', self::availablePlatforms(), true)
+            ? 'Each connected Slack account is one channel in one workspace (list_connected_accounts '
+                . 'names it "#channel · Workspace"); the post goes to that channel as plain text, '
+                . 'with any images or videos (up to 10) attached. With more than one Slack channel '
+                . 'connected, platforms ["slack"] is refused because the channel is never picked for '
+                . 'the user: ask which channel, then post through a brand_id that contains it. '
             : '';
     }
 
@@ -114,6 +127,7 @@ class CreatePost extends ViewsMaxTool
             . 'video title, so it must not be empty when publishing or scheduling. '
             . 'Instagram needs an image or video url. '
             . self::pinterestRule()
+            . self::slackRule()
             . 'TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, '
             . 'default false) to let TikTok auto-add its recommended background music; '
             . 'there is no music option for video posts or for Instagram. '

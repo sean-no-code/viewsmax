@@ -148,6 +148,24 @@ return [
             ],
         ],
 
+        'slack' => [
+            'label' => 'Slack',
+            'enabled' => env('SLACK_ENABLED', true),
+            'client_id' => env('SLACK_CLIENT_ID'),
+            'client_secret' => env('SLACK_CLIENT_SECRET'),
+            // Bot scopes. incoming-webhook makes Slack's own consent screen ask
+            // for the channel (one connected account = one channel); the bot
+            // token then posts there: chat:write for messages, chat:write.public
+            // for a public channel the bot hasn't joined, files:write for the
+            // image/video upload.
+            'scopes' => [
+                'incoming-webhook',
+                'chat:write',
+                'chat:write.public',
+                'files:write',
+            ],
+        ],
+
         'bluesky' => [
             'label' => 'Bluesky',
             'enabled' => env('BLUESKY_ENABLED', true),

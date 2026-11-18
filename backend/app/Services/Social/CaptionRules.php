@@ -23,6 +23,9 @@ final class CaptionRules
         'threads' => 500,
         'bluesky' => 300,
         'pinterest' => 800,
+        // chat.postMessage: Slack asks for at most 4,000 characters (longer
+        // text may be split into several messages; 40,000+ is truncated).
+        'slack' => 4000,
     ];
 
     /** On X every URL counts as a fixed 23 chars (t.co wrapping). */
@@ -223,6 +226,7 @@ final class CaptionRules
         'threads' => 'Threads',
         'bluesky' => 'Bluesky',
         'pinterest' => 'Pinterest',
+        'slack' => 'Slack',
     ];
 
     private static function normalize(string $text): string

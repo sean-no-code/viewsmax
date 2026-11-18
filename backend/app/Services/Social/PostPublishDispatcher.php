@@ -7,6 +7,7 @@ use App\Jobs\PublishToFacebookJob;
 use App\Jobs\PublishToInstagramJob;
 use App\Jobs\PublishToLinkedInJob;
 use App\Jobs\PublishToPinterestJob;
+use App\Jobs\PublishToSlackJob;
 use App\Jobs\PublishToThreadsJob;
 use App\Jobs\PublishToTikTokJob;
 use App\Jobs\PublishToXJob;
@@ -39,6 +40,7 @@ class PostPublishDispatcher
         'facebook' => PublishToFacebookJob::class,
         'bluesky' => PublishToBlueskyJob::class,
         'pinterest' => PublishToPinterestJob::class,
+        'slack' => PublishToSlackJob::class,
     ];
 
     /**
