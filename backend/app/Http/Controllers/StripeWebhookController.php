@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\Billing\BillingEmails;
 use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
@@ -14,9 +15,13 @@ use Illuminate\Support\Facades\Log;
 
 class StripeWebhookController extends Controller
 {
+    /** Stripe subscription statuses that never bill again. */
+    private const DEAD_SUBSCRIPTION_STATUSES = ['canceled', 'incomplete_expired'];
+
     public function __construct(
         protected StripeService $stripeService,
         protected CreditService $creditService,
+        protected BillingEmails $billingEmails,
     ) {}
 
     public function handleWebhook(Request $request)
@@ -209,7 +214,9 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        DB::transaction(function () use ($subscriptionId, $invoiceId, $invoice, $billingReason) {
+        // Returns [user, plan name] when this invoice was processed for the
+        // first time, null otherwise (already processed, or not granted).
+        $firstTime = DB::transaction(function () use ($subscriptionId, $invoiceId, $invoice, $billingReason) {
             $subDetails = $this->stripeService->getSubscription($subscriptionId);
 
             $priceId = $subDetails['items']['data'][0]['price']['id'] ?? null;
@@ -237,6 +244,24 @@ class StripeWebhookController extends Controller
                     'invoice_id' => $invoiceId,
                 ]);
                 throw new \Exception("User not found for subscription {$subscriptionId}");
+            }
+
+            // A late payment of a cancelled subscription's invoice does not
+            // revive it: Stripe will never bill it again. Granting access and
+            // credits here would show "Renews {date}" for a renewal that never
+            // comes. No automatic re-subscribe or refund (both move money
+            // without a person looking): leave the row alone and raise it.
+            if (in_array($subDetails['status'] ?? null, self::DEAD_SUBSCRIPTION_STATUSES, true)) {
+                Log::error('Stripe webhook: invoice paid for a cancelled subscription; no access granted, refund by hand', [
+                    'user_id' => $user->id,
+                    'subscription_id' => $subscriptionId,
+                    'subscription_status' => $subDetails['status'],
+                    'invoice_id' => $invoiceId,
+                    'amount_paid' => (int) ($invoice['amount_paid'] ?? 0),
+                    'currency' => $invoice['currency'] ?? null,
+                ]);
+
+                return null;
             }
 
             $this->creditService->ensureSubscriptionAttached($user, $subscriptionId, $priceId, $nextBilling);
@@ -274,7 +299,7 @@ class StripeWebhookController extends Controller
                     'invoice_id' => $invoiceId,
                 ]);
 
-                return;
+                return null;
             }
 
             // Update expiration + (re)activate the plan
@@ -318,7 +343,19 @@ class StripeWebhookController extends Controller
                 'is_trial' => $isTrial,
                 'expires_at' => $newExpiresAt->toDateTimeString(),
             ]);
+
+            return [$user, $targetPlan->display_name ?: $targetPlan->name];
         });
+
+        // After the commit, so a rollback can never leave an email behind for
+        // an invoice that a redelivery will process again. The allocation
+        // above is idempotent by invoice id, so this runs once per invoice
+        // even though Stripe re-delivers and sends several paid events for
+        // one invoice. Never throws.
+        if ($firstTime) {
+            [$user, $planName] = $firstTime;
+            $this->billingEmails->invoicePaid($user, $planName, $invoice);
+        }
     }
 
     /**
@@ -449,7 +486,23 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        if ($pivotPlan->pivot->cancelled_at) {
+        // The subscription is over, so its open invoices are for a period we
+        // will not serve: void them so a late payment cannot be taken (see
+        // handleInvoicePaid) and Stripe stops retrying the card. Never throws.
+        $this->stripeService->voidOpenInvoices($subscriptionId);
+
+        $updates = [];
+        if (! $pivotPlan->pivot->cancelled_at) {
+            $updates['cancelled_at'] = now();
+        }
+        // A past-due row has no paid period left, and the daily expiry run
+        // never selects past_due, so close it here. Active/trialing rows keep
+        // the graceful cancel: access until expires_at passes.
+        if ($pivotPlan->pivot->status === 'past_due') {
+            $updates['status'] = 'expired';
+        }
+
+        if (! $updates) {
             Log::info('Stripe webhook: Subscription already cancelled (idempotent)', [
                 'user_id' => $user->id,
                 'subscription_id' => $subscriptionId,
@@ -458,14 +511,12 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        // Graceful cancel: mark cancelled_at, leave status active until expires_at passes
-        $user->plans()->updateExistingPivot($pivotPlan->id, [
-            'cancelled_at' => now(),
-        ]);
+        $user->plans()->updateExistingPivot($pivotPlan->id, $updates);
 
         Log::info('Stripe webhook: Subscription marked cancelled', [
             'user_id' => $user->id,
             'subscription_id' => $subscriptionId,
+            'updates' => array_keys($updates),
         ]);
     }
 

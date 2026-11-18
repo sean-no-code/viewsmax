@@ -51,7 +51,14 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   (`UserPlan`) carrying Stripe subscription/status. `CheckPlan` middleware currently gates by plan *name*,
   not by numeric limits.
 - **Billing.** `BillingController` + `StripeService` handle Stripe. Subscriptions live on the
-  `user_plans` pivot (`stripe_subscription_id`, `status`, `expires_at`).
+  `user_plans` pivot (`stripe_subscription_id`, `status`, `expires_at`). A paid invoice of a subscription
+  Stripe already cancelled grants nothing (error-level log for a manual refund); when a subscription ends its
+  open invoices are voided (`StripeService::voidOpenInvoices`, never throws) and a `past_due` row becomes
+  `expired`. Customer emails (invoice per paid cycle, cancel confirmation) go through
+  `App\Services\Billing\BillingEmails` (`config/billing.php` switches; never throw) and log to
+  `storage/logs/billing-YYYY-MM-DD.log` (`BillingLog`, `BILLING_LOG_ENABLED`). Tests that need to see what
+  `StripeService` itself sends use `Tests\Support\FakeStripeClient` (Stripe's HTTP transport, no network);
+  everything else mocks `StripeService`.
 - **Posting (in progress).** Two parallel systems exist: `Post`/`PostTarget` and
   `SocialPost`/`SocialPostTarget`. One composed post fans out to many per-platform targets. Real
   publish-to-platform is still being built; compose/create endpoints (`POST /posts`) exist.

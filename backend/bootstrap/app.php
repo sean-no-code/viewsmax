@@ -117,10 +117,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Card-free signups: "your free trial ends tomorrow, pick a plan" a
         // day before promo_expires_at. Hourly for the same reason as above;
         // users.free_trial_reminder_sent_at keeps it once-only.
-        $schedule->command('subscriptions:send-free-trial-reminders')
-            ->hourly()
-            ->withoutOverlapping(10)
-            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-free-trial-reminders scheduled run failed'));
+        // Switched off for now (2026-11-17): uncomment to resume the reminder.
+        // $schedule->command('subscriptions:send-free-trial-reminders')
+        //     ->hourly()
+        //     ->withoutOverlapping(10)
+        //     ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-free-trial-reminders scheduled run failed'));
 
         // Queue heartbeat: dispatch a tiny job and email ADMIN_EMAIL when
         // heartbeats stop being processed (workers dead or queue wedged).

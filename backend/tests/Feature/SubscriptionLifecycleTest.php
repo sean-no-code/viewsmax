@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Mail\SubscriptionCancelledMail;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserEvent;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -181,6 +183,192 @@ class SubscriptionLifecycleTest extends TestCase
         $this->assertNotNull($this->pivot($user, $plan)->cancelled_at);
         $this->assertSame(['feedback' => null, 'comment' => null, 'plan' => 'pro', 'stripe_subscription_id' => 'sub_pro'],
             UserEvent::where('user_id', $user->id)->sole()->metadata);
+    }
+
+    // --- Cancellation email -------------------------------------------------
+
+    public function test_cancel_emails_the_access_end_date_from_stripe(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create(['email' => 'leaver@example.com', 'name' => 'Lee']);
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_pro');
+
+        // Stripe's period end wins over our (possibly stale) expires_at.
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('cancelSubscription')->once()
+            ->andReturn(['status' => 'active', 'cancel_at_period_end' => true, 'cancel_at' => 1_796_592_000]));
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/subscriptions/sub_pro/cancel', ['feedback' => 'unused'])
+            ->assertOk();
+
+        Mail::assertSent(SubscriptionCancelledMail::class, 1);
+        $mail = Mail::sent(SubscriptionCancelledMail::class)->first();
+        $this->assertTrue($mail->hasTo('leaver@example.com'));
+        $this->assertSame('Lee', $mail->name);
+        $this->assertSame('Pro', $mail->planName);
+        $this->assertSame('December 6, 2026 at 9:20pm UTC', $mail->accessUntil);
+        $this->assertFalse($mail->endsNow);
+        $this->assertStringContainsString('December 6, 2026 at 9:20pm UTC', $mail->render());
+    }
+
+    public function test_cancel_email_for_an_immediate_cancel_says_it_ended(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'past_due', now()->subDays(2), 'sub_pd');
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('cancelSubscription')->once()
+                ->andReturn(['status' => 'canceled', 'ended_at' => 1_794_000_000]);
+            $mock->shouldReceive('voidOpenInvoices')->once()->andReturn(0);
+        });
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/subscriptions/sub_pd/cancel', ['feedback' => 'other'])
+            ->assertOk();
+
+        $mail = Mail::sent(SubscriptionCancelledMail::class)->first();
+        $this->assertTrue($mail->endsNow);
+        $this->assertSame('November 6, 2026 at 9:20pm UTC', $mail->accessUntil);
+    }
+
+    public function test_a_failed_cancel_email_does_not_fail_the_cancel(): void
+    {
+        \Illuminate\Support\Facades\Exceptions::fake();
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_pro');
+        $headers = $this->authHeaders($user);
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('SMTP down'));
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('cancelSubscription')->once()
+            ->andReturn(['status' => 'active', 'cancel_at' => 1_796_592_000]));
+
+        $this->withHeaders($headers)->postJson('/api/subscriptions/sub_pro/cancel')->assertOk();
+
+        $this->assertNotNull($this->pivot($user, $plan)->cancelled_at);
+        \Illuminate\Support\Facades\Exceptions::assertReported(fn (\RuntimeException $e) => $e->getMessage() === 'SMTP down');
+    }
+
+    public function test_cancel_email_can_be_switched_off(): void
+    {
+        Mail::fake();
+        config(['billing.emails.cancellation' => false]);
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_pro');
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('cancelSubscription')->once()
+            ->andReturn(['status' => 'active']));
+
+        $this->withHeaders($this->authHeaders($user))->postJson('/api/subscriptions/sub_pro/cancel')->assertOk();
+
+        Mail::assertNotSent(SubscriptionCancelledMail::class);
+    }
+
+    // --- Past-due cancel ----------------------------------------------------
+
+    public function test_past_due_subscription_can_be_cancelled_and_ends_now(): void
+    {
+        // Free window closed too: the access gate must still let them cancel.
+        $user = User::factory()->expired()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'past_due', now()->subDays(2), 'sub_pd');
+
+        $this->mock(StripeService::class, function ($mock) {
+            // No paid period left, so it ends now, not at period end.
+            $mock->shouldReceive('cancelSubscription')->once()
+                ->with('sub_pd', null, true, 'too_expensive')
+                ->andReturn(['status' => 'canceled', 'ended_at' => now()->timestamp]);
+            $mock->shouldReceive('voidOpenInvoices')->once()->with('sub_pd')->andReturn(1);
+        });
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/subscriptions/sub_pd/cancel', ['feedback' => 'too_expensive'])
+            ->assertOk();
+
+        $pivot = $this->pivot($user, $plan);
+        $this->assertSame('expired', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+    }
+
+    public function test_immediate_cancel_voids_open_invoices(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_now');
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('cancelSubscription')->once()
+                ->with('sub_now', null, true, null)
+                ->andReturn(['status' => 'canceled', 'ended_at' => now()->timestamp]);
+            $mock->shouldReceive('voidOpenInvoices')->once()->with('sub_now')->andReturn(0);
+        });
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/subscriptions/sub_now/cancel', ['immediately' => true])
+            ->assertOk();
+
+        $this->assertNotNull($this->pivot($user, $plan)->cancelled_at);
+    }
+
+    /**
+     * The old POST /user-plans/cancel marked the row cancelled without telling
+     * Stripe, which kept billing (and the next invoice.paid reactivated it).
+     * Nothing called it; the Stripe-backed route is the only way to cancel.
+     */
+    public function test_local_only_cancel_route_is_gone(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'active', now()->addDays(20), 'sub_pro');
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldNotReceive('cancelSubscription'));
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/user-plans/cancel')
+            ->assertNotFound();
+
+        $pivot = $this->pivot($user, $plan);
+        $this->assertSame('active', $pivot->status);
+        $this->assertNull($pivot->cancelled_at);
+    }
+
+    // --- Plan change on a cancelled subscription ---------------------------
+
+    public function test_plan_change_keeps_a_pending_cancellation(): void
+    {
+        config(['services.stripe.signature_check' => false]);
+        $user = User::factory()->create();
+        $creator = $this->plan('creator');
+        $pro = $this->plan('pro');
+        $this->subscribe($user, $creator, 'active', now()->addDays(20), 'sub_c');
+        $user->plans()->updateExistingPivot($creator->id, ['cancelled_at' => now()->subDay()]);
+
+        $periodEnd = now()->addDays(20)->timestamp;
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('changeSubscriptionPrice')->once()->with('sub_c', 'price_pro')
+                ->andReturn(['status' => 'active', 'cancel_at_period_end' => true]);
+        });
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/user-plans/change-plan', ['price_id' => 'price_pro'])
+            ->assertOk();
+
+        // Stripe keeps cancel_at_period_end, so its follow-up event says so.
+        $this->postJson('/api/webhooks/stripe', [
+            'type' => 'customer.subscription.updated',
+            'data' => ['object' => [
+                'id' => 'sub_c',
+                'status' => 'active',
+                'cancel_at_period_end' => true,
+                'current_period_end' => $periodEnd,
+                'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
+            ]],
+        ])->assertOk();
+
+        $pivot = $this->pivot($user, $pro);
+        $this->assertNotNull($pivot->cancelled_at);
+        $this->assertSame('price_pro', $pivot->stripe_price_id);
     }
 
     // --- Expiry job --------------------------------------------------------

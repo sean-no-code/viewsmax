@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mail\InvoicePaidMail;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
@@ -210,5 +212,296 @@ class StripeWebhookTest extends TestCase
         ])->assertOk();
 
         $this->assertSame(1000, $user->fresh()->balanceInt); // still 1000, not 1750
+    }
+
+    /**
+     * A late payment of an invoice whose subscription Stripe has already
+     * cancelled does not bring the subscription back (Stripe never renews it),
+     * so it must not mark the row active or grant credits. It is raised at
+     * error level so a person can refund it.
+     */
+    public function test_invoice_paid_for_a_canceled_subscription_does_not_reactivate_or_allocate(): void
+    {
+        \Illuminate\Support\Facades\Log::spy();
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $cancelledAt = now()->subDay()->startOfSecond();
+        $user->plans()->attach($plan->id, [
+            'stripe_subscription_id' => 'sub_dead',
+            'stripe_price_id' => 'price_pro',
+            'status' => 'past_due',
+            'starts_at' => now()->subMonth(),
+            'expires_at' => now()->subDay(),
+            'cancelled_at' => $cancelledAt,
+        ]);
+        $user->deposit(40);
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('getSubscription')->with('sub_dead')->andReturn([
+                'status' => 'canceled',
+                'current_period_end' => now()->subDay()->timestamp,
+                'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
+                'metadata' => [],
+            ]);
+        });
+
+        $this->postJson('/api/webhooks/stripe', [
+            'type' => 'invoice.paid',
+            'data' => ['object' => [
+                'id' => 'in_late',
+                'subscription' => 'sub_dead',
+                'amount_paid' => 9900,
+                'currency' => 'usd',
+                'billing_reason' => 'subscription_cycle',
+            ]],
+        ])->assertOk(); // 200 so Stripe stops re-delivering; a person handles it
+
+        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
+        $this->assertSame('past_due', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+        $this->assertSame(40, $user->fresh()->balanceInt);
+
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('error')
+            ->withArgs(fn ($message, $context = []) => str_contains($message, 'cancelled subscription')
+                && $context['user_id'] === $user->id
+                && $context['invoice_id'] === 'in_late'
+                && $context['amount_paid'] === 9900
+                && $context['currency'] === 'usd')
+            ->once();
+    }
+
+    private function attachSub(User $user, Plan $plan, string $subId, string $status, array $extra = []): void
+    {
+        $user->plans()->attach($plan->id, array_merge([
+            'stripe_subscription_id' => $subId,
+            'stripe_price_id' => $plan->stripe_price_id,
+            'status' => $status,
+            'starts_at' => now()->subMonth(),
+            'expires_at' => now()->addDays(3),
+        ], $extra));
+    }
+
+    private function deleteEvent(string $subId): array
+    {
+        return [
+            'type' => 'customer.subscription.deleted',
+            'data' => ['object' => ['id' => $subId, 'status' => 'canceled']],
+        ];
+    }
+
+    /**
+     * Stripe ending a past-due subscription (retries exhausted) must close the
+     * row: the daily expiry run never selects past_due, so it would otherwise
+     * stay past_due, and show the "settle your invoice" banner, forever.
+     */
+    public function test_subscription_deleted_closes_a_past_due_row_and_voids_open_invoices(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->attachSub($user, $plan, 'sub_pd', 'past_due');
+
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('voidOpenInvoices')
+            ->once()->with('sub_pd')->andReturn(1));
+
+        $this->postJson('/api/webhooks/stripe', $this->deleteEvent('sub_pd'))->assertOk();
+
+        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
+        $this->assertSame('expired', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+    }
+
+    /** A past-due row the user had already cancelled is still closed. */
+    public function test_subscription_deleted_closes_a_past_due_row_that_was_already_marked_cancelled(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->attachSub($user, $plan, 'sub_pd2', 'past_due', ['cancelled_at' => now()->subDays(2)]);
+
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('voidOpenInvoices')
+            ->once()->with('sub_pd2')->andReturn(0));
+
+        $this->postJson('/api/webhooks/stripe', $this->deleteEvent('sub_pd2'))->assertOk();
+
+        $this->assertSame('expired', $user->plans()->where('plans.id', $plan->id)->first()->pivot->status);
+    }
+
+    /** An active row keeps its graceful cancel: access until expires_at. */
+    public function test_subscription_deleted_keeps_an_active_row_until_it_expires(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->attachSub($user, $plan, 'sub_act', 'active');
+
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('voidOpenInvoices')
+            ->once()->with('sub_act')->andReturn(0));
+
+        $this->postJson('/api/webhooks/stripe', $this->deleteEvent('sub_act'))->assertOk();
+
+        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
+        $this->assertSame('active', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+    }
+
+    /** No local row yet: a paid invoice of a dead subscription attaches nothing. */
+    public function test_invoice_paid_for_a_canceled_subscription_attaches_no_plan(): void
+    {
+        $user = User::factory()->create(['stripe_customer_id' => 'cus_dead']);
+        $this->proPlan();
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('getSubscription')->with('sub_gone')->andReturn([
+                'status' => 'canceled',
+                'customer' => 'cus_dead',
+                'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
+                'metadata' => [],
+            ]);
+        });
+
+        $this->postJson('/api/webhooks/stripe', [
+            'type' => 'invoice.paid',
+            'data' => ['object' => [
+                'id' => 'in_gone',
+                'subscription' => 'sub_gone',
+                'amount_paid' => 9900,
+                'billing_reason' => 'subscription_cycle',
+            ]],
+        ])->assertOk();
+
+        $this->assertSame(0, $user->plans()->count());
+        $this->assertSame(0, $user->fresh()->balanceInt);
+    }
+
+    // --- Item 11: invoice email per paid billing cycle ----------------------
+
+    private function paidInvoice(array $extra = []): array
+    {
+        return array_merge([
+            'id' => 'in_cycle',
+            'subscription' => 'sub_conv',
+            'amount_paid' => 9900,
+            'currency' => 'usd',
+            'billing_reason' => 'subscription_cycle',
+            'hosted_invoice_url' => 'https://invoice.stripe.com/i/acct/in_cycle',
+            'invoice_pdf' => 'https://pay.stripe.com/invoice/acct/in_cycle/pdf',
+            'number' => 'VMX-0042',
+            'status_transitions' => ['paid_at' => 1_794_000_000],
+            'lines' => ['data' => [
+                // A proration line from an earlier upgrade comes first; the
+                // period shown is the plan line's.
+                ['proration' => true, 'period' => ['start' => 1_790_000_000, 'end' => 1_791_000_000]],
+                ['proration' => false, 'period' => ['start' => 1_794_000_000, 'end' => 1_796_592_000]],
+            ]],
+        ], $extra);
+    }
+
+    private function postInvoicePaid(array $invoice, string $type = 'invoice.paid')
+    {
+        return $this->postJson('/api/webhooks/stripe', ['type' => $type, 'data' => ['object' => $invoice]]);
+    }
+
+    public function test_paid_invoice_emails_the_customer_once(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create(['email' => 'payer@example.com', 'name' => 'Pat']);
+        $plan = $this->proPlan();
+        $this->subscribeTrialing($user, $plan, 'sub_conv');
+        $this->mockStripeConverted('sub_conv', 'in_cycle');
+
+        $this->postInvoicePaid($this->paidInvoice())->assertOk();
+        // Stripe re-delivers, and also sends the other paid events for it.
+        $this->postInvoicePaid($this->paidInvoice())->assertOk();
+        $this->postInvoicePaid($this->paidInvoice(), 'invoice.payment_succeeded')->assertOk();
+
+        Mail::assertSent(InvoicePaidMail::class, 1);
+        $mail = Mail::sent(InvoicePaidMail::class)->first();
+        $this->assertTrue($mail->hasTo('payer@example.com'));
+        $this->assertSame([
+            'name' => 'Pat',
+            'planName' => 'Pro',
+            'amount' => '$99.00 USD',
+            'invoiceNumber' => 'VMX-0042',
+            'periodStart' => 'November 6, 2026',
+            'periodEnd' => 'December 6, 2026',
+            'paidAt' => 'November 6, 2026 at 9:20pm UTC',
+            'invoiceUrl' => 'https://invoice.stripe.com/i/acct/in_cycle',
+            'pdfUrl' => 'https://pay.stripe.com/invoice/acct/in_cycle/pdf',
+        ], [
+            'name' => $mail->name,
+            'planName' => $mail->planName,
+            'amount' => $mail->amount,
+            'invoiceNumber' => $mail->invoiceNumber,
+            'periodStart' => $mail->periodStart,
+            'periodEnd' => $mail->periodEnd,
+            'paidAt' => $mail->paidAt,
+            'invoiceUrl' => $mail->invoiceUrl,
+            'pdfUrl' => $mail->pdfUrl,
+        ]);
+        // The view renders with every detail and both links.
+        $html = $mail->render();
+        $this->assertStringContainsString('$99.00 USD', $html);
+        $this->assertStringContainsString('November 6, 2026 to December 6, 2026', $html);
+        $this->assertStringContainsString('https://pay.stripe.com/invoice/acct/in_cycle/pdf', $html);
+    }
+
+    public function test_zero_amount_invoice_sends_no_email(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->subscribeTrialing($user, $plan, 'sub_conv');
+        $this->mockStripeConverted('sub_conv', 'in_cycle');
+
+        $this->postInvoicePaid($this->paidInvoice(['amount_paid' => 0, 'billing_reason' => 'subscription_create']))->assertOk();
+
+        Mail::assertNotSent(InvoicePaidMail::class);
+    }
+
+    public function test_invoice_email_can_be_switched_off(): void
+    {
+        Mail::fake();
+        config(['billing.emails.invoice' => false]);
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->subscribeTrialing($user, $plan, 'sub_conv');
+        $user->deposit(250);
+        $this->mockStripeConverted('sub_conv', 'in_cycle');
+
+        $this->postInvoicePaid($this->paidInvoice())->assertOk();
+
+        Mail::assertNotSent(InvoicePaidMail::class);
+        $this->assertSame(1000, $user->fresh()->balanceInt); // billing itself unaffected
+    }
+
+    public function test_a_failed_invoice_email_does_not_fail_the_webhook(): void
+    {
+        \Illuminate\Support\Facades\Exceptions::fake();
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('SMTP down'));
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->subscribeTrialing($user, $plan, 'sub_conv');
+        $user->deposit(250);
+        $this->mockStripeConverted('sub_conv', 'in_cycle');
+
+        $this->postInvoicePaid($this->paidInvoice())->assertOk();
+
+        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
+        $this->assertSame('active', $pivot->status);
+        $this->assertSame(1000, $user->fresh()->balanceInt);
+        \Illuminate\Support\Facades\Exceptions::assertReported(fn (\RuntimeException $e) => $e->getMessage() === 'SMTP down');
+    }
+
+    public function test_invoice_paid_for_a_canceled_subscription_sends_no_email(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create(['stripe_customer_id' => 'cus_dead']);
+        $this->proPlan();
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('getSubscription')->andReturn([
+            'status' => 'canceled', 'customer' => 'cus_dead', 'metadata' => [],
+            'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
+        ]));
+
+        $this->postInvoicePaid($this->paidInvoice(['subscription' => 'sub_dead']))->assertOk();
+
+        Mail::assertNotSent(InvoicePaidMail::class);
     }
 }

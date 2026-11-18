@@ -206,7 +206,8 @@ class UserErasureTest extends TestCase
         $user = $this->fullUser();
         $id = $user->id;
         $this->stripe->shouldReceive('cancelSubscription')->once()->andThrow(new \Exception('Stripe down'));
-        $this->stripe->shouldReceive('deleteCustomer')->never();
+        // Still attempted: deleting the customer also ends its subscriptions.
+        $this->stripe->shouldReceive('deleteCustomer')->once()->with('cus_123')->andReturn(true);
 
         $result = app(UserErasure::class)->erase($user);
 
@@ -219,6 +220,48 @@ class UserErasureTest extends TestCase
         $this->assertSame(0, DB::table('social_accounts')->where('user_id', $id)->count());
         $this->assertSame(0, DB::table('posts')->where('user_id', $id)->count());
         $this->assertTrue(User::withTrashed()->find($id)->trashed());
+    }
+
+    /**
+     * One failed cancel must not skip the others or the customer delete:
+     * local erasure scrubs stripe_customer_id, so anything skipped here
+     * could leave a live subscription billing an erased account.
+     */
+    public function test_every_stripe_cleanup_step_is_attempted_when_one_cancel_fails(): void
+    {
+        \Illuminate\Support\Facades\Exceptions::fake();
+        $this->fakeRemotes();
+        $user = $this->fullUser();
+        $second = \App\Models\Plan::create(['name' => 'second', 'display_name' => 'Second', 'price' => 1, 'currency' => 'USD', 'is_active' => true]);
+        $user->plans()->attach($second->id, ['stripe_subscription_id' => 'sub_second', 'status' => 'past_due', 'starts_at' => now(), 'expires_at' => now()->addDay()]);
+        $first = $user->plans()->wherePivot('stripe_subscription_id', '!=', 'sub_second')->first()->pivot->stripe_subscription_id;
+
+        $this->stripe->shouldReceive('cancelSubscription')->once()->with($first, 'GDPR erasure', true)->andThrow(new \Exception('Stripe down'));
+        $this->stripe->shouldReceive('cancelSubscription')->once()->with('sub_second', 'GDPR erasure', true)->andReturn(['status' => 'canceled']);
+        $this->stripe->shouldReceive('deleteCustomer')->once()->with('cus_123')->andReturn(true);
+
+        $result = app(UserErasure::class)->erase($user);
+
+        $this->assertSame('failed', $result['steps']['stripe']);
+        $this->assertSame(['stripe'], array_map(fn ($f) => strstr($f, ':', true), $result['failures']));
+        $this->assertStringContainsString($first, $result['failures'][0]);
+        \Illuminate\Support\Facades\Exceptions::assertReported(fn (\Exception $e) => $e->getMessage() === 'Stripe down');
+    }
+
+    /** A subscription Stripe no longer has is already stopped: that is success. */
+    public function test_a_subscription_stripe_no_longer_has_counts_as_cancelled(): void
+    {
+        $this->fakeRemotes();
+        $user = $this->fullUser();
+        $missing = new \Exception('Stripe cancel subscription error: No such subscription', 0,
+            \Stripe\Exception\InvalidRequestException::factory('No such subscription', 404, null, null, null, 'resource_missing'));
+        $this->stripe->shouldReceive('cancelSubscription')->once()->andThrow($missing);
+        $this->stripe->shouldReceive('deleteCustomer')->once()->with('cus_123')->andReturn(true);
+
+        $result = app(UserErasure::class)->erase($user);
+
+        $this->assertSame('ok', $result['steps']['stripe']);
+        $this->assertSame([], $result['failures']);
     }
 
     public function test_a_mailing_list_refusal_is_logged_not_a_failure(): void

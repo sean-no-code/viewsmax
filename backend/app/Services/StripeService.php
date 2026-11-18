@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Exception;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Stripe\BillingPortal\Session as BillingPortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
@@ -18,13 +19,6 @@ use Stripe\Webhook;
 
 class StripeService
 {
-    /**
-     * The activation fee, in dollars, matching the one-time Stripe price in
-     * STRIPE_ACTIVATION_FEE_PRICE_ID. Mirrored as ACTIVATION_FEE_USD in the
-     * SPA (frontend/src/lib/access.ts).
-     */
-    public const ACTIVATION_FEE_USD = 1;
-
     public function __construct()
     {
         Stripe::setApiKey(config('services.stripe.secret'));
@@ -115,7 +109,10 @@ class StripeService
         try {
             if ($immediately) {
                 $subscription = Subscription::retrieve($subscriptionId);
-                $result = $subscription->cancel($details ? ['cancellation_details' => $details] : []);
+                // Already ended: nothing to stop (Stripe refuses a second cancel).
+                $result = in_array($subscription->status, ['canceled', 'incomplete_expired'], true)
+                    ? $subscription
+                    : $subscription->cancel($details ? ['cancellation_details' => $details] : []);
             } else {
                 $result = Subscription::update($subscriptionId, array_filter([
                     'cancel_at_period_end' => true,
@@ -135,13 +132,51 @@ class StripeService
                 'error' => $e->getMessage(),
                 'subscription_id' => $subscriptionId,
             ]);
-            throw new Exception('Stripe cancel subscription error: '.$e->getMessage());
+            throw new Exception('Stripe cancel subscription error: '.$e->getMessage(), 0, $e);
         }
+    }
+
+    /**
+     * Void every open invoice of a subscription that has ended, so a late
+     * payment can no longer be taken for a period we will not serve (and
+     * Stripe stops retrying the card). Never throws: each failure is reported
+     * and the rest are still attempted. Returns how many were voided.
+     */
+    public function voidOpenInvoices(string $subscriptionId): int
+    {
+        $voided = 0;
+
+        try {
+            $invoices = Invoice::all(['subscription' => $subscriptionId, 'status' => 'open', 'limit' => 100]);
+
+            foreach ($invoices->autoPagingIterator() as $invoice) {
+                try {
+                    $invoice->voidInvoice();
+                    $voided++;
+                } catch (Exception $e) {
+                    Context::add(['stripe_subscription_id' => $subscriptionId, 'stripe_invoice_id' => $invoice->id]);
+                    report($e);
+                }
+            }
+        } catch (Exception $e) {
+            // Listing (or fetching a later page) failed.
+            Context::add(['stripe_subscription_id' => $subscriptionId]);
+            report($e);
+        }
+
+        Log::info('Stripe open invoices voided', [
+            'subscription_id' => $subscriptionId,
+            'voided' => $voided,
+        ]);
+
+        return $voided;
     }
 
     /**
      * Update (upgrade/downgrade) a subscription to a new price.
      * Uses proration so charges/refunds are handled by Stripe automatically.
+     * cancel_at_period_end is deliberately not sent: a pending cancellation
+     * survives a plan change (resuming is a separate, explicit decision).
      */
     public function changeSubscriptionPrice(string $subscriptionId, string $newPriceId): array
     {
@@ -154,7 +189,6 @@ class StripeService
             }
 
             $updated = Subscription::update($subscriptionId, [
-                'cancel_at_period_end' => false,
                 'proration_behavior' => 'create_prorations',
                 'items' => [[
                     'id' => $itemId,
@@ -325,8 +359,8 @@ class StripeService
 
     /**
      * Create a subscription on the given price. $trial is Stripe's
-     * `trial_end` (the plan price is charged when the free window closes, the
-     * activation fee today); empty charges the plan price now. Either way a
+     * `trial_end` (nothing is charged today, the plan price when the free
+     * window closes); empty charges the plan price now. Either way a
      * declined card fails the call instead of leaving an incomplete
      * subscription behind.
      *
@@ -359,21 +393,17 @@ class StripeService
 
     /**
      * Parameters for Subscription::create. A trial (free window still open)
-     * also bills the one-time activation fee on the first invoice, which
-     * Stripe issues and charges immediately; with `error_if_incomplete` a
-     * declined fee, like a declined plan price, fails the request.
+     * charges nothing today; without one, `error_if_incomplete` makes a
+     * declined plan price fail the request.
      *
      * @param  array{trial_end?: int}  $trial
      */
     public function subscriptionParams(User $user, string $customerId, string $priceId, array $trial, ?string $referralId = null): array
     {
-        $feePriceId = config('services.stripe.activation_fee_price_id');
-
         return [
             'customer' => $customerId,
             'items' => [['price' => $priceId]],
             ...$trial,
-            ...($trial && $feePriceId ? ['add_invoice_items' => [['price' => $feePriceId]]] : []),
             'payment_behavior' => 'error_if_incomplete',
             'metadata' => array_filter([
                 'user_id' => (string) $user->id,

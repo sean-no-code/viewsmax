@@ -291,7 +291,6 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::post('/checkout', [UserPlanController::class, 'createCheckoutSession']);
         Route::post('/subscribe', [UserPlanController::class, 'subscribe']);
         Route::post('/change-plan', [UserPlanController::class, 'changePlan']);
-        Route::post('/cancel', [UserPlanController::class, 'cancel']);
         Route::get('/history', [UserPlanController::class, 'getHistory']);
     });
 

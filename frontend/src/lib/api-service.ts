@@ -5431,6 +5431,8 @@ class ViewsMaxApiService {
   // Used by the billing page to show a "payment failed — update card" banner.
   async getBillingStatus(): Promise<ApiResponse<{
     has_subscription: boolean;
+    /** A Stripe customer exists, so the billing portal has invoices to show. */
+    has_billing_account?: boolean;
     status?: string;
     plan_display_name?: string;
     plan_id?: string;

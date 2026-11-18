@@ -16,9 +16,9 @@ export interface AccessUser {
 }
 
 /**
- * Charged the day a free trial starts, as a one-time Stripe price
- * (STRIPE_ACTIVATION_FEE_PRICE_ID on the backend). 0 since 2026-10-25: a card
- * is required to start the trial but nothing is charged until it ends. Used
+ * Charged the day a free trial starts. 0 since 2026-10-25: a card is required
+ * to start the trial but nothing is charged until it ends (the backend's
+ * one-time fee price was removed on 2026-11-17). Used
  * for the amount shown at checkout; the prose copy in StripeTrialStep,
  * Plans.tsx and the landing copy is written out, so revisit it if this changes.
  */
@@ -95,7 +95,7 @@ export function isAccessExpired(user: AccessUser | null | undefined, now: number
 
 /**
  * What adding a card costs today. The free window is the only trial: a card
- * added while it is open pays the activation fee now and the plan price when
+ * added while it is open pays nothing now and the plan price when
  * the window closes; one added at any other time (window closed, or no window
  * at all) pays the plan price straight away. Mirrors the backend's
  * User::subscriptionTrialTerms.

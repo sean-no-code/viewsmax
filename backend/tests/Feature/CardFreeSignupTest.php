@@ -15,8 +15,8 @@ use Tests\TestCase;
  * Registering opens a 7-day free window (the same `promo_expires_at` window
  * promotional customers use, without the role). The window is the trial, but
  * onboarding still asks for a card: subscribing during the window starts a
- * trialing subscription that charges the activation fee today and the plan
- * price when the window closes. Once the window closes without a card the
+ * trialing subscription that charges nothing today and the plan price when
+ * the window closes. Once the window closes without a card the
  * user is locked to the billing endpoints, and subscribing then charges the
  * plan price straight away.
  */

@@ -95,6 +95,8 @@ class BillingPortalTest extends TestCase
         $this->assertTrue($res->json('data.has_subscription'));
         $this->assertSame('past_due', $res->json('data.status'));
         $this->assertSame('Pro', $res->json('data.plan_display_name'));
+        $this->assertSame('sub_pd', $res->json('data.subscription_id'));
+        $this->assertTrue($res->json('data.has_billing_account'));
     }
 
     public function test_status_reports_no_subscription_for_a_free_user(): void
@@ -105,5 +107,21 @@ class BillingPortalTest extends TestCase
 
         $res->assertStatus(200);
         $this->assertFalse($res->json('data.has_subscription'));
+        $this->assertFalse($res->json('data.has_billing_account'));
+    }
+
+    /**
+     * An expired customer has no live subscription but still has a Stripe
+     * customer, so the billing page can link to invoices and the card.
+     */
+    public function test_status_reports_a_billing_account_without_a_subscription(): void
+    {
+        $user = User::factory()->expired()->create(['stripe_customer_id' => 'cus_old']);
+
+        $res = $this->getJson('/api/billing/status', $this->authHeaders($user));
+
+        $res->assertStatus(200);
+        $this->assertFalse($res->json('data.has_subscription'));
+        $this->assertTrue($res->json('data.has_billing_account'));
     }
 }
