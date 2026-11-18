@@ -59,7 +59,7 @@ class PostController extends Controller
      * per-platform results.
      *
      * @bodyParam caption string The post text / caption. Example: Big news today!
-     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest. Example: ["tiktok","instagram"]
+     * @bodyParam platforms string[] Target platforms: youtube, tiktok, instagram, x, linkedin, threads, facebook, bluesky, pinterest, tumblr. Example: ["tiktok","instagram"]
      * @bodyParam media object[] Media entries, usually from POST /api/posts/media.
      * @bodyParam media[].type string image or video. Example: image
      * @bodyParam media[].url string Public URL of the media. Example: https://cdn.example/1.jpg
@@ -82,6 +82,7 @@ class PostController extends Controller
      * @bodyParam options.pinterest.link string Where the Pin links to (max 2048). Empty = no link.
      * @bodyParam options.pinterest.alt_text string Image description for screen readers (max 500). Empty = none.
      * @bodyParam options.pinterest.cover_url string Cover image URL; required for a video Pin.
+     * @bodyParam options.tumblr.tags string[] Tags for the Tumblr post, exactly as the user typed them (a leading # is dropped). Empty = no tags. Example: ["art","process"]
      */
     public function store(Request $request)
     {
@@ -250,6 +251,12 @@ class PostController extends Controller
             'link' => 'nullable|url|max:2048',
             'alt_text' => 'nullable|string|max:500',
             'cover_url' => 'nullable|url',
+        ])->validate();
+
+        // Tumblr tags go out as typed; these caps only keep the payload sane.
+        Validator::make($request->input('options.tumblr') ?? [], [
+            'tags' => 'nullable|array|max:100',
+            'tags.*' => 'nullable|string|max:255',
         ])->validate();
 
         // Back-compat: the old LinkedIn-only first_comment option becomes the
@@ -469,6 +476,26 @@ class PostController extends Controller
                         'message' => 'Choose a Pinterest board for every Pinterest account before publishing or scheduling.',
                     ], 422));
                 }
+            }
+        }
+
+        // One Tumblr login connects every blog it can post to. A target with
+        // no blog picked would go to whichever was connected last, so with
+        // more than one blog the caller has to name it.
+        if ($publishing && in_array('tumblr', $platformList, true)) {
+            if (isset($data['targets'])) {
+                $unpinned = collect($data['targets'])->contains(fn ($t) => $t['platform'] === 'tumblr' && empty($t['social_account_id']));
+            } elseif (isset($data['platforms'])) {
+                $unpinned = true;
+            } else {
+                $unpinned = (bool) $post?->targets()->where('platform', 'tumblr')->whereNull('social_account_id')->exists();
+            }
+            $blogs = Auth::user()->socialAccounts()->where('platform', 'tumblr')
+                ->where('status', \App\Models\SocialAccount::STATUS_CONNECTED)->count();
+            if ($unpinned && $blogs > 1) {
+                abort(response()->json([
+                    'message' => 'This account has more than one Tumblr blog. Choose which to post to: send one target per blog with its social_account_id, or post to a brand that contains the blog.',
+                ], 422));
             }
         }
 

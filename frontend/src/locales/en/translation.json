@@ -1429,7 +1429,13 @@
       "youtubePrivate": "Private (only you)",
       "youtubePublic": "Public",
       "youtubeTitleMissing": "YouTube needs a title — add one in YouTube options, or write a caption (its first 100 characters become the title).",
-      "youtubeUnlisted": "Unlisted (anyone with the link)"
+      "youtubeUnlisted": "Unlisted (anyone with the link)",
+      "tumblr": {
+        "tags": "Tags (optional)",
+        "tagsAria": "Tumblr tags",
+        "tagsPlaceholder": "art, process, behind the scenes",
+        "tagsHelp": "Separate tags with commas. Leave empty to post without tags."
+      }
     },
     "drafts": {
       "empty": "No drafts yet — start one from New Post.",

@@ -12,6 +12,7 @@ use App\Services\Social\Providers\LinkedInProvider;
 use App\Services\Social\Providers\PinterestProvider;
 use App\Services\Social\Providers\ThreadsProvider;
 use App\Services\Social\Providers\TikTokProvider;
+use App\Services\Social\Providers\TumblrProvider;
 use App\Services\Social\Providers\XProvider;
 use App\Services\Social\Providers\YouTubeProvider;
 use InvalidArgumentException;
@@ -28,6 +29,7 @@ class SocialProviderManager
         'linkedin' => LinkedInProvider::class,
         'bluesky' => BlueskyProvider::class,
         'pinterest' => PinterestProvider::class,
+        'tumblr' => TumblrProvider::class,
         'x' => XProvider::class,
         'tiktok' => TikTokProvider::class,
         'youtube' => YouTubeProvider::class,

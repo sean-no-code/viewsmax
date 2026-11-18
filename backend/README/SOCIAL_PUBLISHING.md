@@ -1,9 +1,9 @@
 # Social Publishing — Architecture & API
 
 Connect and post to Facebook, Instagram, Threads, LinkedIn, Bluesky, X, TikTok,
-YouTube, Pinterest and Google My Business from one set of endpoints.
+YouTube, Pinterest, Tumblr and Google My Business from one set of endpoints.
 
-> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`.
+> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`; Tumblr: `README/TUMBLR_SETUP.md`.
 > **Frontend integration contract:** see `tasks/frontend-todo.md`.
 
 ## Components
@@ -72,3 +72,6 @@ POST   /social/posts/{id}/retry          retry failed targets
 - Media must be **publicly reachable URLs** (several platforms fetch them server-side).
 - Conservative privacy defaults: YouTube `private`, TikTok `SELF_ONLY` — change in the
   respective providers after audits pass.
+- Shared grants: Facebook (a row per Page) and Tumblr (a row per blog) store several
+  accounts from one login. Tumblr's rows share a rotating token pair, so its refresh
+  rewrites every row of the grant under a per-grant lock (`metadata.grant_id`).

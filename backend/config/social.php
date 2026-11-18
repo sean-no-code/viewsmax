@@ -148,6 +148,20 @@ return [
             ],
         ],
 
+        'tumblr' => [
+            'label' => 'Tumblr',
+            'enabled' => env('TUMBLR_ENABLED', true),
+            // OAuth consumer key / secret from tumblr.com/oauth/apps.
+            'client_id' => env('TUMBLR_CLIENT_ID'),
+            'client_secret' => env('TUMBLR_CLIENT_SECRET'),
+            // offline_access is what returns a refresh token.
+            'scopes' => [
+                'basic',
+                'write',
+                'offline_access',
+            ],
+        ],
+
         'bluesky' => [
             'label' => 'Bluesky',
             'enabled' => env('BLUESKY_ENABLED', true),

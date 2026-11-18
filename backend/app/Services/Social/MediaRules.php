@@ -30,6 +30,8 @@ class MediaRules
         'linkedin' => ['max_videos' => 0],
         // Bluesky video (app.bsky.video) is not wired up yet either.
         'bluesky' => ['max_images' => 4, 'max_videos' => 0, 'mixed' => false],
+        // NPF: at most 30 image blocks and 1 uploaded video per post.
+        'tumblr' => ['max_images' => 30, 'max_videos' => 1],
     ];
 
     /**

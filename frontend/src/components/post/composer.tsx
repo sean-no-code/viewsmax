@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Icon } from "@/components/analytics/primitives";
 import { BrandIcon, hasBrandIcon } from "@/components/post/brand-icons";
-import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type PinterestOptions, type Post, type PostMediaItem } from "@/lib/api-service";
+import { viewsMaxApi, resolveMediaUrl, type TikTokOptions, type TikTokCreatorInfo, type YouTubeOptions, type LinkedInOptions, type PinterestOptions, type TumblrOptions, type Post, type PostMediaItem } from "@/lib/api-service";
 import { platformLength, splitXThread, xThreadStatus, xWeightedLength, X_LIMIT, X_MAX_IMAGES, type XThreadStatus } from "@/lib/text-metrics";
 
 export interface Platform {
@@ -30,6 +30,8 @@ export const PLATFORMS: Platform[] = [
   { id: "threads", name: "Threads", glyph: "@", handle: "@creator.lab", accent: "#0A0A0C", limit: 500, followers: "21.7K", kind: "Post" },
   { id: "bluesky", name: "Bluesky", glyph: "bs", handle: "@creator.bsky.social", accent: "#0085FF", limit: 300, followers: "8.2K", kind: "Post" },
   { id: "pinterest", name: "Pinterest", glyph: "P", handle: "@creatorlab", accent: "#E60023", limit: 800, followers: "15.4K", kind: "Pin" },
+  // 4096 is NPF's per-text-block limit; the backend sends a block per paragraph.
+  { id: "tumblr", name: "Tumblr", glyph: "t", handle: "creatorlab", accent: "#36465D", limit: 4096, followers: "6.1K", kind: "Post" },
 ];
 export const PMAP: Record<string, Platform> = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
 
@@ -57,7 +59,21 @@ export const PLATFORM_CAPS: Record<string, { text: boolean; image: boolean; vide
   bluesky: { text: true, image: true, video: false },
   // Every Pin is an image or a video; there are no text-only Pins.
   pinterest: { text: false, image: true, video: true },
+  // Text, up to 30 images and one video per post (NPF limits).
+  tumblr: { text: true, image: true, video: true },
 };
+// "#art, process ,,Art" → ["art", "process"]: split on commas, drop a leading
+// # and blanks, keep the first spelling of a repeated tag.
+export function tumblrTagList(input: string): string[] {
+  const seen = new Set<string>();
+  return input.split(",").map((s) => s.trim().replace(/^#+/, "").trim()).filter((tag) => {
+    const key = tag.toLowerCase();
+    if (!tag || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export type PostType = "media" | "text";
 export function platformAllowedForType(id: string, postType: PostType): boolean {
   const caps = PLATFORM_CAPS[id];
@@ -167,6 +183,10 @@ export function usePostComposer() {
   // (e.g. from a saved draft). Read from current state, not a stale closure.
   const selectOnlyPinterestBoard = (accountId: number, boardId: string) =>
     setPinterest((o) => (o.board_ids[String(accountId)] ? o : { ...o, board_ids: { ...o.board_ids, [String(accountId)]: boardId } }));
+
+  // Tumblr's only option: tags, typed as one comma-separated line and sent
+  // only when filled in.
+  const [tumblrTags, setTumblrTags] = useState("");
 
   // Custom cover: one uploaded image drives the YouTube thumbnail + Instagram
   // Reel cover; TikTok only supports a cover-frame time (seconds into the video).
@@ -417,6 +437,10 @@ export function usePostComposer() {
       setPinterest((cur) => ({ ...cur, ...o, board_ids: { ...(o.board_ids ?? {}) } }));
     }
 
+    const tb = targets.find((tg) => tg.platform === "tumblr");
+    const tbTags = (tb?.options as Partial<TumblrOptions> | undefined)?.tags;
+    if (Array.isArray(tbTags)) setTumblrTags(tbTags.join(", "));
+
     const li = targets.find((tg) => tg.platform === "linkedin");
     if (li?.options) setLinkedin((cur) => ({ ...cur, ...(li.options as Partial<LinkedInOptions>) }));
     // Drafts saved before the generic comments system stored a LinkedIn-only
@@ -454,6 +478,7 @@ export function usePostComposer() {
     youtube, patchYoutube,
     linkedin, patchLinkedin,
     pinterest, patchPinterest, selectOnlyPinterestBoard,
+    tumblrTags, setTumblrTags,
     cover, uploadCover, removeCover, coverUploading, coverError, tiktokCoverSec, setTiktokCoverSec,
     status, issues, youtubeTitleMissing, hydrate,
   };

@@ -16,6 +16,7 @@ const PLACEMENT_TO_PLATFORM: Record<string, string> = {
   facebook: "facebook",
   threads: "threads",
   pinterest: "pinterest",
+  tumblr: "tumblr",
 };
 
 export function PlacementIcon({ placement, size = 22 }: { placement: string; size?: number }) {

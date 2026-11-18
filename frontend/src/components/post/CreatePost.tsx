@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Icon, Btn } from "@/components/analytics/primitives";
-import { PLATFORMS, PMAP, PAvatar, MediaTile, PostPreview, CountChip, usePostComposer, platformAllowedForType, type Composer } from "@/components/post/composer";
+import { PLATFORMS, PMAP, PAvatar, MediaTile, PostPreview, CountChip, usePostComposer, platformAllowedForType, tumblrTagList, type Composer } from "@/components/post/composer";
 import { viewsMaxApi, resolveMediaUrl, type Brand, type PinterestBoard } from "@/lib/api-service";
 import { useAccountDirectory } from "@/components/post/useAccountDirectory";
 import { useBrands } from "@/components/post/useBrands";
@@ -59,7 +59,7 @@ const privacyLabels = (t: TFunction): Record<string, string> => ({
 // Platforms surfaced in the "Publishing to" picker — the ones the connections
 // screen can actually connect today. Order follows the PLATFORMS catalog.
 const SUPPORTED_PLATFORM_IDS = ["youtube", "tiktok", "instagram", "x", "linkedin", "facebook", "threads", "bluesky"];
-const SHOWN_WHEN_CONNECTED_IDS = ["pinterest"];
+const SHOWN_WHEN_CONNECTED_IDS = ["pinterest", "tumblr"];
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -521,7 +521,7 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   // (LinkedIn's old first-comment moved to the generic Comments card).
   const mediaVideoPost = c.postType === "media" && hasVideo;
   const optionTabs = c.selected.filter((id) =>
-    id === "tiktok" || id === "youtube" || id === "pinterest" || (id === "instagram" && mediaVideoPost)
+    id === "tiktok" || id === "youtube" || id === "pinterest" || id === "tumblr" || (id === "instagram" && mediaVideoPost)
   );
   const activeOptTab = optionTabs.includes(optTab) ? optTab : (optionTabs[0] ?? "");
 
@@ -717,6 +717,11 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
         }
         if (mediaPost && c.cover?.url) pin.cover_url = c.cover.url;
         o.pinterest = pin;
+      }
+      // Tumblr: only the tags the user typed; none typed means no tags.
+      if (c.selected.includes("tumblr")) {
+        const tags = tumblrTagList(c.tumblrTags);
+        if (tags.length) o.tumblr = { tags };
       }
       return Object.keys(o).length ? o : undefined;
     };
@@ -1385,6 +1390,25 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                         {t("post.composer.pinterest.videoNeedsCover", "A video Pin needs a cover image. Add one above.")}
                       </span>
                     )}
+                  </div>
+                )}
+
+                {activeOptTab === "tumblr" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink-on-paper-3)" }}>{t("post.composer.tumblr.tags", "Tags (optional)")}</span>
+                      <input
+                        type="text"
+                        aria-label={t("post.composer.tumblr.tagsAria", "Tumblr tags")}
+                        value={c.tumblrTags}
+                        onChange={(e) => c.setTumblrTags(e.target.value)}
+                        placeholder={t("post.composer.tumblr.tagsPlaceholder", "art, process, behind the scenes")}
+                        style={{ ...fieldBase, maxWidth: 480 }}
+                      />
+                      <span style={{ fontSize: 11, color: "var(--ink-on-paper-3)", lineHeight: 1.5 }}>
+                        {t("post.composer.tumblr.tagsHelp", "Separate tags with commas. Leave empty to post without tags.")}
+                      </span>
+                    </label>
                   </div>
                 )}
 

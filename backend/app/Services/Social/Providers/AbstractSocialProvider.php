@@ -134,11 +134,14 @@ abstract class AbstractSocialProvider implements SocialProviderInterface
      * @param  (callable(SocialAccount): bool)|null  $isFresh  "no refresh needed
      *         anymore" check re-run inside the lock; defaults to hasValidToken()
      *         (early-refreshing providers pass their own window check)
+     * @param  string|null  $lockKey  defaults to one lock per account; a provider
+     *         whose accounts share one grant (Tumblr: a row per blog) passes a
+     *         key per grant, so sibling rows never refresh at the same time
      */
-    protected function refreshingSafely(SocialAccount $account, callable $refresh, ?callable $isFresh = null): SocialAccount
+    protected function refreshingSafely(SocialAccount $account, callable $refresh, ?callable $isFresh = null, ?string $lockKey = null): SocialAccount
     {
         $isFresh ??= fn (SocialAccount $a) => $a->hasValidToken();
-        $lock = \Illuminate\Support\Facades\Cache::lock('social:token-refresh:'.$account->id, 25);
+        $lock = \Illuminate\Support\Facades\Cache::lock($lockKey ?? 'social:token-refresh:'.$account->id, 25);
 
         try {
             $lock->block(15);

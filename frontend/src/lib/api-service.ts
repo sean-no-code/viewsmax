@@ -620,6 +620,12 @@ export interface PinterestOptions {
   alt_text: string;
 }
 
+// The only Tumblr option. Sent only when the user typed tags; a leading #
+// is dropped server-side.
+export interface TumblrOptions {
+  tags?: string[];
+}
+
 export interface PinterestBoard {
   id: string;
   name: string;

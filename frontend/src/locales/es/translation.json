@@ -1455,7 +1455,13 @@
       "youtubePrivate": "Privado (solo tú)",
       "youtubePublic": "Público",
       "youtubeTitleMissing": "YouTube necesita un título: añade un texto, se usa como título del video.",
-      "youtubeUnlisted": "No listado (cualquiera con el enlace)"
+      "youtubeUnlisted": "No listado (cualquiera con el enlace)",
+      "tumblr": {
+        "tags": "Etiquetas (opcional)",
+        "tagsAria": "Etiquetas de Tumblr",
+        "tagsPlaceholder": "arte, proceso, detrás de cámaras",
+        "tagsHelp": "Separa las etiquetas con comas. Déjalo vacío para publicar sin etiquetas."
+      }
     },
     "drafts": {
       "empty": "Aún no hay borradores. Crea uno desde Nueva publicación.",

@@ -69,7 +69,8 @@ class UpdatePost extends ViewsMaxTool
                     . "TikTok's recommended music to photo slideshows; ignored for video) }; "
                     . 'youtube: { privacy_status: public|unlisted|private, title (video title, max 100 chars, no < or >; empty = the caption\'s first 100 characters) }; '
                     . 'instagram: { cover_url }; linkedin: { first_comment }'
-                    . CreatePost::pinterestOptions() . '.',
+                    . CreatePost::pinterestOptions()
+                    . CreatePost::tumblrOptions() . '.',
             ])
             ->raw('comments', [
                 'type' => 'array',

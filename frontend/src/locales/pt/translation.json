@@ -1455,7 +1455,13 @@
       "youtubePrivate": "Privado (só você)",
       "youtubePublic": "Público",
       "youtubeTitleMissing": "O YouTube exige um título — adicione uma legenda, ela será usada como título do vídeo.",
-      "youtubeUnlisted": "Não listado (qualquer pessoa com o link)"
+      "youtubeUnlisted": "Não listado (qualquer pessoa com o link)",
+      "tumblr": {
+        "tags": "Tags (opcional)",
+        "tagsAria": "Tags do Tumblr",
+        "tagsPlaceholder": "arte, processo, bastidores",
+        "tagsHelp": "Separe as tags com vírgulas. Deixe em branco para publicar sem tags."
+      }
     },
     "drafts": {
       "empty": "Nenhum rascunho ainda — comece um em Nova publicação.",

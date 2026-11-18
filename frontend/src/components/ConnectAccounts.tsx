@@ -62,6 +62,8 @@ const PROVIDERS: ProviderEntry[] = [
   { key: "facebook", system: "social" },
   { key: "bluesky", system: "social" },
   { key: "pinterest", system: "social" },
+  // Standard OAuth redirect; one grant lists every blog as its own account.
+  { key: "tumblr", system: "social" },
   { key: "youtube", system: "social", connectVia: "legacy" },
 ];
 

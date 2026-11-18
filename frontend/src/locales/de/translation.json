@@ -1428,7 +1428,13 @@
       "youtubePrivate": "Privat (nur du)",
       "youtubePublic": "Öffentlich",
       "youtubeTitleMissing": "YouTube benötigt einen Titel – füge eine Caption hinzu, sie wird als Videotitel verwendet.",
-      "youtubeUnlisted": "Nicht gelistet (alle mit dem Link)"
+      "youtubeUnlisted": "Nicht gelistet (alle mit dem Link)",
+      "tumblr": {
+        "tags": "Tags (optional)",
+        "tagsAria": "Tumblr-Tags",
+        "tagsPlaceholder": "kunst, prozess, hinter den kulissen",
+        "tagsHelp": "Tags mit Kommas trennen. Leer lassen, um ohne Tags zu posten."
+      }
     },
     "drafts": {
       "empty": "Noch keine Entwürfe – starte einen über „Neuer Post“.",

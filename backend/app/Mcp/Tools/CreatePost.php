@@ -43,6 +43,7 @@ class CreatePost extends ViewsMaxTool
         'facebook' => 5000,
         'bluesky' => 300,
         'pinterest' => 800,
+        'tumblr' => 4096,
     ];
 
     /**
@@ -86,6 +87,15 @@ class CreatePost extends ViewsMaxTool
             ? '; pinterest: { board_id or board_ids (required to publish, user picks), '
                 . 'title (max 100), link (max 2048), alt_text (max 500), cover_url (required '
                 . 'for video) — none of these are filled in for the user }'
+            : '';
+    }
+
+    /** The options.tumblr keys, only while Tumblr is set up. */
+    public static function tumblrOptions(): string
+    {
+        return in_array('tumblr', self::availablePlatforms(), true)
+            ? '; tumblr: { tags (array of strings; send only the tags the user gives, '
+                . 'never invent them — empty means the post has no tags) }'
             : '';
     }
 
@@ -172,7 +182,8 @@ class CreatePost extends ViewsMaxTool
                     . "TikTok's recommended music to photo slideshows; ignored for video) }; "
                     . 'youtube: { privacy_status: public|unlisted|private, title (video title, max 100 chars, no < or >; empty = the caption\'s first 100 characters) }; '
                     . 'instagram: { cover_url }; linkedin: { first_comment }'
-                    . self::pinterestOptions() . '.',
+                    . self::pinterestOptions()
+                    . self::tumblrOptions() . '.',
             ])
             ->raw('comments', [
                 'type' => 'array',

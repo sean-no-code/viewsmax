@@ -23,6 +23,8 @@ final class CaptionRules
         'threads' => 500,
         'bluesky' => 300,
         'pinterest' => 800,
+        // NPF's per-text-block limit; TumblrProvider sends a block per paragraph.
+        'tumblr' => 4096,
     ];
 
     /** On X every URL counts as a fixed 23 chars (t.co wrapping). */
@@ -223,6 +225,7 @@ final class CaptionRules
         'threads' => 'Threads',
         'bluesky' => 'Bluesky',
         'pinterest' => 'Pinterest',
+        'tumblr' => 'Tumblr',
     ];
 
     private static function normalize(string $text): string

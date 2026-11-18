@@ -9,6 +9,7 @@ use App\Jobs\PublishToLinkedInJob;
 use App\Jobs\PublishToPinterestJob;
 use App\Jobs\PublishToThreadsJob;
 use App\Jobs\PublishToTikTokJob;
+use App\Jobs\PublishToTumblrJob;
 use App\Jobs\PublishToXJob;
 use App\Jobs\PublishYouTubeJob;
 use App\Contracts\Quota\QuotaGate;
@@ -39,6 +40,7 @@ class PostPublishDispatcher
         'facebook' => PublishToFacebookJob::class,
         'bluesky' => PublishToBlueskyJob::class,
         'pinterest' => PublishToPinterestJob::class,
+        'tumblr' => PublishToTumblrJob::class,
     ];
 
     /**
