@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Check, ArrowRight, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -43,6 +43,41 @@ const CANCEL_REASONS: { value: CancellationFeedback; label: string }[] = [
 	{ value: "low_quality", label: "It doesn't work well enough" },
 	{ value: "other", label: "Something else" },
 ];
+
+/** The reason radio list + optional comment, shared by both cancel dialogs. */
+const CancelReasonFields = ({ feedback, onFeedback, comment, onComment, disabled }: {
+	feedback: CancellationFeedback | null;
+	onFeedback: (value: CancellationFeedback) => void;
+	comment: string;
+	onComment: (value: string) => void;
+	disabled: boolean;
+}) => {
+	const { t } = useTranslation();
+	return (
+		<div className="space-y-3">
+			<p className="text-sm font-medium">{t("billing.plans.cancelReasonPrompt", "What's the main reason you're leaving?")}</p>
+			<RadioGroup value={feedback ?? ""} onValueChange={(v) => onFeedback(v as CancellationFeedback)} disabled={disabled}>
+				{CANCEL_REASONS.map((r) => (
+					<div key={r.value} className="flex items-center gap-2">
+						<RadioGroupItem value={r.value} id={`cancel-reason-${r.value}`} />
+						<Label htmlFor={`cancel-reason-${r.value}`} className="font-normal cursor-pointer">
+							{t(`billing.plans.cancelReasons.${r.value}`, r.label)}
+						</Label>
+					</div>
+				))}
+			</RadioGroup>
+			<Textarea
+				value={comment}
+				onChange={(e) => onComment(e.target.value)}
+				maxLength={1000}
+				rows={3}
+				disabled={disabled}
+				placeholder={t("billing.plans.cancelCommentPlaceholder", "Anything else you'd like to tell us? (optional)")}
+				aria-label={t("billing.plans.cancelCommentPlaceholder", "Anything else you'd like to tell us? (optional)")}
+			/>
+		</div>
+	);
+};
 
 // Helper to get initial subscription from localStorage
 const getInitialSubscription = (): { subscriptionId: string; details?: { status?: string; plan_id?: string; billing_info?: { next_billing_time?: string } }; cancelled_at?: string; expires_at?: string; createdAt?: number } | null => {
@@ -100,6 +135,11 @@ const Plans = () => {
 	const [pendingChange, setPendingChange] = useState<{ plan: PlanTier; cta: PlanCta } | null>(null);
 	// Past-due detection (getCurrentPlan hides it). Drives the recovery banner.
 	const [isPastDue, setIsPastDue] = useState(false);
+	// The past-due subscription (getCurrentPlan hides it), so it can be cancelled.
+	const [pastDueSubId, setPastDueSubId] = useState<string | null>(null);
+	const [showPastDueCancel, setShowPastDueCancel] = useState(false);
+	// A Stripe customer exists (even expired): link to invoices + payment method.
+	const [hasBillingAccount, setHasBillingAccount] = useState(false);
 	const [openingPortal, setOpeningPortal] = useState(false);
 
 	const subStatus = active?.details?.status?.toLowerCase();
@@ -210,18 +250,22 @@ const Plans = () => {
 		};
 	}, [user]);
 
-	// Detect past_due (getCurrentPlan hides it) so we can show a recovery banner.
+	// Detect past_due (getCurrentPlan hides it) so we can show a recovery banner,
+	// and whether there is a Stripe customer to show billing history for.
 	useEffect(() => {
 		let cancelled = false;
-		(async () => {
-			if (!user) { setIsPastDue(false); return; }
+		const load = async () => {
+			if (!user) { setIsPastDue(false); setPastDueSubId(null); setHasBillingAccount(false); return; }
 			const res = await viewsMaxApi.getBillingStatus();
 			if (cancelled) return;
-			setIsPastDue(Boolean(res.success && res.data?.has_subscription && res.data?.status === "past_due"));
-		})();
-		const refresh = () => { if (user) viewsMaxApi.getBillingStatus().then((r) => setIsPastDue(Boolean(r.success && r.data?.has_subscription && r.data?.status === "past_due"))); };
-		window.addEventListener("subscriptionUpdated", refresh);
-		return () => { cancelled = true; window.removeEventListener("subscriptionUpdated", refresh); };
+			const pastDue = Boolean(res.success && res.data?.has_subscription && res.data?.status === "past_due");
+			setIsPastDue(pastDue);
+			setPastDueSubId(pastDue ? res.data?.subscription_id ?? null : null);
+			setHasBillingAccount(Boolean(res.success && res.data?.has_billing_account));
+		};
+		load();
+		window.addEventListener("subscriptionUpdated", load);
+		return () => { cancelled = true; window.removeEventListener("subscriptionUpdated", load); };
 	}, [user]);
 
 	// Send the user to the Stripe Billing Portal to update their card / pay the
@@ -336,6 +380,31 @@ const Plans = () => {
 		}
 	};
 
+	// A past-due subscription has no paid time left, so the backend ends it now.
+	const handlePastDueCancel = async () => {
+		if (!pastDueSubId || !cancelFeedback) return;
+		setIsCancelling(true);
+		try {
+			const result = await viewsMaxApi.cancelSubscription(pastDueSubId, cancelFeedback, cancelComment);
+			if (result.success) {
+				setIsPastDue(false);
+				setPastDueSubId(null);
+				window.dispatchEvent(new CustomEvent("subscriptionUpdated"));
+				toast.success(t("billing.plans.cancelled", "Subscription cancelled successfully."));
+			} else {
+				toast.error(result.error || t("billing.plans.cancelFailed", "Failed to cancel subscription. Please try again."));
+			}
+		} catch (error) {
+			console.error("Cancel subscription error:", error);
+			toast.error(t("billing.plans.unexpectedError", "An unexpected error occurred. Please try again."));
+		} finally {
+			setIsCancelling(false);
+			setShowPastDueCancel(false);
+			setCancelFeedback(null);
+			setCancelComment("");
+		}
+	};
+
 	const current = findCurrentPlan(plans, currentPriceId);
 
 	return (
@@ -354,6 +423,12 @@ const Plans = () => {
 									: t("billing.plans.trialIntro", "7-day free trial — add a card, nothing is charged until it ends — then pick the tier that fits how you grow.")}
 						</p>
 					)}
+					{hasBillingAccount && !isPastDue && (
+						<Button variant="link" size="sm" className="mt-2" disabled={openingPortal} onClick={openBillingPortal}>
+							{openingPortal ? t("billing.plans.opening", "Opening…") : t("billing.plans.billingHistory", "Billing history & payment method")}
+							<ExternalLink className="w-4 h-4 ml-1" />
+						</Button>
+					)}
 				</div>
 
 				{isPastDue && (
@@ -366,9 +441,38 @@ const Plans = () => {
 									{t("billing.plans.pastDueBody", "Update your payment method to settle the outstanding invoice and restore full access.")}
 								</p>
 							</div>
-							<Button size="sm" variant="cta" disabled={openingPortal} onClick={openBillingPortal}>
-								{openingPortal ? t("billing.plans.opening", "Opening…") : t("billing.plans.updatePayment", "Update payment method")}
-							</Button>
+							<div className="flex flex-col gap-2">
+								<Button size="sm" variant="cta" disabled={openingPortal} onClick={openBillingPortal}>
+									{openingPortal ? t("billing.plans.opening", "Opening…") : t("billing.plans.updatePayment", "Update payment method")}
+								</Button>
+								{pastDueSubId && (
+									<AlertDialog open={showPastDueCancel} onOpenChange={setShowPastDueCancel}>
+										<AlertDialogTrigger asChild>
+											<Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isCancelling}>
+												{isCancelling ? t("billing.plans.cancelling", "Cancelling...") : t("billing.plans.pastDueCancel", "Cancel subscription")}
+											</Button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle className="flex items-center gap-2">
+													<AlertTriangle className="w-5 h-5 text-destructive" />
+													{t("billing.plans.pastDueCancelTitle", "Cancel your subscription?")}
+												</AlertDialogTitle>
+												<AlertDialogDescription>
+													{t("billing.plans.pastDueCancelBody", "Your last payment didn't go through, so there's no paid time left. Cancelling ends your subscription now. You can subscribe again at any time.")}
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<CancelReasonFields feedback={cancelFeedback} onFeedback={setCancelFeedback} comment={cancelComment} onComment={setCancelComment} disabled={isCancelling} />
+											<AlertDialogFooter>
+												<AlertDialogCancel disabled={isCancelling}>{t("billing.plans.keepSubscription", "Keep Subscription")}</AlertDialogCancel>
+												<AlertDialogAction onClick={handlePastDueCancel} disabled={isCancelling || !cancelFeedback} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+													{isCancelling ? t("billing.plans.cancelling", "Cancelling...") : t("billing.plans.yesCancel", "Yes, Cancel")}
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+								)}
+							</div>
 						</div>
 					</div>
 				)}
@@ -466,7 +570,7 @@ const Plans = () => {
 														{expiryLabel && (
 															<p className="text-sm text-center text-muted-foreground mb-2">
 																{isTrialing
-																	? <Trans i18nKey="billing.plans.trialEnds" defaults="Free trial · ends <0>{{date}}</0>" values={{ date: expiryLabel }} components={[<strong key="date" className="text-foreground" />]} />
+																	? <Trans i18nKey="billing.plans.trialEndsThenPrice" defaults="Free trial · ends <0>{{date}}</0>, then {{price}} is charged" values={{ date: expiryLabel, price: `$${Math.round(Number(plan.price))}${plan.billing_cycle === "yearly" ? t("billing.plans.perYear", "/yr") : t("billing.plans.perMonth", "/mo")}` }} components={[<strong key="date" className="text-foreground" />]} />
 																	: <Trans i18nKey="billing.plans.renews" defaults="Renews <0>{{date}}</0>" values={{ date: expiryLabel }} components={[<strong key="date" className="text-foreground" />]} />}
 															</p>
 														)}
@@ -486,28 +590,7 @@ const Plans = () => {
 																	{t("billing.plans.cancelConfirmBody", "You'll keep access to {{plan}} until your billing period ends, then move to the Free plan.", { plan: plan.display_name })}
 																</AlertDialogDescription>
 															</AlertDialogHeader>
-															<div className="space-y-3">
-																<p className="text-sm font-medium">{t("billing.plans.cancelReasonPrompt", "What's the main reason you're leaving?")}</p>
-																<RadioGroup value={cancelFeedback ?? ""} onValueChange={(v) => setCancelFeedback(v as CancellationFeedback)} disabled={isCancelling}>
-																	{CANCEL_REASONS.map((r) => (
-																		<div key={r.value} className="flex items-center gap-2">
-																			<RadioGroupItem value={r.value} id={`cancel-reason-${r.value}`} />
-																			<Label htmlFor={`cancel-reason-${r.value}`} className="font-normal cursor-pointer">
-																				{t(`billing.plans.cancelReasons.${r.value}`, r.label)}
-																			</Label>
-																		</div>
-																	))}
-																</RadioGroup>
-																<Textarea
-																	value={cancelComment}
-																	onChange={(e) => setCancelComment(e.target.value)}
-																	maxLength={1000}
-																	rows={3}
-																	disabled={isCancelling}
-																	placeholder={t("billing.plans.cancelCommentPlaceholder", "Anything else you'd like to tell us? (optional)")}
-																	aria-label={t("billing.plans.cancelCommentPlaceholder", "Anything else you'd like to tell us? (optional)")}
-																/>
-															</div>
+															<CancelReasonFields feedback={cancelFeedback} onFeedback={setCancelFeedback} comment={cancelComment} onComment={setCancelComment} disabled={isCancelling} />
 															<AlertDialogFooter>
 																<AlertDialogCancel disabled={isCancelling}>{t("billing.plans.keepSubscription", "Keep Subscription")}</AlertDialogCancel>
 																<AlertDialogAction onClick={handleCancelSubscription} disabled={isCancelling || !cancelFeedback} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
@@ -556,9 +639,16 @@ const Plans = () => {
 								</p>
 							) : (
 								<p>
-									{t("billing.plans.upgradeBody", "You'll move to {{plan}} (${{price}}/mo) right away. Stripe charges a prorated amount for the rest of this billing period.", {
+									{t("billing.plans.upgradeBody", "You'll move to {{plan}} (${{price}}/mo) right away. The prorated difference for the rest of this billing period is added to your next invoice.", {
 										plan: pendingChange?.plan.display_name,
 										price: pendingChange ? Math.round(Number(pendingChange.plan.price)) : 0,
+									})}
+								</p>
+							)}
+							{active?.cancelled_at && (
+								<p>
+									{t("billing.plans.changeKeepsCancellation", "Your subscription stays cancelled and ends on {{date}}.", {
+										date: expiryLabel ?? t("billing.plans.billingPeriodEnds", "your billing period ends"),
 									})}
 								</p>
 							)}

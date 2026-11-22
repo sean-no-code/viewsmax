@@ -56,10 +56,14 @@ class BillingController extends Controller
             ->orderByPivot('starts_at', 'desc')
             ->first();
 
+        // A Stripe customer exists (even with no live subscription, e.g. an
+        // expired one): the SPA can link to the billing portal for invoices.
+        $hasBillingAccount = ! empty($user->stripe_customer_id);
+
         if (! $planRow) {
             return response()->json([
                 'success' => true,
-                'data' => ['has_subscription' => false],
+                'data' => ['has_subscription' => false, 'has_billing_account' => $hasBillingAccount],
             ]);
         }
 
@@ -69,6 +73,7 @@ class BillingController extends Controller
             'success' => true,
             'data' => [
                 'has_subscription' => true,
+                'has_billing_account' => $hasBillingAccount,
                 'status' => $pivot->status,
                 'plan_display_name' => $planRow->display_name,
                 'plan_id' => $pivot->stripe_price_id,
@@ -124,8 +129,8 @@ class BillingController extends Controller
     /**
      * Attach the vaulted PaymentMethod and start the subscription on the trial
      * terms the user is due (SubscriptionStarter / User::subscriptionTrialTerms:
-     * the activation fee today while the free window is open, the plan price
-     * today once it has closed). Persists the subscription against the user.
+     * nothing today while the free window is open, the plan price today once
+     * it has closed). Persists the subscription against the user.
      */
     public function subscribe(Request $request, SubscriptionStarter $starter)
     {

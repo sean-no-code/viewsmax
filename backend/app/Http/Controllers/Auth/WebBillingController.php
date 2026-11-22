@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  * Step 3 of the agent signup on the API host: pick a plan and add a card
  * before the consent screen. The same paywall the SPA's onboarding has
  * (UserAccess::PAYMENT_REQUIRED sends agent signups here), on the same terms:
- * inside the free window the card starts a trial — the activation fee today,
+ * inside the free window the card starts a trial — nothing charged today,
  * the plan price when the window closes (SubscriptionStarter).
  */
 class WebBillingController extends Controller
@@ -47,7 +47,6 @@ class WebBillingController extends Controller
             'hasAgent' => $request->session()->has(WebRegisterController::SESSION_AUTHORIZE_URL),
             'plans' => Plan::active()->where('price', '>', 0)->orderBy('price')->get(),
             'trialEnd' => isset($terms['trial_end']) ? Carbon::createFromTimestamp($terms['trial_end']) : null,
-            'activationFee' => config('services.stripe.activation_fee_price_id') ? StripeService::ACTIVATION_FEE_USD : 0,
             'publishableKey' => config('services.stripe.key'),
             'clientSecret' => $clientSecret,
             'email' => $user->email,

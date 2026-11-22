@@ -148,20 +148,34 @@ final class UserErasure
         DB::table('password_reset_tokens')->where('email', $email)->delete();
 
         // 3. Stripe: stop billing, then drop the customer (card + email).
+        //    Every step is attempted on its own: local erasure scrubs
+        //    stripe_customer_id below, so a step skipped here could leave a
+        //    live subscription on an erased account. Deleting the customer
+        //    also ends its subscriptions, so it runs even if a cancel failed.
         if (! $this->stripeConfigured()) {
             $steps['stripe'] = 'skipped';
         } else {
-            try {
-                foreach ($plan['stripe_subscriptions'] as $subscriptionId) {
+            $stripeFailures = [];
+            foreach ($plan['stripe_subscriptions'] as $subscriptionId) {
+                try {
                     $this->stripe->cancelSubscription($subscriptionId, 'GDPR erasure', true);
+                } catch (Throwable $e) {
+                    if (! $this->isStripeNotFound($e)) {
+                        report($e);
+                        $stripeFailures[] = "stripe: cancel {$subscriptionId}: ".$e->getMessage();
+                    }
                 }
-                if ($user->stripe_customer_id) {
-                    $this->stripe->deleteCustomer($user->stripe_customer_id);
-                }
-                $steps['stripe'] = 'ok';
-            } catch (Throwable $e) {
-                $fail('stripe', $e);
             }
+            if ($user->stripe_customer_id) {
+                try {
+                    $this->stripe->deleteCustomer($user->stripe_customer_id);
+                } catch (Throwable $e) {
+                    report($e);
+                    $stripeFailures[] = 'stripe: delete customer: '.$e->getMessage();
+                }
+            }
+            $steps['stripe'] = $stripeFailures ? 'failed' : 'ok';
+            array_push($failures, ...$stripeFailures);
         }
 
         // 4. Mailing lists. A refusal (often: the address was never on the
@@ -255,6 +269,22 @@ final class UserErasure
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Stripe no longer has the subscription (404 resource_missing), so there
+     * is nothing left to stop. StripeService wraps the Stripe error; look at
+     * the chain.
+     */
+    private function isStripeNotFound(Throwable $e): bool
+    {
+        for ($cause = $e; $cause; $cause = $cause->getPrevious()) {
+            if ($cause instanceof \Stripe\Exception\InvalidRequestException && $cause->getHttpStatus() === 404) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function stripeConfigured(): bool
