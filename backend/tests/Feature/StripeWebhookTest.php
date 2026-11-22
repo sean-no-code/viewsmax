@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\StripeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -29,7 +30,14 @@ class StripeWebhookTest extends TestCase
     {
         parent::setUp();
         config(['services.stripe.signature_check' => false]); // skip sig verify in tests
+
+        // The invoice email fetches Stripe's PDF to attach it; nothing else
+        // in these tests may reach the network.
+        Http::preventStrayRequests();
+        Http::fake(['pay.stripe.com/*' => Http::response(self::PDF, 200, ['Content-Type' => 'application/pdf'])]);
     }
+
+    private const PDF = "%PDF-1.4\nfake invoice\n%%EOF";
 
     private function proPlan(): Plan
     {
@@ -441,6 +449,59 @@ class StripeWebhookTest extends TestCase
         $this->assertStringContainsString('$99.00 USD', $html);
         $this->assertStringContainsString('November 6, 2026 to December 6, 2026', $html);
         $this->assertStringContainsString('https://pay.stripe.com/invoice/acct/in_cycle/pdf', $html);
+    }
+
+    private function sendInvoiceEmail(array $invoiceExtra = []): InvoicePaidMail
+    {
+        Mail::fake();
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->subscribeTrialing($user, $plan, 'sub_conv');
+        $this->mockStripeConverted('sub_conv', 'in_cycle');
+
+        $this->postInvoicePaid($this->paidInvoice($invoiceExtra))->assertOk();
+
+        Mail::assertSent(InvoicePaidMail::class, 1);
+
+        return Mail::sent(InvoicePaidMail::class)->first();
+    }
+
+    public function test_the_invoice_email_carries_the_pdf_invoice(): void
+    {
+        $mail = $this->sendInvoiceEmail();
+
+        $mail->assertHasAttachedData(self::PDF, 'Invoice-VMX-0042.pdf', ['mime' => 'application/pdf']);
+        $this->assertStringContainsString('attached', $mail->render());
+        Http::assertSentCount(1);
+    }
+
+    public function test_the_invoice_email_still_goes_out_when_the_pdf_cannot_be_fetched(): void
+    {
+        Http::fake(['files.stripe.com/*' => Http::response('gone', 500)]);
+
+        $mail = $this->sendInvoiceEmail(['invoice_pdf' => 'https://files.stripe.com/invoice/in_cycle/pdf']);
+
+        $this->assertSame([], $mail->attachments());
+        $html = $mail->render();
+        $this->assertStringNotContainsString('attached', $html);
+        $this->assertStringContainsString('https://files.stripe.com/invoice/in_cycle/pdf', $html);
+    }
+
+    public function test_a_response_that_is_not_a_pdf_is_not_attached(): void
+    {
+        Http::fake(['files.stripe.com/*' => Http::response('<html>Sign in</html>', 200)]);
+
+        $mail = $this->sendInvoiceEmail(['invoice_pdf' => 'https://files.stripe.com/invoice/in_cycle/pdf']);
+
+        $this->assertSame([], $mail->attachments());
+    }
+
+    public function test_a_pdf_link_outside_stripe_is_never_fetched(): void
+    {
+        $mail = $this->sendInvoiceEmail(['invoice_pdf' => 'https://stripe.com.example.test/in_cycle.pdf']);
+
+        $this->assertSame([], $mail->attachments());
+        Http::assertNothingSent();
     }
 
     public function test_zero_amount_invoice_sends_no_email(): void

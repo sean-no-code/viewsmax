@@ -3,11 +3,14 @@
 namespace App\Services\Billing;
 
 use App\Mail\InvoicePaidMail;
+use App\Mail\PaymentFailedMail;
 use App\Mail\SubscriptionCancelledMail;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -66,6 +69,7 @@ class BillingEmails
             invoiceUrl: (string) ($invoice['hosted_invoice_url'] ?? ''),
             pdfUrl: (string) ($invoice['invoice_pdf'] ?? ''),
             billingUrl: self::billingUrl(),
+            pdf: $this->invoicePdf((string) ($invoice['invoice_pdf'] ?? ''), $context),
         ), 'Invoice email', $context + ['amount_paid' => $amountPaid, 'currency' => $invoice['currency'] ?? null]);
     }
 
@@ -110,6 +114,90 @@ class BillingEmails
             endsNow: $endsNow,
             billingUrl: self::billingUrl(),
         ), 'Cancellation email', $context + ['access_until' => $end->toIso8601String(), 'ends_now' => $endsNow]);
+    }
+
+    /**
+     * "Your payment didn't go through", once per Stripe invoice. Stripe sends
+     * invoice.payment_failed again for every retry of the same invoice (and
+     * can redeliver an event), so the invoice id is claimed on the user_plans
+     * row first, in one UPDATE: only the delivery that wins the claim mails.
+     * If Stripe's own failed-payment emails are on (Dashboard -> Billing ->
+     * Revenue recovery -> Emails), customers get both: turn Stripe's off.
+     *
+     * @param  array<string, mixed>  $invoice  the Stripe invoice object
+     */
+    public function paymentFailed(User $user, string $planName, string $subscriptionId, array $invoice): void
+    {
+        $invoiceId = $invoice['id'] ?? null;
+        $context = BillingLog::context($user, $subscriptionId, $invoiceId);
+        $amountDue = (int) ($invoice['amount_due'] ?? 0);
+
+        if (! $invoiceId || $amountDue <= 0) {
+            return;
+        }
+
+        $claimed = DB::table('user_plans')
+            ->where('user_id', $user->id)
+            ->where('stripe_subscription_id', $subscriptionId)
+            ->where(fn ($q) => $q->whereNull('payment_failed_notified_invoice_id')
+                ->orWhere('payment_failed_notified_invoice_id', '!=', $invoiceId))
+            ->update(['payment_failed_notified_invoice_id' => $invoiceId]);
+
+        if (! $claimed) {
+            BillingLog::info('Payment-failed email skipped: already sent for this invoice', $context);
+
+            return;
+        }
+
+        $nextAttempt = $invoice['next_payment_attempt'] ?? null;
+
+        $this->send($user, new PaymentFailedMail(
+            name: $user->name ?: 'there',
+            planName: $planName,
+            amount: self::money($amountDue, (string) ($invoice['currency'] ?? 'usd')),
+            nextAttempt: $nextAttempt ? self::at((int) $nextAttempt)->format(self::DATE_TIME_FORMAT) : '',
+            billingUrl: self::billingUrl(),
+            invoiceUrl: (string) ($invoice['hosted_invoice_url'] ?? ''),
+        ), 'Payment-failed email', $context + ['amount_due' => $amountDue, 'currency' => $invoice['currency'] ?? null]);
+    }
+
+    /** Largest invoice PDF worth attaching; a Stripe invoice is tens of KB. */
+    private const MAX_PDF_BYTES = 5 * 1024 * 1024;
+
+    /**
+     * The bytes of Stripe's invoice PDF, to attach to the invoice email, or
+     * null when it cannot be had (the email then goes out with the link
+     * only). Only an https URL on stripe.com is fetched, and only a body that
+     * is a PDF is used. Never throws.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function invoicePdf(string $url, array $context): ?string
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        if (parse_url($url, PHP_URL_SCHEME) !== 'https' || ! ($host === 'stripe.com' || str_ends_with($host, '.stripe.com'))) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(10)->connectTimeout(5)->get($url);
+            $body = $response->successful() ? $response->body() : '';
+
+            if (! str_starts_with($body, '%PDF') || strlen($body) > self::MAX_PDF_BYTES) {
+                BillingLog::warning('Invoice PDF not attached: unusable response', $context + [
+                    'status' => $response->status(),
+                    'bytes' => strlen($body),
+                ]);
+
+                return null;
+            }
+
+            return $body;
+        } catch (Throwable $e) {
+            BillingLog::warning('Invoice PDF not attached: download failed', $context + ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /** "$59.00 USD". Plans are priced in USD; other currencies get their code only. */

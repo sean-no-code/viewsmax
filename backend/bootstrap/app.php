@@ -49,6 +49,14 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(30)
             ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:process-expired scheduled run failed'));
 
+        // The Stripe endpoint must stay subscribed to every event the webhook
+        // handles; an error-level billing log line (Sentry) when it isn't. Only
+        // production has a registered endpoint (local uses `stripe listen`).
+        $schedule->command('stripe:check-webhooks')
+            ->daily()
+            ->environments(['production'])
+            ->withoutOverlapping(10);
+
         // Prices live in Stripe; keep plans.price in step with them (also run
         // by deployment.sh so a dashboard change lands on the next deploy).
         $schedule->command('plans:sync-stripe-prices')

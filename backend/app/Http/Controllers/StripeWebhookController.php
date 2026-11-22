@@ -18,6 +18,37 @@ class StripeWebhookController extends Controller
     /** Stripe subscription statuses that never bill again. */
     private const DEAD_SUBSCRIPTION_STATUSES = ['canceled', 'incomplete_expired'];
 
+    /** Webhook path, as registered in routes/api.php and in the Stripe dashboard. */
+    public const PATH = '/api/webhooks/stripe';
+
+    /**
+     * Every event type handleWebhook() routes to a handler. Add the type here
+     * AND to the switch (StripeWebhookSetupCheckTest pins the two together).
+     */
+    public const HANDLED_EVENTS = [
+        'checkout.session.completed',
+        'invoice.paid',
+        'invoice.payment_succeeded',
+        'invoice_payment.paid',
+        'invoice.payment_failed',
+        'customer.subscription.updated',
+        'customer.subscription.deleted',
+    ];
+
+    /**
+     * What the Stripe endpoint must be subscribed to for billing to work: one
+     * event from each group. `stripe:check-webhooks` compares this with the
+     * endpoint's enabled events on deploy and daily. Without payment_failed and
+     * subscription.updated a failed charge leaves the customer with access.
+     */
+    public const REQUIRED_EVENTS = [
+        ['invoice.paid', 'invoice.payment_succeeded', 'invoice_payment.paid'],
+        ['invoice.payment_failed'],
+        ['customer.subscription.updated'],
+        ['customer.subscription.deleted'],
+        ['checkout.session.completed'],
+    ];
+
     public function __construct(
         protected StripeService $stripeService,
         protected CreditService $creditService,
@@ -246,22 +277,11 @@ class StripeWebhookController extends Controller
                 throw new \Exception("User not found for subscription {$subscriptionId}");
             }
 
-            // A late payment of a cancelled subscription's invoice does not
-            // revive it: Stripe will never bill it again. Granting access and
-            // credits here would show "Renews {date}" for a renewal that never
-            // comes. No automatic re-subscribe or refund (both move money
-            // without a person looking): leave the row alone and raise it.
+            // Stripe never bills a cancelled subscription again, so a late
+            // payment of its invoice cannot revive it. It buys a new
+            // subscription on the same plan instead (resubscribeAfterLatePayment).
             if (in_array($subDetails['status'] ?? null, self::DEAD_SUBSCRIPTION_STATUSES, true)) {
-                Log::error('Stripe webhook: invoice paid for a cancelled subscription; no access granted, refund by hand', [
-                    'user_id' => $user->id,
-                    'subscription_id' => $subscriptionId,
-                    'subscription_status' => $subDetails['status'],
-                    'invoice_id' => $invoiceId,
-                    'amount_paid' => (int) ($invoice['amount_paid'] ?? 0),
-                    'currency' => $invoice['currency'] ?? null,
-                ]);
-
-                return null;
+                return $this->resubscribeAfterLatePayment($user, $subDetails, $invoice);
             }
 
             $this->creditService->ensureSubscriptionAttached($user, $subscriptionId, $priceId, $nextBilling);
@@ -354,8 +374,211 @@ class StripeWebhookController extends Controller
         // one invoice. Never throws.
         if ($firstTime) {
             [$user, $planName] = $firstTime;
+
+            // A new subscription makes the invoices an earlier, ended one left
+            // payable obsolete: void them so the customer cannot pay twice.
+            if ($billingReason === 'subscription_create') {
+                $this->voidInvoicesOfEndedSubscriptions($user, $subscriptionId);
+            }
+
             $this->billingEmails->invoicePaid($user, $planName, $invoice);
         }
+    }
+
+    /**
+     * Void the open invoices of every subscription of this user that has
+     * ended, other than $currentSubscriptionId. Never throws.
+     */
+    private function voidInvoicesOfEndedSubscriptions(User $user, string $currentSubscriptionId): void
+    {
+        DB::table('user_plans')
+            ->where('user_id', $user->id)
+            ->whereNotNull('stripe_subscription_id')
+            ->where('stripe_subscription_id', '!=', $currentSubscriptionId)
+            ->whereIn('status', ['expired', 'cancelled', 'past_due'])
+            ->distinct()
+            ->pluck('stripe_subscription_id')
+            ->each(fn (string $endedSubscriptionId) => $this->stripeService->voidOpenInvoices($endedSubscriptionId));
+    }
+
+    /**
+     * The invoice a cancelled subscription left unpaid was paid afterwards
+     * (Stripe ends a subscription when its retries run out but keeps the
+     * invoice payable). The customer paid for a period, so they get one: a new
+     * Stripe subscription on the same price, renewing one period after the
+     * payment, attached here as their active plan with that period's credits.
+     *
+     * Only for a payment that is exactly that (latePaymentRefusal). Anything
+     * else grants nothing and is logged at error level for a person to look
+     * at and refund. Runs inside handleInvoicePaid's transaction.
+     *
+     * @return array{0: User, 1: string}|null [user, plan name] when the invoice email is due
+     */
+    private function resubscribeAfterLatePayment(User $user, array $oldSubscription, array $invoice): ?array
+    {
+        $invoiceId = (string) $invoice['id'];
+        $oldSubscriptionId = (string) ($oldSubscription['id'] ?? $invoice['subscription'] ?? $invoice['parent']['subscription_details']['subscription'] ?? '');
+        $oldSubscription['id'] = $oldSubscriptionId;
+
+        // A redelivery of a payment that already bought its subscription.
+        if ($this->creditService->isTransactionIdProcessed($invoiceId)) {
+            Log::info('Stripe webhook: Invoice already processed', ['user_id' => $user->id, 'invoice_id' => $invoiceId]);
+
+            return null;
+        }
+
+        $raise = function (string $reason) use ($user, $oldSubscription, $oldSubscriptionId, $invoice, $invoiceId): null {
+            Log::error('Stripe webhook: invoice paid for a cancelled subscription; no access granted, refund by hand', [
+                'user_id' => $user->id,
+                'subscription_id' => $oldSubscriptionId,
+                'subscription_status' => $oldSubscription['status'] ?? null,
+                'invoice_id' => $invoiceId,
+                'amount_paid' => (int) ($invoice['amount_paid'] ?? 0),
+                'currency' => $invoice['currency'] ?? null,
+                'reason' => $reason,
+            ]);
+
+            return null;
+        };
+
+        $priceId = $oldSubscription['items']['data'][0]['price']['id'] ?? null;
+        $plan = $priceId ? Plan::where('stripe_price_id', $priceId)->first() : null;
+
+        if ($reason = $this->latePaymentRefusal($user, $oldSubscription, $invoice, $plan)) {
+            return $raise($reason);
+        }
+
+        $paidAt = (int) $invoice['status_transitions']['paid_at'];
+
+        try {
+            // Created by an earlier delivery whose local half did not commit?
+            // Stripe's idempotency key only covers 24h; redeliveries run for days.
+            $existing = collect($this->stripeService->listSubscriptions((string) $oldSubscription['customer']))
+                ->reject(fn (array $s) => ($s['id'] ?? null) === $oldSubscriptionId);
+            $newSubscription = $existing->first(
+                fn (array $s) => ($s['metadata'][StripeService::LATE_PAYMENT_INVOICE] ?? null) === $invoiceId
+            );
+
+            if (! $newSubscription) {
+                $live = $existing->first(fn (array $s) => ! in_array($s['status'] ?? null, ['canceled', 'incomplete', 'incomplete_expired'], true));
+                if ($live) {
+                    return $raise('other_stripe_subscription');
+                }
+
+                $newSubscription = $this->stripeService->resubscribeAfterLatePayment($oldSubscription, $invoiceId, $paidAt);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $raise('stripe_error');
+        }
+
+        $newSubscriptionId = (string) $newSubscription['id'];
+        $nextBilling = $this->extractNextBilling($newSubscription);
+        $expiresAt = $nextBilling
+            ? Carbon::parse($nextBilling)
+            : Carbon::createFromTimestamp(StripeService::onePeriodAfter(
+                $paidAt,
+                (string) ($oldSubscription['items']['data'][0]['price']['recurring']['interval'] ?? 'month'),
+                (int) ($oldSubscription['items']['data'][0]['price']['recurring']['interval_count'] ?? 1),
+            ));
+
+        if (! $this->creditService->isSubscriptionAttached($user, $newSubscriptionId)) {
+            $user->plans()->attach($plan->id, [
+                'stripe_subscription_id' => $newSubscriptionId,
+                'stripe_price_id' => $priceId,
+                'status' => 'active',
+                'starts_at' => now(),
+                'expires_at' => $expiresAt,
+            ]);
+        }
+
+        if (! $user->card_added_at) {
+            $user->forceFill(['card_added_at' => now()])->save();
+        }
+
+        $credits = $this->creditService->getSubscriptionCredits($plan, false);
+        if (! $this->creditService->allocateOrResetCredits($user, $credits, $invoiceId, $newSubscriptionId, 'subscription_credit')) {
+            throw new \Exception("Failed to allocate credits for late payment {$invoiceId}");
+        }
+
+        // Any other invoice the dead subscription left open is for a period
+        // the new subscription now covers. Never throws.
+        $this->stripeService->voidOpenInvoices($oldSubscriptionId);
+
+        AnalyticsAccess::backfill($user);
+
+        Log::info('Stripe webhook: Re-subscribed after a late payment', [
+            'user_id' => $user->id,
+            'invoice_id' => $invoiceId,
+            'old_subscription_id' => $oldSubscriptionId,
+            'subscription_id' => $newSubscriptionId,
+            'plan' => $plan->name,
+            'expires_at' => $expiresAt->toDateTimeString(),
+        ]);
+
+        return [$user, $plan->display_name ?: $plan->name];
+    }
+
+    /**
+     * Why a paid invoice of a cancelled subscription must NOT buy a new
+     * subscription, or null when it may. It may only when it is one full
+     * period of the subscription's own plan, paid in full after Stripe ended
+     * the subscription, by a customer who has no plan now.
+     */
+    private function latePaymentRefusal(User $user, array $subscription, array $invoice, ?Plan $plan): ?string
+    {
+        // Only a canceled subscription leaves a payable invoice behind;
+        // incomplete_expired never had a paid period to continue.
+        if (($subscription['status'] ?? null) !== 'canceled') {
+            return 'subscription_not_canceled';
+        }
+
+        // A renewal (or a trial's first charge) bills one full period at the
+        // plan's price; a proration invoice from an upgrade does not.
+        if (($invoice['billing_reason'] ?? null) !== 'subscription_cycle') {
+            return 'not_a_renewal_invoice';
+        }
+
+        if ((int) ($invoice['amount_paid'] ?? 0) <= 0 || (int) ($invoice['amount_remaining'] ?? 0) > 0) {
+            return 'not_paid_in_full';
+        }
+
+        // Paid before the subscription ended = an ordinary payment whose event
+        // arrives late, for a subscription that was cancelled since.
+        $paidAt = (int) ($invoice['status_transitions']['paid_at'] ?? 0);
+        $endedAt = (int) ($subscription['ended_at'] ?? $subscription['canceled_at'] ?? 0);
+        if (! $paidAt || ! $endedAt || $paidAt <= $endedAt) {
+            return 'not_paid_after_cancellation';
+        }
+
+        if (empty($subscription['customer'])) {
+            return 'no_customer';
+        }
+
+        if (! $plan) {
+            return 'no_plan_for_price';
+        }
+
+        // One line, for the subscription's own price and quantity. Webhook
+        // payloads follow the endpoint's API version: `pricing` is the
+        // 2025-03-31+ shape of a line, `price` the older one.
+        $item = $subscription['items']['data'][0] ?? [];
+        $lines = $invoice['lines']['data'] ?? [];
+        $line = $lines[0] ?? null;
+        $linePrice = $line['pricing']['price_details']['price'] ?? $line['price'] ?? null;
+        $linePriceId = is_array($linePrice) ? ($linePrice['id'] ?? null) : $linePrice;
+        if (count($lines) !== 1
+            || $linePriceId !== ($item['price']['id'] ?? null)
+            || (int) ($line['quantity'] ?? 1) !== (int) ($item['quantity'] ?? 1)) {
+            return 'invoice_does_not_match_plan';
+        }
+
+        if ($user->hasActivePlan()) {
+            return 'has_live_plan';
+        }
+
+        return null;
     }
 
     /**
@@ -486,10 +709,17 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        // The subscription is over, so its open invoices are for a period we
-        // will not serve: void them so a late payment cannot be taken (see
-        // handleInvoicePaid) and Stripe stops retrying the card. Never throws.
-        $this->stripeService->voidOpenInvoices($subscriptionId);
+        // What happens to the invoices it left unpaid depends on who ended it.
+        // Stripe, because the retries ran out: the invoice stays payable, and
+        // paying it later buys a new subscription (resubscribeAfterLatePayment);
+        // make sure the card that pays is kept for the renewals. Anyone else
+        // (the customer, support, an erasure): void them, nobody should be
+        // asked to pay for a plan that was cancelled on purpose. Never throws.
+        if (($subscription['cancellation_details']['reason'] ?? null) === 'payment_failed') {
+            $this->stripeService->keepCardOfUnpaidInvoices($subscriptionId);
+        } else {
+            $this->stripeService->voidOpenInvoices($subscriptionId);
+        }
 
         $updates = [];
         if (! $pivotPlan->pivot->cancelled_at) {
@@ -522,7 +752,8 @@ class StripeWebhookController extends Controller
 
     /**
      * Invoice payment failed - mark the subscription past_due so has_active_subscription
-     * reflects the lapse (e.g. when the card declines after the trial).
+     * reflects the lapse (e.g. when the card declines after the trial), and email
+     * the customer how to fix it.
      */
     private function handleInvoicePaymentFailed(array $invoice): void
     {
@@ -542,16 +773,21 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        $user->plans()
-            ->wherePivot('stripe_subscription_id', $subscriptionId)
-            ->each(function ($plan) use ($user) {
-                $user->plans()->updateExistingPivot($plan->id, ['status' => 'past_due']);
-            });
+        $plans = $user->plans()->wherePivot('stripe_subscription_id', $subscriptionId)->get();
+        $plans->each(function ($plan) use ($user) {
+            $user->plans()->updateExistingPivot($plan->id, ['status' => 'past_due']);
+        });
 
         Log::info('Stripe webhook: Subscription marked past_due', [
             'user_id' => $user->id,
             'subscription_id' => $subscriptionId,
         ]);
+
+        // The account is locked from here, so tell the customer (once per
+        // invoice; never throws).
+        if ($plan = $plans->first()) {
+            $this->billingEmails->paymentFailed($user, $plan->display_name ?: $plan->name, $subscriptionId, $invoice);
+        }
     }
 
     /**

@@ -10,12 +10,14 @@ use Stripe\BillingPortal\Session as BillingPortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\Customer;
 use Stripe\Invoice;
+use Stripe\PaymentIntent;
 use Stripe\PaymentMethod;
 use Stripe\Price;
 use Stripe\SetupIntent;
 use Stripe\Stripe;
 use Stripe\Subscription;
 use Stripe\Webhook;
+use Stripe\WebhookEndpoint;
 
 class StripeService
 {
@@ -170,6 +172,192 @@ class StripeService
         ]);
 
         return $voided;
+    }
+
+    /**
+     * Every subscription a customer has ever had, newest first, for the
+     * late-payment checks (is another one live? was one already created for
+     * this invoice?). Throws on a Stripe error.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listSubscriptions(string $customerId): array
+    {
+        $subscriptions = [];
+        foreach (Subscription::all(['customer' => $customerId, 'status' => 'all', 'limit' => 100])->autoPagingIterator() as $subscription) {
+            $subscriptions[] = $subscription->toArray();
+        }
+
+        return $subscriptions;
+    }
+
+    /** Metadata key on a subscription created for a late payment: the invoice that was paid. */
+    public const LATE_PAYMENT_INVOICE = 'late_payment_invoice';
+
+    /**
+     * A customer paid the invoice a cancelled subscription left unpaid. Stripe
+     * cannot revive that subscription, so start a new one on the same price
+     * whose first charge is one period after the payment: the paid invoice
+     * covers the period that starts now, and nothing is charged today
+     * (future billing_cycle_anchor + no proration = no invoice until then).
+     *
+     * The card that paid becomes the default when Stripe kept it on the
+     * customer (see keepCardOfUnpaidInvoices); otherwise the customer's own
+     * default applies. Idempotent per invoice for 24h through Stripe's
+     * idempotency key; after that the caller finds the subscription by its
+     * LATE_PAYMENT_INVOICE metadata. Throws on a Stripe error.
+     *
+     * @param  array<string, mixed>  $oldSubscription  the cancelled subscription (items.data.price expanded)
+     * @return array<string, mixed> the new subscription
+     */
+    public function resubscribeAfterLatePayment(array $oldSubscription, string $invoiceId, int $paidAt): array
+    {
+        $item = $oldSubscription['items']['data'][0] ?? [];
+        $price = $item['price'] ?? [];
+        $customerId = (string) ($oldSubscription['customer'] ?? '');
+
+        $params = [
+            'customer' => $customerId,
+            'items' => [['price' => $price['id'], 'quantity' => (int) ($item['quantity'] ?? 1)]],
+            'metadata' => array_merge((array) ($oldSubscription['metadata'] ?? []), [
+                self::LATE_PAYMENT_INVOICE => $invoiceId,
+                'resubscribed_from' => (string) ($oldSubscription['id'] ?? ''),
+            ]),
+            'billing_cycle_anchor' => self::onePeriodAfter(
+                $paidAt,
+                (string) ($price['recurring']['interval'] ?? 'month'),
+                (int) ($price['recurring']['interval_count'] ?? 1),
+            ),
+            'proration_behavior' => 'none',
+            'expand' => ['items.data.price'],
+        ];
+
+        if ($card = $this->cardThatPaid($invoiceId, $customerId)) {
+            $params['default_payment_method'] = $card;
+        }
+
+        $subscription = Subscription::create($params, ['idempotency_key' => "resubscribe_{$invoiceId}"]);
+
+        Log::info('Stripe subscription created after a late payment', [
+            'subscription_id' => $subscription->id,
+            'replaces_subscription_id' => $oldSubscription['id'] ?? null,
+            'invoice_id' => $invoiceId,
+            'default_payment_method' => $card,
+        ]);
+
+        return $subscription->toArray();
+    }
+
+    /**
+     * $from plus one billing period. Month and year steps clamp to the last
+     * day of the month (Jan 31 + 1 month = Feb 28): Stripe rejects an anchor
+     * later than one period from now, which an overflow into March would be.
+     */
+    public static function onePeriodAfter(int $from, string $interval, int $count): int
+    {
+        $at = \Carbon\Carbon::createFromTimestamp($from, 'UTC');
+        $count = max(1, $count);
+
+        $next = match ($interval) {
+            'day' => $at->addDays($count),
+            'week' => $at->addWeeks($count),
+            'year' => $at->addYearsNoOverflow($count),
+            default => $at->addMonthsNoOverflow($count),
+        };
+
+        return $next->getTimestamp();
+    }
+
+    /**
+     * The payment intents behind an invoice's payments. Never throws.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function invoicePaymentIntents(string $invoiceId): array
+    {
+        try {
+            $invoice = Invoice::retrieve(['id' => $invoiceId, 'expand' => ['payments.data.payment.payment_intent']])->toArray();
+        } catch (Exception $e) {
+            Context::add(['stripe_invoice_id' => $invoiceId]);
+            report($e);
+
+            return [];
+        }
+
+        $intents = [];
+        foreach ($invoice['payments']['data'] ?? [] as $payment) {
+            $intent = $payment['payment']['payment_intent'] ?? null;
+            if (is_array($intent)) {
+                $intents[] = $intent;
+            }
+        }
+
+        return $intents;
+    }
+
+    /**
+     * The payment method that paid an invoice, when it is saved on that
+     * customer (only then can a subscription use it). Null otherwise. Never throws.
+     */
+    private function cardThatPaid(string $invoiceId, string $customerId): ?string
+    {
+        try {
+            foreach ($this->invoicePaymentIntents($invoiceId) as $intent) {
+                if (($intent['status'] ?? null) !== 'succeeded') {
+                    continue;
+                }
+
+                $method = $intent['payment_method'] ?? null;
+                $methodId = is_array($method) ? ($method['id'] ?? null) : $method;
+                if (! $methodId) {
+                    return null;
+                }
+
+                $owner = PaymentMethod::retrieve($methodId)->customer;
+                $ownerId = is_object($owner) ? $owner->id : $owner;
+
+                return $ownerId === $customerId ? $methodId : null;
+            }
+        } catch (Exception $e) {
+            Context::add(['stripe_invoice_id' => $invoiceId]);
+            report($e);
+        }
+
+        return null;
+    }
+
+    /**
+     * A subscription Stripe ended for non-payment leaves its invoice payable
+     * on the hosted invoice page. That page only saves the paying card when
+     * the customer has no default one; flag each unpaid invoice's payment
+     * intent so the card is always kept, and the subscription started by the
+     * late payment (resubscribeAfterLatePayment) can renew on it. Never throws.
+     */
+    public function keepCardOfUnpaidInvoices(string $subscriptionId): void
+    {
+        try {
+            $invoices = Invoice::all(['subscription' => $subscriptionId, 'status' => 'open', 'limit' => 100]);
+
+            foreach ($invoices->autoPagingIterator() as $invoice) {
+                foreach ($this->invoicePaymentIntents($invoice->id) as $intent) {
+                    // The only statuses Stripe lets the flag be set in.
+                    $settable = in_array($intent['status'] ?? null, ['requires_payment_method', 'requires_confirmation', 'requires_action'], true);
+                    if (! $settable || ! empty($intent['setup_future_usage'])) {
+                        continue;
+                    }
+
+                    try {
+                        PaymentIntent::update($intent['id'], ['setup_future_usage' => 'off_session']);
+                    } catch (Exception $e) {
+                        Context::add(['stripe_subscription_id' => $subscriptionId, 'stripe_invoice_id' => $invoice->id]);
+                        report($e);
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            Context::add(['stripe_subscription_id' => $subscriptionId]);
+            report($e);
+        }
     }
 
     /**
@@ -430,6 +618,28 @@ class StripeService
         }
 
         return false;
+    }
+
+    /**
+     * The account's webhook endpoints as Stripe has them configured, for
+     * stripe:check-webhooks. Throws when Stripe refuses (e.g. a restricted key
+     * without "Webhook Endpoints: Read").
+     *
+     * @return list<array{id: string, url: string, status: string, enabled_events: list<string>}>
+     */
+    public function webhookEndpoints(): array
+    {
+        $endpoints = [];
+        foreach (WebhookEndpoint::all(['limit' => 100])->autoPagingIterator() as $endpoint) {
+            $endpoints[] = [
+                'id' => (string) $endpoint->id,
+                'url' => (string) $endpoint->url,
+                'status' => (string) $endpoint->status,
+                'enabled_events' => array_values((array) $endpoint->enabled_events),
+            ];
+        }
+
+        return $endpoints;
     }
 
     /**

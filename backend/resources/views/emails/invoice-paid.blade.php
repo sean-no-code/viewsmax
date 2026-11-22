@@ -94,7 +94,13 @@
             </div>
         @endif
 
-        @if ($pdfUrl !== '')
+        @if ($pdfAttached)
+            <p style="text-align: center;">Your invoice is attached to this email as a PDF.
+            @if ($pdfUrl !== '')
+                You can also <a href="{{ $pdfUrl }}">download it here</a>.
+            @endif
+            </p>
+        @elseif ($pdfUrl !== '')
             <p style="text-align: center;"><a href="{{ $pdfUrl }}">Download the invoice as a PDF</a></p>
         @endif
 

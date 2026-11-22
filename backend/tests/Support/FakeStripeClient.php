@@ -21,7 +21,7 @@ class FakeStripeClient implements ClientInterface
     /** @var array<string, list<array{0: int, 1: array}>> */
     private array $responses = [];
 
-    /** @var list<array{method: string, path: string, params: array}> */
+    /** @var list<array{method: string, path: string, params: array, headers: list<string>}> */
     public array $requests = [];
 
     public static function install(): self
@@ -72,7 +72,7 @@ class FakeStripeClient implements ClientInterface
         $path = parse_url($absUrl, PHP_URL_PATH);
         $query = [];
         parse_str((string) parse_url($absUrl, PHP_URL_QUERY), $query);
-        $this->requests[] = ['method' => $method, 'path' => $path, 'params' => $params ?: $query];
+        $this->requests[] = ['method' => $method, 'path' => $path, 'params' => $params ?: $query, 'headers' => (array) $headers];
 
         $key = $method.' '.$path;
         if (empty($this->responses[$key])) {
