@@ -621,11 +621,11 @@ class StripeService
     }
 
     /**
-     * The account's webhook endpoints as Stripe has them configured, for
-     * stripe:check-webhooks. Throws when Stripe refuses (e.g. a restricted key
-     * without "Webhook Endpoints: Read").
+     * The account's webhook endpoints as the Webhook Endpoints API (v1) lists
+     * them, for stripe:check-webhooks. Throws when Stripe refuses (e.g. a
+     * restricted key without "Webhook Endpoints: Read").
      *
-     * @return list<array{id: string, url: string, status: string, enabled_events: list<string>}>
+     * @return list<array{id: string, url: string, status: string, enabled_events: list<string>, payload: string}>
      */
     public function webhookEndpoints(): array
     {
@@ -636,10 +636,43 @@ class StripeService
                 'url' => (string) $endpoint->url,
                 'status' => (string) $endpoint->status,
                 'enabled_events' => array_values((array) $endpoint->enabled_events),
+                'payload' => 'snapshot',
             ];
         }
 
         return $endpoints;
+    }
+
+    /**
+     * The account's webhook destinations as the Event Destinations API (v2)
+     * lists them, in the same shape as webhookEndpoints(). A webhook created
+     * in the current Stripe dashboard is an event destination, and the v1 list
+     * above does not always include it. `payload` is `snapshot` (the full
+     * object, what StripeWebhookController reads) or `thin`. EventBridge and
+     * Event Grid destinations are left out. Throws when Stripe refuses.
+     *
+     * @return list<array{id: string, url: string, status: string, enabled_events: list<string>, payload: string}>
+     */
+    public function eventDestinations(): array
+    {
+        $client = new \Stripe\StripeClient(['api_key' => (string) config('services.stripe.secret')]);
+        $destinations = [];
+
+        foreach ($client->v2->core->eventDestinations->all(['include' => ['webhook_endpoint.url'], 'limit' => 100])->autoPagingIterator() as $destination) {
+            if ($destination->type !== 'webhook_endpoint') {
+                continue;
+            }
+
+            $destinations[] = [
+                'id' => (string) $destination->id,
+                'url' => (string) ($destination->webhook_endpoint->url ?? ''),
+                'status' => (string) $destination->status,
+                'enabled_events' => array_values((array) $destination->enabled_events),
+                'payload' => (string) ($destination->event_payload ?? 'snapshot'),
+            ];
+        }
+
+        return $destinations;
     }
 
     /**

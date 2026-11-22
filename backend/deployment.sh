@@ -116,7 +116,7 @@ php artisan plans:sync-stripe-prices || warn "plans:sync-stripe-prices failed �
 # The Stripe endpoint must be subscribed to every event the app handles;
 # a missing one fails silently (e.g. failed charges that never lock the account).
 say "stripe:check-webhooks"
-php artisan stripe:check-webhooks || warn "stripe:check-webhooks failed — the Stripe webhook endpoint is missing events (see output above)"
+php artisan stripe:check-webhooks || warn "stripe:check-webhooks failed — Stripe webhooks are not set up correctly (see output above)"
 
 
 # ---- 6. rebuild caches ----------------------------------------------------

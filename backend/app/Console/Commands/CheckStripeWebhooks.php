@@ -11,8 +11,8 @@ use Throwable;
 /**
  * Billing state follows Stripe's webhooks, and which events Stripe sends is a
  * dashboard setting nothing in the code can see. This asks Stripe for the
- * endpoint that points at this app and fails when it is missing, disabled, or
- * not subscribed to an event the webhook depends on
+ * endpoint that points at this app and fails when there is none, none is
+ * enabled, or an enabled one is not subscribed to an event the webhook depends on
  * (StripeWebhookController::REQUIRED_EVENTS).
  *
  * Read-only: it never changes the endpoint. Runs on deploy and daily in
@@ -32,18 +32,43 @@ class CheckStripeWebhooks extends Command
             return $this->reportProblems(["Could not read the webhook endpoints from Stripe: {$e->getMessage()}"]);
         }
 
+        // Stripe has two lists. A webhook made in the current dashboard is an
+        // "event destination" and may be missing from the older list above.
+        $unreadable = null;
+        try {
+            $all = $this->merged($all, $stripe->eventDestinations());
+        } catch (Throwable $e) {
+            $unreadable = "Could not read Stripe event destinations: {$e->getMessage()}";
+        }
+
         $endpoints = $this->ours($all);
         if (! $endpoints) {
+            return $this->reportProblems(array_values(array_filter([
+                'No Stripe webhook delivers to '.$this->expectedUrl().' (or to '.StripeWebhookController::PATH.' on another host).',
+                'Stripe has: '.(implode(', ', array_map(fn ($e) => "{$e['url']} ({$e['id']}, {$e['status']})", $all)) ?: 'none'),
+                $unreadable,
+            ])));
+        }
+
+        if ($unreadable) {
+            $this->warn($unreadable);
+        }
+
+        // A disabled endpoint delivers nothing, so only the enabled ones count:
+        // an old endpoint left switched off beside its replacement is fine.
+        $enabled = array_values(array_filter($endpoints, fn ($e) => $e['status'] === 'enabled'));
+        if (! $enabled) {
             return $this->reportProblems([
-                'No Stripe webhook endpoint points at '.$this->expectedUrl().'.',
-                'Stripe has: '.(implode(', ', array_column($all, 'url')) ?: 'none'),
+                ...array_map(fn ($e) => "{$e['url']} ({$e['id']}) is {$e['status']}: Stripe is sending it nothing.", $endpoints),
+                'Stripe has: '.implode(', ', array_map(fn ($e) => "{$e['url']} ({$e['id']}, {$e['status']})", $all)),
             ]);
         }
 
         $problems = [];
-        foreach ($endpoints as $endpoint) {
-            if ($endpoint['status'] !== 'enabled') {
-                $problems[] = "{$endpoint['url']} ({$endpoint['id']}) is {$endpoint['status']}.";
+        foreach ($enabled as $endpoint) {
+            // The webhook reads the full object out of each event.
+            if ($endpoint['payload'] !== 'snapshot') {
+                $problems[] = "{$endpoint['url']} ({$endpoint['id']}) sends {$endpoint['payload']} events; the app needs snapshot events.";
 
                 continue;
             }
@@ -58,9 +83,42 @@ class CheckStripeWebhooks extends Command
             return $this->reportProblems($problems);
         }
 
-        $this->info(implode(', ', array_column($endpoints, 'url')).' listens for every event the app needs.');
+        if (count($enabled) > 1) {
+            // Each endpoint signs with its own secret; the app holds one.
+            $this->warn(count($enabled).' enabled endpoints point at this app ('.implode(', ', array_column($enabled, 'id'))
+                .'). Only the one whose signing secret is STRIPE_WEBHOOK_SECRET is processed; the others fail and Stripe will disable them.');
+        }
+
+        $this->info(implode(', ', array_unique(array_column($enabled, 'url')))." listens for every event the app needs (Stripe {$this->mode()} mode).");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Both lists as one. The same webhook can appear in each under a different
+     * id; an entry with the same URL, status, payload and events counts once.
+     *
+     * @param  list<array{id: string, url: string, status: string, enabled_events: list<string>, payload: string}>  $endpoints
+     * @param  list<array{id: string, url: string, status: string, enabled_events: list<string>, payload: string}>  $destinations
+     * @return list<array{id: string, url: string, status: string, enabled_events: list<string>, payload: string}>
+     */
+    private function merged(array $endpoints, array $destinations): array
+    {
+        $key = function (array $e): string {
+            $events = $e['enabled_events'];
+            sort($events);
+
+            return implode('|', [rtrim($e['url'], '/'), $e['status'], $e['payload'], implode(',', $events)]);
+        };
+
+        $seen = array_flip(array_map($key, $endpoints));
+        foreach ($destinations as $destination) {
+            if (! isset($seen[$key($destination)])) {
+                $endpoints[] = $destination;
+            }
+        }
+
+        return $endpoints;
     }
 
     /**
@@ -115,9 +173,17 @@ class CheckStripeWebhooks extends Command
         return $this->option('url') ?: rtrim((string) config('app.url'), '/').StripeWebhookController::PATH;
     }
 
+    /** Live and test mode have separate endpoints; which one the app's key sees. */
+    private function mode(): string
+    {
+        return str_contains((string) config('services.stripe.secret'), '_live_') ? 'live' : 'test';
+    }
+
     /** @param  list<string>  $problems */
     private function reportProblems(array $problems): int
     {
+        $problems[] = "Checked with the app's Stripe key, which is a {$this->mode()}-mode key: compare with the dashboard in {$this->mode()} mode.";
+
         foreach ($problems as $problem) {
             $this->error($problem);
         }
