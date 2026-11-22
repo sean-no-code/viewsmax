@@ -400,7 +400,6 @@
       "prorated": "Las subidas y bajadas de plan se prorratean",
       "renews": "Se renueva el <0>{{date}}</0>",
       "trialEndedIntro": "Tu prueba gratuita ha terminado. Elige el plan que se ajuste a cómo creces.",
-      "trialEnds": "Prueba gratuita · termina el <0>{{date}}</0>",
       "trialIntro": "Prueba gratuita de 7 días por $0; luego elige el plan que se ajuste a cómo creces.",
       "trialIntroNoCard": "Prueba gratuita de 7 días, sin tarjeta; luego elige el plan que se ajuste a tu crecimiento.",
       "unexpectedError": "Ocurrió un error inesperado. Inténtalo de nuevo.",
@@ -408,11 +407,17 @@
       "unlimitedOffers": "Ofertas ilimitadas",
       "unlimitedPostsPerMonth": "Publicaciones ilimitadas/mes",
       "updatePayment": "Actualizar método de pago",
-      "upgradeBody": "Pasarás a {{plan}} (${{price}}/mes) de inmediato. Stripe cobrará un importe prorrateado por el resto de este periodo de facturación.",
+      "upgradeBody": "Pasarás a {{plan}} (${{price}}/mes) de inmediato. La diferencia prorrateada por el resto de este periodo de facturación se añade a tu próxima factura.",
       "upgradeTitle": "¿Mejorar a {{plan}}?",
       "yesCancel": "Sí, cancelar",
       "yesDowngrade": "Sí, bajar de plan",
-      "yesUpgrade": "Sí, mejorar"
+      "yesUpgrade": "Sí, mejorar",
+      "pastDueCancel": "Cancelar suscripción",
+      "pastDueCancelTitle": "¿Cancelar tu suscripción?",
+      "pastDueCancelBody": "Tu último pago no se completó, así que no te queda tiempo pagado. Si cancelas, tu suscripción termina ahora. Puedes volver a suscribirte cuando quieras.",
+      "billingHistory": "Historial de facturación y método de pago",
+      "trialEndsThenPrice": "Prueba gratuita · termina el <0>{{date}}</0>; después se cobra {{price}}",
+      "changeKeepsCancellation": "Tu suscripción sigue cancelada y termina el {{date}}."
     }
   },
   "boosts": {

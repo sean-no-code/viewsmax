@@ -51,7 +51,21 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   (`UserPlan`) carrying Stripe subscription/status. `CheckPlan` middleware currently gates by plan *name*,
   not by numeric limits.
 - **Billing.** `BillingController` + `StripeService` handle Stripe. Subscriptions live on the
-  `user_plans` pivot (`stripe_subscription_id`, `status`, `expires_at`).
+  `user_plans` pivot (`stripe_subscription_id`, `status`, `expires_at`). A subscription Stripe ended for
+  non-payment (`cancellation_details.reason = payment_failed`) keeps its invoice payable; paying it later
+  starts a new subscription on the same price, renewing one period after the payment
+  (`StripeWebhookController::resubscribeAfterLatePayment`, guards in `latePaymentRefusal`; anything that does
+  not qualify grants nothing and logs an error for a manual refund). A subscription cancelled on purpose has
+  its open invoices voided (`StripeService::voidOpenInvoices`, never throws), as do ended subscriptions when
+  the customer starts a new one. Either way a `past_due` row becomes `expired`. Customer emails (invoice per paid cycle with Stripe's PDF attached, cancel confirmation, payment failed — once per invoice via
+  `user_plans.payment_failed_notified_invoice_id`) go through
+  `App\Services\Billing\BillingEmails` (`config/billing.php` switches; never throw) and log to
+  `storage/logs/billing-YYYY-MM-DD.log` (`BillingLog`, `BILLING_LOG_ENABLED`). Which events Stripe sends is a
+  dashboard setting: `php artisan stripe:check-webhooks` (deploy + daily in production, read-only) fails with an error-level billing log line when the endpoint is missing,
+  disabled or not subscribed to `StripeWebhookController::REQUIRED_EVENTS`; a new webhook event goes in
+  `HANDLED_EVENTS`, the switch and, if billing depends on it, `REQUIRED_EVENTS`. Tests that need to see what
+  `StripeService` itself sends use `Tests\Support\FakeStripeClient` (Stripe's HTTP transport, no network);
+  everything else mocks `StripeService`.
 - **Posting (in progress).** Two parallel systems exist: `Post`/`PostTarget` and
   `SocialPost`/`SocialPostTarget`. One composed post fans out to many per-platform targets. Real
   publish-to-platform is still being built; compose/create endpoints (`POST /posts`) exist.

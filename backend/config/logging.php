@@ -269,6 +269,29 @@ return [
             'permission' => 0777,
         ],
 
+        // Billing emails (config/billing.php, App\Services\Billing\BillingEmails
+        // via App\Services\Billing\BillingLog): one line per invoice or
+        // cancellation email sent, skipped or failed, in
+        // storage/logs/billing.log. BILLING_LOG_ENABLED=false swaps the whole
+        // stack for the null channel; a failed send is still report()ed, so
+        // Sentry sees it either way. Toggling needs `php artisan config:clear`
+        // when the config is cached.
+        'billing' => [
+            'driver' => 'stack',
+            'channels' => env('BILLING_LOG_ENABLED', true) ? ['billing_file', 'sentry'] : ['null'],
+            'ignore_exceptions' => false,
+        ],
+        'billing_file' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/billing.log'),
+            'level' => 'debug',
+            // Kept longer than the operational logs: "did they get a receipt?"
+            // comes up weeks later.
+            'days' => 90,
+            'replace_placeholders' => true,
+            'permission' => 0777,
+        ],
+
         // Queue heartbeat (config/monitoring.php, queue:heartbeat +
         // App\Jobs\QueueHeartbeatJob): one line per dispatch, per processed
         // heartbeat (with its lag) and per stuck/recovered email,

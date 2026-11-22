@@ -390,7 +390,6 @@
       "prorated": "Upgrades & downgrades are prorated",
       "renews": "Renews <0>{{date}}</0>",
       "trialEndedIntro": "Your free trial has ended. Pick the tier that fits how you grow.",
-      "trialEnds": "Free trial · ends <0>{{date}}</0>",
       "trialIntro": "7-day free trial — add a card, nothing is charged until it ends — then pick the tier that fits how you grow.",
       "trialIntroNoCard": "7-day free trial — no card needed — then pick the tier that fits how you grow.",
       "unexpectedError": "An unexpected error occurred. Please try again.",
@@ -398,11 +397,17 @@
       "unlimitedOffers": "Unlimited offers",
       "unlimitedPostsPerMonth": "Unlimited posts/mo",
       "updatePayment": "Update payment method",
-      "upgradeBody": "You'll move to {{plan}} (${{price}}/mo) right away. Stripe charges a prorated amount for the rest of this billing period.",
+      "upgradeBody": "You'll move to {{plan}} (${{price}}/mo) right away. The prorated difference for the rest of this billing period is added to your next invoice.",
       "upgradeTitle": "Upgrade to {{plan}}?",
       "yesCancel": "Yes, Cancel",
       "yesDowngrade": "Yes, downgrade",
-      "yesUpgrade": "Yes, upgrade"
+      "yesUpgrade": "Yes, upgrade",
+      "pastDueCancel": "Cancel subscription",
+      "pastDueCancelTitle": "Cancel your subscription?",
+      "pastDueCancelBody": "Your last payment didn't go through, so there's no paid time left. Cancelling ends your subscription now. You can subscribe again at any time.",
+      "billingHistory": "Billing history & payment method",
+      "trialEndsThenPrice": "Free trial · ends <0>{{date}}</0>, then {{price}} is charged",
+      "changeKeepsCancellation": "Your subscription stays cancelled and ends on {{date}}."
     }
   },
   "boosts": {

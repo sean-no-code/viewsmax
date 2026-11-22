@@ -390,7 +390,6 @@
       "prorated": "Up- und Downgrades werden anteilig berechnet",
       "renews": "Verlängert sich am <0>{{date}}</0>",
       "trialEndedIntro": "Deine kostenlose Testphase ist beendet. Wähle den Tarif, der zu deinem Wachstum passt.",
-      "trialEnds": "Kostenlose Testphase · endet am <0>{{date}}</0>",
       "trialIntro": "7 Tage kostenlos testen für $0, dann wählst du den Tarif, der zu deinem Wachstum passt.",
       "trialIntroNoCard": "7 Tage kostenlos testen – ohne Karte –, dann wählst du den Tarif, der zu deinem Wachstum passt.",
       "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten. Bitte erneut versuchen.",
@@ -398,11 +397,17 @@
       "unlimitedOffers": "Unbegrenzte Angebote",
       "unlimitedPostsPerMonth": "Unbegrenzte Posts/Monat",
       "updatePayment": "Zahlungsmethode ändern",
-      "upgradeBody": "Du wechselst sofort zu {{plan}} (${{price}}/Monat). Stripe berechnet einen anteiligen Betrag für den Rest dieses Abrechnungszeitraums.",
+      "upgradeBody": "Du wechselst sofort zu {{plan}} (${{price}}/Monat). Der anteilige Differenzbetrag für den Rest dieses Abrechnungszeitraums wird deiner nächsten Rechnung hinzugefügt.",
       "upgradeTitle": "Upgrade auf {{plan}}?",
       "yesCancel": "Ja, kündigen",
       "yesDowngrade": "Ja, downgraden",
-      "yesUpgrade": "Ja, upgraden"
+      "yesUpgrade": "Ja, upgraden",
+      "pastDueCancel": "Abo kündigen",
+      "pastDueCancelTitle": "Abo kündigen?",
+      "pastDueCancelBody": "Deine letzte Zahlung ist nicht durchgegangen, daher ist kein bezahlter Zeitraum mehr übrig. Mit der Kündigung endet dein Abo sofort. Du kannst jederzeit wieder ein Abo abschließen.",
+      "billingHistory": "Rechnungsverlauf & Zahlungsmethode",
+      "trialEndsThenPrice": "Kostenlose Testphase · endet am <0>{{date}}</0>, danach werden {{price}} berechnet",
+      "changeKeepsCancellation": "Dein Abo bleibt gekündigt und endet am {{date}}."
     }
   },
   "boosts": {
