@@ -80,7 +80,8 @@
     "linkedin": "Posts con imagen y primer comentario",
     "threads": "Posts de texto, foto o vídeo",
     "bluesky": "Posts con hasta 4 imágenes",
-    "pinterest": "Pines de imagen y vídeo en cualquier tablero"
+    "pinterest": "Pines de imagen y vídeo en cualquier tablero",
+    "telegram": "Posts en canales y grupos, álbumes de hasta 10"
   },
   "footer": {
     "tagline": "Crea contenido que vende.",

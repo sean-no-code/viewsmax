@@ -267,6 +267,7 @@ const CHANNELS: { name: string; slug?: string; bg: string; glyph: ReactNode }[] 
   { ...page("threads"), bg: "#0A0A0C", glyph: <text x="12" y="17" textAnchor="middle" fontFamily="Archivo, system-ui, sans-serif" fontWeight={900} fontSize={17} fill="#fff">@</text> },
   { ...page("bluesky"), bg: "#0085FF", glyph: <path d={brandIconPath("bluesky")} fill="#fff" transform="translate(3 3) scale(.75)" /> },
   { ...page("pinterest"), bg: "#E60023", glyph: <path d={brandIconPath("pinterest")} fill="#fff" transform="translate(2.4 2.4) scale(.8)" /> },
+  { ...page("telegram"), bg: "#26A5E4", glyph: <path d={brandIconPath("telegram")} fill="#fff" transform="translate(2.4 2.4) scale(.8)" /> },
   { name: "Beehiiv", bg: "#111827", glyph: <path d="M12 3.4 L18.6 7.2 L18.6 16.8 L12 20.6 L5.4 16.8 L5.4 7.2 Z" fill="none" stroke="#FFD34E" strokeWidth={2} strokeLinejoin="round" /> },
 ];
 

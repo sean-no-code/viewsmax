@@ -13,7 +13,7 @@
 
 export const CHANNELS_PATH = "/channels";
 
-export type ChannelKey = "youtube" | "tiktok" | "instagram" | "x" | "linkedin" | "threads" | "bluesky" | "pinterest";
+export type ChannelKey = "youtube" | "tiktok" | "instagram" | "x" | "linkedin" | "threads" | "bluesky" | "pinterest" | "telegram";
 
 export interface FaqItem {
   q: string;
@@ -389,6 +389,48 @@ export const CHANNELS: Record<ChannelKey, ChannelConfig> = {
       PLAN_FAQ,
     ],
   },
+  telegram: {
+    key: "telegram",
+    slug: slug("telegram"),
+    name: "Telegram",
+    color: "#26A5E4",
+    card: "Channel and group posts, albums of up to 10",
+    seo: {
+      title: "Telegram Scheduler — Schedule Telegram Channel Posts | ViewsMax",
+      description:
+        "Schedule posts to Telegram channels and groups: text up to 4,096 characters, a photo or video, or an album of up to 10. Connects with a one-time code, cross-posts from your other channels, and tracks sales per post.",
+      keywords:
+        "telegram scheduler, schedule telegram posts, telegram channel scheduler, telegram post scheduler, telegram auto post, schedule telegram channel posts, telegram group scheduler, telegram bot scheduler",
+    },
+    h1: "Schedule Telegram channel and group posts from one calendar",
+    subhead:
+      "Add the ViewsMax bot as an admin, post a one-time code to prove the chat is yours, then schedule text, photos, videos or albums of up to ten. Tracked links show which post brought the sale.",
+    formats: ["Text", "Photo or video", "Album of 2 to 10 photos and videos"],
+    captionLimit: 4096,
+    captionNote: "UTF-16 code units: most emoji count as 2",
+    connect: "One-time code posted in your channel or group (no OAuth)",
+    options: ["Channels, groups and supergroups", "Albums of up to 10", "Long text sent after the media", "Per-post tracked links"],
+    steps: [
+      { title: "Add the bot as an admin", body: "Add the ViewsMax bot to your channel or group as an administrator. In a channel, turn on its Post messages right." },
+      { title: "Post the one-time code", body: "ViewsMax gives you a short /connect message to post in that chat. It spots the message, links the chat and removes the message again." },
+      { title: "Schedule and track", body: "Write the post, attach media if you want, and pick the time. Tracked links show the clicks and sales each post produced." },
+    ],
+    features: [
+      { title: "Channels and groups", body: "Publish to a channel, a group or a supergroup. Connect as many chats as you run, each as its own account." },
+      { title: "Albums of up to ten", body: "Send one photo or video, or two to ten together as a single album, straight from the composer." },
+      { title: "Long posts stay whole", body: "Telegram caps a media caption at 1,024 characters. Longer text is sent as its own message right after the media, so nothing is cut." },
+      { title: "Proof the chat is yours", body: "The code has to be posted in the chat by one of its admins. A chat name or link typed into ViewsMax is never enough to connect it." },
+    ],
+    faq: [
+      { q: "How does ViewsMax connect to Telegram?", a: "Through the ViewsMax bot. Add it to your channel or group as an administrator, then post the one-time /connect message ViewsMax shows you in that chat. The code works for 15 minutes, and removing the bot disconnects the chat." },
+      { q: "Can I schedule posts to a Telegram group, not just a channel?", a: "Yes. Channels, groups and supergroups all work. Private one-to-one chats are not a destination." },
+      { q: "What can a Telegram post contain?", a: "Text up to 4,096 characters, a single photo or video, or an album of two to ten photos and videos. Photos can be up to 10 MB and videos up to 50 MB." },
+      { q: "What happens when my text is longer than a Telegram caption?", a: "A caption on a photo, video or album holds 1,024 characters. When your text is longer, the media is posted first and the full text follows as its own message." },
+      SALES_FAQ("Telegram"),
+      AGENT_FAQ("Telegram"),
+      PLAN_FAQ,
+    ],
+  },
 };
 
 export const CHANNEL_LIST: ChannelConfig[] = Object.values(CHANNELS);
@@ -396,7 +438,7 @@ export const CHANNEL_LIST: ChannelConfig[] = Object.values(CHANNELS);
 export const CHANNELS_HUB_SEO = {
   title: "Social Media Channels You Can Schedule With ViewsMax",
   description:
-    "Schedule and auto-post to YouTube, TikTok, Instagram, X, LinkedIn, Threads, Bluesky and Pinterest from one calendar, and see which post on which channel made the sale.",
+    "Schedule and auto-post to YouTube, TikTok, Instagram, X, LinkedIn, Threads, Bluesky, Pinterest and Telegram from one calendar, and see which post on which channel made the sale.",
   keywords:
     "social media scheduler channels, schedule posts youtube tiktok instagram, multi channel social media scheduler, cross post scheduler, pinterest youtube tiktok scheduler",
 };
