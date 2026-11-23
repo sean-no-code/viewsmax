@@ -18,7 +18,7 @@ use Tests\TestCase;
  * Upgrading into a plan with analytics backfills the imports the user missed
  * on the lower tier. The user_plans pivot fires no model events (two of the
  * plan-change paths are raw DB::table updates), so every path that writes it
- * calls AnalyticsAccess::backfill() — which must be a no-op below Pro and run
+ * calls AnalyticsAccess::backfill() — which must be a no-op below Creator and run
  * once however many times it is called.
  */
 class AnalyticsBackfillTest extends TestCase
@@ -65,10 +65,10 @@ class AnalyticsBackfillTest extends TestCase
         Queue::assertPushed(ImportRecentPostsJob::class, fn ($job) => $job->socialAccountId === $account->id);
     }
 
-    public function test_is_a_no_op_below_pro(): void
+    public function test_is_a_no_op_below_creator(): void
     {
         Queue::fake();
-        $user = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $user = User::factory()->withPlan('active', $this->planNamed('starter'))->create();
         $this->channel($user);
         $this->account($user);
 
@@ -90,32 +90,11 @@ class AnalyticsBackfillTest extends TestCase
         Queue::assertPushed(ImportChannelVideosJob::class, 1);
     }
 
-    public function test_changing_plan_into_pro_backfills(): void
+    public function test_changing_plan_into_creator_backfills(): void
     {
         Queue::fake();
-        $user = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $user = User::factory()->withPlan('active', $this->planNamed('starter'))->create();
         $channel = $this->channel($user);
-        $pro = $this->planNamed('pro');
-
-        $this->mock(StripeService::class, fn ($m) => $m->shouldReceive('changeSubscriptionPrice')
-            ->once()
-            ->andReturn(['status' => 'active']));
-
-        $this->withHeaders([
-            'Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken,
-            'Accept' => 'application/json',
-        ])->postJson('/api/user-plans/change-plan', ['price_id' => $pro->stripe_price_id])
-            ->assertOk();
-
-        $this->assertSame('pro', $user->fresh()->activePlan()->name);
-        Queue::assertPushed(ImportChannelVideosJob::class, fn ($job) => $job->channelId === $channel->id);
-    }
-
-    public function test_changing_plan_down_to_creator_backfills_nothing(): void
-    {
-        Queue::fake();
-        $user = User::factory()->withPlan('active', $this->planNamed('pro'))->create();
-        $this->channel($user);
         $creator = $this->planNamed('creator');
 
         $this->mock(StripeService::class, fn ($m) => $m->shouldReceive('changeSubscriptionPrice')
@@ -126,6 +105,27 @@ class AnalyticsBackfillTest extends TestCase
             'Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken,
             'Accept' => 'application/json',
         ])->postJson('/api/user-plans/change-plan', ['price_id' => $creator->stripe_price_id])
+            ->assertOk();
+
+        $this->assertSame('creator', $user->fresh()->activePlan()->name);
+        Queue::assertPushed(ImportChannelVideosJob::class, fn ($job) => $job->channelId === $channel->id);
+    }
+
+    public function test_changing_plan_down_to_starter_backfills_nothing(): void
+    {
+        Queue::fake();
+        $user = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $this->channel($user);
+        $starter = $this->planNamed('starter');
+
+        $this->mock(StripeService::class, fn ($m) => $m->shouldReceive('changeSubscriptionPrice')
+            ->once()
+            ->andReturn(['status' => 'active']));
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken,
+            'Accept' => 'application/json',
+        ])->postJson('/api/user-plans/change-plan', ['price_id' => $starter->stripe_price_id])
             ->assertOk();
 
         Queue::assertNothingPushed();

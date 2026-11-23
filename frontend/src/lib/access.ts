@@ -57,8 +57,12 @@ export function inLimitedReleaseAudience(user: { is_admin?: boolean; is_promotio
   return !!(user?.is_admin || user?.is_promotional);
 }
 
-/** The plan names whose tier includes analytics. Mirrors App\Support\AnalyticsAccess::PLANS. */
-export const ANALYTICS_PLANS = ["pro", "agency", "creator_pro", "creator_elite", "creator_agency"];
+/**
+ * The plan names whose tier includes analytics: Creator and Agency, then the
+ * retired plans (Pro, no longer sold, and the legacy creator_* tiers) whose
+ * subscribers keep it. Mirrors App\Support\AnalyticsAccess::PLANS.
+ */
+export const ANALYTICS_PLANS = ["creator", "agency", "pro", "creator_pro", "creator_elite", "creator_agency"];
 
 /**
  * The plan names whose tier includes monetization: offers, tracked links and
@@ -69,7 +73,7 @@ export const ANALYTICS_PLANS = ["pro", "agency", "creator_pro", "creator_elite",
 export const MONETIZATION_PLANS = ["agency", "creator_agency"];
 
 /**
- * Channel + post analytics is the Pro tier upsell: Profile Performance, Post
+ * Channel + post analytics starts at the Creator tier: Profile Performance, Post
  * Performance and the YouTube channel analytics page. The backend answers with
  * `can_use_analytics` (App\Support\AnalyticsAccess); the plan-name fallback is
  * for a session cached before that field existed, so a paying user never loses

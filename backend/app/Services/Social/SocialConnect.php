@@ -136,7 +136,7 @@ class SocialConnect
     /**
      * Pull the account's latest posts into analytics (off the request). Only
      * platforms that can report stats are worth a job; the job re-checks.
-     * Analytics is the Pro tier upsell, so a below-Pro connect queues nothing
+     * Analytics starts at the Creator tier, so a below-Creator connect queues nothing
      * (App\Support\AnalyticsAccess).
      *
      * @param  Collection<int, \App\Models\SocialAccount>  $accounts

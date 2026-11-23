@@ -10,9 +10,8 @@
 | (EnsureAccessActive) and the MCP server (SafeCallTool) lock the account to
 | the Billing page. The hourly subscriptions:send-free-trial-reminders command
 | emails each user once, a day before that happens (day 6), with a link to
-| pick a paid plan. Users who already added a card get the Stripe "card about
-| to be charged" reminder instead (subscriptions:send-trial-reminders) and
-| are skipped here, as are admins and promotional customers.
+| pick a paid plan. Users who already added a card have a plan and are
+| skipped here, as are admins and promotional customers.
 |
 */
 

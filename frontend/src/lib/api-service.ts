@@ -4725,7 +4725,7 @@ class ViewsMaxApiService {
   }
 
   /**
-   * Fetch the active, public pricing plans (the 4 tiers) with their numeric
+   * Fetch the active, public pricing plans (the tiers on sale) with their numeric
    * limits and Stripe price ids. Powers the pricing page.
    */
   async getPlans(): Promise<ApiResponse<PlanTier[]>> {

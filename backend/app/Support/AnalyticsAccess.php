@@ -23,23 +23,25 @@ use Illuminate\Support\Facades\Log;
  *  - REST        ChannelController::refresh (it re-runs the analytics fetch)
  *  - SPA         the `can_use_analytics` flag in User::apiPayload()
  *
- * Analytics is the Pro tier upsell: channel analytics, the uploads import, the
+ * Analytics starts at the Creator tier: channel analytics, the uploads import, the
  * recent-posts import and the daily follower/engagement snapshots. Reads of
  * already-stored analytics are not gated here — they cost nothing — the pages
  * that show them are gated in the SPA.
  *
  * Admins and promotional customers are exempt, matching UserAccess and
  * Quota\Tier::of. Access (UserAccess) is a separate, orthogonal question: a
- * lapsed Pro user has the plan but not the access, and both must say yes.
+ * lapsed Creator user has the plan but not the access, and both must say yes.
  */
 final class AnalyticsAccess
 {
     /**
-     * Tiers that include analytics. The three `creator_*` rows are the retired
-     * legacy tiers PlanSeeder marks inactive while keeping their subscribers,
-     * grandfathered in so no paying legacy customer silently loses analytics.
+     * Tiers that include analytics: Creator and Agency, the two on sale, then
+     * the retired ones — `pro` (no longer sold since 2026-11-23) and the three
+     * legacy `creator_*` rows. PlanSeeder marks those inactive while keeping
+     * their subscribers, who are grandfathered in so no paying customer
+     * silently loses analytics.
      */
-    public const PLANS = ['pro', 'agency', 'creator_pro', 'creator_elite', 'creator_agency'];
+    public const PLANS = ['creator', 'agency', 'pro', 'creator_pro', 'creator_elite', 'creator_agency'];
 
     /** How long a backfill is remembered, so webhook churn can't re-queue it. */
     private const BACKFILL_TTL_HOURS = 24;

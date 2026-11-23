@@ -130,10 +130,10 @@ class SyncChannelVideosCommandTest extends TestCase
 
     public function test_channels_of_users_on_a_plan_without_analytics_are_not_synced(): void
     {
-        // Analytics is the Pro tier upsell: a creator-tier user in good standing
+        // Analytics starts at Creator: a starter-tier user in good standing
         // keeps the channel but costs no YouTube quota every night.
         $pro = $this->channel($this->analyticsUser());
-        $this->channel(User::factory()->withPlan('active', $this->planNamed('creator'))->create());
+        $this->channel(User::factory()->withPlan('active', $this->planNamed('starter'))->create());
 
         $this->mock(YouTubeChannelService::class, function ($m) use ($pro) {
             $m->shouldReceive('fetchAndImportChannelVideos')->once()

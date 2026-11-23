@@ -127,8 +127,19 @@ class StripeWebhookSetupCheckTest extends TestCase
         $this->stripeReturns($this->endpoint($events));
 
         $this->artisan('stripe:check-webhooks')
-            ->expectsOutputToContain('is not subscribed to: invoice.payment_failed, customer.subscription.updated.')
+            ->expectsOutputToContain('is not subscribed to: invoice.payment_failed or payment_intent.payment_failed or charge.failed, customer.subscription.updated.')
             ->assertFailed();
+    }
+
+    public function test_the_payment_intent_or_charge_failure_event_stands_in_for_the_invoice_one(): void
+    {
+        $events = array_values(array_diff($this->allRequired(), ['invoice.payment_failed']));
+
+        foreach (['payment_intent.payment_failed', 'charge.failed'] as $standIn) {
+            $this->stripeReturns($this->endpoint([...$events, $standIn]));
+
+            $this->artisan('stripe:check-webhooks')->assertSuccessful();
+        }
     }
 
     public function test_an_alternative_event_satisfies_its_group(): void

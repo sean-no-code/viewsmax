@@ -89,10 +89,11 @@ describe("canUseAnalytics", () => {
   });
 
   it("falls back to the plan name for a session cached before the flag existed", () => {
-    expect(canUseAnalytics({ active_plan: { name: "pro" } })).toBe(true);
+    expect(canUseAnalytics({ active_plan: { name: "creator" } })).toBe(true);
     expect(canUseAnalytics({ active_plan: { name: "Agency" } })).toBe(true);
+    // Retired plans keep it for the subscribers they still have.
+    expect(canUseAnalytics({ active_plan: { name: "pro" } })).toBe(true);
     expect(canUseAnalytics({ active_plan: { name: "creator_elite" } })).toBe(true);
-    expect(canUseAnalytics({ active_plan: { name: "creator" } })).toBe(false);
     expect(canUseAnalytics({ active_plan: { name: "starter" } })).toBe(false);
     expect(canUseAnalytics({ active_plan: { name: "free" } })).toBe(false);
     expect(canUseAnalytics({ active_plan: null })).toBe(false);

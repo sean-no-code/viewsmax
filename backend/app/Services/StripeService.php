@@ -10,6 +10,7 @@ use Stripe\BillingPortal\Session as BillingPortalSession;
 use Stripe\Checkout\Session as CheckoutSession;
 use Stripe\Customer;
 use Stripe\Invoice;
+use Stripe\InvoicePayment;
 use Stripe\PaymentIntent;
 use Stripe\PaymentMethod;
 use Stripe\Price;
@@ -81,6 +82,35 @@ class StripeService
             ]);
             throw new Exception('Stripe get invoice error: '.$e->getMessage());
         }
+    }
+
+    /**
+     * The invoice a payment intent was an attempt to pay, or null when the
+     * payment was not for an invoice. A PaymentIntent does not name its
+     * invoice (Stripe API 2025-03-31 and later); the InvoicePayment that joins
+     * the two does. Throws when Stripe cannot be asked.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function invoiceOfPaymentIntent(string $paymentIntentId): ?array
+    {
+        try {
+            $payments = InvoicePayment::all([
+                'payment' => ['type' => 'payment_intent', 'payment_intent' => $paymentIntentId],
+                'expand' => ['data.invoice'],
+                'limit' => 1,
+            ])->toArray();
+        } catch (Exception $e) {
+            Log::error('Stripe invoice payment lookup error', [
+                'error' => $e->getMessage(),
+                'payment_intent_id' => $paymentIntentId,
+            ]);
+            throw new Exception('Stripe invoice payment lookup error: '.$e->getMessage(), 0, $e);
+        }
+
+        $invoice = $payments['data'][0]['invoice'] ?? null;
+
+        return is_array($invoice) ? $invoice : null;
     }
 
     /**

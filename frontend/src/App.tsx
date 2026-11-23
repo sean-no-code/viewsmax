@@ -239,7 +239,7 @@ const App = () => (
                   <Route path="analytics" element={<Navigate to="/dashboard/analytics/overview" replace />} />
                   <Route path="analytics/overview" element={<AnalyticsOverview />} />
                   <Route path="analytics/sources" element={<AnalyticsSources />} />
-                  {/* Channel + post analytics is part of the Pro tier (src/lib/access.ts) */}
+                  {/* Channel + post analytics starts at the Creator tier (src/lib/access.ts) */}
                   <Route path="analytics/audience-growth" element={<Navigate to="/dashboard/analytics/profile" replace />} />
                   <Route path="analytics/profile" element={<AnalyticsRoute><AnalyticsPerformance tab="profile" /></AnalyticsRoute>} />
                   <Route path="analytics/posts" element={<AnalyticsRoute><AnalyticsPerformance tab="posts" /></AnalyticsRoute>} />

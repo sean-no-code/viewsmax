@@ -267,13 +267,13 @@ class RefreshPostMetricsCommandTest extends TestCase
 
     public function test_posts_of_users_on_a_plan_without_analytics_are_skipped(): void
     {
-        // Analytics is the Pro tier upsell: a creator-tier user in good standing
+        // Analytics starts at Creator: a starter-tier user in good standing
         // keeps their posts but costs no provider calls.
         $account = $this->account('x');
         $this->legacyTarget($account, 'creator1');
         $this->user->plans()->detach();
-        $this->user->plans()->attach($this->planNamed('creator')->id, ['status' => 'active', 'starts_at' => now()]);
-        $this->assertSame('creator', $this->user->fresh()->activePlan()->name);
+        $this->user->plans()->attach($this->planNamed('starter')->id, ['status' => 'active', 'starts_at' => now()]);
+        $this->assertSame('starter', $this->user->fresh()->activePlan()->name);
         $this->fakeManager(['creator1' => ['likes' => 5, 'comments' => 0, 'shares' => 0, 'views' => 10]]);
 
         $this->artisan('posts:refresh-metrics')->assertExitCode(0);

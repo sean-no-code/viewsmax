@@ -343,8 +343,8 @@ class User extends Authenticatable implements Wallet
      * Users whose plan includes analytics, as a query — the SQL twin of
      * AnalyticsAccess::allows(), for the commands that select in bulk
      * (channels:sync-videos, audience:refresh, posts:refresh-metrics,
-     * posts:import-recent) so a below-Pro user costs no provider calls.
-     * Orthogonal to withAccess(): a lapsed Pro user passes this and fails that,
+     * posts:import-recent) so a below-Creator user costs no provider calls.
+     * Orthogonal to withAccess(): a lapsed Creator user passes this and fails that,
      * so bulk selections need both. Soft-deleted users are excluded by the
      * model's scope.
      */
@@ -431,7 +431,7 @@ class User extends Authenticatable implements Wallet
             // Promotional customer: with admins, the limited-release audience
             // (SocialProviderManager::inLimitedReleaseAudience).
             'is_promotional' => $this->isPromotional(),
-            // Analytics is the Pro-tier upsell (App\Support\AnalyticsAccess).
+            // Analytics starts at the Creator tier (App\Support\AnalyticsAccess).
             'can_use_analytics' => AnalyticsAccess::allows($this),
             // Legacy extras retained for backward compatibility.
             'roles' => $this->roles,

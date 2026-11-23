@@ -24,12 +24,12 @@ class UserWithAnalyticsScopeTest extends TestCase
             'no plan at all' => [null, 'active', false],
             'free' => ['free', 'active', false],
             'starter' => ['starter', 'active', false],
-            'creator' => ['creator', 'active', false],
-            'pro' => ['pro', 'active', true],
+            'creator' => ['creator', 'active', true],
             'agency' => ['agency', 'active', true],
-            'pro, trialing' => ['pro', 'trialing', true],
-            'pro, cancelled' => ['pro', 'cancelled', false],
-            'pro, past_due' => ['pro', 'past_due', false],
+            'creator, trialing' => ['creator', 'trialing', true],
+            'creator, cancelled' => ['creator', 'cancelled', false],
+            'creator, past_due' => ['creator', 'past_due', false],
+            'retired pro' => ['pro', 'active', true],
             'legacy creator_elite' => ['creator_elite', 'active', true],
         ];
     }
@@ -59,17 +59,17 @@ class UserWithAnalyticsScopeTest extends TestCase
 
     public function test_a_plan_without_analytics_is_excluded_even_with_access(): void
     {
-        // The two gates are orthogonal: a creator-tier user in good standing
+        // The two gates are orthogonal: a starter-tier user in good standing
         // passes withAccess() and must still fail withAnalytics().
-        $creator = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $starter = User::factory()->withPlan('active', $this->planNamed('starter'))->create();
 
-        $this->assertTrue(User::withAccess()->whereKey($creator->id)->exists());
-        $this->assertFalse(User::withAnalytics()->whereKey($creator->id)->exists());
+        $this->assertTrue(User::withAccess()->whereKey($starter->id)->exists());
+        $this->assertFalse(User::withAnalytics()->whereKey($starter->id)->exists());
     }
 
     public function test_soft_deleted_users_are_never_selected(): void
     {
-        $user = User::factory()->withPlan('active', $this->planNamed('pro'))->create();
+        $user = $this->analyticsUser();
         $user->delete();
 
         $this->assertFalse(User::withAnalytics()->whereKey($user->id)->exists());

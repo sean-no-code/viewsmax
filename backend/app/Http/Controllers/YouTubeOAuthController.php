@@ -140,8 +140,8 @@ class YouTubeOAuthController extends Controller
                 }
 
                 // Off the request: the import waits on the YouTube API, and a
-                // failure there must not fail the connect. Analytics is the Pro
-                // tier upsell, so below-Pro connects queue nothing at all.
+                // failure there must not fail the connect. Analytics starts at
+                // the Creator tier, so connects below it queue nothing at all.
                 if (AnalyticsAccess::allows($user)) {
                     ImportChannelVideosJob::dispatch($channel->id);
                 } else {

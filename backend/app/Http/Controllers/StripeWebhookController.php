@@ -33,6 +33,8 @@ class StripeWebhookController extends Controller
         'invoice.payment_succeeded',
         'invoice_payment.paid',
         'invoice.payment_failed',
+        'payment_intent.payment_failed',
+        'charge.failed',
         'customer.subscription.updated',
         'customer.subscription.deleted',
     ];
@@ -40,12 +42,13 @@ class StripeWebhookController extends Controller
     /**
      * What the Stripe endpoint must be subscribed to for billing to work: one
      * event from each group. `stripe:check-webhooks` compares this with the
-     * endpoint's enabled events on deploy and daily. Without payment_failed and
-     * subscription.updated a failed charge leaves the customer with access.
+     * endpoint's enabled events on deploy and daily. Without a payment-failed
+     * event and subscription.updated a failed charge leaves the customer with
+     * access.
      */
     public const REQUIRED_EVENTS = [
         ['invoice.paid', 'invoice.payment_succeeded', 'invoice_payment.paid'],
-        ['invoice.payment_failed'],
+        ['invoice.payment_failed', 'payment_intent.payment_failed', 'charge.failed'],
         ['customer.subscription.updated'],
         ['customer.subscription.deleted'],
         ['checkout.session.completed'],
@@ -166,6 +169,22 @@ class StripeWebhookController extends Controller
 
                 case 'invoice.payment_failed':
                     $this->handleInvoicePaymentFailed($resource);
+                    break;
+
+                // Every failed charge sends these two, with or without
+                // invoice.payment_failed beside them. Resolve the invoice and
+                // run the same handling (safe when all three arrive).
+                case 'payment_intent.payment_failed':
+                    $error = $resource['last_payment_error'] ?? [];
+                    $this->handleFailedPayment($resource['id'] ?? null, $error['decline_code'] ?? $error['code'] ?? null);
+                    break;
+
+                case 'charge.failed':
+                    $this->handleFailedPayment(
+                        $resource['payment_intent'] ?? null,
+                        $resource['outcome']['reason'] ?? $resource['failure_code'] ?? null,
+                        'charge has no payment intent',
+                    );
                     break;
 
                 default:
@@ -957,6 +976,58 @@ class StripeWebhookController extends Controller
         if ($plan = $plans->first()) {
             $this->billingEmails->paymentFailed($user, $plan->display_name ?: $plan->name, $subscriptionId, $invoice);
         }
+    }
+
+    /**
+     * `payment_intent.payment_failed` and `charge.failed`: a charge was
+     * declined. Neither object says what it was paying, so ask Stripe for the
+     * invoice of the payment intent and defer to the invoice.payment_failed
+     * logic. That logic repeats safely (the status write is the same, the
+     * email is once per invoice), so all three events may arrive for one
+     * failure.
+     *
+     * The invoice is read now, not at the time of the failure: when Stripe
+     * redelivers after a retry or another card has paid it, nothing is done.
+     *
+     * @param  mixed  $paymentIntent  the payment intent id (or the expanded object)
+     * @param  ?string  $reason  why the card failed, for the result line: "insufficient_funds" says more than "card_declined"
+     */
+    private function handleFailedPayment(mixed $paymentIntent, ?string $reason, string $missing = 'payment intent has no id'): void
+    {
+        $intentId = is_array($paymentIntent) ? ($paymentIntent['id'] ?? null) : $paymentIntent;
+        if (! $intentId) {
+            $this->did($missing, false);
+
+            return;
+        }
+
+        if ($reason) {
+            $this->outcomeContext['payment_error'] = $reason;
+        }
+
+        $invoice = $this->stripeService->invoiceOfPaymentIntent($intentId);
+        if (! $invoice) {
+            $this->did('payment was not for an invoice', false);
+
+            return;
+        }
+
+        // The event itself carries neither id; add them so the result line
+        // is found by a search for the invoice or the subscription.
+        $this->outcomeContext += array_filter([
+            'stripe_invoice_id' => $invoice['id'] ?? null,
+            'stripe_subscription_id' => $invoice['subscription']
+                ?? $invoice['parent']['subscription_details']['subscription']
+                ?? null,
+        ]);
+
+        if (in_array($invoice['status'] ?? null, ['paid', 'void'], true)) {
+            $this->did("invoice is {$invoice['status']} in Stripe now", false);
+
+            return;
+        }
+
+        $this->handleInvoicePaymentFailed($invoice);
     }
 
     /**

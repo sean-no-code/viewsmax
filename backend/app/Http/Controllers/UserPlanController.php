@@ -308,6 +308,16 @@ class UserPlanController extends Controller
             // Block a downgrade that would leave the user over the target plan's
             // offer cap. They must delete offers down to the new limit first.
             $targetPlan = Plan::where('stripe_price_id', $request->price_id)->first();
+
+            // A retired plan (Pro, the legacy creator_* tiers) keeps its
+            // subscribers but takes no new ones, by any route.
+            if ($targetPlan && ! $targetPlan->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "The {$targetPlan->display_name} plan is no longer available.",
+                ], 422);
+            }
+
             if ($targetPlan && $targetPlan->max_offers !== null) {
                 $activeOffers = $user->offers()->count();
                 if ($activeOffers > $targetPlan->max_offers) {

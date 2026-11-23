@@ -289,6 +289,47 @@ class StripeServiceRequestsTest extends TestCase
         $this->assertSame('canceled', $this->service()->cancelSubscription('sub_1', null, true)['status']);
     }
 
+    // --- The invoice behind a payment intent ----------------------------------
+
+    public function test_invoice_of_payment_intent_asks_for_the_invoice_payment_and_returns_its_invoice(): void
+    {
+        $this->stripe->on('GET', '/v1/invoice_payments', [
+            'object' => 'list',
+            'url' => '/v1/invoice_payments',
+            'has_more' => false,
+            'data' => [[
+                'id' => 'inpay_1',
+                'object' => 'invoice_payment',
+                'invoice' => ['id' => 'in_1', 'object' => 'invoice', 'status' => 'open', 'amount_due' => 7900],
+            ]],
+        ]);
+
+        $invoice = $this->service()->invoiceOfPaymentIntent('pi_1');
+
+        $this->assertSame('in_1', $invoice['id']);
+        $this->assertSame(7900, $invoice['amount_due']);
+        $params = $this->stripe->requestsTo('GET', '/v1/invoice_payments')[0]['params'];
+        $this->assertSame(['type' => 'payment_intent', 'payment_intent' => 'pi_1'], $params['payment']);
+        $this->assertSame(['data.invoice'], $params['expand']);
+    }
+
+    public function test_invoice_of_payment_intent_is_null_when_the_payment_was_not_for_an_invoice(): void
+    {
+        $this->stripe->on('GET', '/v1/invoice_payments', [
+            'object' => 'list', 'url' => '/v1/invoice_payments', 'has_more' => false, 'data' => [],
+        ]);
+
+        $this->assertNull($this->service()->invoiceOfPaymentIntent('pi_1'));
+    }
+
+    public function test_invoice_of_payment_intent_throws_when_stripe_fails(): void
+    {
+        $this->stripe->failOn('GET', '/v1/invoice_payments', 500, 'Stripe is down');
+
+        $this->expectException(\Exception::class);
+        $this->service()->invoiceOfPaymentIntent('pi_1');
+    }
+
     public function test_cancel_keeps_the_stripe_error_as_the_previous_exception(): void
     {
         $this->stripe->failOn('GET', '/v1/subscriptions/sub_gone', 404, 'No such subscription', 'resource_missing');

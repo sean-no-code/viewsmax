@@ -47,7 +47,9 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `protected $table = 'tracking_events'`. An Offer is a promotion/campaign being tracked: it has
   `offer_url` (was `landing_page_url`), `conversion_url`, `conversion_value`, and owns tracking links,
   clicks, and conversions. FKs on related tables are still named `tracking_event_id`.
-- **Plans & limits.** `plans` (model `Plan`) defines tiers; users link via `user_plans` pivot
+- **Plans & limits.** `plans` (model `Plan`) defines tiers (on sale: `starter`, `creator`, `agency`; `pro` and the
+  `creator_*` rows are retired — `is_active = false`, subscribers kept, no new ones: `/api/plans`, `SubscriptionStarter`
+  and `change-plan` all refuse them); users link via `user_plans` pivot
   (`UserPlan`) carrying Stripe subscription/status. `CheckPlan` middleware currently gates by plan *name*,
   not by numeric limits.
 - **Billing.** `BillingController` + `StripeService` handle Stripe. Subscriptions live on the
@@ -67,7 +69,10 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   errors on that channel, at most one an hour each. Which events Stripe sends is a
   dashboard setting: `php artisan stripe:check-webhooks` (deploy + daily in production, read-only) fails with an error-level billing log line when the endpoint is missing,
   disabled or not subscribed to `StripeWebhookController::REQUIRED_EVENTS`; a new webhook event goes in
-  `HANDLED_EVENTS`, the switch and, if billing depends on it, `REQUIRED_EVENTS`. Tests that need to see what
+  `HANDLED_EVENTS`, the switch and, if billing depends on it, `REQUIRED_EVENTS`. A failed charge is handled from
+  any of `invoice.payment_failed`, `payment_intent.payment_failed` or `charge.failed` (all three may arrive;
+  `past_due` + the email once per invoice): the last two do not name their invoice, so
+  `StripeService::invoiceOfPaymentIntent` asks Stripe, and an invoice that is paid or void by then changes nothing. Tests that need to see what
   `StripeService` itself sends use `Tests\Support\FakeStripeClient` (Stripe's HTTP transport, no network);
   everything else mocks `StripeService`.
 - **Posting (in progress).** Two parallel systems exist: `Post`/`PostTarget` and
@@ -134,12 +139,12 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   Klaviyo/Kit refusals are only logged (warning in the erasure log). Local data is gone either way. One line per erasure in `storage/logs/user-erasure-YYYY-MM-DD.log` (daily file, kept a year). `DELETE
   /api/user-data` is **not** this: it only clears YouTube/Google for a user who stays.
 
-- **Analytics is the Pro tier.** `App\Support\AnalyticsAccess::allows($user)` (plans `pro`, `agency` and the
-  three retired `creator_*` rows; admins + `promotional_customer` exempt) is the single rule for channel and
+- **Analytics starts at Creator.** `App\Support\AnalyticsAccess::allows($user)` (plans `creator`, `agency`, and the
+  retired `pro` and `creator_*` rows, whose subscribers are grandfathered; admins + `promotional_customer` exempt) is the single rule for channel and
   post analytics, with `User::withAnalytics()` as its SQL twin for bulk selects. It is **orthogonal to
-  access**: a lapsed Pro user passes `withAnalytics()` and fails `withAccess()`, so the nightly commands
+  access**: a lapsed Creator user passes `withAnalytics()` and fails `withAccess()`, so the nightly commands
   (`channels:sync-videos`, `audience:refresh`, `posts:refresh-metrics`, `posts:import-recent`) chain both.
-  Below Pro, a connect queues no import (`YouTubeOAuthController`, `SocialConnect::queueRecentPostsImport`)
+  Below Creator, a connect queues no import (`YouTubeOAuthController`, `SocialConnect::queueRecentPostsImport`)
   and skips the synchronous `fetchAndStoreChannelAnalytics`; `ImportChannelVideosJob` /
   `ImportRecentPostsJob` re-check the owner because a queued job can outlive a downgrade; `POST
   /channels/{channel}/refresh` 403s. Reads of stored analytics are not gated (they cost nothing) — the SPA
@@ -148,7 +153,7 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   and the offer video picker use to import on demand. The `user_plans` pivot fires no model events (two
   plan-change paths are raw `DB::table` updates), so every path that writes it calls
   `AnalyticsAccess::backfill($user)` instead of an observer. In tests, `$this->analyticsUser()` /
-  `$this->planNamed('creator')` (`tests/TestCase.php`) give a user with or without analytics.
+  `$this->planNamed('starter')` (`tests/TestCase.php`) give a user with or without analytics.
 
 ## Conventions
 
