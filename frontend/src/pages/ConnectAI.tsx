@@ -4,6 +4,7 @@ import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api-service";
+import { AgentIcon } from "@/components/agents/agent-icons";
 import { AGENT_LIST, AGENTS, CLAUDE_DIRECTORY_URL, MCP_TOOLS } from "@/lib/agent-pages";
 
 const MCP_ENDPOINT = `${API_BASE_URL}/api/mcp`;
@@ -83,8 +84,13 @@ const ConnectAI = () => {
           <div className="grid gap-3 sm:grid-cols-2">
             {AGENT_LIST.map((a) => (
               <Link key={a.key} to={a.slug} className="block rounded-md border p-4 hover:border-foreground transition-colors">
-                <span className="block font-semibold text-foreground">{a.name}</span>
-                <span className="block text-sm text-muted-foreground mt-0.5">{a.card}</span>
+                <span className="flex items-start gap-3">
+                  <AgentIcon agent={a.key} size={36} />
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-foreground">{a.name}</span>
+                    <span className="block text-sm text-muted-foreground mt-0.5">{a.card}</span>
+                  </span>
+                </span>
               </Link>
             ))}
           </div>

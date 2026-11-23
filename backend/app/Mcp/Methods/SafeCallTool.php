@@ -42,12 +42,12 @@ class SafeCallTool extends CallTool
             Source::set('mcp:'.$tool);
         }
 
-        // A user who can't use ViewsMax right now (unverified email, trial
-        // over — see UserAccess) gets that answer from every tools/call as a
-        // plain tool result the AI can relay. Not isError: the tool didn't
-        // fail, the account needs action, and clients count isError results
-        // as connector failures. initialize and tools/list still work so the
-        // connector stays attached.
+        // A user who can't use ViewsMax right now (see UserAccess) never runs
+        // a tool. Denials that paying fixes (subscription ended, trial over,
+        // no card) were already answered with HTTP 402 by EnsureMcpAccess;
+        // what reaches here is an unverified email, relayed as a plain tool
+        // result the AI can pass on. Checked for every denial all the same,
+        // so a tool can't run if that middleware is ever missing.
         if (($user = request()->user()) && ($denial = UserAccess::denial($user))) {
             return JsonRpcResponse::create($request->id, ToolResult::text($denial->message));
         }

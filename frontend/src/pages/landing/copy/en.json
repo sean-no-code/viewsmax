@@ -12,7 +12,8 @@
     "resources": "Resources",
     "logIn": "Log in",
     "start": "Start for $0",
-    "language": "Language"
+    "language": "Language",
+    "allChannels": "See all channels"
   },
   "resources": {
     "api": {
@@ -62,12 +63,27 @@
       "desc": "Estimate your YouTube earnings"
     }
   },
+  "agentGroups": {
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "assistants": "More assistants",
+    "builders": "Coding & agent tools",
+    "all": "See all AI agents"
+  },
   "agentCards": {
     "claude": "One connector across all of Claude's apps",
     "claude-cowork": "Same connector as Claude, used by the desktop agent",
+    "claude-duet": "Same connector as Claude, for the always-on agent",
     "claude-code": "One terminal command, sign in over OAuth",
-    "chatgpt": "Custom connector in Developer mode",
+    "chatgpt": "One-click plugin from the ChatGPT directory",
     "codex": "Two commands in the Codex CLI",
+    "muse": "Paste one setup prompt, sign in over OAuth",
+    "deepseek": "DeepSeek Harness with a ViewsMax API key",
+    "instinct": "Text it one setup prompt",
+    "paperclip": "Add ViewsMax under Connectors, for the agents you pick",
+    "perplexity": "Custom connector on the Plugins page",
+    "gemini": "Custom app in Gemini, or one command in the CLI",
+    "chatgpt-dots": "Same plugin as ChatGPT, for your always-on dot",
     "cursor": "MCP config with an API key",
     "openclaw": "ViewsMax skill with an API key",
     "hermes": "MCP server in config.yaml, sign in over OAuth"

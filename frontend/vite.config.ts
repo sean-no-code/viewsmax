@@ -8,13 +8,13 @@ import { MCP_MD_PATH, buildMcpMarkdown } from "./src/lib/mcp-page";
 
 // Serves the markdown twins (/claude.md, ..., /mcp.md) in dev. The production build writes
 // these files in scripts/prerender-agents.ts from the same builders.
-const markdownPages = (env: Record<string, string>): Plugin => ({
+const markdownPages = (): Plugin => ({
   name: "viewsmax-markdown",
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
       const path = req.url?.split("?")[0];
       const agent = AGENT_LIST.find((a) => path === briefPath(a));
-      const body = agent ? buildAgentMarkdown(agent, env) : path === MCP_MD_PATH ? buildMcpMarkdown() : null;
+      const body = agent ? buildAgentMarkdown(agent) : path === MCP_MD_PATH ? buildMcpMarkdown() : null;
       if (body === null) return next();
       res.setHeader("Content-Type", "text/markdown; charset=utf-8");
       res.end(body);
@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
-      markdownPages(env),
+      markdownPages(),
       mode === 'development' &&
       componentTagger(),
       uploadSourceMaps &&

@@ -169,7 +169,7 @@ class PromotionalAccessTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.user.access_expired', true);
         $this->withHeaders($headers)->getJson('/api/posts')
-            ->assertForbidden()
+            ->assertStatus(402)
             ->assertJsonPath('code', 'access_expired');
     }
 }

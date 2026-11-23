@@ -3,19 +3,21 @@
 // Styled with the design-system tokens in index.css (--vm-*, --ink-*, --paper-*).
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import logoLight from "@/assets/logo-lockup-light.svg";
 import logoDark from "@/assets/logo-lockup-dark.svg";
 import { API_BASE_URL } from "@/lib/api-service";
-import { AGENT_LIST } from "@/lib/agent-pages";
+import { AGENT_GROUPS, AGENT_LIST } from "@/lib/agent-pages";
 import { CHANNEL_LIST, CHANNELS_PATH } from "@/lib/channel-pages";
 import LocaleFlag from "@/components/LocaleFlag";
+import { AgentIcon } from "@/components/agents/agent-icons";
+import { BrandIcon } from "@/components/post/brand-icons";
 import { HOME_LOCALES, localizedPath, useHomeLocale, useLandingCopy, usePagePath, type HomeLocale, type LandingCopy } from "./locales";
 
 const AUTH = "/auth";
 const API_DOCS = `${API_BASE_URL}/docs`;
 const BLOG = "https://blog.viewsmax.com";
-type NavItem = { label: string; desc: string; href: string; external?: boolean };
+type NavItem = { label: string; desc: string; href: string; external?: boolean; icon?: ReactNode };
 // Menu text comes from the homepage locale; the pages they link to are English.
 const resources = ({ resources: r }: LandingCopy): NavItem[] => [
   { ...r.api, href: API_DOCS, external: true },
@@ -32,8 +34,23 @@ const freeTools = ({ freeTools: f }: LandingCopy): NavItem[] => [
   { ...f.thumbnail, href: "/thumbnail-preview" },
   { ...f.revenue, href: "/youtube-monetization-calculator" },
 ];
-const aiAgents = (c: LandingCopy): NavItem[] => AGENT_LIST.map((a) => ({ label: a.name, desc: c.agentCards[a.key], href: a.slug }));
-const channels = (c: LandingCopy): NavItem[] => CHANNEL_LIST.map((ch) => ({ label: ch.name, desc: c.channelCards[ch.key], href: ch.slug }));
+const aiAgents = (c: LandingCopy): NavItem[] =>
+  AGENT_LIST.map((a) => ({ label: a.name, desc: c.agentCards[a.key], href: a.slug, icon: <AgentIcon agent={a.key} size={32} /> }));
+/** A menu column. With a heading it is a labelled group; `columns` lays its items out in a grid. */
+type NavGroup = { heading?: string; columns?: number; items: NavItem[] };
+// One column per AGENT_GROUPS entry; an agent's column comes from its `group` in agent-pages.ts.
+const aiAgentGroups = (c: LandingCopy): NavGroup[] =>
+  AGENT_GROUPS.map((g) => ({
+    heading: c.agentGroups[g],
+    items: aiAgents(c).filter((_, i) => AGENT_LIST[i].group === g),
+  }));
+const channelTile = (key: string, color: string) => (
+  <span aria-hidden style={{ display: "grid", placeItems: "center", flexShrink: 0, width: 32, height: 32, borderRadius: 9, background: color, color: "#fff" }}>
+    <BrandIcon platform={key} size={18} />
+  </span>
+);
+const channels = (c: LandingCopy): NavItem[] =>
+  CHANNEL_LIST.map((ch) => ({ label: ch.name, desc: c.channelCards[ch.key], href: ch.slug, icon: channelTile(ch.key, ch.color) }));
 const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 /* ---------- Button (shared with the landing sections) ---------- */
@@ -83,6 +100,48 @@ function NavDropdown({ label, href, items }: { label: string; href: string; item
   );
 }
 
+/* ---------- Mega menu (Channels, AI Agents): a wide panel of icon links, in columns ---------- */
+// The panel hangs off the nav container, not the trigger, so it can span the
+// page width. The trigger is stretched to the nav's full height and the panel's
+// transparent top padding covers the nav's bottom padding, so there is no gap
+// to lose :hover in on the way down.
+function NavMega({ label, href, groups, allLabel, maxWidth }: { label: string; href: string; groups: NavGroup[]; allLabel: string; maxWidth?: number }) {
+  const navigate = useNavigate();
+  const go = (to: string) => (e: React.MouseEvent) => { e.preventDefault(); navigate(to); };
+  return (
+    <div className="nav-dd nav-mega">
+      <a href={href} onClick={go(href)} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>{label} <ChevronDown size={14} style={{ display: "block" }} /></a>
+      <div className="nav-dd-panel nav-mega-panel">
+        <div style={{ maxWidth, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 16, boxShadow: "0 24px 60px rgba(16,14,12,.14)", overflow: "hidden" }}>
+          <div className="nav-mega-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))`, gap: 8, padding: "18px 14px 12px" }}>
+            {groups.map((g, i) => (
+              <div key={g.heading ?? i} {...(g.heading ? { role: "group", "aria-label": g.heading } : {})}>
+                {g.heading && (
+                  <div style={{ padding: "0 12px 6px", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 11.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--ink-on-paper-3)" }}>{g.heading}</div>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${g.columns ?? 1}, minmax(0, 1fr))`, gap: g.columns ? "2px 8px" : 0 }}>
+                  {g.items.map((r) => (
+                    <a key={r.href} href={r.href} onClick={go(r.href)} style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "8px 12px", borderRadius: 8, textDecoration: "none" }}>
+                      {r.icon}
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14, color: "var(--ink-on-paper-1)" }}>{r.label}</span>
+                        <span style={{ display: "block", fontFamily: "var(--font-body)", fontSize: 12.5, lineHeight: 1.35, color: "var(--ink-on-paper-2)", marginTop: 2 }}>{r.desc}</span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: "1px solid var(--line-1)", background: "var(--paper-1)", padding: "10px 14px" }}>
+            <a href={href} onClick={go(href)} className="nav-mega-all" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 13.5, color: "var(--ink-on-paper-1)" }}>{allLabel} <ArrowRight size={14} style={{ display: "block" }} /></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Language picker (translated pages only) ---------- */
 // Plain links, not client-side navigation: each language version is its own
 // prerendered file with its own <html lang> and head tags.
@@ -123,14 +182,14 @@ export function LandingNav() {
   return (
     <nav className="vm-nav" style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,250,248,.82)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--line-1)" }}>
       <style>{CHROME_CSS}</style>
-      <div className="nav-inner" style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", gap: 24 }}>
+      <div className="nav-inner" style={{ position: "relative", maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", gap: 24 }}>
         <a href={homePath} onClick={(e) => { e.preventDefault(); navigate(homePath); }} style={{ display: "block", flexShrink: 0 }}><img className="nav-logo" src={logoLight} alt="ViewsMax" style={{ height: 30, display: "block" }} /></a>
         <div className="nav-links" style={{ display: "flex", alignItems: "center", gap: 22, marginLeft: 16 }}>
           {sectionLink(c.nav.features, "demos")}
-          <NavDropdown label={c.nav.channels} href={CHANNELS_PATH} items={channels(c)} />
+          <NavMega label={c.nav.channels} href={CHANNELS_PATH} groups={[{ columns: 3, items: channels(c) }]} allLabel={c.nav.allChannels} maxWidth={860} />
           {sectionLink(c.nav.pricing, "pricing")}
           <NavDropdown label={c.nav.freeTools} href="/free-tools" items={freeTools(c)} />
-          <NavDropdown label={c.nav.aiAgents} href="/ai" items={aiAgents(c)} />
+          <NavMega label={c.nav.aiAgents} href="/ai" groups={aiAgentGroups(c)} allLabel={c.agentGroups.all} />
           <NavDropdown label={c.nav.resources} href="/ai" items={resources(c)} />
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
@@ -198,6 +257,10 @@ const CHROME_CSS = `
 .vm-nav .nav-dd-panel { opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity var(--dur), transform var(--dur); }
 .vm-nav .nav-dd:hover .nav-dd-panel, .vm-nav .nav-dd:focus-within .nav-dd-panel, .vm-nav .nav-dd.open .nav-dd-panel { opacity: 1; pointer-events: auto; transform: none; }
 .vm-nav .nav-dd-panel a:hover { background: var(--paper-2); }
+/* Mega menu: anchored to the nav container (the trigger is not positioned). */
+.vm-nav .nav-links { align-self: stretch; }
+.vm-nav .nav-mega { align-self: stretch; display: flex; align-items: center; }
+.vm-nav .nav-mega-panel { position: absolute; left: 24px; right: 24px; top: calc(100% - 15px); padding-top: 23px; }
 /* Widths measured with the homepage language picker; translated labels run longer. */
 @media (max-width: 980px) { .vm-nav .nav-links { display: none !important; } }
 @media (max-width: 1060px) { html:not([lang="en"]) .vm-nav .nav-links { display: none !important; } }

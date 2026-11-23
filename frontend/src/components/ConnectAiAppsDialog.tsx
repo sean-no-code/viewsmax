@@ -55,7 +55,7 @@ const ChatGptMark = () => (
 /** Directory listing when ViewsMax is listed there, else that agent's setup guide. */
 function ListingAction({ agent }: { agent: AgentConfig }) {
   const { t } = useTranslation();
-  const url = agentListingUrl(agent, import.meta.env as Record<string, string | undefined>);
+  const url = agentListingUrl(agent);
   return url ? (
     <a href={url} target="_blank" rel="noreferrer" className={BTN}>
       {t("layout.aiApps.connect", "Connect")} <ExternalLink className="h-3.5 w-3.5" aria-hidden />

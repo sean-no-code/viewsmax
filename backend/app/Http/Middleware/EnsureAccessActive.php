@@ -9,13 +9,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * REST delivery of UserAccess: a user who can't use ViewsMax right now
- * (unverified email, no card added yet, or a free window that closed with
- * no subscription since) is locked to the endpoints needed to fix that —
- * their own profile/session, plan listings, checkout, and at the card step
- * the rest of what the SPA's onboarding wizard calls. Everything else
- * answers 403 with the denial (`code`, `message`, `url`); the SPA keys off
- * `code` (`access_expired` sends them to Billing). Applied after `api.auth`
- * on the whole protected group.
+ * (unverified email, no card added yet, a subscription that ended, or a
+ * free window that closed with no subscription since) is locked to the
+ * endpoints needed to fix that — their own profile/session, plan listings,
+ * checkout, and at the card step the rest of what the SPA's onboarding
+ * wizard calls. Everything else answers with the denial (`code`, `message`,
+ * `url`): HTTP 402 with an `error` object (`code`, `message`,
+ * `upgrade_url`) when paying fixes it, 403 for an unverified email
+ * (AccessDenial::status). Applied after `api.auth` on the whole protected
+ * group.
  */
 class EnsureAccessActive
 {
@@ -56,7 +58,7 @@ class EnsureAccessActive
             : self::ALLOWED_PATTERNS;
 
         if ($denial && ! $request->is(...$allowed)) {
-            return response()->json($denial->toArray(), 403);
+            return response()->json($denial->toArray(), $denial->status());
         }
 
         return $next($request);

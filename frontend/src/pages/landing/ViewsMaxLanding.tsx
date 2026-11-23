@@ -258,16 +258,18 @@ function FeatureDemos() {
 // Posting channels link to their guide (/channels/<key>, src/lib/channel-pages.ts);
 // Beehiiv is a newsletter integration with no page of its own.
 const page = (key: keyof typeof CHANNEL_PAGES) => ({ name: CHANNEL_PAGES[key].name, slug: CHANNEL_PAGES[key].slug });
+// Every posting channel uses its real mark (components/post/brand-icons.tsx), white on the brand colour.
+const logo = (key: string) => <path d={brandIconPath(key)} fill="#fff" transform="translate(2.4 2.4) scale(.8)" />;
 const CHANNELS: { name: string; slug?: string; bg: string; glyph: ReactNode }[] = [
-  { ...page("youtube"), bg: "#FF0000", glyph: <path d="M9.6 7.8 L16.2 12 L9.6 16.2 Z" fill="#fff" /> },
-  { ...page("tiktok"), bg: "#0A0A0C", glyph: <g fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 4.5 V14.3 a3 3 0 1 1 -3 -3" /><path d="M13 4.6 c0.6 2.3 2.5 3.6 4.6 3.7" /></g> },
-  { ...page("instagram"), bg: "linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF)", glyph: <g fill="none" stroke="#fff" strokeWidth={2}><rect x="4" y="4" width="16" height="16" rx="4.7" /><circle cx="12" cy="12" r="3.7" /><circle cx="16.7" cy="7.3" r="0.5" strokeWidth={2.4} /></g> },
-  { ...page("x"), bg: "#0A0A0C", glyph: <path d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" /> },
-  { ...page("linkedin"), bg: "#0A66C2", glyph: <text x="12" y="16.6" textAnchor="middle" fontFamily="Archivo, system-ui, sans-serif" fontWeight={900} fontSize={13} fill="#fff">in</text> },
-  { ...page("threads"), bg: "#0A0A0C", glyph: <text x="12" y="17" textAnchor="middle" fontFamily="Archivo, system-ui, sans-serif" fontWeight={900} fontSize={17} fill="#fff">@</text> },
-  { ...page("bluesky"), bg: "#0085FF", glyph: <path d={brandIconPath("bluesky")} fill="#fff" transform="translate(3 3) scale(.75)" /> },
-  { ...page("pinterest"), bg: "#E60023", glyph: <path d={brandIconPath("pinterest")} fill="#fff" transform="translate(2.4 2.4) scale(.8)" /> },
-  { ...page("telegram"), bg: "#26A5E4", glyph: <path d={brandIconPath("telegram")} fill="#fff" transform="translate(2.4 2.4) scale(.8)" /> },
+  { ...page("youtube"), bg: "#FF0000", glyph: logo("youtube") },
+  { ...page("tiktok"), bg: "#0A0A0C", glyph: logo("tiktok") },
+  { ...page("instagram"), bg: "linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF)", glyph: logo("instagram") },
+  { ...page("x"), bg: "#0A0A0C", glyph: logo("x") },
+  { ...page("linkedin"), bg: "#0A66C2", glyph: logo("linkedin") },
+  { ...page("threads"), bg: "#0A0A0C", glyph: logo("threads") },
+  { ...page("bluesky"), bg: "#0085FF", glyph: logo("bluesky") },
+  { ...page("pinterest"), bg: "#E60023", glyph: logo("pinterest") },
+  { ...page("telegram"), bg: "#26A5E4", glyph: logo("telegram") },
   { name: "Beehiiv", bg: "#111827", glyph: <path d="M12 3.4 L18.6 7.2 L18.6 16.8 L12 20.6 L5.4 16.8 L5.4 7.2 Z" fill="none" stroke="#FFD34E" strokeWidth={2} strokeLinejoin="round" /> },
 ];
 
@@ -278,7 +280,7 @@ function Channels() {
   return (
     <section id="channels" style={{ maxWidth: 1200, margin: "0 auto", padding: "104px 24px 0", scrollMarginTop: 80 }}>
       <Heading eyebrow={c.eyebrow} title={c.title} sub={c.sub} />
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 18, marginTop: 44 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginTop: 44 }}>
         {CHANNELS.map((ch) => {
           const inner = (
             <>

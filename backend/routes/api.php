@@ -110,9 +110,11 @@ Route::post('/webhooks/comfyui/completion', [ComfyUIWebhookController::class, 'h
 
 // MCP server (AI clients: Claude, Cursor, ...). Auth is an OAuth 2.1 access
 // token or an MCP API key, both as a Bearer header — see McpAuth. Throttle
-// runs first so invalid keys burn the per-IP budget.
+// runs first so invalid keys burn the per-IP budget. `mcp.access` answers
+// tools/call with HTTP 402 once a subscription has ended; it sits inside
+// `mcp.audit` so the refusal is logged as a failed call.
 Mcp::web('mcp', \App\Mcp\ViewsMaxServer::class)
-    ->middleware(['throttle:mcp', 'mcp.auth', 'mcp.audit', 'mcp.notifications']);
+    ->middleware(['throttle:mcp', 'mcp.auth', 'mcp.audit', 'mcp.access', 'mcp.notifications']);
 
 // Streamable HTTP lets a client GET the endpoint to open a server-push stream
 // and DELETE it to end a session; a server offering neither answers 405 (the
@@ -133,7 +135,8 @@ Route::post('/telegram/webhook', [\App\Http\Controllers\TelegramController::clas
     ->name('telegram.webhook');
 
 // Protected routes (authentication required). `access.active` locks a user
-// whose free window has closed to the billing endpoints.
+// whose subscription has ended or whose free window has closed to the billing
+// endpoints; everything else answers HTTP 402.
 Route::middleware(['api.auth', 'access.active'])->group(function () {
 
     // Outlier Multiplier Endpoint

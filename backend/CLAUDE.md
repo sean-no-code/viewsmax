@@ -89,7 +89,8 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
 
 - **Access gating.** `App\Support\UserAccess::denial($user)` is the single rule set for "may this user use
   ViewsMax right now" (unverified email, then `access_expired`: no active/trialing plan and no open free
-  window — a user with no window at all is expired too — then the paywall: onboarding not finished and no
+  window — a user with no window at all is expired too; `subscription_inactive` instead when they have held a
+  plan — then the paywall: onboarding not finished and no
   card — `payment_required`; skipped when `SIGNUP_CARD_REQUIRED=false`, which makes the window a card-free trial — `UserAccess::cardRequired()`, mirrored in `User::canCompleteOnboarding`, `scopeWithAccess` and the SPA's `cardOptional`). Admins and `promotional_customer` role holders are exempt after verification.
   Add new rules there, not in a middleware. **Background work follows the same rule**: commands that select
   records in bulk use `User::withAccess()` (`->whereHas('user', fn ($u) => $u->withAccess())`), jobs that
@@ -98,9 +99,14 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `User::factory()->expired()` / `->withoutWindow()` / `->withPlan('cancelled')` / `->promotional()` / `->admin()`. At the card step
   the deliveries keep the pre-card endpoints open (`EnsureAccessActive::ONBOARDING_PATTERNS`,
   `EnsureWebAccess::ONBOARDING_ROUTES`); agent signups add the card at `/register/billing`
-  (`WebBillingController`), app signups in the SPA's onboarding. Both go through `SubscriptionStarter`. Delivery differs per entry point: `EnsureAccessActive` (REST 403 with `code`), `SafeCallTool`
-  (MCP `isError` tool result at HTTP 200 — never an HTTP error, which counts against directory ranking),
-  `EnsureWebAccess` (web redirect). Console code calls `denial()` directly.
+  (`WebBillingController`), app signups in the SPA's onboarding. Both go through `SubscriptionStarter`. Delivery differs per entry point, and
+  `AccessDenial::status()` picks the HTTP status: **402** when paying fixes it (`subscription_inactive` — a lapsed
+  user who has held a plan, "your subscription has ended" — `access_expired`, `payment_required`), 403 for
+  `email_unverified`. `EnsureAccessActive` (REST: the denial as JSON, plus `error {code, message, upgrade_url}` on a
+  402), `EnsureMcpAccess` (MCP `tools/call`: the same HTTP 402 as a JSON-RPC error with the denial in `error.data`,
+  logged by `McpAuditLog` as a failed call; `initialize` / `tools/list` stay 200), `SafeCallTool` (MCP, an unverified
+  email only: a plain tool result at HTTP 200), `EnsureWebAccess` (web redirect). Console code calls `denial()`
+  directly.
 
 - **Post allowance.** `App\Support\PostAllowance::refusal($user)` caps an account that hasn't paid yet — the
   card-free window or the $0 Stripe trial (`trialing`) — at `config('publishing.trial_posts')` posts

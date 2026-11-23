@@ -181,8 +181,8 @@ class PlanLimitsTest extends TestCase
         $headers = $this->authHeaders($user);
 
         $this->createOffer($headers, 'Should be blocked')
-            ->assertForbidden()
-            ->assertJsonPath('code', 'access_expired');
+            ->assertStatus(402)
+            ->assertJsonPath('code', 'subscription_inactive');
     }
 
     public function test_unlimited_plan_allows_many_offers(): void

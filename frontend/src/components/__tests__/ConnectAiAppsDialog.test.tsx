@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import ConnectAiAppsDialog, { SETUP_PROMPT } from "@/components/ConnectAiAppsDialog";
-import { CLAUDE_DIRECTORY_URL, MCP_ENDPOINT } from "@/lib/agent-pages";
+import { CHATGPT_PLUGIN_URL, CLAUDE_DIRECTORY_URL, MCP_ENDPOINT } from "@/lib/agent-pages";
 
 const writeText = vi.fn(() => Promise.resolve());
 
@@ -17,30 +17,18 @@ beforeEach(() => {
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
   writeText.mockReset();
 });
-afterEach(() => vi.unstubAllEnvs());
 
 describe("ConnectAiAppsDialog", () => {
-  it("shows the MCP address and links Connect to each app's directory listing once listed", () => {
-    const claude = CLAUDE_DIRECTORY_URL;
-    const chatgpt = "https://chatgpt.com/plugins/viewsmax";
-    vi.stubEnv("VITE_CHATGPT_PLUGIN_URL", chatgpt);
+  it("shows the MCP address and links Connect to each app's directory listing", () => {
     renderDialog();
 
     expect(screen.getByRole("heading", { name: /connect viewsmax to your ai app/i })).toBeInTheDocument();
     expect(screen.getByText(MCP_ENDPOINT)).toBeInTheDocument();
 
     const connects = screen.getAllByRole("link", { name: /^connect$/i });
-    expect(connects.map((a) => a.getAttribute("href"))).toEqual([claude, chatgpt]);
+    expect(connects.map((a) => a.getAttribute("href"))).toEqual([CLAUDE_DIRECTORY_URL, CHATGPT_PLUGIN_URL]);
     connects.forEach((a) => expect(a).toHaveAttribute("target", "_blank"));
     expect(screen.queryByRole("link", { name: /setup guide/i })).toBeNull();
-  });
-
-  it("always links the Claude directory, and falls back to the ChatGPT setup guide while unlisted", () => {
-    vi.stubEnv("VITE_CHATGPT_PLUGIN_URL", "");
-    renderDialog();
-
-    expect(screen.getByRole("link", { name: /^connect$/i })).toHaveAttribute("href", CLAUDE_DIRECTORY_URL);
-    expect(screen.getByRole("link", { name: /setup guide/i })).toHaveAttribute("href", "/chatgpt");
   });
 
   it("copies the MCP address and the setup prompt", () => {

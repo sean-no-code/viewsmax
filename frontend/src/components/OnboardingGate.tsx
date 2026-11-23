@@ -13,7 +13,7 @@ interface OnboardingGateProps {
 // can reach any /dashboard/* route. Existing users are grandfathered by the
 // backend (onboarding_completed_at backfilled), so they pass straight through.
 // A promotional customer whose free window has closed is pinned to Billing
-// (the API refuses everything else with 403 access_expired anyway).
+// (the API refuses everything else with HTTP 402 anyway).
 const OnboardingGate = ({ children }: OnboardingGateProps) => {
   const { user, loading } = useAuth();
   const { pathname } = useLocation();

@@ -12,7 +12,8 @@
     "resources": "Ресурсы",
     "logIn": "Войти",
     "start": "Начать за $0",
-    "language": "Язык"
+    "language": "Язык",
+    "allChannels": "Все каналы"
   },
   "resources": {
     "api": {
@@ -62,12 +63,27 @@
       "desc": "Оцените свой доход на YouTube"
     }
   },
+  "agentGroups": {
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "assistants": "Другие ассистенты",
+    "builders": "Инструменты для кода и агентов",
+    "all": "Все ИИ-агенты"
+  },
   "agentCards": {
     "claude": "Один коннектор для всех приложений Claude",
     "claude-cowork": "Тот же коннектор, что и в Claude, для десктопного агента",
+    "claude-duet": "Тот же коннектор, что и в Claude, для постоянно работающего агента",
     "claude-code": "Одна команда в терминале, вход через OAuth",
-    "chatgpt": "Собственный коннектор в режиме разработчика",
+    "chatgpt": "Плагин в один клик из каталога ChatGPT",
     "codex": "Две команды в Codex CLI",
+    "muse": "Вставьте один промпт настройки, вход через OAuth",
+    "deepseek": "DeepSeek Harness с API-ключом ViewsMax",
+    "instinct": "Отправьте один промпт настройки",
+    "paperclip": "Добавьте ViewsMax в Connectors для выбранных агентов",
+    "perplexity": "Пользовательский коннектор на странице Plugins",
+    "gemini": "Пользовательское приложение в Gemini или одна команда в CLI",
+    "chatgpt-dots": "Тот же плагин, что и в ChatGPT, для вашего постоянно работающего dot",
     "cursor": "Конфигурация MCP с API-ключом",
     "openclaw": "Навык ViewsMax с API-ключом",
     "hermes": "MCP-сервер в config.yaml, вход через OAuth"

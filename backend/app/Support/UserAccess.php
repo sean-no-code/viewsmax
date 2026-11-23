@@ -8,8 +8,12 @@ use App\Models\User;
  * The one answer to "may this user use ViewsMax right now?", shared by every
  * entry point so the rules and the wording can't drift apart:
  *
- *  - REST API   EnsureAccessActive   -> 403 with the denial as JSON
- *  - MCP        SafeCallTool         -> plain tool result (HTTP 200, not isError)
+ *  - REST API   EnsureAccessActive   -> the denial as JSON: HTTP 402 when
+ *               paying fixes it (subscription ended, trial over, no card),
+ *               403 for an unverified email (AccessDenial::status)
+ *  - MCP        EnsureMcpAccess      -> the same 402 on tools/call, as a
+ *               JSON-RPC error; SafeCallTool relays an unverified email as
+ *               a plain tool result (HTTP 200)
  *  - Web        EnsureWebAccess      -> redirect to the denial's url
  *  - Console    allowsBackgroundWork() per record in jobs; User::withAccess()
  *               when a command selects records in bulk (never act for a
@@ -24,8 +28,11 @@ final class UserAccess
 {
     public const EMAIL_UNVERIFIED = 'email_unverified';
 
-    /** Kept as-is: the SPA keys off this code to pin the user to Billing. */
+    /** The free window closed and the user never subscribed. */
     public const ACCESS_EXPIRED = 'access_expired';
+
+    /** Same lockout, for a user who has held a plan: their subscription ended. */
+    public const SUBSCRIPTION_INACTIVE = 'subscription_inactive';
 
     /** Signed up, verified, but never added a card (User::canCompleteOnboarding). */
     public const PAYMENT_REQUIRED = 'payment_required';
@@ -49,6 +56,17 @@ final class UserAccess
 
         if ($user->accessExpired()) {
             $url = self::billingUrl();
+
+            // Any plan row, whatever its status now (cancelled, expired,
+            // past_due, inactive): they subscribed once, so it's a
+            // subscription that ended rather than a trial.
+            if ($user->plans()->exists()) {
+                return new AccessDenial(
+                    self::SUBSCRIPTION_INACTIVE,
+                    "Your ViewsMax subscription has ended. Reactivate it to continue using ViewsMax: {$url}",
+                    $url,
+                );
+            }
 
             return new AccessDenial(
                 self::ACCESS_EXPIRED,

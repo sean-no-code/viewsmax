@@ -22,10 +22,18 @@
 - [Claude](https://viewsmax.com/claude.md): custom connector, OAuth
 - [Claude Code](https://viewsmax.com/claude-code.md): `claude mcp add --transport http`, OAuth or API key
 - [Claude Cowork](https://viewsmax.com/claude-cowork.md): shares the claude.ai connector
-- [ChatGPT](https://viewsmax.com/chatgpt.md): Developer mode custom connector, OAuth
+- [Claude Duet](https://viewsmax.com/claude-duet.md): shares the claude.ai connector
+- [ChatGPT](https://viewsmax.com/chatgpt.md): plugin directory (Add to ChatGPT) or Developer mode custom connector, OAuth
 - [Codex](https://viewsmax.com/codex.md): `codex mcp add`, OAuth or API key
 - [Cursor](https://viewsmax.com/cursor.md): `~/.cursor/mcp.json`, API key
 - [OpenClaw](https://viewsmax.com/openclaw.md): ViewsMax skill over the REST API, API key
+- [Meta Muse](https://viewsmax.com/muse.md): setup prompt pasted into a Muse chat, OAuth or API key
+- [ChatGPT Dots](https://viewsmax.com/chatgpt-dots.md): shares the ChatGPT plugin
+- [Gemini](https://viewsmax.com/gemini.md): custom app in Connected Apps, or `gemini mcp add --transport http`, OAuth or API key
+- [Perplexity Computer](https://viewsmax.com/perplexity.md): custom connector on the Plugins page, OAuth or API key
+- [Paperclip](https://viewsmax.com/paperclip.md): Connectors → Connect your own MCP server, OAuth
+- [Instinct](https://viewsmax.com/instinct.md): setup prompt sent to Instinct, OAuth or API key
+- [DeepSeek](https://viewsmax.com/deepseek.md): DeepSeek Harness `cordis.patch.yml`, API key
 - [Hermes Agent](https://viewsmax.com/hermes.md): `~/.hermes/config.yaml`, OAuth or API key
 
 ## Product

@@ -113,7 +113,7 @@ class SignupFlowParityTest extends TestCase
             $headers = $this->headers($user);
             $this->withHeaders($headers)->postJson('/api/onboarding/complete')->assertStatus(422);
             $this->withHeaders($headers)->getJson('/api/posts')
-                ->assertForbidden()->assertJsonPath('code', 'payment_required');
+                ->assertStatus(402)->assertJsonPath('code', 'payment_required');
             $this->assertNull($user->fresh()->onboarding_completed_at, $user->signup_source);
             $this->assertFalse(User::withAccess()->whereKey($user->id)->exists(), $user->signup_source);
         }

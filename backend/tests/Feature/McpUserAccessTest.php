@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\McpToolInvocation;
 use App\Support\UserAccess;
 use App\Models\Plan;
 use App\Models\User;
@@ -10,11 +11,12 @@ use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
- * A user who can't use ViewsMax right now (unverified email, free trial over
- * with no plan since — see UserAccess) gets that answer from every tools/call
- * as a plain HTTP 200 tool result (not isError) the AI can relay. initialize
- * and tools/list still work so the connector stays attached and nothing counts
- * as a server or tool error.
+ * A user who has to pay before using ViewsMax (subscription ended, free trial
+ * over with no plan since, no card added — see UserAccess) gets HTTP 402 from
+ * every tools/call: a JSON-RPC error whose data names the code and the link
+ * that fixes it. initialize and tools/list still answer 200 so the connector
+ * stays attached. An unverified email is not a payment matter and stays a
+ * plain HTTP 200 tool result the AI can relay.
  */
 class McpUserAccessTest extends TestCase
 {
@@ -47,22 +49,59 @@ class McpUserAccessTest extends TestCase
             ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $params]);
     }
 
-    public function test_expired_trial_gets_an_upgrade_message_with_the_billing_link(): void
+    /** The 402 every paying-matter denial gets: a JSON-RPC error carrying the denial. */
+    private function assertPaymentRequired(TestResponse $response, User $user): void
+    {
+        $denial = UserAccess::denial($user);
+
+        $response->assertStatus(402)
+            ->assertJsonPath('jsonrpc', '2.0')
+            ->assertJsonPath('id', 1)
+            ->assertJsonMissingPath('result')
+            ->assertJsonPath('error.code', -32000)
+            ->assertJsonPath('error.message', $denial->message)
+            ->assertJsonPath('error.data.code', $denial->code)
+            ->assertJsonPath('error.data.message', $denial->message)
+            ->assertJsonPath('error.data.upgrade_url', $denial->url);
+    }
+
+    public function test_an_ended_subscription_gets_402_with_the_billing_link(): void
+    {
+        config(['app.frontend_url' => 'https://app.example.com/']);
+        $user = User::factory()->expired()->withPlan('expired')->create();
+
+        $response = $this->rpc($this->mcpKey($user), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []]);
+
+        $this->assertPaymentRequired($response, $user);
+        $response->assertJsonPath('error.data.code', 'subscription_inactive')
+            ->assertJsonPath('error.data.upgrade_url', 'https://app.example.com/dashboard/billing')
+            ->assertJsonPath('error.message', 'Your ViewsMax subscription has ended. Reactivate it to continue using ViewsMax: https://app.example.com/dashboard/billing');
+    }
+
+    public function test_expired_trial_gets_402_with_the_billing_link(): void
     {
         config(['app.frontend_url' => 'https://app.example.com/']);
         $user = User::factory()->create(['promo_expires_at' => now()->subDay()]);
-        $key = $this->mcpKey($user);
 
-        $response = $this->rpc($key, 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
-            ->assertOk()
-            ->assertJsonPath('id', 1)
-            ->assertJsonPath('result.isError', false)
-            ->assertJsonMissingPath('error');
+        $response = $this->rpc($this->mcpKey($user), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []]);
 
-        $text = $response->json('result.content.0.text');
-        $this->assertSame(UserAccess::denial($user)->message, $text);
-        $this->assertStringContainsString('upgrade to a paid subscription to continue using ViewsMax', $text);
-        $this->assertStringContainsString('https://app.example.com/dashboard/billing', $text);
+        $this->assertPaymentRequired($response, $user);
+        $response->assertJsonPath('error.data.code', 'access_expired');
+        $this->assertStringContainsString('upgrade to a paid subscription to continue using ViewsMax', $response->json('error.message'));
+        $this->assertStringContainsString('https://app.example.com/dashboard/billing', $response->json('error.message'));
+    }
+
+    public function test_a_refused_call_is_logged_as_an_error_not_a_success(): void
+    {
+        $user = User::factory()->expired()->withPlan('cancelled')->create();
+
+        $this->rpc($this->mcpKey($user), 'tools/call', ['name' => 'list_posts', 'arguments' => ['status' => 'draft']])
+            ->assertStatus(402);
+
+        $row = McpToolInvocation::where('user_id', $user->id)->sole();
+        $this->assertSame('list_posts', $row->tool);
+        $this->assertTrue((bool) $row->is_error);
+        $this->assertSame(UserAccess::denial($user)->message, $row->error);
     }
 
     public function test_expired_trial_can_still_initialize_and_list_tools(): void
@@ -98,10 +137,10 @@ class McpUserAccessTest extends TestCase
         $legacy = User::factory()->create(['promo_expires_at' => null]);
 
         $this->assertTrue($legacy->accessExpired());
-        $this->rpc($this->mcpKey($legacy), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
-            ->assertOk()
-            ->assertJsonPath('result.isError', false)
-            ->assertJsonPath('result.content.0.text', UserAccess::denial($legacy)->message);
+        $this->assertPaymentRequired(
+            $this->rpc($this->mcpKey($legacy), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []]),
+            $legacy,
+        );
     }
 
     public function test_users_in_trial_or_on_a_plan_are_not_gated(): void
@@ -122,12 +161,11 @@ class McpUserAccessTest extends TestCase
     {
         $user = User::factory()->create(['onboarding_completed_at' => null, 'promo_expires_at' => now()->addDays(6), 'signup_source' => 'agent']);
 
-        $response = $this->rpc($this->mcpKey($user), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []])
-            ->assertOk()
-            ->assertJsonPath('result.isError', false);
+        $response = $this->rpc($this->mcpKey($user), 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []]);
 
-        $text = $response->json('result.content.0.text');
-        $this->assertStringContainsString('Add a card', $text);
-        $this->assertStringContainsString(route('register.billing'), $text);
+        $this->assertPaymentRequired($response, $user);
+        $response->assertJsonPath('error.data.code', 'payment_required')
+            ->assertJsonPath('error.data.upgrade_url', route('register.billing'));
+        $this->assertStringContainsString('Add a card', $response->json('error.message'));
     }
 }

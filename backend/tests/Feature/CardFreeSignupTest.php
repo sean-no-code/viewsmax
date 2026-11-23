@@ -128,9 +128,9 @@ class CardFreeSignupTest extends TestCase
         $this->withHeaders($headers)->getJson('/api/social/accounts')->assertOk();
         $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
         $this->withHeaders($headers)->getJson('/api/posts')
-            ->assertForbidden()
+            ->assertStatus(402)
             ->assertJsonPath('code', 'payment_required');
-        $this->withHeaders($headers)->getJson('/api/social/posts')->assertForbidden();
+        $this->withHeaders($headers)->getJson('/api/social/posts')->assertStatus(402);
 
         Carbon::setTestNow('2026-10-09 10:01:00');
         $this->withHeaders($headers)->getJson('/api/profile')
@@ -138,7 +138,7 @@ class CardFreeSignupTest extends TestCase
             ->assertJsonPath('data.user.has_active_subscription', false)
             ->assertJsonPath('data.user.access_expired', true);
         $this->withHeaders($headers)->getJson('/api/posts')
-            ->assertForbidden()
+            ->assertStatus(402)
             ->assertJsonPath('code', 'access_expired');
         $this->withHeaders($headers)->getJson('/api/plans')->assertOk();
     }
@@ -183,7 +183,7 @@ class CardFreeSignupTest extends TestCase
         Carbon::setTestNow('2026-10-09 10:01:00');
 
         $this->withHeaders($headers)->getJson('/api/posts')
-            ->assertForbidden()
+            ->assertStatus(402)
             ->assertJsonPath('code', 'access_expired');
     }
 
@@ -232,7 +232,7 @@ class CardFreeSignupTest extends TestCase
 
         foreach (['/api/posts', '/api/outliers', '/api/social/accounts'] as $path) {
             $this->withHeaders($headers)->getJson($path)
-                ->assertForbidden()
+                ->assertStatus(402)
                 ->assertJsonPath('success', false)
                 ->assertJsonPath('code', 'access_expired')
                 ->assertJsonPath('url', 'https://app.example.com/dashboard/billing')
@@ -254,10 +254,14 @@ class CardFreeSignupTest extends TestCase
             $response = $this->withHeaders(['Authorization' => 'Bearer '.$key, 'Accept' => 'application/json'])
                 ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => $tool, 'arguments' => $arguments]]);
 
-            $response->assertOk(); // never an HTTP error over MCP
+            $response->assertStatus(402)->assertJsonMissingPath('result');
             $this->assertSame(
-                'Your ViewsMax free trial has ended. Please upgrade to a paid subscription to continue using ViewsMax: https://app.example.com/dashboard/billing',
-                $response->json('result.content.0.text'),
+                [
+                    'code' => 'access_expired',
+                    'message' => 'Your ViewsMax free trial has ended. Please upgrade to a paid subscription to continue using ViewsMax: https://app.example.com/dashboard/billing',
+                    'upgrade_url' => 'https://app.example.com/dashboard/billing',
+                ],
+                $response->json('error.data'),
                 $tool
             );
         }

@@ -42,8 +42,39 @@ class UserAccessTest extends TestCase
             $this->assertNull(UserAccess::denial(User::factory()->withoutWindow()->withPlan($status)->create()), $status);
         }
         foreach (['cancelled', 'past_due', 'expired', 'inactive'] as $status) {
-            $this->assertSame(UserAccess::ACCESS_EXPIRED, UserAccess::denial(User::factory()->withoutWindow()->withPlan($status)->create())->code, $status);
+            $this->assertSame(UserAccess::SUBSCRIPTION_INACTIVE, UserAccess::denial(User::factory()->withoutWindow()->withPlan($status)->create())->code, $status);
         }
+    }
+
+    public function test_an_ended_subscription_is_told_to_reactivate(): void
+    {
+        // Held a plan once: it's a subscription that ended, not a trial.
+        $denial = UserAccess::denial(User::factory()->expired()->withPlan('expired')->create());
+
+        $this->assertSame(UserAccess::SUBSCRIPTION_INACTIVE, $denial->code);
+        $this->assertSame('https://app.example.com/dashboard/billing', $denial->url);
+        $this->assertSame(
+            'Your ViewsMax subscription has ended. Reactivate it to continue using ViewsMax: https://app.example.com/dashboard/billing',
+            $denial->message,
+        );
+    }
+
+    public function test_an_ended_subscription_inside_an_open_window_keeps_access(): void
+    {
+        $this->assertNull(UserAccess::denial(User::factory()->withPlan('cancelled')->create()));
+    }
+
+    public function test_payment_denials_answer_402_and_an_unverified_email_403(): void
+    {
+        $unsubscribed = User::factory()->expired()->create();
+        $lapsed = User::factory()->expired()->withPlan('cancelled')->create();
+        $noCard = User::factory()->create(['onboarding_completed_at' => null, 'promo_expires_at' => now()->addDays(6)]);
+        $unverified = User::factory()->unverified()->create();
+
+        $this->assertSame([UserAccess::ACCESS_EXPIRED, 402], [UserAccess::denial($unsubscribed)->code, UserAccess::denial($unsubscribed)->status()]);
+        $this->assertSame([UserAccess::SUBSCRIPTION_INACTIVE, 402], [UserAccess::denial($lapsed)->code, UserAccess::denial($lapsed)->status()]);
+        $this->assertSame([UserAccess::PAYMENT_REQUIRED, 402], [UserAccess::denial($noCard)->code, UserAccess::denial($noCard)->status()]);
+        $this->assertSame([UserAccess::EMAIL_UNVERIFIED, 403], [UserAccess::denial($unverified)->code, UserAccess::denial($unverified)->status()]);
     }
 
     public function test_admins_and_promotional_customers_are_exempt(): void
@@ -115,12 +146,44 @@ class UserAccessTest extends TestCase
         $denial = UserAccess::denial(User::factory()->create(['promo_expires_at' => now()->subDay()]));
 
         $this->assertSame(
-            ['success' => false, 'code' => 'access_expired', 'message' => $denial->message, 'url' => $denial->url],
+            [
+                'success' => false, 'code' => 'access_expired', 'message' => $denial->message, 'url' => $denial->url,
+                'error' => ['code' => 'access_expired', 'message' => $denial->message, 'upgrade_url' => $denial->url],
+            ],
             $denial->toArray()
         );
     }
 
-    /** REST delivery: EnsureAccessActive answers 403 with the denial, like it does for access_expired. */
+    public function test_an_unverified_denial_has_no_payment_error_object(): void
+    {
+        $denial = UserAccess::denial(User::factory()->unverified()->create());
+
+        $this->assertSame(
+            ['success' => false, 'code' => 'email_unverified', 'message' => $denial->message, 'url' => $denial->url],
+            $denial->toArray()
+        );
+    }
+
+    /** REST delivery: EnsureAccessActive answers 402 with the denial once a subscription has ended. */
+    public function test_rest_api_answers_402_once_a_subscription_has_ended(): void
+    {
+        $user = User::factory()->expired()->withPlan('expired')->create();
+        $token = $user->createToken('mobile-app')->plainTextToken;
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$token])->getJson('/api/posts')
+            ->assertStatus(402)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'subscription_inactive')
+            ->assertJsonPath('error.code', 'subscription_inactive')
+            ->assertJsonPath('error.message', 'Your ViewsMax subscription has ended. Reactivate it to continue using ViewsMax: https://app.example.com/dashboard/billing')
+            ->assertJsonPath('error.upgrade_url', 'https://app.example.com/dashboard/billing');
+
+        // Billing stays open so they can reactivate.
+        $this->withHeaders(['Authorization' => 'Bearer '.$token])->getJson('/api/profile')->assertOk();
+        $this->withHeaders(['Authorization' => 'Bearer '.$token])->getJson('/api/plans')->assertOk();
+    }
+
+    /** An unverified email is not a payment matter: still 403. */
     public function test_rest_api_refuses_an_unverified_users_token_with_the_verify_message(): void
     {
         $user = User::factory()->unverified()->create(['signup_source' => 'app']);

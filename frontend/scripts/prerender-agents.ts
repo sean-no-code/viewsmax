@@ -9,7 +9,6 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadEnv } from "vite";
 import { AGENT_LIST, briefPath, buildAgentJsonLd, buildAgentMarkdown } from "../src/lib/agent-pages";
 import { MCP_MD_PATH, MCP_PATH, buildMcpJsonLd, buildMcpMarkdown, mcpContent } from "../src/lib/mcp-page";
 import { HOME_LOCALES, localizedPath } from "../src/pages/landing/locales";
@@ -19,9 +18,6 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = join(rootDir, "dist");
 const ORIGIN = "https://viewsmax.com";
 const OG_IMAGE = `${ORIGIN}/og-image.png`;
-// Same VITE_* values the build baked into the bundle, so each agent brief
-// shows a directory listing exactly when the page does.
-const env = { ...loadEnv("production", rootDir, "VITE_"), ...process.env };
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -91,7 +87,7 @@ function writeMd(path: string, markdown: string) {
 
 for (const a of AGENT_LIST) {
   writeRoute(a.slug, a.seo, buildAgentJsonLd(a));
-  writeMd(briefPath(a), buildAgentMarkdown(a, env));
+  writeMd(briefPath(a), buildAgentMarkdown(a));
 }
 
 // /mcp in every homepage language. The markdown twin below stays English.

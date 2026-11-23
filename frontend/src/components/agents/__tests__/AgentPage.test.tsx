@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AgentPage from "@/components/agents/AgentPage";
-import { CLAUDE_DIRECTORY_URL } from "@/lib/agent-pages";
+import { CHATGPT_PLUGIN_URL, CLAUDE_DIRECTORY_URL } from "@/lib/agent-pages";
 
 const renderPage = (agent: Parameters<typeof AgentPage>[0]["agent"]) =>
   render(
@@ -11,17 +11,23 @@ const renderPage = (agent: Parameters<typeof AgentPage>[0]["agent"]) =>
     </MemoryRouter>,
   );
 
-afterEach(() => vi.unstubAllEnvs());
-
 describe("AgentPage", () => {
-  it("shows the manual steps and no directory button while ViewsMax isn't in the ChatGPT plugin directory", () => {
-    vi.stubEnv("VITE_CHATGPT_PLUGIN_URL", "");
+  it("leads ChatGPT with an Add to ChatGPT button that opens the plugin page, then the custom connector steps", () => {
     renderPage("chatgpt");
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("ChatGPT");
-    expect(screen.queryByRole("link", { name: /open in chatgpt/i })).toBeNull();
+    const buttons = screen.getAllByRole("link", { name: /add to chatgpt/i });
+    expect(buttons[0]).toHaveAttribute("href", CHATGPT_PLUGIN_URL);
+    expect(buttons[0]).toHaveAttribute("target", "_blank");
+    // The hero no longer points at the manual steps.
+    expect(screen.queryByRole("link", { name: /see the setup steps/i })).toBeNull();
+
+    const plugin = screen.getByRole("heading", { name: /plugin \(easiest\)/i });
+    const connector = screen.getByRole("heading", { name: /custom connector/i });
+    expect(plugin.compareDocumentPosition(connector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText(/nothing to paste/i)).toBeInTheDocument();
+    // Developer mode is still there, as the fallback route only.
     expect(screen.getAllByText(/developer mode/i).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/set it up by hand/i)).toBeNull();
   });
 
   it("shows the plugin route first, with nothing to paste, then the custom connector steps once listed", () => {
@@ -41,12 +47,10 @@ describe("AgentPage", () => {
     expect(screen.queryByText(/set it up by hand\?/i)).toBeNull();
   });
 
-  it("leads Codex with the plugin directory once the ChatGPT/Codex listing is set", () => {
-    const url = "https://chatgpt.com/plugins/viewsmax";
-    vi.stubEnv("VITE_CHATGPT_PLUGIN_URL", url);
+  it("leads Codex with the plugin directory it shares with ChatGPT", () => {
     renderPage("codex");
 
-    expect(screen.getAllByRole("link", { name: /plugin directory/i })[0]).toHaveAttribute("href", url);
+    expect(screen.getAllByRole("link", { name: /plugin directory/i })[0]).toHaveAttribute("href", CHATGPT_PLUGIN_URL);
     expect(screen.getAllByText("/plugins").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: /plugin \(easiest\)/i })).toBeInTheDocument();
   });
