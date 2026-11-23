@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\Billing\BillingEmails;
+use App\Services\Billing\BillingLog;
 use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -55,8 +57,18 @@ class StripeWebhookController extends Controller
         protected BillingEmails $billingEmails,
     ) {}
 
+    /** What the handler did, for the "Stripe webhook handled" billing log line. */
+    private ?string $outcome = null;
+
+    /** Whether the handler changed anything; false = it returned without touching the database. */
+    private bool $changed = false;
+
+    /** Extra context for the result line (the user, mostly). */
+    private array $outcomeContext = [];
+
     public function handleWebhook(Request $request)
     {
+        $startedAt = microtime(true);
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
 
@@ -71,19 +83,34 @@ class StripeWebhookController extends Controller
                 if (! $event) {
                     return response()->json(['error' => 'Invalid payload'], 400);
                 }
-                $eventType = $event['type'] ?? null;
-                $resource = $event['data']['object'] ?? [];
             } else {
-                $event = $this->stripeService->constructWebhookEvent($payload, $sigHeader ?? '');
-                $eventType = $event->type;
-                $resource = $event->data->object->toArray();
+                $event = $this->stripeService->constructWebhookEvent($payload, $sigHeader ?? '')->toArray();
             }
         } catch (\UnexpectedValueException $e) {
+            // The signature is checked before the payload is read, so this
+            // came from Stripe. The SDK refuses a thin event here.
+            $decoded = json_decode($payload, true);
+            if (is_array($decoded) && ($decoded['object'] ?? null) === 'v2.core.event') {
+                return $this->refuseThinEvent($decoded);
+            }
+
             Log::error('Stripe webhook: Invalid payload', ['error' => $e->getMessage()]);
 
             return response()->json(['error' => 'Invalid payload'], 400);
         } catch (\Stripe\Exception\SignatureVerificationException $e) {
             Log::warning('Stripe webhook: Signature verification failed', ['error' => $e->getMessage()]);
+
+            // No header at all is a scanner or a stray request. A header that
+            // does not verify is Stripe signing with another destination's
+            // secret: every event is being dropped, so that one is an error.
+            if (! $sigHeader) {
+                BillingLog::warning('Stripe webhook rejected: no Stripe-Signature header', ['ip' => $request->ip()]);
+            } else {
+                $this->alert('Stripe webhook rejected: signature does not match STRIPE_WEBHOOK_SECRET', [
+                    'error' => $e->getMessage(),
+                    'hint' => 'Each Stripe destination has its own signing secret; the server must hold the one of the destination that sends to this URL.',
+                ]);
+            }
 
             return response()->json(['error' => 'Invalid signature'], 400);
         } catch (\Exception $e) {
@@ -92,10 +119,23 @@ class StripeWebhookController extends Controller
             return response()->json(['error' => 'Internal error'], 500);
         }
 
+        $eventType = $event['type'] ?? null;
+
+        if (($event['object'] ?? null) === 'v2.core.event' || ! isset($event['data']['object'])) {
+            return $this->refuseThinEvent($event);
+        }
+
+        $resource = (array) $event['data']['object'];
+
         Log::info('Stripe webhook received', [
             'event_type' => $eventType,
             'resource_id' => $resource['id'] ?? null,
         ]);
+
+        // One line per delivery in storage/logs/billing-*.log, with every id a
+        // person might search by; the matching result line follows below.
+        $context = $this->eventContext($event, $resource);
+        BillingLog::info('Stripe webhook received', $context);
 
         try {
             switch ($eventType) {
@@ -130,7 +170,9 @@ class StripeWebhookController extends Controller
 
                 default:
                     Log::info('Stripe webhook: Unhandled event type', ['event_type' => $eventType]);
-                    break;
+                    BillingLog::info('Stripe webhook ignored', $context + ['outcome' => 'event type not handled']);
+
+                    return response()->json(['status' => 'ok'], 200);
             }
         } catch (\Exception $e) {
             Log::error('Stripe webhook handler error', [
@@ -138,11 +180,93 @@ class StripeWebhookController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+            // Warning, not error: the line above already reaches Sentry.
+            BillingLog::warning('Stripe webhook failed', $context + $this->outcomeContext + [
+                'error' => $e->getMessage(),
+                'ms' => (int) round((microtime(true) - $startedAt) * 1000),
+            ]);
 
             return response()->json(['error' => 'Internal server error'], 500);
         }
 
+        $result = $context + $this->outcomeContext + [
+            'outcome' => $this->outcome ?? 'done',
+            'ms' => (int) round((microtime(true) - $startedAt) * 1000),
+        ];
+        $this->changed
+            ? BillingLog::info('Stripe webhook handled', $result)
+            : BillingLog::warning('Stripe webhook changed nothing', $result);
+
         return response()->json(['status' => 'ok'], 200);
+    }
+
+    /**
+     * A thin event (an Event Destination with payload style "thin") names the
+     * object but does not carry it, and its type is "v1.invoice.paid", not
+     * "invoice.paid". Nothing here can use it. Answer 200 so Stripe does not
+     * retry and then disable the destination, and say what to fix.
+     */
+    private function refuseThinEvent(array $event)
+    {
+        $this->alert('Stripe webhook unusable: thin event', [
+            'event_id' => $event['id'] ?? null,
+            'event_type' => $event['type'] ?? null,
+            'hint' => 'In Stripe, create a webhook destination with payload style "Snapshot" for this URL and put its signing secret in STRIPE_WEBHOOK_SECRET.',
+        ]);
+
+        return response()->json(['status' => 'ignored'], 200);
+    }
+
+    /**
+     * The ids worth searching the billing log by, for one event.
+     *
+     * @return array<string, mixed>
+     */
+    private function eventContext(array $event, array $resource): array
+    {
+        $kind = $resource['object'] ?? null;
+        $id = $resource['id'] ?? null;
+        $ref = fn ($value) => is_array($value) ? ($value['id'] ?? null) : $value;
+
+        return array_filter([
+            'event_id' => $event['id'] ?? null,
+            'event_type' => $event['type'] ?? null,
+            'object_id' => $id,
+            'livemode' => $event['livemode'] ?? null,
+            'api_version' => $event['api_version'] ?? null,
+            'stripe_customer_id' => $kind === 'customer' ? $id : $ref($resource['customer'] ?? null),
+            'stripe_subscription_id' => $kind === 'subscription' ? $id : $ref(
+                $resource['subscription'] ?? $resource['parent']['subscription_details']['subscription'] ?? null
+            ),
+            'stripe_invoice_id' => $kind === 'invoice' ? $id : $ref($resource['invoice'] ?? null),
+        ], fn ($v) => $v !== null);
+    }
+
+    /** Record what a handler did. $changed = false when it returned without writing anything. */
+    private function did(string $outcome, bool $changed = true, ?User $user = null): void
+    {
+        $this->outcome = $outcome;
+        $this->changed = $changed;
+        if ($user) {
+            $this->outcomeContext['user_id'] = $user->id;
+        }
+    }
+
+    /**
+     * A delivery problem that drops every event: an error on the billing
+     * channel (so Sentry sees it) at most once an hour per message, a warning
+     * in the file for the repeats.
+     */
+    private function alert(string $message, array $context): void
+    {
+        $first = true;
+        try {
+            $first = Cache::add('stripe-webhook-alert:'.md5($message), 1, now()->addHour());
+        } catch (\Throwable) {
+            // No cache, no throttle.
+        }
+
+        $first ? BillingLog::error($message, $context) : BillingLog::warning($message, $context);
     }
 
     /**
@@ -166,6 +290,7 @@ class StripeWebhookController extends Controller
             Log::error('Stripe webhook: checkout.session.completed missing subscription or user', [
                 'session_id' => $session['id'] ?? null,
             ]);
+            $this->did('checkout session has no subscription or user', false);
 
             return;
         }
@@ -173,6 +298,7 @@ class StripeWebhookController extends Controller
         $user = User::find($userId);
         if (! $user) {
             Log::error("Stripe webhook: User {$userId} not found for checkout session");
+            $this->did('user not found', false);
 
             return;
         }
@@ -194,6 +320,7 @@ class StripeWebhookController extends Controller
                 'user_id' => $user->id,
                 'subscription_id' => $subscriptionId,
             ]);
+            $this->did('subscription already attached', true, $user);
 
             return;
         }
@@ -241,6 +368,7 @@ class StripeWebhookController extends Controller
                 'invoice_id' => $invoiceId,
                 'subscription_id' => $subscriptionId,
             ]);
+            $this->did('invoice has no subscription (a one-off invoice?)', false);
 
             return;
         }
@@ -318,6 +446,7 @@ class StripeWebhookController extends Controller
                     'user_id' => $user->id,
                     'invoice_id' => $invoiceId,
                 ]);
+                $this->did('invoice already processed', true, $user);
 
                 return null;
             }
@@ -363,6 +492,8 @@ class StripeWebhookController extends Controller
                 'is_trial' => $isTrial,
                 'expires_at' => $newExpiresAt->toDateTimeString(),
             ]);
+
+            $this->did($isTrial ? 'trial credits allocated, plan '.$localStatus : 'credits allocated, plan '.$localStatus, true, $user);
 
             return [$user, $targetPlan->display_name ?: $targetPlan->name];
         });
@@ -423,6 +554,7 @@ class StripeWebhookController extends Controller
         // A redelivery of a payment that already bought its subscription.
         if ($this->creditService->isTransactionIdProcessed($invoiceId)) {
             Log::info('Stripe webhook: Invoice already processed', ['user_id' => $user->id, 'invoice_id' => $invoiceId]);
+            $this->did('invoice already processed', true, $user);
 
             return null;
         }
@@ -437,6 +569,7 @@ class StripeWebhookController extends Controller
                 'currency' => $invoice['currency'] ?? null,
                 'reason' => $reason,
             ]);
+            $this->did("paid invoice of a cancelled subscription, no access granted ({$reason})", false, $user);
 
             return null;
         };
@@ -516,6 +649,8 @@ class StripeWebhookController extends Controller
             'plan' => $plan->name,
             'expires_at' => $expiresAt->toDateTimeString(),
         ]);
+
+        $this->did('re-subscribed after a late payment', true, $user);
 
         return [$user, $plan->display_name ?: $plan->name];
     }
@@ -597,6 +732,7 @@ class StripeWebhookController extends Controller
             Log::warning('Stripe webhook: invoice_payment.paid missing invoice id', [
                 'invoice_payment_id' => $invoicePayment['id'] ?? null,
             ]);
+            $this->did('invoice payment has no invoice id', false);
 
             return;
         }
@@ -623,6 +759,7 @@ class StripeWebhookController extends Controller
             Log::info('Stripe webhook: subscription.updated for unknown subscription', [
                 'subscription_id' => $subscriptionId,
             ]);
+            $this->did('no user has this subscription', false);
 
             return;
         }
@@ -680,6 +817,7 @@ class StripeWebhookController extends Controller
             'updates' => $updates,
             'stripe_status' => $status,
         ]);
+        $this->did('subscription updated'.(isset($updates['status']) ? ", status {$updates['status']}" : ''), true, $user);
     }
 
     private function handleSubscriptionCancelled(array $subscription): void
@@ -697,6 +835,7 @@ class StripeWebhookController extends Controller
             Log::error('Stripe webhook: User not found for cancellation', [
                 'subscription_id' => $subscriptionId,
             ]);
+            $this->did('no user has this subscription', false);
 
             return;
         }
@@ -737,6 +876,7 @@ class StripeWebhookController extends Controller
                 'user_id' => $user->id,
                 'subscription_id' => $subscriptionId,
             ]);
+            $this->did('subscription already cancelled', true, $user);
 
             return;
         }
@@ -748,6 +888,7 @@ class StripeWebhookController extends Controller
             'subscription_id' => $subscriptionId,
             'updates' => array_keys($updates),
         ]);
+        $this->did('subscription cancelled'.(isset($updates['status']) ? ", status {$updates['status']}" : ''), true, $user);
     }
 
     /**
@@ -762,6 +903,8 @@ class StripeWebhookController extends Controller
             ?? null;
 
         if (! $subscriptionId) {
+            $this->did('invoice has no subscription (a one-off invoice?)', false);
+
             return;
         }
 
@@ -770,6 +913,8 @@ class StripeWebhookController extends Controller
         })->first();
 
         if (! $user) {
+            $this->did('no user has this subscription', false);
+
             return;
         }
 
@@ -782,6 +927,7 @@ class StripeWebhookController extends Controller
             'user_id' => $user->id,
             'subscription_id' => $subscriptionId,
         ]);
+        $this->did('subscription marked past_due', true, $user);
 
         // The account is locked from here, so tell the customer (once per
         // invoice; never throws).

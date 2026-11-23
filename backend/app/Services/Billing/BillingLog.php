@@ -16,17 +16,17 @@ class BillingLog
 
     public static function info(string $message, array $context = []): void
     {
-        Log::channel(self::CHANNEL)->info($message, $context);
+        Log::channel(self::CHANNEL)?->info($message, $context);
     }
 
     public static function warning(string $message, array $context = []): void
     {
-        Log::channel(self::CHANNEL)->warning($message, $context);
+        Log::channel(self::CHANNEL)?->warning($message, $context);
     }
 
     public static function error(string $message, array $context = []): void
     {
-        Log::channel(self::CHANNEL)->error($message, $context);
+        Log::channel(self::CHANNEL)?->error($message, $context);
     }
 
     /**

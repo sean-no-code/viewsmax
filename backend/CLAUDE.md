@@ -60,7 +60,11 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   the customer starts a new one. Either way a `past_due` row becomes `expired`. Customer emails (invoice per paid cycle with Stripe's PDF attached, cancel confirmation, payment failed — once per invoice via
   `user_plans.payment_failed_notified_invoice_id`) go through
   `App\Services\Billing\BillingEmails` (`config/billing.php` switches; never throw) and log to
-  `storage/logs/billing-YYYY-MM-DD.log` (`BillingLog`, `BILLING_LOG_ENABLED`). Which events Stripe sends is a
+  `storage/logs/billing-YYYY-MM-DD.log` (`BillingLog`, `BILLING_LOG_ENABLED`). Every Stripe webhook writes two
+  lines there, searchable by event, invoice, subscription or customer id: `Stripe webhook received`, then
+  `handled` / `changed nothing` / `ignored` / `failed` with an `outcome` (handlers set it with `$this->did()`).
+  A signature that does not match `STRIPE_WEBHOOK_SECRET` and a thin event (answered 200, never usable) are
+  errors on that channel, at most one an hour each. Which events Stripe sends is a
   dashboard setting: `php artisan stripe:check-webhooks` (deploy + daily in production, read-only) fails with an error-level billing log line when the endpoint is missing,
   disabled or not subscribed to `StripeWebhookController::REQUIRED_EVENTS`; a new webhook event goes in
   `HANDLED_EVENTS`, the switch and, if billing depends on it, `REQUIRED_EVENTS`. Tests that need to see what
