@@ -119,7 +119,8 @@ class TumblrProvider extends AbstractSocialProvider
         return collect($blogs)->map(fn (array $blog) => $this->storeAccount($user, [
             // The uuid survives a blog rename; the name does not.
             'platform_account_id' => (string) ($blog['uuid'] ?? $blog['name']),
-            'name' => ($blog['title'] ?? '') !== '' ? $blog['title'] : $blog['name'],
+            // Tumblr titles a blog nobody renamed "Untitled"; its name tells blogs apart.
+            'name' => ! in_array(trim((string) ($blog['title'] ?? '')), ['', 'Untitled'], true) ? $blog['title'] : $blog['name'],
             'username' => $blog['name'],
             'avatar_url' => data_get($blog, 'avatar.0.url') ?: self::API.'/blog/'.rawurlencode($blog['name']).'/avatar/128',
             'profile_url' => $blog['url'] ?? 'https://www.tumblr.com/'.$blog['name'],

@@ -124,14 +124,18 @@ class TumblrPublishTest extends TestCase
                 'blogs' => [
                     ['name' => 'artist', 'title' => 'Artist Works', 'uuid' => 't:aaa', 'url' => 'https://artist.tumblr.com/', 'primary' => true, 'type' => 'public'],
                     ['name' => 'sketches', 'title' => '', 'uuid' => 't:bbb', 'url' => 'https://sketches.tumblr.com/', 'primary' => false, 'type' => 'public'],
+                    // Tumblr titles a blog nobody renamed "Untitled" (seen on a fresh account's main blog).
+                    ['name' => 'notes', 'title' => 'Untitled', 'uuid' => 't:ccc', 'url' => 'https://notes.tumblr.com/', 'primary' => false, 'type' => 'public'],
                 ],
             ]]]),
         ]);
 
         $accounts = (new TumblrProvider)->connectFromCode($this->user, 'code-1', 'https://app.example/social/callback');
 
-        $this->assertCount(2, $accounts);
+        $this->assertCount(3, $accounts);
         [$main, $side] = [$accounts[0]->fresh(), $accounts[1]->fresh()];
+        // Tumblr's default title tells blogs apart no better than an empty one.
+        $this->assertSame('notes', $accounts[2]->fresh()->name);
         $this->assertSame('t:aaa', $main->platform_account_id);
         $this->assertSame('Artist Works', $main->name);
         $this->assertSame('artist', $main->username);
