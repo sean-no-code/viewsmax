@@ -717,6 +717,29 @@ class StripeWebhookController extends Controller
     }
 
     /**
+     * Apply a paid invoice fetched from Stripe, outside a webhook delivery
+     * (`php artisan stripe:sync-invoice`): the same logic as invoice.paid, so
+     * it is idempotent by invoice id. `applied` is false when nothing was
+     * done (not paid, no subscription, a cancelled subscription that does not
+     * qualify for a re-subscribe). Throws what the webhook handler throws.
+     *
+     * @return array{outcome: string, applied: bool, user_id?: int}
+     */
+    public function syncPaidInvoice(string $invoiceId): array
+    {
+        $invoice = $this->stripeService->getInvoice($invoiceId);
+        $status = (string) ($invoice['status'] ?? 'unknown');
+
+        if ($status !== 'paid') {
+            return ['outcome' => "is {$status} in Stripe, not paid", 'applied' => false];
+        }
+
+        $this->handleInvoicePaid($invoice);
+
+        return ['outcome' => $this->outcome ?? 'done', 'applied' => $this->changed] + $this->outcomeContext;
+    }
+
+    /**
      * `invoice_payment.paid` (object = InvoicePayment) — the current-API way Stripe
      * reports a paid invoice. Resolve the underlying invoice and defer to the same
      * paid-invoice logic; the invoice-id idempotency in handleInvoicePaid makes this
