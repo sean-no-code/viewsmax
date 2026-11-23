@@ -733,6 +733,7 @@ class TelegramPublishTest extends TestCase
             'Bad Request: chat not found',
             'Bad Request: not enough rights to send photos to the chat',
             'Bad Request: need administrator rights in the channel chat',
+            'Bad Request: PEER_ID_INVALID',
         ] as $description) {
             $this->fakeBot(['sendMessage' => self::error(400, $description)]);
             $account = $this->account(['platform_account_id' => (string) random_int(-1009999999999, -1001000000000)]);

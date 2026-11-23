@@ -545,7 +545,8 @@ class TelegramProvider extends AbstractSocialProvider
 
     /**
      * Telegram's answers for "the bot isn't allowed here anymore": 403 (kicked,
-     * not a member) and 400s about the chat or the bot's rights.
+     * not a member) and 400s about the chat or the bot's rights. A bot removed
+     * from a basic group can get 400 PEER_ID_INVALID instead of 403.
      */
     protected function botLostAccess(TelegramResponse $response): bool
     {
@@ -554,7 +555,7 @@ class TelegramProvider extends AbstractSocialProvider
         }
 
         return $response->status === 400 && (bool) preg_match(
-            '/chat not found|not enough rights|need administrator rights|have no rights|bot is not a member|bot was kicked|chat_write_forbidden|chat_admin_required|chat_restricted|group chat was deactivated/i',
+            '/chat not found|not enough rights|need administrator rights|have no rights|bot is not a member|bot was kicked|chat_write_forbidden|chat_admin_required|chat_restricted|group chat was deactivated|peer_id_invalid/i',
             $response->description,
         );
     }

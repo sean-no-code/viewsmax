@@ -67,9 +67,12 @@ export function TelegramConnectDialog({ open, onOpenChange, onConnected }: Props
     }
     // Pending is the normal "keep waiting"; a refusal (e.g. the bot isn't an
     // admin yet) stays on screen and polling goes on, so fixing it in
-    // Telegram is enough — no need to press anything here.
-    setNote(res.pending
-      ? { text: t("connections.telegram.waitingNote", "Waiting for the code to appear in your channel or group…"), problem: false }
+    // Telegram is enough — no need to press anything here. After some
+    // refusals the server forgets where the code was posted (so an admin can
+    // post the same code), and the next answer is "pending" again: that must
+    // not replace the refusal, or it would show for only one poll.
+    setNote((prev) => res.pending
+      ? (prev?.problem ? prev : { text: t("connections.telegram.waitingNote", "Waiting for the code to appear in your channel or group…"), problem: false })
       : { text: res.error || t("connections.telegram.connectFailed", "Failed to connect Telegram."), problem: true });
 
     if (Date.now() >= pollUntil.current) {
