@@ -3,14 +3,14 @@
 // Styled with the design-system tokens in index.css (--vm-*, --ink-*, --paper-*).
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, BookOpen, Braces, Calculator, ChevronDown, Image as ImageIcon, LifeBuoy, Plug, Terminal, type LucideIcon } from "lucide-react";
 import logoLight from "@/assets/logo-lockup-light.svg";
 import logoDark from "@/assets/logo-lockup-dark.svg";
 import { API_BASE_URL } from "@/lib/api-service";
 import { AGENT_GROUPS, AGENT_LIST } from "@/lib/agent-pages";
 import { CHANNEL_LIST, CHANNELS_PATH } from "@/lib/channel-pages";
 import LocaleFlag from "@/components/LocaleFlag";
-import { AgentIcon } from "@/components/agents/agent-icons";
+import { AgentIcon, LogoTile } from "@/components/agents/agent-icons";
 import { BrandIcon } from "@/components/post/brand-icons";
 import { HOME_LOCALES, localizedPath, useHomeLocale, useLandingCopy, usePagePath, type HomeLocale, type LandingCopy } from "./locales";
 
@@ -19,20 +19,31 @@ const API_DOCS = `${API_BASE_URL}/docs`;
 const BLOG = "https://blog.viewsmax.com";
 type NavItem = { label: string; desc: string; href: string; external?: boolean; icon?: ReactNode };
 // Menu text comes from the homepage locale; the pages they link to are English.
+// A neutral tile for menu items that have no brand of their own.
+const plainTile = (Icon: LucideIcon) => (
+  <span aria-hidden style={{ display: "grid", placeItems: "center", flexShrink: 0, width: 32, height: 32, borderRadius: 9, background: "var(--paper-2)", border: "1px solid var(--line-1)", color: "var(--ink-on-paper-1)" }}>
+    <Icon size={17} strokeWidth={2} style={{ display: "block" }} />
+  </span>
+);
+const channelTile = (key: string, color: string) => (
+  <span aria-hidden style={{ display: "grid", placeItems: "center", flexShrink: 0, width: 32, height: 32, borderRadius: 9, background: color, color: "#fff" }}>
+    <BrandIcon platform={key} size={18} />
+  </span>
+);
 const resources = ({ resources: r }: LandingCopy): NavItem[] => [
-  { ...r.api, href: API_DOCS, external: true },
-  { ...r.mcp, href: "/mcp" },
-  { ...r.cli, href: "/ai#cli" },
-  { ...r.blog, href: BLOG, external: true },
-  { ...r.support, href: "https://discord.gg/Wwe57w3Dv5", external: true },
-  { ...r.github, href: "https://github.com/sean-no-code/viewsmax", external: true },
+  { ...r.api, href: API_DOCS, external: true, icon: plainTile(Braces) },
+  { ...r.mcp, href: "/mcp", icon: plainTile(Plug) },
+  { ...r.cli, href: "/ai#cli", icon: plainTile(Terminal) },
+  { ...r.blog, href: BLOG, external: true, icon: plainTile(BookOpen) },
+  { ...r.support, href: "https://discord.gg/Wwe57w3Dv5", external: true, icon: plainTile(LifeBuoy) },
+  { ...r.github, href: "https://github.com/sean-no-code/viewsmax", external: true, icon: <LogoTile logo="github" /> },
 ];
 const freeTools = ({ freeTools: f }: LandingCopy): NavItem[] => [
-  { ...f.youtube, href: "/free-tools/youtube-transcript" },
-  { ...f.tiktok, href: "/free-tools/tiktok-transcript" },
-  { ...f.instagram, href: "/free-tools/instagram-transcript" },
-  { ...f.thumbnail, href: "/thumbnail-preview" },
-  { ...f.revenue, href: "/youtube-monetization-calculator" },
+  { ...f.youtube, href: "/free-tools/youtube-transcript", icon: channelTile("youtube", "#FF0000") },
+  { ...f.tiktok, href: "/free-tools/tiktok-transcript", icon: channelTile("tiktok", "#0A0A0C") },
+  { ...f.instagram, href: "/free-tools/instagram-transcript", icon: channelTile("instagram", "#E1306C") },
+  { ...f.thumbnail, href: "/thumbnail-preview", icon: plainTile(ImageIcon) },
+  { ...f.revenue, href: "/youtube-monetization-calculator", icon: plainTile(Calculator) },
 ];
 const aiAgents = (c: LandingCopy): NavItem[] =>
   AGENT_LIST.map((a) => ({ label: a.name, desc: c.agentCards[a.key], href: a.slug, icon: <AgentIcon agent={a.key} size={32} /> }));
@@ -44,11 +55,6 @@ const aiAgentGroups = (c: LandingCopy): NavGroup[] =>
     heading: c.agentGroups[g],
     items: aiAgents(c).filter((_, i) => AGENT_LIST[i].group === g),
   }));
-const channelTile = (key: string, color: string) => (
-  <span aria-hidden style={{ display: "grid", placeItems: "center", flexShrink: 0, width: 32, height: 32, borderRadius: 9, background: color, color: "#fff" }}>
-    <BrandIcon platform={key} size={18} />
-  </span>
-);
 const channels = (c: LandingCopy): NavItem[] =>
   CHANNEL_LIST.map((ch) => ({ label: ch.name, desc: c.channelCards[ch.key], href: ch.slug, icon: channelTile(ch.key, ch.color) }));
 const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -78,20 +84,38 @@ export function Btn({ children, variant = "primary", size = "md", onClick, style
   );
 }
 
-/* ---------- Nav dropdown (Channels, Free Tools, AI Agents, Resources) ---------- */
+/* ---------- Closing a menu after a click ---------- */
+// The menus open on :hover, and after a click the pointer is still over the
+// panel, so on a client-side navigation the menu would stay open over the new
+// page. Clicking shuts it (the `shut` class beats :hover and :focus-within)
+// until the pointer leaves the menu or the trigger is focused again.
+function useMenuShut() {
+  const [shut, setShut] = useState(false);
+  return {
+    shut,
+    close: () => { setShut(true); (document.activeElement as HTMLElement | null)?.blur(); },
+    reopen: () => setShut(false),
+  };
+}
+
+/* ---------- Nav dropdown (Free Tools, Resources) ---------- */
 function NavDropdown({ label, href, items }: { label: string; href: string; items: NavItem[] }) {
   const navigate = useNavigate();
+  const menu = useMenuShut();
   return (
-    <div className="nav-dd" style={{ position: "relative" }}>
-      <a href={href} onClick={(e) => { e.preventDefault(); navigate(href); }} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>{label} <ChevronDown size={14} style={{ display: "block" }} /></a>
+    <div className={`nav-dd${menu.shut ? " shut" : ""}`} style={{ position: "relative" }} onMouseLeave={menu.reopen}>
+      <a href={href} onFocus={menu.reopen} onClick={(e) => { e.preventDefault(); menu.close(); navigate(href); }} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>{label} <ChevronDown size={14} style={{ display: "block" }} /></a>
       <div className="nav-dd-panel" style={{ position: "absolute", top: "100%", left: -12, paddingTop: 10 }}>
-        <div style={{ minWidth: 260, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 14, padding: 8, boxShadow: "0 16px 40px rgba(16,14,12,.12)" }}>
+        <div style={{ minWidth: 300, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 14, padding: 8, boxShadow: "0 16px 40px rgba(16,14,12,.12)" }}>
           {items.map((r) => (
             <a key={r.label} href={r.href}
-              {...(r.external ? { target: "_blank", rel: "noreferrer" } : { onClick: (e: React.MouseEvent) => { e.preventDefault(); navigate(r.href); } })}
-              style={{ display: "block", padding: "9px 12px", borderRadius: 8, textDecoration: "none" }}>
-              <span style={{ display: "block", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14, color: "var(--ink-on-paper-1)" }}>{r.label}</span>
-              <span style={{ display: "block", fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--ink-on-paper-2)", marginTop: 2 }}>{r.desc}</span>
+              {...(r.external ? { target: "_blank", rel: "noreferrer", onClick: menu.close } : { onClick: (e: React.MouseEvent) => { e.preventDefault(); menu.close(); navigate(r.href); } })}
+              style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "9px 12px", borderRadius: 8, textDecoration: "none" }}>
+              {r.icon}
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14, color: "var(--ink-on-paper-1)" }}>{r.label}</span>
+                <span style={{ display: "block", fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--ink-on-paper-2)", marginTop: 2 }}>{r.desc}</span>
+              </span>
             </a>
           ))}
         </div>
@@ -107,10 +131,11 @@ function NavDropdown({ label, href, items }: { label: string; href: string; item
 // to lose :hover in on the way down.
 function NavMega({ label, href, groups, allLabel, maxWidth }: { label: string; href: string; groups: NavGroup[]; allLabel: string; maxWidth?: number }) {
   const navigate = useNavigate();
-  const go = (to: string) => (e: React.MouseEvent) => { e.preventDefault(); navigate(to); };
+  const menu = useMenuShut();
+  const go = (to: string) => (e: React.MouseEvent) => { e.preventDefault(); menu.close(); navigate(to); };
   return (
-    <div className="nav-dd nav-mega">
-      <a href={href} onClick={go(href)} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>{label} <ChevronDown size={14} style={{ display: "block" }} /></a>
+    <div className={`nav-dd nav-mega${menu.shut ? " shut" : ""}`} onMouseLeave={menu.reopen}>
+      <a href={href} onFocus={menu.reopen} onClick={go(href)} style={{ color: "var(--ink-on-paper-2)", textDecoration: "none", fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 14.5, display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>{label} <ChevronDown size={14} style={{ display: "block" }} /></a>
       <div className="nav-dd-panel nav-mega-panel">
         <div style={{ maxWidth, background: "var(--paper-0)", border: "1px solid var(--line-1)", borderRadius: 16, boxShadow: "0 24px 60px rgba(16,14,12,.14)", overflow: "hidden" }}>
           <div className="nav-mega-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))`, gap: 8, padding: "18px 14px 12px" }}>
@@ -257,6 +282,7 @@ const CHROME_CSS = `
 .vm-nav .nav-dd-panel { opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity var(--dur), transform var(--dur); }
 .vm-nav .nav-dd:hover .nav-dd-panel, .vm-nav .nav-dd:focus-within .nav-dd-panel, .vm-nav .nav-dd.open .nav-dd-panel { opacity: 1; pointer-events: auto; transform: none; }
 .vm-nav .nav-dd-panel a:hover { background: var(--paper-2); }
+.vm-nav .nav-dd.shut .nav-dd-panel { opacity: 0 !important; pointer-events: none !important; transform: translateY(6px) !important; }
 /* Mega menu: anchored to the nav container (the trigger is not positioned). */
 .vm-nav .nav-links { align-self: stretch; }
 .vm-nav .nav-mega { align-self: stretch; display: flex; align-items: center; }

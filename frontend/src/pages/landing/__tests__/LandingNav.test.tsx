@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { LandingNav } from "@/pages/landing/LandingChrome";
 import { AGENT_GROUPS, AGENT_LIST, AGENTS } from "@/lib/agent-pages";
@@ -71,5 +71,28 @@ describe("agent icons", () => {
     for (const key of ["claude", "claude-code", "gemini", "perplexity", "muse", "deepseek", "cursor"] as const) {
       expect(hasAgentLogo(key), key).toBe(true);
     }
+  });
+});
+
+describe("closing a menu after a click", () => {
+  const menuOf = (href: string) => screen.getAllByRole("link").find((l) => l.getAttribute("href") === href)!.closest(".nav-dd")!;
+
+  it("shuts the mega menu when one of its links is clicked, until the pointer leaves", () => {
+    renderNav();
+    const menu = menuOf("/cursor");
+    expect(menu).not.toHaveClass("shut");
+
+    fireEvent.click(screen.getAllByRole("link").find((l) => l.getAttribute("href") === "/cursor")!);
+    expect(menu).toHaveClass("shut");
+
+    fireEvent.mouseLeave(menu);
+    expect(menu).not.toHaveClass("shut");
+  });
+
+  it("shuts a plain dropdown the same way", () => {
+    renderNav();
+    const menu = menuOf("/mcp");
+    fireEvent.click(screen.getAllByRole("link").find((l) => l.getAttribute("href") === "/mcp")!);
+    expect(menu).toHaveClass("shut");
   });
 });

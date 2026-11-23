@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, TrendingUp, Youtube } from "lucide-react";
+import { ArrowRight, TrendingUp } from "lucide-react";
+import { BrandGlyph } from "@/components/post/brand-icons";
 import { Link } from "react-router-dom";
 
 const Results = () => {
@@ -80,7 +81,7 @@ const Results = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Youtube className="mr-2 h-4 w-4" />
+                    <BrandGlyph platform="youtube" className="mr-2 h-4 w-4" />
                     Check Out My Channel
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </a>

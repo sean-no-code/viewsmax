@@ -39,3 +39,18 @@ export function BrandIcon({ platform, size = 20, color = "currentColor" }: { pla
     </svg>
   );
 }
+
+/**
+ * The brand mark sized and coloured by CSS classes ("h-4 w-4 text-red-600"),
+ * for the places a lucide icon would otherwise go: lucide's brand icons are
+ * outline drawings, not the platforms' own marks.
+ */
+export function BrandGlyph({ platform, className }: { platform: string; className?: string }) {
+  const d = PATHS[platform];
+  if (!d) return null;
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable="false" className={className}>
+      <path d={d} />
+    </svg>
+  );
+}

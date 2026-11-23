@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import appIcon from "@/assets/icon.svg";
-import { TrendingUp, Menu, BarChart3, LogOut, User, Crown, ChevronDown, Youtube, Calculator, ImageIcon } from "lucide-react";
+import { Menu, BarChart3, LogOut, User, Crown, ChevronDown, Calculator, ImageIcon } from "lucide-react";
+import { BrandGlyph } from "@/components/post/brand-icons";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -107,7 +108,7 @@ const Header = () => {
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a href="https://www.youtube.com/@viewsmaxdotcom" target="_blank" rel="noopener noreferrer" className="cursor-pointer flex items-center gap-2">
-                  <Youtube className="w-4 h-4" />
+                  <BrandGlyph platform="youtube" className="w-4 h-4" />
                   YouTube Channel
                 </a>
               </DropdownMenuItem>
@@ -260,7 +261,7 @@ const Header = () => {
                       className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-2"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <Youtube className="w-4 h-4" />
+                      <BrandGlyph platform="youtube" className="w-4 h-4" />
                       YouTube Channel
                     </a>
                   </div>
