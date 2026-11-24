@@ -69,8 +69,19 @@ class StripeWebhookController extends Controller
     /** Extra context for the result line (the user, mostly). */
     private array $outcomeContext = [];
 
+    /**
+     * An event older than this was redelivered or re-sent: the object in it
+     * may describe a state that is no longer true.
+     */
+    private const LATE_AFTER_SECONDS = 300;
+
+    /** When Stripe created the event being handled (not when it was delivered). */
+    private ?int $eventCreated = null;
+
     public function handleWebhook(Request $request)
     {
+        $this->startOutcome();
+
         $startedAt = microtime(true);
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
@@ -123,6 +134,7 @@ class StripeWebhookController extends Controller
         }
 
         $eventType = $event['type'] ?? null;
+        $this->eventCreated = isset($event['created']) ? (int) $event['created'] : null;
 
         if (($event['object'] ?? null) === 'v2.core.event' || ! isset($event['data']['object'])) {
             return $this->refuseThinEvent($event);
@@ -261,6 +273,15 @@ class StripeWebhookController extends Controller
         ], fn ($v) => $v !== null);
     }
 
+    /** One controller can serve several deliveries (tests, a console command, a long-lived worker). */
+    private function startOutcome(): void
+    {
+        $this->outcome = null;
+        $this->changed = false;
+        $this->outcomeContext = [];
+        $this->eventCreated = null;
+    }
+
     /** Record what a handler did. $changed = false when it returned without writing anything. */
     private function did(string $outcome, bool $changed = true, ?User $user = null): void
     {
@@ -269,6 +290,25 @@ class StripeWebhookController extends Controller
         if ($user) {
             $this->outcomeContext['user_id'] = $user->id;
         }
+    }
+
+    /** Whether this delivery is a late one (a redelivery, or re-sent by hand). */
+    private function deliveredLate(): bool
+    {
+        return $this->eventCreated !== null && now()->timestamp - $this->eventCreated > self::LATE_AFTER_SECONDS;
+    }
+
+    /**
+     * Write to this user's rows of ONE subscription. A user can hold several
+     * rows of the same plan (an ended subscription beside the one that
+     * replaced it), so `updateExistingPivot($planId)` would write to them all.
+     */
+    private function updateSubscriptionRows(User $user, string $subscriptionId, array $updates): void
+    {
+        DB::table('user_plans')
+            ->where('user_id', $user->id)
+            ->where('stripe_subscription_id', $subscriptionId)
+            ->update($updates + ['updated_at' => now()]);
     }
 
     /**
@@ -461,10 +501,32 @@ class StripeWebhookController extends Controller
             );
 
             if (! $allocated) {
+                // false also means the allocation itself failed. Roll back and
+                // answer 500 so Stripe redelivers, instead of a 200 that says
+                // "already processed" for a payment that was never applied.
+                if (! $this->creditService->isTransactionIdProcessed($invoiceId)) {
+                    throw new \Exception("Failed to allocate credits for invoice {$invoiceId}");
+                }
+
                 Log::info('Stripe webhook: Invoice already processed', [
                     'user_id' => $user->id,
                     'invoice_id' => $invoiceId,
                 ]);
+
+                // Applied before. If the row no longer says what Stripe says
+                // now (an event that was no longer true set it back), put it
+                // right: this is what a redelivery or stripe:sync-invoice repairs.
+                $stripeStatus = $subDetails['status'] ?? null;
+                if (in_array($stripeStatus, ['active', 'trialing'], true) && $targetPlan->pivot->status !== $stripeStatus) {
+                    $this->updateSubscriptionRows($user, $subscriptionId, array_filter([
+                        'status' => $stripeStatus,
+                        'expires_at' => $nextBilling ? Carbon::parse($nextBilling) : null,
+                    ]));
+                    $this->did("invoice already processed, plan set back to {$stripeStatus}", true, $user);
+
+                    return null;
+                }
+
                 $this->did('invoice already processed', true, $user);
 
                 return null;
@@ -753,7 +815,26 @@ class StripeWebhookController extends Controller
             return ['outcome' => "is {$status} in Stripe, not paid", 'applied' => false];
         }
 
+        $this->startOutcome();
         $this->handleInvoicePaid($invoice);
+
+        return ['outcome' => $this->outcome ?? 'done', 'applied' => $this->changed] + $this->outcomeContext;
+    }
+
+    /**
+     * Apply an unpaid invoice read from Stripe, outside a webhook delivery
+     * (`php artisan stripe:sync-overdue`): the same logic as
+     * invoice.payment_failed, so the row goes past_due and the customer is
+     * emailed once per invoice. Nothing is done for an invoice that is paid
+     * or void.
+     *
+     * @param  array<string, mixed>  $invoice  the Stripe invoice object, as it is now
+     * @return array{outcome: string, applied: bool, user_id?: int}
+     */
+    public function syncFailedInvoice(array $invoice): array
+    {
+        $this->startOutcome();
+        $this->applyFailedInvoice($invoice);
 
         return ['outcome' => $this->outcome ?? 'done', 'applied' => $this->changed] + $this->outcomeContext;
     }
@@ -806,6 +887,13 @@ class StripeWebhookController extends Controller
             return;
         }
 
+        // A late delivery carries the subscription as it was then. Applying
+        // it would undo what happened since (a `past_due` snapshot arriving
+        // after the customer paid), so read the subscription as it is now.
+        if ($this->deliveredLate()) {
+            $subscription = $this->stripeService->getSubscription($subscriptionId);
+        }
+
         $priceId = $subscription['items']['data'][0]['price']['id'] ?? null;
         $nextBilling = $this->extractNextBilling($subscription);
         $status = $subscription['status'] ?? null;
@@ -830,11 +918,7 @@ class StripeWebhookController extends Controller
         }
 
         if ($updates) {
-            $user->plans()
-                ->wherePivot('stripe_subscription_id', $subscriptionId)
-                ->each(function ($plan) use ($user, $updates) {
-                    $user->plans()->updateExistingPivot($plan->id, $updates);
-                });
+            $this->updateSubscriptionRows($user, $subscriptionId, $updates);
         }
 
         // On an up/downgrade the price changes — repoint the pivot's plan_id at
@@ -923,7 +1007,7 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        $user->plans()->updateExistingPivot($pivotPlan->id, $updates);
+        $this->updateSubscriptionRows($user, $subscriptionId, $updates);
 
         Log::info('Stripe webhook: Subscription marked cancelled', [
             'user_id' => $user->id,
@@ -960,10 +1044,17 @@ class StripeWebhookController extends Controller
             return;
         }
 
+        // Redelivered or re-sent after the invoice was paid and applied here:
+        // the failure is history, the customer has paid.
+        $invoiceId = $invoice['id'] ?? null;
+        if ($invoiceId && $this->creditService->isTransactionIdProcessed($invoiceId)) {
+            $this->did('invoice was paid since', false, $user);
+
+            return;
+        }
+
         $plans = $user->plans()->wherePivot('stripe_subscription_id', $subscriptionId)->get();
-        $plans->each(function ($plan) use ($user) {
-            $user->plans()->updateExistingPivot($plan->id, ['status' => 'past_due']);
-        });
+        $this->updateSubscriptionRows($user, $subscriptionId, ['status' => 'past_due']);
 
         Log::info('Stripe webhook: Subscription marked past_due', [
             'user_id' => $user->id,
@@ -1021,6 +1112,15 @@ class StripeWebhookController extends Controller
                 ?? null,
         ]);
 
+        $this->applyFailedInvoice($invoice);
+    }
+
+    /**
+     * The failed-payment handling for an invoice read from Stripe just now
+     * (not an event's snapshot): nothing when it has been paid or voided since.
+     */
+    private function applyFailedInvoice(array $invoice): void
+    {
         if (in_array($invoice['status'] ?? null, ['paid', 'void'], true)) {
             $this->did("invoice is {$invoice['status']} in Stripe now", false);
 

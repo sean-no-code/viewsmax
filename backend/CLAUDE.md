@@ -72,7 +72,15 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `HANDLED_EVENTS`, the switch and, if billing depends on it, `REQUIRED_EVENTS`. A failed charge is handled from
   any of `invoice.payment_failed`, `payment_intent.payment_failed` or `charge.failed` (all three may arrive;
   `past_due` + the email once per invoice): the last two do not name their invoice, so
-  `StripeService::invoiceOfPaymentIntent` asks Stripe, and an invoice that is paid or void by then changes nothing. Tests that need to see what
+  `StripeService::invoiceOfPaymentIntent` asks Stripe, and an invoice that is paid or void by then changes nothing. Events can be
+  stale (Stripe redelivers for days, a person can re-send one): a failure of an invoice already applied as paid is
+  ignored, a `customer.subscription.updated` older than five minutes is re-read from Stripe, and a paid invoice applied
+  again (redelivery, `stripe:sync-invoice`) sets a row back to what Stripe says. A user can hold several `user_plans`
+  rows of one plan, so webhook writes go through `updateSubscriptionRows` (by subscription id), never
+  `updateExistingPivot($planId)`. When webhooks were missed, `php artisan stripe:sync-overdue` (`--dry-run` lists
+  without changing) asks Stripe about every row past its date (trialing/active with `expires_at` passed) or `past_due`
+  and applies the same paid / failed logic, or expires a row Stripe has ended; it never writes to Stripe, and a payment
+  made after the subscription ended is left for `stripe:sync-invoice`. Tests that need to see what
   `StripeService` itself sends use `Tests\Support\FakeStripeClient` (Stripe's HTTP transport, no network);
   everything else mocks `StripeService`.
 - **Posting (in progress).** Two parallel systems exist: `Post`/`PostTarget` and
