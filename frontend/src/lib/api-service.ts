@@ -609,6 +609,15 @@ export interface LinkedInOptions {
 
 // Sent exactly as typed: nothing is filled in for the user, and an empty
 // field means the Pin has none of it.
+// POST /api/social/telegram/connect-code
+export interface TelegramConnectCode {
+  code: string;
+  command: string; // "/connect <code>", what the user posts in the chat
+  bot_username: string; // without "@"
+  bot_url: string;
+  expires_at: string;
+}
+
 export interface PinterestOptions {
   // Board per Pinterest account (social account id -> board id). Required.
   board_ids: Record<string, string>;
@@ -4722,7 +4731,7 @@ class ViewsMaxApiService {
   }
 
   /**
-   * Fetch the active, public pricing plans (the 4 tiers) with their numeric
+   * Fetch the active, public pricing plans (the tiers on sale) with their numeric
    * limits and Stripe price ids. Powers the pricing page.
    */
   async getPlans(): Promise<ApiResponse<PlanTier[]>> {
@@ -5207,6 +5216,47 @@ class ViewsMaxApiService {
     }
   }
 
+  // Telegram: a one-time code the user posts in their channel or group
+  // (ViewsMax runs one bot; there is no OAuth).
+  async getTelegramConnectCode(): Promise<ApiResponse<TelegramConnectCode>> {
+    if (isMockApi()) return { success: false, error: 'Not available in demo mode.' };
+    try {
+      const response = await fetch(`${this.baseUrl}/api/social/telegram/connect-code`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) {
+        return { success: false, error: result.message || `Failed to get a Telegram code: ${response.status}` };
+      }
+      return { success: true, data: result.data };
+    } catch (error) {
+      return { success: false, error: `Network error: ${error.message}` };
+    }
+  }
+
+  // Finish a Telegram connect. `pending` = the code hasn't been posted yet; poll again.
+  async connectTelegram(code: string): Promise<ApiResponse<SocialAccount[]> & { pending?: boolean }> {
+    if (isMockApi()) return { success: false, error: 'Not available in demo mode.' };
+    try {
+      const response = await fetch(`${this.baseUrl}/api/social/telegram/connect`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ code }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 202 || result.pending) {
+        return { success: false, pending: true, message: result.message };
+      }
+      if (!response.ok || result.success === false) {
+        return { success: false, error: result.message || `Failed to connect Telegram: ${response.status}` };
+      }
+      return { success: true, data: result.data || [] };
+    } catch (error) {
+      return { success: false, error: `Network error: ${error.message}` };
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Boosts — like-threshold automations per connected X account.
   // ---------------------------------------------------------------------------
@@ -5437,6 +5487,8 @@ class ViewsMaxApiService {
   // Used by the billing page to show a "payment failed — update card" banner.
   async getBillingStatus(): Promise<ApiResponse<{
     has_subscription: boolean;
+    /** A Stripe customer exists, so the billing portal has invoices to show. */
+    has_billing_account?: boolean;
     status?: string;
     plan_display_name?: string;
     plan_id?: string;

@@ -16,9 +16,9 @@ export interface AccessUser {
 }
 
 /**
- * Charged the day a free trial starts, as a one-time Stripe price
- * (STRIPE_ACTIVATION_FEE_PRICE_ID on the backend). 0 since 2026-10-25: a card
- * is required to start the trial but nothing is charged until it ends. Used
+ * Charged the day a free trial starts. 0 since 2026-10-25: a card is required
+ * to start the trial but nothing is charged until it ends (the backend's
+ * one-time fee price was removed on 2026-11-17). Used
  * for the amount shown at checkout; the prose copy in StripeTrialStep,
  * Plans.tsx and the landing copy is written out, so revisit it if this changes.
  */
@@ -57,8 +57,12 @@ export function inLimitedReleaseAudience(user: { is_admin?: boolean; is_promotio
   return !!(user?.is_admin || user?.is_promotional);
 }
 
-/** The plan names whose tier includes analytics. Mirrors App\Support\AnalyticsAccess::PLANS. */
-export const ANALYTICS_PLANS = ["pro", "agency", "creator_pro", "creator_elite", "creator_agency"];
+/**
+ * The plan names whose tier includes analytics: Creator and Agency, then the
+ * retired plans (Pro, no longer sold, and the legacy creator_* tiers) whose
+ * subscribers keep it. Mirrors App\Support\AnalyticsAccess::PLANS.
+ */
+export const ANALYTICS_PLANS = ["creator", "agency", "pro", "creator_pro", "creator_elite", "creator_agency"];
 
 /**
  * The plan names whose tier includes monetization: offers, tracked links and
@@ -69,7 +73,7 @@ export const ANALYTICS_PLANS = ["pro", "agency", "creator_pro", "creator_elite",
 export const MONETIZATION_PLANS = ["agency", "creator_agency"];
 
 /**
- * Channel + post analytics is the Pro tier upsell: Profile Performance, Post
+ * Channel + post analytics starts at the Creator tier: Profile Performance, Post
  * Performance and the YouTube channel analytics page. The backend answers with
  * `can_use_analytics` (App\Support\AnalyticsAccess); the plan-name fallback is
  * for a session cached before that field existed, so a paying user never loses
@@ -95,7 +99,7 @@ export function isAccessExpired(user: AccessUser | null | undefined, now: number
 
 /**
  * What adding a card costs today. The free window is the only trial: a card
- * added while it is open pays the activation fee now and the plan price when
+ * added while it is open pays nothing now and the plan price when
  * the window closes; one added at any other time (window closed, or no window
  * at all) pays the plan price straight away. Mirrors the backend's
  * User::subscriptionTrialTerms.

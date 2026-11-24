@@ -98,7 +98,7 @@ class XConnectTest extends TestCase
     {
         Queue::fake();
         $this->fakeExchange('tweet.read tweet.write users.read offline.access media.write');
-        // Analytics is the Pro tier upsell (see AnalyticsPlanGateTest for the gate).
+        // Analytics starts at Creator (see AnalyticsPlanGateTest for the gate).
         $user = $this->analyticsUser();
         $headers = ['Authorization' => 'Bearer '.$user->createToken('t')->plainTextToken, 'Accept' => 'application/json'];
 

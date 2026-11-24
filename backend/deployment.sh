@@ -113,6 +113,11 @@ php artisan migrate
 say "plans:sync-stripe-prices"
 php artisan plans:sync-stripe-prices || warn "plans:sync-stripe-prices failed — plan prices may be stale"
 
+# The Stripe endpoint must be subscribed to every event the app handles;
+# a missing one fails silently (e.g. failed charges that never lock the account).
+say "stripe:check-webhooks"
+php artisan stripe:check-webhooks || warn "stripe:check-webhooks failed — Stripe webhooks are not set up correctly (see output above)"
+
 
 # ---- 6. rebuild caches ----------------------------------------------------
 # Deliberately cache ONLY config. Events + routes stay on runtime discovery so a

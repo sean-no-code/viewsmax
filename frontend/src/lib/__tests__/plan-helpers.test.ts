@@ -128,16 +128,20 @@ describe("planIncludesFor", () => {
   const analytics = "Channel & post analytics";
   const monetization = "Tracked links & revenue attribution";
 
-  it("promises neither analytics nor monetization below Pro", () => {
-    for (const tier of ["free", "starter", "creator", undefined]) {
+  it("promises neither analytics nor monetization below Creator", () => {
+    for (const tier of ["free", "starter", undefined]) {
       expect(planIncludesFor(tier)).toEqual([...PLAN_INCLUDES]);
     }
   });
 
-  it("adds analytics from Pro up", () => {
-    expect(planIncludesFor("pro")).toContain(analytics);
-    expect(planIncludesFor("Pro")).toContain(analytics); // display name too
+  it("adds analytics from Creator up", () => {
+    expect(planIncludesFor("creator")).toContain(analytics);
+    expect(planIncludesFor("Creator")).toContain(analytics); // display name too
     expect(planIncludesFor("agency")).toContain(analytics);
+  });
+
+  it("keeps analytics for subscribers of the retired Pro plan", () => {
+    expect(planIncludesFor("pro")).toContain(analytics);
   });
 
   it("keeps monetization on Agency only", () => {

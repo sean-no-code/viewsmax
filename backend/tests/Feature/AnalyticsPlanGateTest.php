@@ -15,10 +15,10 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Analytics is the Pro tier upsell (App\Support\AnalyticsAccess): connecting a
- * channel on free/starter/creator must spend nothing — no uploads import, no
- * recent-posts import, no channel analytics fetch — while pro/agency, admins
- * and promotional customers are unchanged.
+ * Analytics starts at the Creator tier (App\Support\AnalyticsAccess): connecting
+ * a channel on free/starter must spend nothing — no uploads import, no
+ * recent-posts import, no channel analytics fetch — while creator/agency, the
+ * retired tiers (pro, creator_*), admins and promotional customers are unchanged.
  */
 class AnalyticsPlanGateTest extends TestCase
 {
@@ -55,19 +55,19 @@ class AnalyticsPlanGateTest extends TestCase
     }
 
     /** @return array<string, array{0: string}> */
-    public static function belowProPlans(): array
+    public static function plansWithoutAnalytics(): array
     {
-        return ['free' => ['free'], 'starter' => ['starter'], 'creator' => ['creator']];
+        return ['free' => ['free'], 'starter' => ['starter']];
     }
 
     /** @return array<string, array{0: string}> */
     public static function analyticsPlans(): array
     {
-        return ['pro' => ['pro'], 'agency' => ['agency'], 'legacy creator_agency' => ['creator_agency']];
+        return ['creator' => ['creator'], 'agency' => ['agency'], 'retired pro' => ['pro'], 'legacy creator_agency' => ['creator_agency']];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('belowProPlans')]
-    public function test_connecting_youtube_below_pro_imports_nothing(string $planName): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('plansWithoutAnalytics')]
+    public function test_connecting_youtube_below_creator_imports_nothing(string $planName): void
     {
         Queue::fake();
         $this->fakeGoogle();
@@ -114,7 +114,7 @@ class AnalyticsPlanGateTest extends TestCase
         $this->assertImportsQueuedFor(User::factory()->promotional()->create());
     }
 
-    /** Both exempt roles connect exactly as a Pro user does. */
+    /** Both exempt roles connect exactly as a Creator user does. */
     private function assertImportsQueuedFor(User $user): void
     {
         Queue::fake();
@@ -126,10 +126,10 @@ class AnalyticsPlanGateTest extends TestCase
         Queue::assertPushed(ImportRecentPostsJob::class);
     }
 
-    public function test_the_video_import_job_spends_nothing_below_pro(): void
+    public function test_the_video_import_job_spends_nothing_below_creator(): void
     {
         Http::fake(['*' => Http::response([], 200)]);
-        $user = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $user = User::factory()->withPlan('active', $this->planNamed('starter'))->create();
         $channel = Channel::create([
             'user_id' => $user->id,
             'youtube_channel_id' => 'UC'.Str::random(8),
@@ -143,10 +143,10 @@ class AnalyticsPlanGateTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_the_recent_posts_job_spends_nothing_below_pro(): void
+    public function test_the_recent_posts_job_spends_nothing_below_creator(): void
     {
         Http::fake(['*' => Http::response([], 200)]);
-        $user = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $user = User::factory()->withPlan('active', $this->planNamed('starter'))->create();
         $account = SocialAccount::create([
             'user_id' => $user->id, 'platform' => 'youtube', 'platform_account_id' => 'UCchan1',
             'name' => 'My Channel', 'access_token' => 'tok', 'token_expires_at' => now()->addHour(),
@@ -159,23 +159,24 @@ class AnalyticsPlanGateTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_channel_refresh_is_a_pro_feature_but_fetching_videos_is_not(): void
+    public function test_channel_refresh_needs_analytics_but_fetching_videos_does_not(): void
     {
-        $creator = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $starter = User::factory()->withPlan('active', $this->planNamed('starter'))->create();
         $channel = Channel::create([
-            'user_id' => $creator->id,
+            'user_id' => $starter->id,
             'youtube_channel_id' => 'UC'.Str::random(8),
             'channel_name' => 'My Channel',
             'youtube_access_token' => 'yt-oauth-token',
             'youtube_token_expires_at' => now()->addHour(),
         ]);
 
-        $headers = ['Authorization' => 'Bearer '.$creator->createToken('t')->plainTextToken, 'Accept' => 'application/json'];
+        $headers = ['Authorization' => 'Bearer '.$starter->createToken('t')->plainTextToken, 'Accept' => 'application/json'];
 
         $this->withHeaders($headers)
             ->postJson("/api/channels/{$channel->id}/refresh")
             ->assertStatus(403)
-            ->assertJsonPath('success', false);
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Channel analytics is part of the Creator plan. Upgrade to refresh your channel analytics.');
 
         // The offer/Review video picker must keep working on every tier: its
         // import is an explicit user action, not analytics.

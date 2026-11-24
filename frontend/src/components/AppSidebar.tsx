@@ -106,7 +106,7 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  // Profile/Post Performance are part of the Pro tier (plus admins and
+  // Profile/Post Performance start at the Creator tier (plus admins and
   // promotional customers); a lower tier never sees them offered.
   const analytics = canUseAnalytics(user);
   const baseItems = allNavigationItems.map((item) =>

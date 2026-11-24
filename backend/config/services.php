@@ -303,25 +303,17 @@ return [
         'portal_return_url' => env('STRIPE_PORTAL_RETURN_URL'),
         // Fallback recurring price (the Starter tier) when checkout is started without a price_id.
         'trial_price_id' => env('STRIPE_TRIAL_PRICE_ID'),
-        // One-time $1 price charged the day a free trial starts (the card step
-        // in onboarding). A Stripe price id per environment; unset = no fee.
-        'activation_fee_price_id' => env('STRIPE_ACTIVATION_FEE_PRICE_ID'),
-        // The recurring Stripe price behind each paid tier, keyed by plans.name.
+        // The recurring Stripe price behind each paid tier on sale, keyed by plans.name.
+        // A retired tier (pro, creator_*) is not listed: its row keeps the price id
+        // it was sold at, which is what renewals and the price sync go by.
         // Read by PlanSeeder and plans:sync-stripe-prices (which also copies the
         // amount onto plans.price). Stripe prices are immutable, so a price
         // change in the dashboard means a NEW id here.
         'prices' => [
             'starter' => env('STRIPE_PRICE_STARTER'),
             'creator' => env('STRIPE_PRICE_CREATOR'),
-            'pro' => env('STRIPE_PRICE_PRO'),
             'agency' => env('STRIPE_PRICE_AGENCY'),
         ],
-        // How many hours before a trial ends to send the "card about to be charged"
-        // reminder. Guarded like subscription_grace_period_hours: a set-but-empty env
-        // arrives as '' and would TypeError in the command's date math.
-        'trial_reminder_hours_before' => is_numeric(env('STRIPE_TRIAL_REMINDER_HOURS_BEFORE', 48))
-            ? (int) env('STRIPE_TRIAL_REMINDER_HOURS_BEFORE', 48)
-            : 48,
     ],
 
     'tiktok' => [

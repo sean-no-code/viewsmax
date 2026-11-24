@@ -39,7 +39,7 @@ final class QuotaMessage
             .($free ? ' Upgrade for priority access.' : '');
     }
 
-    /** "Free", "Pro", … — the plan as the user knows it. */
+    /** "Free", "Creator", … — the plan as the user knows it. */
     public static function planLabel(?User $user): string
     {
         $name = $user?->activePlan()?->name;

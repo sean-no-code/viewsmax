@@ -400,7 +400,6 @@
       "prorated": "Upgrades e downgrades são proporcionais",
       "renews": "Renova em <0>{{date}}</0>",
       "trialEndedIntro": "Seu teste grátis terminou. Escolha o plano ideal para o seu crescimento.",
-      "trialEnds": "Teste grátis · termina em <0>{{date}}</0>",
       "trialIntro": "7 dias de teste grátis por $0; depois, escolha o plano ideal para o seu crescimento.",
       "trialIntroNoCard": "7 dias de teste grátis, sem cartão; depois, escolha o plano ideal para o seu crescimento.",
       "unexpectedError": "Ocorreu um erro inesperado. Tente novamente.",
@@ -408,11 +407,17 @@
       "unlimitedOffers": "Ofertas ilimitadas",
       "unlimitedPostsPerMonth": "Publicações ilimitadas/mês",
       "updatePayment": "Atualizar forma de pagamento",
-      "upgradeBody": "Você passará para o {{plan}} (${{price}}/mês) imediatamente. A Stripe cobrará um valor proporcional pelo restante deste período de cobrança.",
+      "upgradeBody": "Você passará para o {{plan}} (${{price}}/mês) imediatamente. A diferença proporcional pelo restante deste período de cobrança é adicionada à sua próxima fatura.",
       "upgradeTitle": "Fazer upgrade para o {{plan}}?",
       "yesCancel": "Sim, cancelar",
       "yesDowngrade": "Sim, fazer downgrade",
-      "yesUpgrade": "Sim, fazer upgrade"
+      "yesUpgrade": "Sim, fazer upgrade",
+      "pastDueCancel": "Cancelar assinatura",
+      "pastDueCancelTitle": "Cancelar sua assinatura?",
+      "pastDueCancelBody": "Seu último pagamento não foi aprovado, então não resta nenhum período pago. Ao cancelar, sua assinatura termina agora. Você pode assinar novamente quando quiser.",
+      "billingHistory": "Histórico de cobranças e forma de pagamento",
+      "trialEndsThenPrice": "Teste grátis · termina em <0>{{date}}</0>, depois será cobrado {{price}}",
+      "changeKeepsCancellation": "Sua assinatura continua cancelada e termina em {{date}}."
     }
   },
   "boosts": {
@@ -596,6 +601,24 @@
       "groupsEyebrow": "GRUPOS",
       "intro": "Conecte as plataformas em que você publica. Depois de vinculadas, elas aparecem como destinos em Criar publicação e como fontes em Análises.",
       "title": "Conexões."
+    },
+    "telegram": {
+      "cancel": "Cancelar",
+      "checkAgain": "Verificar novamente",
+      "codeExpired": "Este código expirou. Gere um novo.",
+      "codeFailed": "Não foi possível obter um código. Tente novamente.",
+      "connectFailed": "Não foi possível conectar o Telegram.",
+      "connected": "Telegram conectado!",
+      "copy": "Copiar",
+      "description": "Publique em um canal ou grupo do Telegram pelo bot do ViewsMax. Prove que o chat é seu publicando nele um código de uso único.",
+      "newCode": "Gerar um novo código",
+      "openBot": "Abrir {{bot}}",
+      "paused": "Verificação pausada. Publicou o código? Clique em \"Verificar novamente\".",
+      "stepAddBot": "Adicione {{bot}} ao seu canal ou grupo como administrador. Em um canal, ative a permissão \"Publicar mensagens\".",
+      "stepPost": "Publique esta mensagem nesse canal ou grupo:",
+      "stepWait": "Volte aqui. O ViewsMax identifica a mensagem, vincula o chat e apaga a mensagem. O código vale por 15 minutos.",
+      "title": "Conectar Telegram",
+      "waitingNote": "Aguardando o código aparecer no seu canal ou grupo…"
     }
   },
   "dashboard": {
@@ -1405,6 +1428,10 @@
       "selectWhoCanView": "Selecione quem pode ver…",
       "shortenLinks": "Encurtar e rastrear links",
       "shortenLinksHint": "As URLs da legenda e dos comentários são substituídas por links curtos do ViewsMax ao salvar a publicação, para que cada clique seja contabilizado.",
+      "telegram": {
+        "textAfterMedia": "As legendas do Telegram têm até {{max}} caracteres, então no Telegram este texto é enviado como uma mensagem separada logo após a mídia.",
+        "tooManyMedia": "O Telegram aceita até {{max}} fotos e vídeos por post. Remova alguns para publicar lá."
+      },
       "textPost": "Publicação de texto",
       "textPostHint": "Somente texto. Apenas plataformas que permitem publicar sem mídia são exibidas.",
       "threadLimit": "Uma thread pode ter no máximo 25 tweets.",

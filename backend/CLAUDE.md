@@ -47,11 +47,42 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `protected $table = 'tracking_events'`. An Offer is a promotion/campaign being tracked: it has
   `offer_url` (was `landing_page_url`), `conversion_url`, `conversion_value`, and owns tracking links,
   clicks, and conversions. FKs on related tables are still named `tracking_event_id`.
-- **Plans & limits.** `plans` (model `Plan`) defines tiers; users link via `user_plans` pivot
+- **Plans & limits.** `plans` (model `Plan`) defines tiers (on sale: `starter`, `creator`, `agency`; `pro` and the
+  `creator_*` rows are retired — `is_active = false`, subscribers kept, no new ones: `/api/plans`, `SubscriptionStarter`
+  and `change-plan` all refuse them); users link via `user_plans` pivot
   (`UserPlan`) carrying Stripe subscription/status. `CheckPlan` middleware currently gates by plan *name*,
   not by numeric limits.
 - **Billing.** `BillingController` + `StripeService` handle Stripe. Subscriptions live on the
-  `user_plans` pivot (`stripe_subscription_id`, `status`, `expires_at`).
+  `user_plans` pivot (`stripe_subscription_id`, `status`, `expires_at`). A subscription Stripe ended for
+  non-payment (`cancellation_details.reason = payment_failed`) keeps its invoice payable; paying it later
+  starts a new subscription on the same price, renewing one period after the payment
+  (`StripeWebhookController::resubscribeAfterLatePayment`, guards in `latePaymentRefusal`; anything that does
+  not qualify grants nothing and logs an error for a manual refund). A subscription cancelled on purpose has
+  its open invoices voided (`StripeService::voidOpenInvoices`, never throws), as do ended subscriptions when
+  the customer starts a new one. Either way a `past_due` row becomes `expired`. Customer emails (invoice per paid cycle with Stripe's PDF attached, cancel confirmation, payment failed — once per invoice via
+  `user_plans.payment_failed_notified_invoice_id`) go through
+  `App\Services\Billing\BillingEmails` (`config/billing.php` switches; never throw) and log to
+  `storage/logs/billing-YYYY-MM-DD.log` (`BillingLog`, `BILLING_LOG_ENABLED`). Every Stripe webhook writes two
+  lines there, searchable by event, invoice, subscription or customer id: `Stripe webhook received`, then
+  `handled` / `changed nothing` / `ignored` / `failed` with an `outcome` (handlers set it with `$this->did()`).
+  A signature that does not match `STRIPE_WEBHOOK_SECRET` and a thin event (answered 200, never usable) are
+  errors on that channel, at most one an hour each. Which events Stripe sends is a
+  dashboard setting: `php artisan stripe:check-webhooks` (deploy + daily in production, read-only) fails with an error-level billing log line when the endpoint is missing,
+  disabled or not subscribed to `StripeWebhookController::REQUIRED_EVENTS`; a new webhook event goes in
+  `HANDLED_EVENTS`, the switch and, if billing depends on it, `REQUIRED_EVENTS`. A failed charge is handled from
+  any of `invoice.payment_failed`, `payment_intent.payment_failed` or `charge.failed` (all three may arrive;
+  `past_due` + the email once per invoice): the last two do not name their invoice, so
+  `StripeService::invoiceOfPaymentIntent` asks Stripe, and an invoice that is paid or void by then changes nothing. Events can be
+  stale (Stripe redelivers for days, a person can re-send one): a failure of an invoice already applied as paid is
+  ignored, a `customer.subscription.updated` older than five minutes is re-read from Stripe, and a paid invoice applied
+  again (redelivery, `stripe:sync-invoice`) sets a row back to what Stripe says. A user can hold several `user_plans`
+  rows of one plan, so webhook writes go through `updateSubscriptionRows` (by subscription id), never
+  `updateExistingPivot($planId)`. When webhooks were missed, `php artisan stripe:sync-overdue` (`--dry-run` lists
+  without changing) asks Stripe about every row past its date (trialing/active with `expires_at` passed) or `past_due`
+  and applies the same paid / failed logic, or expires a row Stripe has ended; it never writes to Stripe, and a payment
+  made after the subscription ended is left for `stripe:sync-invoice`. Tests that need to see what
+  `StripeService` itself sends use `Tests\Support\FakeStripeClient` (Stripe's HTTP transport, no network);
+  everything else mocks `StripeService`.
 - **Posting (in progress).** Two parallel systems exist: `Post`/`PostTarget` and
   `SocialPost`/`SocialPostTarget`. One composed post fans out to many per-platform targets. Real
   publish-to-platform is still being built; compose/create endpoints (`POST /posts`) exist.
@@ -71,7 +102,8 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
 
 - **Access gating.** `App\Support\UserAccess::denial($user)` is the single rule set for "may this user use
   ViewsMax right now" (unverified email, then `access_expired`: no active/trialing plan and no open free
-  window — a user with no window at all is expired too — then the paywall: onboarding not finished and no
+  window — a user with no window at all is expired too; `subscription_inactive` instead when they have held a
+  plan — then the paywall: onboarding not finished and no
   card — `payment_required`; skipped when `SIGNUP_CARD_REQUIRED=false`, which makes the window a card-free trial — `UserAccess::cardRequired()`, mirrored in `User::canCompleteOnboarding`, `scopeWithAccess` and the SPA's `cardOptional`). Admins and `promotional_customer` role holders are exempt after verification.
   Add new rules there, not in a middleware. **Background work follows the same rule**: commands that select
   records in bulk use `User::withAccess()` (`->whereHas('user', fn ($u) => $u->withAccess())`), jobs that
@@ -80,9 +112,14 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `User::factory()->expired()` / `->withoutWindow()` / `->withPlan('cancelled')` / `->promotional()` / `->admin()`. At the card step
   the deliveries keep the pre-card endpoints open (`EnsureAccessActive::ONBOARDING_PATTERNS`,
   `EnsureWebAccess::ONBOARDING_ROUTES`); agent signups add the card at `/register/billing`
-  (`WebBillingController`), app signups in the SPA's onboarding. Both go through `SubscriptionStarter`. Delivery differs per entry point: `EnsureAccessActive` (REST 403 with `code`), `SafeCallTool`
-  (MCP `isError` tool result at HTTP 200 — never an HTTP error, which counts against directory ranking),
-  `EnsureWebAccess` (web redirect). Console code calls `denial()` directly.
+  (`WebBillingController`), app signups in the SPA's onboarding. Both go through `SubscriptionStarter`. Delivery differs per entry point, and
+  `AccessDenial::status()` picks the HTTP status: **402** when paying fixes it (`subscription_inactive` — a lapsed
+  user who has held a plan, "your subscription has ended" — `access_expired`, `payment_required`), 403 for
+  `email_unverified`. `EnsureAccessActive` (REST: the denial as JSON, plus `error {code, message, upgrade_url}` on a
+  402), `EnsureMcpAccess` (MCP `tools/call`: the same HTTP 402 as a JSON-RPC error with the denial in `error.data`,
+  logged by `McpAuditLog` as a failed call; `initialize` / `tools/list` stay 200), `SafeCallTool` (MCP, an unverified
+  email only: a plain tool result at HTTP 200), `EnsureWebAccess` (web redirect). Console code calls `denial()`
+  directly.
 
 - **Post allowance.** `App\Support\PostAllowance::refusal($user)` caps an account that hasn't paid yet — the
   card-free window or the $0 Stripe trial (`trialing`) — at `config('publishing.trial_posts')` posts
@@ -110,12 +147,12 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   Klaviyo/Kit refusals are only logged (warning in the erasure log). Local data is gone either way. One line per erasure in `storage/logs/user-erasure-YYYY-MM-DD.log` (daily file, kept a year). `DELETE
   /api/user-data` is **not** this: it only clears YouTube/Google for a user who stays.
 
-- **Analytics is the Pro tier.** `App\Support\AnalyticsAccess::allows($user)` (plans `pro`, `agency` and the
-  three retired `creator_*` rows; admins + `promotional_customer` exempt) is the single rule for channel and
+- **Analytics starts at Creator.** `App\Support\AnalyticsAccess::allows($user)` (plans `creator`, `agency`, and the
+  retired `pro` and `creator_*` rows, whose subscribers are grandfathered; admins + `promotional_customer` exempt) is the single rule for channel and
   post analytics, with `User::withAnalytics()` as its SQL twin for bulk selects. It is **orthogonal to
-  access**: a lapsed Pro user passes `withAnalytics()` and fails `withAccess()`, so the nightly commands
+  access**: a lapsed Creator user passes `withAnalytics()` and fails `withAccess()`, so the nightly commands
   (`channels:sync-videos`, `audience:refresh`, `posts:refresh-metrics`, `posts:import-recent`) chain both.
-  Below Pro, a connect queues no import (`YouTubeOAuthController`, `SocialConnect::queueRecentPostsImport`)
+  Below Creator, a connect queues no import (`YouTubeOAuthController`, `SocialConnect::queueRecentPostsImport`)
   and skips the synchronous `fetchAndStoreChannelAnalytics`; `ImportChannelVideosJob` /
   `ImportRecentPostsJob` re-check the owner because a queued job can outlive a downgrade; `POST
   /channels/{channel}/refresh` 403s. Reads of stored analytics are not gated (they cost nothing) — the SPA
@@ -124,7 +161,7 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   and the offer video picker use to import on demand. The `user_plans` pivot fires no model events (two
   plan-change paths are raw `DB::table` updates), so every path that writes it calls
   `AnalyticsAccess::backfill($user)` instead of an observer. In tests, `$this->analyticsUser()` /
-  `$this->planNamed('creator')` (`tests/TestCase.php`) give a user with or without analytics.
+  `$this->planNamed('starter')` (`tests/TestCase.php`) give a user with or without analytics.
 
 ## Conventions
 

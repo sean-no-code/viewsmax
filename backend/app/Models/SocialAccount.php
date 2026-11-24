@@ -13,6 +13,12 @@ class SocialAccount extends Model
     public const STATUS_REVOKED = 'revoked';
     public const STATUS_ERROR = 'error';
 
+    /**
+     * Platforms where one app-wide bot publishes for every account, so the
+     * row holds no token (Telegram). Connected status alone means usable.
+     */
+    public const PLATFORMS_WITHOUT_TOKENS = ['telegram'];
+
     protected $fillable = [
         'user_id',
         'platform',
@@ -88,7 +94,13 @@ class SocialAccount extends Model
      */
     public function hasUsableCredentials(): bool
     {
-        if ($this->status !== self::STATUS_CONNECTED || empty($this->access_token)) {
+        if ($this->status !== self::STATUS_CONNECTED) {
+            return false;
+        }
+        if (in_array($this->platform, self::PLATFORMS_WITHOUT_TOKENS, true)) {
+            return true;
+        }
+        if (empty($this->access_token)) {
             return false;
         }
 

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   AGENT_LIST,
   AGENTS,
+  CHATGPT_PLUGIN_URL,
   CLAUDE_DIRECTORY_URL,
   MCP_ENDPOINT,
   MCP_TOOLS,
@@ -22,7 +23,7 @@ const sitemap = readFileSync(join(process.cwd(), "public", "sitemap-pages.xml"),
 describe("AGENT_LIST", () => {
   it("has a top-level page for every agent ViewsMax documents", () => {
     expect(AGENT_LIST.map((a) => a.slug).sort()).toEqual(
-      ["/chatgpt", "/claude", "/claude-code", "/claude-cowork", "/codex", "/cursor", "/hermes", "/openclaw"].sort(),
+      ["/chatgpt", "/claude", "/claude-code", "/claude-cowork", "/claude-duet", "/codex", "/cursor", "/hermes", "/muse", "/openclaw", "/chatgpt-dots", "/gemini", "/perplexity", "/paperclip", "/instinct", "/deepseek"].sort(),
     );
   });
 
@@ -139,29 +140,24 @@ describe("sitemap-pages.xml", () => {
 });
 
 describe("agentListingUrl", () => {
-  it("is fixed for Claude and Claude Code now that ViewsMax is in the Claude directory", () => {
+  it("is the Claude directory page for Claude and Claude Code", () => {
     expect(CLAUDE_DIRECTORY_URL).toBe("https://claude.ai/directory/viewsmax");
-    expect(agentListingUrl(AGENTS.claude, {})).toBe(CLAUDE_DIRECTORY_URL);
-    expect(agentListingUrl(AGENTS["claude-code"], {})).toBe(CLAUDE_DIRECTORY_URL);
+    expect(agentListingUrl(AGENTS.claude)).toBe(CLAUDE_DIRECTORY_URL);
+    expect(agentListingUrl(AGENTS["claude-code"])).toBe(CLAUDE_DIRECTORY_URL);
   });
 
-  it("is empty for ChatGPT and Codex until the plugin directory URL is configured", () => {
-    expect(agentListingUrl(AGENTS.chatgpt, {})).toBeUndefined();
-    expect(agentListingUrl(AGENTS.codex, { VITE_CHATGPT_PLUGIN_URL: "  " })).toBeUndefined();
+  it("is the ChatGPT plugin page for ChatGPT and Codex, which share one directory", () => {
+    expect(CHATGPT_PLUGIN_URL).toBe("https://chatgpt.com/plugins/plugin_asdk_app_6abf68b6ecb08191b55d646bbd9091b9");
+    expect(agentListingUrl(AGENTS.chatgpt)).toBe(CHATGPT_PLUGIN_URL);
+    expect(agentListingUrl(AGENTS.codex)).toBe(CHATGPT_PLUGIN_URL);
   });
 
-  it("returns the configured https plugin directory URL for ChatGPT and Codex", () => {
-    const url = "https://chatgpt.com/plugins/viewsmax";
-    expect(agentListingUrl(AGENTS.chatgpt, { VITE_CHATGPT_PLUGIN_URL: url })).toBe(url);
-    expect(agentListingUrl(AGENTS.codex, { VITE_CHATGPT_PLUGIN_URL: url })).toBe(url);
-  });
-
-  it("ignores anything that is not an https URL", () => {
-    expect(agentListingUrl(AGENTS.chatgpt, { VITE_CHATGPT_PLUGIN_URL: "javascript:alert(1)" })).toBeUndefined();
+  it("labels the ChatGPT button Add to ChatGPT", () => {
+    expect(AGENTS.chatgpt.listing?.label).toBe("Add to ChatGPT");
   });
 
   it("is always empty for agents with no directory listing", () => {
-    expect(agentListingUrl(AGENTS.cursor, { VITE_CHATGPT_PLUGIN_URL: "https://x.test" })).toBeUndefined();
+    expect(agentListingUrl(AGENTS.cursor)).toBeUndefined();
   });
 });
 
@@ -177,29 +173,28 @@ describe("first prompts", () => {
 
 describe("buildAgentMarkdown", () => {
   it("contains the setup commands and the check prompt", () => {
-    const md = buildAgentMarkdown(AGENTS["claude-code"], {});
+    const md = buildAgentMarkdown(AGENTS["claude-code"]);
     expect(md).toContain("# ");
     expect(md).toContain(`claude mcp add --transport http --scope user viewsmax ${MCP_ENDPOINT}`);
     expect(md).toContain(CHECK_PROMPT);
   });
 
-  it("always links the Claude directory, and the plugin directory only once configured", () => {
-    expect(buildAgentMarkdown(AGENTS.claude, {})).toContain(CLAUDE_DIRECTORY_URL);
-    const url = "https://chatgpt.com/plugins/viewsmax";
-    expect(buildAgentMarkdown(AGENTS.chatgpt, {})).not.toContain(url);
-    expect(buildAgentMarkdown(AGENTS.chatgpt, { VITE_CHATGPT_PLUGIN_URL: url })).toContain(url);
+  it("links each agent's directory page in the brief", () => {
+    expect(buildAgentMarkdown(AGENTS.claude)).toContain(CLAUDE_DIRECTORY_URL);
+    expect(buildAgentMarkdown(AGENTS.chatgpt)).toContain(CHATGPT_PLUGIN_URL);
+    expect(buildAgentMarkdown(AGENTS.chatgpt)).toContain("Add to ChatGPT");
   });
 });
 
 describe("listing steps", () => {
   it("tells Codex users to install from /plugins once listed", () => {
-    const md = buildAgentMarkdown(AGENTS.codex, { VITE_CHATGPT_PLUGIN_URL: "https://chatgpt.com/plugins/viewsmax" });
+    const md = buildAgentMarkdown(AGENTS.codex);
     expect(md).toContain("/plugins");
     expect(md).toContain(`codex mcp add viewsmax --url ${MCP_ENDPOINT}`);
   });
 
   it("tells Claude Code users the claude.ai connector carries over", () => {
-    const md = buildAgentMarkdown(AGENTS["claude-code"], {});
+    const md = buildAgentMarkdown(AGENTS["claude-code"]);
     expect(md).toContain(CLAUDE_DIRECTORY_URL);
     expect(md).toMatch(/shares connectors with the claude\.ai account/i);
   });

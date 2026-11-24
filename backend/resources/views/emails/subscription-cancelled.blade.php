@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Your free trial is ending</title>
+    <title>Your subscription is cancelled</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -42,50 +42,51 @@
             font-size: 14px;
             color: #6c757d;
         }
-        .warning {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
+        .note {
+            border-top: 1px solid #e9ecef;
+            margin-top: 25px;
+            padding-top: 15px;
+            font-size: 15px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Your free trial is ending soon</h1>
+        <h1>Your subscription is cancelled</h1>
     </div>
 
     <div class="content">
         <p>Hi {{ $name }},</p>
 
-        <p>Your {{ config('app.name') }} free trial ends on <strong>{{ $chargeDate }}</strong>.</p>
+        @if ($endsNow)
+            <p>Your {{ config('app.name') }} {{ $planName }} subscription has been cancelled and ended on
+            <strong>{{ $accessUntil }}</strong>. You won't be charged for it again.</p>
+        @else
+            <p>Your {{ config('app.name') }} {{ $planName }} subscription has been cancelled. You keep full access
+            until <strong>{{ $accessUntil }}</strong>, and you won't be charged again.</p>
+        @endif
 
-        <div class="warning">
-            <strong>Heads up:</strong> in about 48 hours, on {{ $chargeDate }},
-            @if ($amount)
-                your card will be charged <strong>{{ $amount }}</strong> and your subscription will begin.
-            @else
-                your card will be charged and your subscription will begin.
-            @endif
-        </div>
-
-        <p>No action is needed if you'd like to continue — you'll keep full access. If you'd rather not
-        be charged, you can cancel any time before then:</p>
+        <p>Your accounts, posts and saved outliers stay in place. If you change your mind, you can pick a plan
+        again at any time.</p>
 
         <div style="text-align: center;">
-            <a href="{{ $manageUrl }}" class="button">Manage your subscription</a>
+            <a href="{{ $billingUrl }}" class="button">Go to Billing</a>
         </div>
 
-        <p>Thanks for trying {{ config('app.name') }}!</p>
+        @if ($canReply)
+            <div class="note">
+                <p>Didn't cancel, or have a question? Just hit reply and a real person on our team will answer.</p>
+            </div>
+        @endif
 
-        <p>Best regards,<br>
+        <p>Thanks for using {{ config('app.name') }},<br>
         The {{ config('app.name') }} Team</p>
     </div>
 
     <div class="footer">
-        <p>This is an automated message. Please do not reply to this email.</p>
+        @unless ($canReply)
+            <p>This is an automated message. Please do not reply to this email.</p>
+        @endunless
         <p>&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
     </div>
 </body>

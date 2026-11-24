@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserEvent;
+use App\Services\Billing\BillingEmails;
 use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
@@ -307,6 +308,16 @@ class UserPlanController extends Controller
             // Block a downgrade that would leave the user over the target plan's
             // offer cap. They must delete offers down to the new limit first.
             $targetPlan = Plan::where('stripe_price_id', $request->price_id)->first();
+
+            // A retired plan (Pro, the legacy creator_* tiers) keeps its
+            // subscribers but takes no new ones, by any route.
+            if ($targetPlan && ! $targetPlan->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "The {$targetPlan->display_name} plan is no longer available.",
+                ], 422);
+            }
+
             if ($targetPlan && $targetPlan->max_offers !== null) {
                 $activeOffers = $user->offers()->count();
                 if ($activeOffers > $targetPlan->max_offers) {
@@ -364,49 +375,11 @@ class UserPlanController extends Controller
     }
 
     /**
-     * Locally cancel the active plan (does not call Stripe).
+     * Cancel a subscription with Stripe (graceful: cancel at period end by
+     * default; a past_due one, or `immediately`, ends now and has its open
+     * invoices voided). Emails a confirmation with Stripe's access end date.
      */
-    public function cancel(Request $request)
-    {
-        try {
-            $user = $request->user();
-            $activePlan = $user->activePlan();
-
-            if (! $activePlan) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No active plan to cancel',
-                ], 400);
-            }
-
-            $user->plans()->updateExistingPivot($activePlan->id, [
-                'status' => 'cancelled',
-                'cancelled_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Plan cancelled successfully',
-                'data' => [
-                    'cancelled_plan' => $activePlan,
-                    'cancelled_at' => now(),
-                ],
-            ]);
-        } catch (\Exception $e) {
-            // A 5xx is our bug, not the caller's: report it so it reaches Sentry.
-            report($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to cancel plan',
-                'error' => \App\Support\UserSafeError::detail($e),
-            ], 500);
-        }
-    }
-
-    /**
-     * Cancel a subscription with Stripe (graceful: cancel at period end by default).
-     */
-    public function cancelSubscriptionViaStripe(Request $request, string $subscriptionId)
+    public function cancelSubscriptionViaStripe(Request $request, BillingEmails $billingEmails, string $subscriptionId)
     {
         Log::info('Cancel subscription via Stripe request', ['user_id' => $request->user()?->id, 'subscription_id' => $request->route('subscriptionId')]);
 
@@ -432,9 +405,11 @@ class UserPlanController extends Controller
             $feedback = $request->input('feedback');
             $immediately = (bool) $request->input('immediately', false);
 
+            // past_due too: otherwise a customer whose card failed cannot stop
+            // Stripe retrying it from the app.
             $userPlan = $user->plans()
                 ->wherePivot('stripe_subscription_id', $subscriptionId)
-                ->wherePivotIn('status', User::ACTIVE_SUBSCRIPTION_STATUSES)
+                ->wherePivotIn('status', [...User::ACTIVE_SUBSCRIPTION_STATUSES, 'past_due'])
                 ->first();
 
             if (! $userPlan) {
@@ -444,19 +419,32 @@ class UserPlanController extends Controller
                 ], 404);
             }
 
-            if ($userPlan->pivot->cancelled_at) {
+            $isPastDue = $userPlan->pivot->status === 'past_due';
+
+            if ($userPlan->pivot->cancelled_at && ! $isPastDue) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Subscription is already cancelled',
                 ], 422);
             }
 
-            $stripeService = app(StripeService::class);
-            $stripeService->cancelSubscription($subscriptionId, $reason, $immediately, $feedback);
+            // A past-due subscription has no paid period left to run out, so it
+            // ends now rather than at period end.
+            $immediately = $immediately || $isPastDue;
 
-            $user->plans()->updateExistingPivot($userPlan->id, [
+            $stripeService = app(StripeService::class);
+            $cancelled = $stripeService->cancelSubscription($subscriptionId, $reason, $immediately, $feedback);
+
+            // Ended now: its open invoices are for a period we will not serve.
+            // Never throws (the customer.subscription.deleted webhook also voids).
+            if ($immediately) {
+                $stripeService->voidOpenInvoices($subscriptionId);
+            }
+
+            $user->plans()->updateExistingPivot($userPlan->id, array_filter([
                 'cancelled_at' => now(),
-            ]);
+                'status' => $isPastDue ? 'expired' : null,
+            ]));
 
             UserEvent::record($user, UserEvent::SUBSCRIPTION_CANCELLED, [
                 'feedback' => $feedback,
@@ -464,6 +452,15 @@ class UserPlanController extends Controller
                 'plan' => $userPlan->name,
                 'stripe_subscription_id' => $subscriptionId,
             ]);
+
+            // Confirmation with Stripe's access end date. Never throws.
+            $billingEmails->subscriptionCancelled(
+                $user,
+                $userPlan->display_name ?: $userPlan->name,
+                $subscriptionId,
+                $cancelled,
+                $userPlan->pivot->expires_at ? Carbon::parse($userPlan->pivot->expires_at) : null,
+            );
 
             return response()->json([
                 'success' => true,

@@ -110,9 +110,11 @@ Route::post('/webhooks/comfyui/completion', [ComfyUIWebhookController::class, 'h
 
 // MCP server (AI clients: Claude, Cursor, ...). Auth is an OAuth 2.1 access
 // token or an MCP API key, both as a Bearer header — see McpAuth. Throttle
-// runs first so invalid keys burn the per-IP budget.
+// runs first so invalid keys burn the per-IP budget. `mcp.access` answers
+// tools/call with HTTP 402 once a subscription has ended; it sits inside
+// `mcp.audit` so the refusal is logged as a failed call.
 Mcp::web('mcp', \App\Mcp\ViewsMaxServer::class)
-    ->middleware(['throttle:mcp', 'mcp.auth', 'mcp.audit', 'mcp.notifications']);
+    ->middleware(['throttle:mcp', 'mcp.auth', 'mcp.audit', 'mcp.access', 'mcp.notifications']);
 
 // Streamable HTTP lets a client GET the endpoint to open a server-push stream
 // and DELETE it to end a session; a server offering neither answers 405 (the
@@ -127,8 +129,14 @@ Route::match(['get', 'delete'], '/mcp', fn () => response()->noContent(405, ['Al
 Route::match(['get', 'post'], '/social/{platform}/deauthorize', [SocialWebhookController::class, 'deauthorize']);
 Route::match(['get', 'post'], '/social/{platform}/data-deletion', [SocialWebhookController::class, 'dataDeletion']);
 
+// Telegram Bot API webhook. Public — the X-Telegram-Bot-Api-Secret-Token
+// header is the authentication (registered by `php artisan telegram:set-webhook`).
+Route::post('/telegram/webhook', [\App\Http\Controllers\TelegramController::class, 'webhook'])
+    ->name('telegram.webhook');
+
 // Protected routes (authentication required). `access.active` locks a user
-// whose free window has closed to the billing endpoints.
+// whose subscription has ended or whose free window has closed to the billing
+// endpoints; everything else answers HTTP 402.
 Route::middleware(['api.auth', 'access.active'])->group(function () {
 
     // Outlier Multiplier Endpoint
@@ -291,7 +299,6 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::post('/checkout', [UserPlanController::class, 'createCheckoutSession']);
         Route::post('/subscribe', [UserPlanController::class, 'subscribe']);
         Route::post('/change-plan', [UserPlanController::class, 'changePlan']);
-        Route::post('/cancel', [UserPlanController::class, 'cancel']);
         Route::get('/history', [UserPlanController::class, 'getHistory']);
     });
 
@@ -363,8 +370,14 @@ Route::middleware(['api.auth', 'access.active'])->group(function () {
         Route::get('/{platform}/auth-url', [SocialAccountController::class, 'authUrl']);
         Route::post('/{platform}/exchange', [SocialAccountController::class, 'exchange']);
 
-        // Credential-based connect (non-OAuth platforms, e.g. Bluesky).
-        Route::post('/{platform}/connect', [SocialAccountController::class, 'connectWithCredentials']);
+        // Telegram: a one-time code the user posts in their channel or group,
+        // then /telegram/connect {code} (polled until the bot has seen it).
+        Route::post('/telegram/connect-code', [\App\Http\Controllers\TelegramController::class, 'connectCode'])
+            ->middleware('throttle:telegram-connect-code');
+
+        // Credential-based connect (non-OAuth platforms, e.g. Bluesky, Telegram).
+        Route::post('/{platform}/connect', [SocialAccountController::class, 'connectWithCredentials'])
+            ->middleware('throttle:social-connect');
 
         // Published X posts (both stores) — for pinning tracking links.
         Route::get('/x/posts', [SocialPostController::class, 'xPosts']);

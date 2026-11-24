@@ -8,12 +8,10 @@ Sign up at https://viewsmax.com/auth — plan checkout at https://viewsmax.com/c
 | Free | $0 | — | — | — (content review & topic tools) |
 | Starter | $29/mo | 5 | 1 | 400 |
 | Creator (most popular) | $39/mo | 30 | 5 | Unlimited |
-| Pro | $69/mo | Unlimited | 10 | Unlimited |
 | Agency | $109/mo | Unlimited | Unlimited | Unlimited |
 
 - **Starter** — "Launch your first offer." For creators just getting started.
 - **Creator** — "For brands that sell." Growing creators running multiple offers.
-- **Pro** — "Scale every channel." Professionals scaling their reach.
 - **Agency** — "For teams & agencies." Unlimited everything.
 
 Every paid plan includes:

@@ -23,6 +23,9 @@ final class CaptionRules
         'threads' => 500,
         'bluesky' => 300,
         'pinterest' => 800,
+        // A text message; a photo/video caption is 1024, and TelegramProvider
+        // sends longer text as its own message after the media.
+        'telegram' => 4096,
         // NPF's per-text-block limit; TumblrProvider sends a block per paragraph.
         'tumblr' => 4096,
     ];
@@ -56,7 +59,8 @@ final class CaptionRules
      * xLength). Meta counts the Threads 500 in UTF-8 bytes, so emoji, curly
      * quotes and accents weigh more there than their code-point count;
      * Bluesky's 300 counts graphemes, so an emoji ZWJ sequence or a letter
-     * plus combining mark is one unit. Mirrors platformLength() in
+     * plus combining mark is one unit; Telegram counts UTF-16 code units.
+     * Mirrors platformLength() in
      * text-metrics.ts.
      */
     public static function lengthFor(string $platform, string $text): int
@@ -64,6 +68,7 @@ final class CaptionRules
         return match ($platform) {
             'bluesky' => (int) grapheme_strlen(self::normalize($text)),
             'threads' => strlen(self::normalize($text)),
+            'telegram' => self::utf16Length($text),
             default => self::plainLength($text),
         };
     }
@@ -225,8 +230,19 @@ final class CaptionRules
         'threads' => 'Threads',
         'bluesky' => 'Bluesky',
         'pinterest' => 'Pinterest',
+        'telegram' => 'Telegram',
         'tumblr' => 'Tumblr',
     ];
+
+    /**
+     * UTF-16 code units, the unit Telegram measures text in (an emoji outside
+     * the BMP counts 2). Never less than the code-point count, so it errs on
+     * the safe side.
+     */
+    public static function utf16Length(string $text): int
+    {
+        return intdiv(strlen((string) mb_convert_encoding(self::normalize($text), 'UTF-16LE', 'UTF-8')), 2);
+    }
 
     private static function normalize(string $text): string
     {

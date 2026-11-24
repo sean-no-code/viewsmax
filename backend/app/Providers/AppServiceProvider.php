@@ -205,6 +205,18 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by('x-mention:' . ($request->user()?->id ?? $request->ip()));
         });
 
+        // Credential connects (Bluesky login, Telegram code check). The
+        // Telegram dialog polls every 3 s while it waits for the code, so 30/min
+        // per user leaves room for that and still stops password guessing.
+        RateLimiter::for('social-connect', function (Request $request) {
+            return Limit::perMinute(30)->by('social-connect:' . ($request->user()?->id ?? $request->ip()));
+        });
+
+        // Telegram one-time codes: each replaces the last, so a handful an hour is plenty.
+        RateLimiter::for('telegram-connect-code', function (Request $request) {
+            return Limit::perHour(20)->by('telegram-connect-code:' . ($request->user()?->id ?? $request->ip()));
+        });
+
         // "Add a creator channel": each call pulls ~30 videos from YouTube or
         // CaptAPI, so it shares the MCP tool's hourly budget.
         RateLimiter::for('outlier-channel-add', function (Request $request) use ($limits) {

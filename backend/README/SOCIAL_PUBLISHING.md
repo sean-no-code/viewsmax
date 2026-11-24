@@ -1,9 +1,10 @@
 # Social Publishing — Architecture & API
 
 Connect and post to Facebook, Instagram, Threads, LinkedIn, Bluesky, X, TikTok,
-YouTube, Pinterest, Tumblr and Google My Business from one set of endpoints.
+YouTube, Pinterest, Telegram, Tumblr and Google My Business from one set of endpoints.
 
-> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`; Tumblr: `README/TUMBLR_SETUP.md`.
+> **Setup (API keys / OAuth apps):** see `tasks/todo.md`; Pinterest: `README/PINTEREST_SETUP.md`;
+> Telegram (one shared bot, connect by one-time code): `README/TELEGRAM_SETUP.md`; Tumblr: `README/TUMBLR_SETUP.md`.
 > **Frontend integration contract:** see `tasks/frontend-todo.md`.
 
 ## Components
@@ -59,12 +60,17 @@ DELETE /social/accounts/{id}             disconnect
 GET    /social/accounts/{id}/boards      Pinterest: the account's boards (live)
 GET    /social/{platform}/auth-url       begin OAuth (returns authorization_url + state)
 POST   /social/{platform}/exchange       finish OAuth (code + state → account[])
-POST   /social/{platform}/connect        non-OAuth connect (Bluesky: identifier + password)
+POST   /social/telegram/connect-code     Telegram: one-time code to post in the chat
+POST   /social/{platform}/connect        non-OAuth connect (Bluesky: identifier + password;
+                                         Telegram: code — 202 pending until it is posted)
 GET    /social/posts                     list posts (paginated)
 POST   /social/posts                     create + publish/schedule
 GET    /social/posts/{id}                post + per-target status
 POST   /social/posts/{id}/retry          retry failed targets
 ```
+
+Public (no auth): `POST /telegram/webhook` — the Telegram bot's updates, authenticated by
+the `X-Telegram-Bot-Api-Secret-Token` header (`php artisan telegram:set-webhook`).
 
 ## Operational notes
 

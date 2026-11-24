@@ -26,6 +26,14 @@ describe("homepage pricing", () => {
   type Pricing = { pricing: { includes: string[]; tiers: Record<string, { feats: string[] }> } };
   const en = read("src/pages/landing/copy/en.json") as Pricing;
 
+  it("sells the three tiers on offer, in every language", () => {
+    // Pro was retired on 2026-11-23; a card for it must not come back through a locale file.
+    for (const locale of ["en", "es", "id", "pt-br", "ru"]) {
+      const copy = read(`src/pages/landing/copy/${locale}.json`) as Pricing;
+      expect(Object.keys(copy.pricing.tiers), locale).toEqual(["Starter", "Creator", "Agency"]);
+    }
+  });
+
   it("lists the same shared plan inclusions as checkout", () => {
     expect(en.pricing.includes).toEqual([...PLAN_INCLUDES]);
   });

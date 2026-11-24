@@ -1,14 +1,15 @@
 // Shared page for the per-agent setup guides (/claude, /chatgpt, /cursor, ...).
-// Content comes from src/lib/agent-pages.ts. While ViewsMax isn't listed in an
-// agent's app directory, step 2 shows the manual setup; once the listing's env
-// var is set, step 2 shows two labelled routes: the directory "Plugin" route
-// first (nothing to paste), then the manual "Custom connector" steps.
+// Content comes from src/lib/agent-pages.ts. For an agent with a directory
+// listing, step 2 shows two labelled routes: the directory "Plugin" route first
+// (nothing to paste), then the manual "Custom connector" steps. Agents without
+// a listing show the manual setup only.
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Check, ChevronRight, Copy, ExternalLink, FileText, Plus } from "lucide-react";
 import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import { Accordion, CARD, CodeBlock, H2, OUTLINE_BTN, PRIMARY_BTN, PromptBox, useCopy, type CopyFn } from "@/components/agents/primitives";
 import { BrandIcon } from "@/components/post/brand-icons";
+import { AgentIcon } from "@/components/agents/agent-icons";
 import { useSeo } from "@/hooks/useSeo";
 import {
   AGENTS,
@@ -68,8 +69,7 @@ function Step({ n, title, time, children }: { n: number; title: string; time?: s
 
 export default function AgentPage({ agent }: { agent: AgentKey }) {
   const cfg = AGENTS[agent];
-  const env = import.meta.env as Record<string, string | undefined>;
-  const listing = agentListingUrl(cfg, env);
+  const listing = agentListingUrl(cfg);
   const { copied, copy } = useCopy();
 
   useSeo({
@@ -138,7 +138,7 @@ export default function AgentPage({ agent }: { agent: AgentKey }) {
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <button
                 type="button"
-                onClick={() => copy(buildAgentMarkdown(cfg, env), "brief", "Setup brief copied")}
+                onClick={() => copy(buildAgentMarkdown(cfg), "brief", "Setup brief copied")}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 bg-paper-0 px-3 py-2 font-bold hover:border-ink-on-paper-1"
               >
                 {copied === "brief" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Copy setup brief
@@ -280,8 +280,13 @@ export default function AgentPage({ agent }: { agent: AgentKey }) {
                 to={a.slug}
                 className={`${CARD} block p-4 transition-[box-shadow,transform,border-color] duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-ink-on-paper-1 hover:shadow-[4px_4px_0_0_var(--vm-red)]`}
               >
-                <span className="block font-bold">{a.name}</span>
-                <span className="mt-0.5 block text-sm text-ink-on-paper-2">{a.card}</span>
+                <span className="flex items-start gap-3">
+                  <AgentIcon agent={a.key} size={36} />
+                  <span className="min-w-0">
+                    <span className="block font-bold">{a.name}</span>
+                    <span className="mt-0.5 block text-sm text-ink-on-paper-2">{a.card}</span>
+                  </span>
+                </span>
               </Link>
             ))}
             <Link to="/mcp" className={`${CARD} block p-4 hover:border-ink-on-paper-1`}>

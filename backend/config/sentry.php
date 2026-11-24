@@ -65,6 +65,12 @@ return [
         '/up',
     ],
 
+    // Outgoing HTTP calls are recorded with their URL; the Telegram Bot API
+    // carries the bot token in the URL path, so scrub it before sending.
+    // (Array callables, not closures, so `config:cache` still works.)
+    'before_breadcrumb' => [\App\Support\SentryScrubber::class, 'breadcrumb'],
+    'before_send_transaction' => [\App\Support\SentryScrubber::class, 'transaction'],
+
     // Breadcrumb specific configuration
     'breadcrumbs' => [
         // Capture Laravel logs as breadcrumbs

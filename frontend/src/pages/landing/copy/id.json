@@ -12,7 +12,8 @@
     "resources": "Sumber Daya",
     "logIn": "Masuk",
     "start": "Mulai dengan $0",
-    "language": "Bahasa"
+    "language": "Bahasa",
+    "allChannels": "Lihat semua channel"
   },
   "resources": {
     "api": {
@@ -62,12 +63,27 @@
       "desc": "Perkirakan penghasilan YouTube Anda"
     }
   },
+  "agentGroups": {
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "assistants": "Asisten lainnya",
+    "builders": "Alat coding & agen",
+    "all": "Lihat semua agen AI"
+  },
   "agentCards": {
     "claude": "Satu konektor untuk semua aplikasi Claude",
     "claude-cowork": "Konektor yang sama dengan Claude, dipakai oleh agen desktop",
+    "claude-duet": "Konektor yang sama dengan Claude, untuk agen yang selalu aktif",
     "claude-code": "Satu perintah terminal, masuk lewat OAuth",
-    "chatgpt": "Konektor kustom di mode Developer",
+    "chatgpt": "Plugin sekali klik dari direktori ChatGPT",
     "codex": "Dua perintah di Codex CLI",
+    "muse": "Tempel satu prompt penyiapan, masuk lewat OAuth",
+    "deepseek": "DeepSeek Harness dengan API key ViewsMax",
+    "instinct": "Kirimkan satu prompt penyiapan",
+    "paperclip": "Tambahkan ViewsMax di Connectors, untuk agen yang Anda pilih",
+    "perplexity": "Konektor kustom di halaman Plugins",
+    "gemini": "Aplikasi kustom di Gemini, atau satu perintah di CLI",
+    "chatgpt-dots": "Plugin yang sama dengan ChatGPT, untuk dot Anda yang selalu aktif",
     "cursor": "Konfigurasi MCP dengan API key",
     "openclaw": "Skill ViewsMax dengan API key",
     "hermes": "Server MCP di config.yaml, masuk lewat OAuth"
@@ -80,7 +96,8 @@
     "linkedin": "Postingan dengan gambar & komentar pertama",
     "threads": "Postingan teks, foto, atau video",
     "bluesky": "Postingan dengan hingga 4 gambar",
-    "pinterest": "Pin gambar & video ke papan mana pun"
+    "pinterest": "Pin gambar & video ke papan mana pun",
+    "telegram": "Postingan channel & grup, album hingga 10"
   },
   "footer": {
     "tagline": "Buat konten yang menghasilkan penjualan.",
@@ -200,13 +217,6 @@
         "blurb": "Untuk brand yang berjualan.",
         "feats": [
           "30 kanal",
-          "Postingan tanpa batas/bln"
-        ]
-      },
-      "Pro": {
-        "blurb": "Kembangkan setiap kanal.",
-        "feats": [
-          "Kanal tanpa batas",
           "Postingan tanpa batas/bln",
           "Analitik kanal & postingan"
         ]

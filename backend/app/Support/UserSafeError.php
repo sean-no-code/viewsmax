@@ -22,6 +22,8 @@ class UserSafeError
     private const SAFE_CLASSES = [
         \RuntimeException::class,
         \App\Services\Social\HandleClaimedException::class,
+        \App\Services\Social\SocialConnectRefused::class,
+        \App\Services\Social\SocialConnectPending::class,
         \InvalidArgumentException::class,
         TranscriptUnavailableException::class,
         GeminiVideoException::class,

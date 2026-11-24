@@ -59,7 +59,7 @@ const privacyLabels = (t: TFunction): Record<string, string> => ({
 // Platforms surfaced in the "Publishing to" picker — the ones the connections
 // screen can actually connect today. Order follows the PLATFORMS catalog.
 const SUPPORTED_PLATFORM_IDS = ["youtube", "tiktok", "instagram", "x", "linkedin", "facebook", "threads", "bluesky"];
-const SHOWN_WHEN_CONNECTED_IDS = ["pinterest", "tumblr"];
+const SHOWN_WHEN_CONNECTED_IDS = ["pinterest", "telegram", "tumblr"];
 
 function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -502,6 +502,14 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   // Pinterest posts 2-5 images as one carousel Pin; extra images are left out.
   const PINTEREST_MAX_IMAGES = 5;
   const pinterestImageOverflow = c.postType === "media" && !hasVideo && imageCount > PINTEREST_MAX_IMAGES && c.selected.includes("pinterest");
+  // Telegram posts 2-10 photos/videos as one album, and text over a caption's
+  // 1024 characters goes out as its own message right after the media.
+  const TELEGRAM_MAX_MEDIA = 10;
+  const TELEGRAM_CAPTION_LIMIT = 1024;
+  const telegramSelected = c.selected.includes("telegram");
+  const telegramTooManyMedia = telegramSelected && c.postType === "media" && c.media.length > TELEGRAM_MAX_MEDIA;
+  const telegramTextAfterMedia = telegramSelected && c.postType === "media" && c.media.length > 0
+    && (c.status.telegram?.len ?? 0) > TELEGRAM_CAPTION_LIMIT;
   // X thread state for the caption panel (shared caption or the X override).
   const [xActive, setXActive] = useState(0); // tweet selected in the X editor
   const xThread = c.status.x.thread;
@@ -617,7 +625,10 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
   const youtubeBlockReason: string | null = c.selected.includes("youtube") && !c.youtube.community_guidelines_accepted
     ? t("post.composer.youtubeGuidelinesBlock", "Confirm the video follows YouTube's Community Guidelines (YouTube options) before publishing.")
     : null;
-  const blockReason = tiktokBlockReason ?? youtubeBlockReason ?? pinterestBlockReason;
+  const telegramBlockReason: string | null = telegramTooManyMedia
+    ? t("post.composer.telegram.tooManyMedia", "Telegram takes up to {{max}} photos and videos per post. Remove some to publish there.", { max: TELEGRAM_MAX_MEDIA })
+    : null;
+  const blockReason = tiktokBlockReason ?? youtubeBlockReason ?? pinterestBlockReason ?? telegramBlockReason;
 
   // Shared cover uploader — one uploaded image drives both the YouTube thumbnail
   // and the Instagram Reel cover, so the same control renders in either tab.
@@ -933,6 +944,12 @@ export default function CreatePost({ onSaved, editId }: { onSaved?: () => void; 
                     <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
                       <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
                       <span>{t("post.composer.pinterestImageOverflow", "Pinterest takes up to {{max}} images (as one carousel Pin) — only the first {{max}} will be posted there.", { max: PINTEREST_MAX_IMAGES })}</span>
+                    </div>
+                  )}
+                  {telegramTextAfterMedia && (
+                    <div style={{ marginTop: 12, display: "flex", alignItems: "flex-start", gap: 8, background: "var(--paper-2)", border: "1px solid var(--line-1)", borderRadius: 10, padding: "9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--ink-on-paper-2)", lineHeight: 1.45 }}>
+                      <Icon name="info" size={15} stroke="var(--ink-on-paper-3)" />
+                      <span>{t("post.composer.telegram.textAfterMedia", "Telegram captions hold {{max}} characters, so on Telegram this text is sent as its own message right after the media.", { max: TELEGRAM_CAPTION_LIMIT })}</span>
                     </div>
                   )}
                 </>

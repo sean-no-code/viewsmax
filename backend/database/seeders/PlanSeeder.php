@@ -21,7 +21,7 @@ class PlanSeeder extends Seeder
         // null when an env var is unset *and* the default is null (= unlimited).
         $num = fn (string $key, ?int $default = null): ?int => ($v = env($key, $default)) === null ? null : (int) $v;
 
-        // The four paid tiers from the Pricing + Features ticket. `features` lists
+        // The three paid tiers on sale (Pro was retired 2026-11-23, see below). `features` lists
         // the tier's limits for display; offers are deliberately absent — they are
         // monetization, which is the Agency tier's feature, and the SPA builds the
         // card bullets from the numeric limits anyway (lib/plan-helpers.ts).
@@ -79,23 +79,6 @@ class PlanSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'pro',
-                'display_name' => 'Pro',
-                'description' => 'For professionals scaling their reach',
-                'price' => 59.00,
-                'currency' => 'USD',
-                'billing_cycle' => 'monthly',
-                'features' => [
-                    'Unlimited channels',
-                    'Unlimited posts/mo',
-                ],
-                'max_channels' => $num('LIMIT_PRO_CHANNELS'), // null = unlimited
-                'max_offers' => $num('LIMIT_PRO_OFFERS', 10),
-                'max_posts_per_month' => $num('LIMIT_PRO_POSTS'), // null = unlimited
-                'stripe_price_id' => config('services.stripe.prices.pro'),
-                'is_active' => true,
-            ],
-            [
                 'name' => 'agency',
                 'display_name' => 'Agency',
                 'description' => 'Unlimited everything for agencies',
@@ -126,10 +109,12 @@ class PlanSeeder extends Seeder
             );
         }
 
-        // Retire superseded legacy plans: keep the rows (existing subscribers and
-        // their user_plans pivots are untouched) but hide them from the pricing
-        // page by marking inactive. No-op if a name isn't present.
-        Plan::whereIn('name', ['creator_pro', 'creator_elite', 'creator_agency'])
+        // Retire plans that are no longer sold: keep the rows (existing subscribers,
+        // their user_plans pivots and the Stripe price id their renewals resolve to
+        // are untouched) but hide them from the pricing page by marking inactive.
+        // No-op if a name isn't present. Pro went on 2026-11-23, when analytics
+        // moved down to Creator; a fresh database never gets the row.
+        Plan::whereIn('name', ['pro', 'creator_pro', 'creator_elite', 'creator_agency'])
             ->update(['is_active' => false]);
     }
 }

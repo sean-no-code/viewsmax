@@ -5,6 +5,7 @@ import { ANALYTICS_PLANS, MONETIZATION_PLANS } from "@/lib/access";
 
 // Per-tier icon, keyed by the plan's `name` (or display_name). Falls back to Crown.
 // Shared by the pricing cards and the global role badge so they stay in sync.
+// `pro` is no longer sold; its icon stays for the subscribers it still has.
 const planIcons: Record<string, LucideIcon> = {
   starter: Zap,
   creator: Sparkles,
@@ -63,8 +64,8 @@ export const PLAN_INCLUDES: readonly string[] = [
 
 /**
  * Lines only some tiers include, in the order planIncludes() inserts them
- * (right after the shared lines a card always shows). Analytics is the Pro
- * upsell, monetization the Agency one, so a Starter card must not promise
+ * (right after the shared lines a card always shows). Analytics starts at
+ * Creator, monetization is Agency only, so a Starter card must not promise
  * either. The landing page keeps the same lines in its own copy files, per
  * tier; a test in src/i18n/__tests__ holds the two together.
  */
@@ -79,7 +80,7 @@ const showsTierLine = (plans: readonly string[], planName?: string | null): bool
 
 /**
  * The English inclusions a given tier's card shows: the shared lines plus
- * whatever that tier adds. Pass the plan's `name` ("pro") or display name.
+ * whatever that tier adds. Pass the plan's `name` ("creator") or display name.
  */
 export function planIncludesFor(planName?: string | null): string[] {
   return [

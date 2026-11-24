@@ -86,10 +86,62 @@ class PlanLimitsTest extends TestCase
         $this->assertSame(5, $plans['creator']['max_offers']);
         $this->assertNull($plans['creator']['max_posts_per_month']); // unlimited
 
-        $this->assertNull($plans['pro']['max_channels']); // unlimited
-        $this->assertSame(10, $plans['pro']['max_offers']);
-
+        $this->assertNull($plans['agency']['max_channels']); // unlimited
         $this->assertNull($plans['agency']['max_offers']); // unlimited
+
+        // Pro is no longer sold: a fresh database never gets the row.
+        $this->assertFalse($plans->has('pro'));
+        $this->assertDatabaseMissing('plans', ['name' => 'pro']);
+    }
+
+    public function test_seeding_retires_the_pro_plan_and_keeps_its_subscribers(): void
+    {
+        // As on production: Pro exists, is linked to its Stripe price and has a subscriber.
+        $pro = $this->plan('pro', ['max_offers' => 10], 'price_pro');
+        $subscriber = User::factory()->create();
+        $this->subscribe($subscriber, $pro);
+
+        $this->seed(\Database\Seeders\PlanSeeder::class);
+
+        // Kept, still linked to its price (renewal webhooks find the plan by it), not for sale.
+        $this->assertDatabaseHas('plans', ['id' => $pro->id, 'stripe_price_id' => 'price_pro', 'is_active' => false]);
+        $this->assertSame('pro', $subscriber->fresh()->activePlan()->name);
+
+        $names = collect($this->withHeaders($this->authHeaders($subscriber))->getJson('/api/plans')->json('data'))->pluck('name');
+        $this->assertFalse($names->contains('pro'));
+        $this->assertEqualsCanonicalizing(['free', 'starter', 'creator', 'agency'], $names->all());
+    }
+
+    public function test_the_retire_pro_migration_takes_the_plan_off_sale(): void
+    {
+        // Deploys run migrations, not the seeder, so this is what retires Pro in production.
+        $pro = $this->plan('pro', [], 'price_pro');
+        $starter = $this->plan('starter', [], 'price_starter');
+
+        (require database_path('migrations/2026_11_23_120000_retire_the_pro_plan.php'))->up();
+
+        $this->assertFalse($pro->fresh()->is_active);
+        $this->assertSame('price_pro', $pro->fresh()->stripe_price_id);
+        $this->assertTrue($starter->fresh()->is_active);
+    }
+
+    public function test_changing_to_a_retired_plan_is_refused(): void
+    {
+        $user = User::factory()->create();
+        $this->subscribe($user, $this->plan('starter', [], 'price_starter'));
+        $this->plan('pro', ['is_active' => false], 'price_pro');
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldNotReceive('changeSubscriptionPrice');
+        });
+
+        $this->withHeaders($this->authHeaders($user))
+            ->postJson('/api/user-plans/change-plan', ['price_id' => 'price_pro'])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'The Pro plan is no longer available.');
+
+        $this->assertSame('starter', $user->fresh()->activePlan()->name);
     }
 
     public function test_seeding_retires_legacy_plans_without_deleting_them(): void
@@ -181,8 +233,8 @@ class PlanLimitsTest extends TestCase
         $headers = $this->authHeaders($user);
 
         $this->createOffer($headers, 'Should be blocked')
-            ->assertForbidden()
-            ->assertJsonPath('code', 'access_expired');
+            ->assertStatus(402)
+            ->assertJsonPath('code', 'subscription_inactive');
     }
 
     public function test_unlimited_plan_allows_many_offers(): void

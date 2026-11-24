@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Loader2, Youtube } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { BrandGlyph } from "@/components/post/brand-icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { viewsMaxApi } from "@/lib/api-service";
@@ -834,7 +835,7 @@ const ReviewVideo = () => {
                 className="w-full"
                 onClick={() => window.open(`https://youtube.com/watch?v=${video?.youtube_video_id || reviewData?.videoId || id}`, '_blank')}
               >
-                <Youtube className="w-4 h-4 mr-2" />
+                <BrandGlyph platform="youtube" className="w-4 h-4 mr-2" />
                 Watch on YouTube
               </Button>
             </CardContent>

@@ -154,9 +154,9 @@ class RefreshAudienceSnapshotsCommandTest extends TestCase
 
     public function test_accounts_of_users_on_a_plan_without_analytics_are_not_snapshotted(): void
     {
-        // Analytics is the Pro tier upsell: no follower polling below it.
+        // Analytics starts at Creator: no follower polling below it.
         $this->account($this->analyticsUser(), 'x');
-        $this->account(User::factory()->withPlan('active', $this->planNamed('creator'))->create(), 'youtube');
+        $this->account(User::factory()->withPlan('active', $this->planNamed('starter'))->create(), 'youtube');
         $this->fakeManager(['x' => 10, 'youtube' => 20]);
 
         $this->artisan('audience:refresh')->assertExitCode(0);

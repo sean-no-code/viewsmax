@@ -33,9 +33,9 @@ class SendFreeTrialReminders extends Command
 
         // Verified users whose window closes within the reminder window, not
         // yet reminded, and with no live plan: a card added during the window
-        // makes a trialing Stripe subscription, which gets the "card about to
-        // be charged" reminder (SendTrialEndingReminders) instead. Admins and
-        // promotional customers never lose access, so there is nothing to sell.
+        // makes a trialing Stripe subscription, so there is no plan left to
+        // pick. Admins and promotional customers never lose access, so there
+        // is nothing to sell.
         $users = User::query()
             ->whereNotNull('email_verified_at')
             ->whereNull('free_trial_reminder_sent_at')

@@ -12,7 +12,8 @@
     "resources": "Recursos",
     "logIn": "Entrar",
     "start": "Empieza por $0",
-    "language": "Idioma"
+    "language": "Idioma",
+    "allChannels": "Ver todos los canales"
   },
   "resources": {
     "api": {
@@ -62,12 +63,27 @@
       "desc": "Calcula cuánto puedes ganar en YouTube"
     }
   },
+  "agentGroups": {
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "assistants": "Más asistentes",
+    "builders": "Herramientas de código y agentes",
+    "all": "Ver todos los agentes de IA"
+  },
   "agentCards": {
     "claude": "Un solo conector para todas las apps de Claude",
     "claude-cowork": "El mismo conector de Claude, usado por el agente de escritorio",
+    "claude-duet": "El mismo conector de Claude, para el agente siempre activo",
     "claude-code": "Un comando en la terminal e inicio de sesión con OAuth",
-    "chatgpt": "Conector personalizado en el modo desarrollador",
+    "chatgpt": "Plugin de un clic desde el directorio de ChatGPT",
     "codex": "Dos comandos en la CLI de Codex",
+    "muse": "Pega un prompt de configuración e inicia sesión con OAuth",
+    "deepseek": "DeepSeek Harness con una clave API de ViewsMax",
+    "instinct": "Envíale un prompt de configuración",
+    "paperclip": "Añade ViewsMax en Conectores, para los agentes que elijas",
+    "perplexity": "Conector personalizado en la página de Plugins",
+    "gemini": "App personalizada en Gemini, o un comando en la CLI",
+    "chatgpt-dots": "El mismo plugin de ChatGPT, para tu dot siempre activo",
     "cursor": "Configuración MCP con una clave API",
     "openclaw": "Skill de ViewsMax con una clave API",
     "hermes": "Servidor MCP en config.yaml, inicio de sesión con OAuth"
@@ -80,7 +96,8 @@
     "linkedin": "Posts con imagen y primer comentario",
     "threads": "Posts de texto, foto o vídeo",
     "bluesky": "Posts con hasta 4 imágenes",
-    "pinterest": "Pines de imagen y vídeo en cualquier tablero"
+    "pinterest": "Pines de imagen y vídeo en cualquier tablero",
+    "telegram": "Posts en canales y grupos, álbumes de hasta 10"
   },
   "footer": {
     "tagline": "Crea contenido que vende.",
@@ -200,13 +217,6 @@
         "blurb": "Para marcas que venden.",
         "feats": [
           "30 canales",
-          "Publicaciones ilimitadas/mes"
-        ]
-      },
-      "Pro": {
-        "blurb": "Escala cada canal.",
-        "feats": [
-          "Canales ilimitados",
           "Publicaciones ilimitadas/mes",
           "Analítica de canales y publicaciones"
         ]

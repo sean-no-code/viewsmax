@@ -10,6 +10,7 @@ use App\Services\Social\Providers\GoogleBusinessProvider;
 use App\Services\Social\Providers\InstagramProvider;
 use App\Services\Social\Providers\LinkedInProvider;
 use App\Services\Social\Providers\PinterestProvider;
+use App\Services\Social\Providers\TelegramProvider;
 use App\Services\Social\Providers\ThreadsProvider;
 use App\Services\Social\Providers\TikTokProvider;
 use App\Services\Social\Providers\TumblrProvider;
@@ -29,6 +30,7 @@ class SocialProviderManager
         'linkedin' => LinkedInProvider::class,
         'bluesky' => BlueskyProvider::class,
         'pinterest' => PinterestProvider::class,
+        'telegram' => TelegramProvider::class,
         'tumblr' => TumblrProvider::class,
         'x' => XProvider::class,
         'tiktok' => TikTokProvider::class,
@@ -98,13 +100,24 @@ class SocialProviderManager
             return false;
         }
 
-        // Bluesky needs no app credentials (handle + app password at connect time).
-        if ($platform === 'bluesky') {
-            return true;
+        foreach (self::REQUIRED_CREDENTIALS[$platform] ?? ['client_id', 'client_secret'] as $key) {
+            if (empty($config[$key])) {
+                return false;
+            }
         }
 
-        return ! empty($config['client_id']) && ! empty($config['client_secret']);
+        return true;
     }
+
+    /**
+     * Config keys a platform needs before it can run, for the platforms whose
+     * credentials are not an OAuth client id + secret. Bluesky needs none
+     * (handle + app password at connect time); Telegram runs one shared bot.
+     */
+    protected const REQUIRED_CREDENTIALS = [
+        'bluesky' => [],
+        'telegram' => ['bot_token', 'bot_username'],
+    ];
 
     /**
      * Whether the platform is in limited release: configured and live, but only

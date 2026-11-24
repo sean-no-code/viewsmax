@@ -26,7 +26,7 @@ interface TrialCheckoutProps {
 
 /**
  * Feature bullets for a plan: the tier's limit lines followed by what that tier
- * includes — analytics on Pro and up, monetization on Agency
+ * includes — analytics on Creator and up, monetization on Agency
  * (src/lib/plan-helpers.ts).
  */
 function featuresFor(plan: PlanTier, t: TFunction): string[] {

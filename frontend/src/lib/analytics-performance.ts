@@ -30,6 +30,7 @@ const NETWORK_LIST: Network[] = [
   { id: "facebook", name: "Facebook", color: "var(--data-teal)", badge: "#1877F2" },
   { id: "bluesky", name: "Bluesky", color: "var(--data-amber)", badge: "#0085FF" },
   { id: "pinterest", name: "Pinterest", color: "var(--data-red)", badge: "#E60023" },
+  { id: "telegram", name: "Telegram", color: "var(--data-blue)", badge: "#26A5E4" },
   { id: "tumblr", name: "Tumblr", color: "var(--data-indigo)", badge: "#36465D" },
   { id: "google_business", name: "Google Business", color: "var(--data-blue)", badge: "#4285F4" },
 ];

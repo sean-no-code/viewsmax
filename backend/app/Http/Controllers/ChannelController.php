@@ -298,12 +298,12 @@ class ChannelController extends Controller
         }
 
         // A refresh re-runs the channel analytics fetch (playlists.list + the
-        // YouTube Analytics queries), which is the Pro tier upsell. The video
+        // YouTube Analytics queries), which starts at the Creator tier. The video
         // list itself stays refreshable on every plan via fetchVideos().
         if (! AnalyticsAccess::allows($request->user())) {
             return response()->json([
                 'success' => false,
-                'message' => 'Channel analytics is part of the Pro plan. Upgrade to refresh your channel analytics.',
+                'message' => 'Channel analytics is part of the Creator plan. Upgrade to refresh your channel analytics.',
             ], 403);
         }
 

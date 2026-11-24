@@ -16,6 +16,7 @@ const PLACEMENT_TO_PLATFORM: Record<string, string> = {
   facebook: "facebook",
   threads: "threads",
   pinterest: "pinterest",
+  telegram: "telegram",
   tumblr: "tumblr",
 };
 

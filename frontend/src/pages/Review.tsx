@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Clock, Play, Youtube, RefreshCw, Unplug, Search, Star } from "lucide-react";
+import { Play, RefreshCw, Unplug, Search } from "lucide-react";
+import { BrandGlyph } from "@/components/post/brand-icons";
 import { toast } from "sonner";
 import { youtubeAuthService, type YouTubeChannelData, type YouTubeAnalytics } from "@/lib/youtube-auth";
 import { viewsMaxApi } from "@/lib/api-service";
@@ -690,7 +691,7 @@ const Review = () => {
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-                <Youtube className="h-8 w-8 text-red-600" />
+                <BrandGlyph platform="youtube" className="h-8 w-8 text-red-600" />
               </div>
               <CardTitle>Connect Your YouTube Channel</CardTitle>
               <CardDescription>
@@ -711,7 +712,7 @@ const Review = () => {
                   </>
                 ) : (
                   <>
-                    <Youtube className="mr-2 h-4 w-4" />
+                    <BrandGlyph platform="youtube" className="mr-2 h-4 w-4" />
                     Connect Your YouTube Channel
                   </>
                 )}

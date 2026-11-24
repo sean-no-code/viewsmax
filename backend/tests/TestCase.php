@@ -37,7 +37,7 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * A plan row by its canonical PlanSeeder name, created on demand. There is
-     * no PlanFactory on purpose: the five tier names are the product, so tests
+     * no PlanFactory on purpose: the tier names are the product, so tests
      * ask for one of them rather than inventing plans.
      */
     protected function planNamed(string $name): Plan
@@ -62,6 +62,6 @@ abstract class TestCase extends BaseTestCase
      */
     protected function analyticsUser(array $attributes = []): User
     {
-        return User::factory()->withPlan('active', $this->planNamed('pro'))->create($attributes);
+        return User::factory()->withPlan('active', $this->planNamed('creator'))->create($attributes);
     }
 }

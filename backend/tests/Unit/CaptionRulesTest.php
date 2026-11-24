@@ -42,6 +42,15 @@ class CaptionRulesTest extends TestCase
         $this->assertSame(3, CaptionRules::lengthFor('threads', "a\r\nb"));
     }
 
+    public function test_length_for_telegram_counts_utf16_code_units(): void
+    {
+        // Mirrors platformLength("telegram") in text-metrics.ts.
+        $this->assertSame(4096, CaptionRules::limit('telegram'));
+        $this->assertSame(2, CaptionRules::lengthFor('telegram', '😀'));
+        $this->assertSame(5, CaptionRules::lengthFor('telegram', 'hello'));
+        $this->assertSame(3, CaptionRules::lengthFor('telegram', "a\r\nb"));
+    }
+
     public function test_length_for_other_platforms_counts_code_points(): void
     {
         $this->assertSame(1, CaptionRules::lengthFor('instagram', '😀'));

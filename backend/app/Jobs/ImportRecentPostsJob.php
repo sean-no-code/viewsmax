@@ -49,7 +49,7 @@ class ImportRecentPostsJob implements ShouldQueue
 
         Actor::set($account->user_id);
 
-        // Analytics is the Pro tier upsell, and a queued job can outlive a
+        // Analytics starts at the Creator tier, and a queued job can outlive a
         // downgrade: re-check the owner's plan before spending a single call.
         if (! AnalyticsAccess::allows($account->user)) {
             AnalyticsAccess::logSkip('recent posts import', [

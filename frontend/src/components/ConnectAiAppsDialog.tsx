@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Check, Copy, ExternalLink, MessageSquareText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AgentIcon } from "@/components/agents/agent-icons";
 import { AGENTS, CHECK_PROMPT, MCP_ENDPOINT, agentListingUrl, type AgentConfig } from "@/lib/agent-pages";
 
 /** Pasted into any agent that isn't Claude or ChatGPT; it reads /ai.md and sets itself up. */
@@ -29,33 +30,10 @@ function useCopy() {
   return { copied, copy };
 }
 
-const ClaudeMark = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden className="text-[#D97757]">
-    <g stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
-      <path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6 6 18" />
-    </g>
-  </svg>
-);
-
-const ChatGptMark = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden className="text-ink-on-paper-1">
-    <circle cx="12" cy="12" r="10.5" fill="currentColor" />
-    <g fill="none" stroke="#fff" strokeWidth="1.5">
-      <circle cx="12" cy="12" r="5.6" />
-      <circle cx="12" cy="6.6" r="1.4" />
-      <circle cx="16.7" cy="9.3" r="1.4" />
-      <circle cx="16.7" cy="14.7" r="1.4" />
-      <circle cx="12" cy="17.4" r="1.4" />
-      <circle cx="7.3" cy="14.7" r="1.4" />
-      <circle cx="7.3" cy="9.3" r="1.4" />
-    </g>
-  </svg>
-);
-
 /** Directory listing when ViewsMax is listed there, else that agent's setup guide. */
 function ListingAction({ agent }: { agent: AgentConfig }) {
   const { t } = useTranslation();
-  const url = agentListingUrl(agent, import.meta.env as Record<string, string | undefined>);
+  const url = agentListingUrl(agent);
   return url ? (
     <a href={url} target="_blank" rel="noreferrer" className={BTN}>
       {t("layout.aiApps.connect", "Connect")} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -114,8 +92,8 @@ export default function ConnectAiAppsDialog({ open, onOpenChange }: ConnectAiApp
         </div>
 
         <ul className="mt-3 divide-y divide-line-1">
-          <Row icon={<ClaudeMark />} name="Claude" blurb={t("layout.aiApps.claudeBlurb", "Connect ViewsMax to Claude")} action={<ListingAction agent={AGENTS.claude} />} />
-          <Row icon={<ChatGptMark />} name="ChatGPT" blurb={t("layout.aiApps.chatgptBlurb", "Connect ViewsMax to ChatGPT")} action={<ListingAction agent={AGENTS.chatgpt} />} />
+          <Row icon={<AgentIcon agent="claude" size={28} />} name="Claude" blurb={t("layout.aiApps.claudeBlurb", "Connect ViewsMax to Claude")} action={<ListingAction agent={AGENTS.claude} />} />
+          <Row icon={<AgentIcon agent="chatgpt" size={28} />} name="ChatGPT" blurb={t("layout.aiApps.chatgptBlurb", "Connect ViewsMax to ChatGPT")} action={<ListingAction agent={AGENTS.chatgpt} />} />
           <Row
             icon={<MessageSquareText className="h-[18px] w-[18px] text-ink-on-paper-2" aria-hidden />}
             name={t("layout.aiApps.promptName", "Connect with a prompt")}

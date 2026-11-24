@@ -119,8 +119,8 @@ class SocialConnect
     {
         try {
             $accounts = $this->manager->for($platform)->connectWithCredentials($user, $data);
-        } catch (HandleClaimedException $e) {
-            throw $e; // already worded for the user
+        } catch (SocialConnectException $e) {
+            throw $e; // already worded for the user (claimed, refused, pending)
         } catch (Throwable $e) {
             throw new SocialConnectException('Failed to connect '.$platform.': '.$e->getMessage(), 0, $e);
         }
@@ -136,7 +136,7 @@ class SocialConnect
     /**
      * Pull the account's latest posts into analytics (off the request). Only
      * platforms that can report stats are worth a job; the job re-checks.
-     * Analytics is the Pro tier upsell, so a below-Pro connect queues nothing
+     * Analytics starts at the Creator tier, so a below-Creator connect queues nothing
      * (App\Support\AnalyticsAccess).
      *
      * @param  Collection<int, \App\Models\SocialAccount>  $accounts

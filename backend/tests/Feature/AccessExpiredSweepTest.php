@@ -14,8 +14,9 @@ use Tests\TestCase;
 /**
  * Every way in, not a sample: once the free window has closed with no plan,
  * every authenticated REST route (bar the billing allowlist) and every MCP
- * tool answers with the "upgrade to a paid subscription" denial. Catches a
- * route added outside the gated group or a tool that skips SafeCallTool.
+ * tool answers HTTP 402 with the "upgrade to a paid subscription" denial.
+ * Catches a route added outside the gated group or an MCP route that loses
+ * its access gate.
  */
 class AccessExpiredSweepTest extends TestCase
 {
@@ -58,6 +59,7 @@ class AccessExpiredSweepTest extends TestCase
         $this->withoutMiddleware(SubstituteBindings::class);
         $token = $this->user->createToken('mobile-app')->plainTextToken;
         $message = UserAccess::denial($this->user)->message;
+        $url = UserAccess::denial($this->user)->url;
         $failures = [];
         $checked = 0;
 
@@ -71,8 +73,9 @@ class AccessExpiredSweepTest extends TestCase
             $response = $this->withHeaders(['Authorization' => 'Bearer '.$token])->json($method, '/'.$uri);
             $checked++;
 
-            if ($response->status() !== 403 || $response->json('code') !== UserAccess::ACCESS_EXPIRED
-                || $response->json('message') !== $message) {
+            if ($response->status() !== 402 || $response->json('code') !== UserAccess::ACCESS_EXPIRED
+                || $response->json('message') !== $message
+                || $response->json('error') !== ['code' => UserAccess::ACCESS_EXPIRED, 'message' => $message, 'upgrade_url' => $url]) {
                 $failures[] = "{$method} /{$uri} -> {$response->status()} ".Str::limit($response->getContent(), 120);
             }
         }
@@ -100,11 +103,14 @@ class AccessExpiredSweepTest extends TestCase
         $tools = collect($rpc('tools/list')->assertOk()->json('result.tools'))->pluck('name');
         $this->assertGreaterThan(20, $tools->count());
 
-        $message = UserAccess::denial($this->user)->message;
-        $failures = $tools->reject(function (string $name) use ($rpc, $message) {
-            $result = $rpc('tools/call', ['name' => $name, 'arguments' => []])->json('result');
+        $denial = UserAccess::denial($this->user);
+        $failures = $tools->reject(function (string $name) use ($rpc, $denial) {
+            $response = $rpc('tools/call', ['name' => $name, 'arguments' => []]);
 
-            return ($result['isError'] ?? null) === false && ($result['content'][0]['text'] ?? null) === $message;
+            return $response->status() === 402
+                && $response->json('result') === null
+                && $response->json('error.message') === $denial->message
+                && $response->json('error.data') === $denial->error();
         })->values()->all();
 
         $this->assertSame([], $failures, 'Tools that did not answer with the upgrade message');

@@ -20,7 +20,7 @@ interface CustomUser {
   access_expired?: boolean;
   is_admin?: boolean;
   is_promotional?: boolean;
-  // Analytics is the Pro tier upsell (see canUseAnalytics in src/lib/access.ts).
+  // Analytics starts at the Creator tier (see canUseAnalytics in src/lib/access.ts).
   can_use_analytics?: boolean;
   active_plan?: { name?: string } | null;
 }

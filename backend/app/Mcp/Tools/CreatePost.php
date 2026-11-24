@@ -43,6 +43,7 @@ class CreatePost extends ViewsMaxTool
         'facebook' => 5000,
         'bluesky' => 300,
         'pinterest' => 800,
+        'telegram' => 4096,
         'tumblr' => 4096,
     ];
 
@@ -77,6 +78,17 @@ class CreatePost extends ViewsMaxTool
                 . 'options.pinterest.board_ids {social_account_id: board_id} (several). '
                 . 'Send title, link and alt_text only when the user gives them; empty means '
                 . 'the Pin has none. A video Pin also needs options.pinterest.cover_url. '
+            : '';
+    }
+
+    /** What a Telegram post can carry, only while Telegram is set up. */
+    public static function telegramRule(): string
+    {
+        return in_array('telegram', self::availablePlatforms(), true)
+            ? 'Telegram posts to the connected channel or group: text, or 1-10 images/videos '
+                . '(several become one album; photos up to 10 MB, videos up to 50 MB). With media, '
+                . 'text over 1024 characters is sent as its own message right after the media. '
+                . 'Telegram chats are connected in the ViewsMax app, not from here. '
             : '';
     }
 
@@ -124,6 +136,7 @@ class CreatePost extends ViewsMaxTool
             . 'video title, so it must not be empty when publishing or scheduling. '
             . 'Instagram needs an image or video url. '
             . self::pinterestRule()
+            . self::telegramRule()
             . 'TikTok photo slideshows accept options.tiktok.auto_add_music (boolean, '
             . 'default false) to let TikTok auto-add its recommended background music; '
             . 'there is no music option for video posts or for Instagram. '

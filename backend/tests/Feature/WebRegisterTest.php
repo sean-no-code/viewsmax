@@ -166,7 +166,7 @@ class WebRegisterTest extends TestCase
         $this->post('/register', self::FORM)->assertRedirect(route('register.verify'));
         $this->clickVerifyLink('jane@example.com')->assertRedirect(route('register.setup'));
         $this->plan();
-        config(['services.stripe.activation_fee_price_id' => 'price_fee', 'services.stripe.key' => 'pk_test_123']);
+        config(['services.stripe.key' => 'pk_test_123']);
 
         // Setup leads to the card step, and nothing past it opens without a card.
         $this->get(route('register.setup'))->assertOk()->assertSee('Add a card')->assertSee(route('register.billing'));
@@ -184,7 +184,7 @@ class WebRegisterTest extends TestCase
         });
 
         $this->get(route('register.billing'))->assertOk()
-            ->assertSee('Creator')->assertSee('$1 today')->assertSee('seti_secret_123')->assertSee('Grant Claude access');
+            ->assertSee('Creator')->assertSee('nothing charged today')->assertDontSee('activation fee')->assertSee('seti_secret_123')->assertSee('Grant Claude access');
 
         $this->post(route('register.billing'), ['payment_method_id' => 'pm_card', 'price_id' => 'price_creator'])
             ->assertRedirect(route('register.continue'));

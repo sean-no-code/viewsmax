@@ -48,6 +48,10 @@
         <env name="PINTEREST_CLIENT_ID" value="" force="true"/>
         <env name="PINTEREST_CLIENT_SECRET" value="" force="true"/>
         <env name="PINTEREST_SANDBOX" value="false" force="true"/>
+        <!-- Telegram is off in tests unless a test sets the bot, so a local
+             bot token never reaches the suite (or the real Bot API). -->
+        <env name="TELEGRAM_BOT_TOKEN" value="" force="true"/>
+        <env name="TELEGRAM_BOT_USERNAME" value="" force="true"/>
         <!-- Tumblr likewise: off in tests unless a test sets its keys. -->
         <env name="TUMBLR_CLIENT_ID" value="" force="true"/>
         <env name="TUMBLR_CLIENT_SECRET" value="" force="true"/>

@@ -12,7 +12,8 @@
     "resources": "Materiais",
     "logIn": "Entrar",
     "start": "Comece por $0",
-    "language": "Idioma"
+    "language": "Idioma",
+    "allChannels": "Ver todos os canais"
   },
   "resources": {
     "api": {
@@ -62,12 +63,27 @@
       "desc": "Estime seus ganhos no YouTube"
     }
   },
+  "agentGroups": {
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "assistants": "Mais assistentes",
+    "builders": "Ferramentas de código e agentes",
+    "all": "Ver todos os agentes de IA"
+  },
   "agentCards": {
     "claude": "Um único conector para todos os apps do Claude",
     "claude-cowork": "O mesmo conector do Claude, usado pelo agente de desktop",
+    "claude-duet": "O mesmo conector do Claude, para o agente sempre ativo",
     "claude-code": "Um comando no terminal, login via OAuth",
-    "chatgpt": "Conector personalizado no modo desenvolvedor",
+    "chatgpt": "Plugin de um clique no diretório do ChatGPT",
     "codex": "Dois comandos na CLI do Codex",
+    "muse": "Cole um prompt de configuração e entre com OAuth",
+    "deepseek": "DeepSeek Harness com uma chave de API do ViewsMax",
+    "instinct": "Envie um prompt de configuração",
+    "paperclip": "Adicione o ViewsMax em Conectores, para os agentes que você escolher",
+    "perplexity": "Conector personalizado na página de Plugins",
+    "gemini": "App personalizado no Gemini, ou um comando na CLI",
+    "chatgpt-dots": "O mesmo plugin do ChatGPT, para o seu dot sempre ativo",
     "cursor": "Configuração MCP com uma chave de API",
     "openclaw": "Skill do ViewsMax com uma chave de API",
     "hermes": "Servidor MCP no config.yaml, login via OAuth"
@@ -80,7 +96,8 @@
     "linkedin": "Posts com imagem e primeiro comentário",
     "threads": "Posts de texto, foto ou vídeo",
     "bluesky": "Posts com até 4 imagens",
-    "pinterest": "Pins de imagem e vídeo em qualquer pasta"
+    "pinterest": "Pins de imagem e vídeo em qualquer pasta",
+    "telegram": "Posts em canais e grupos, álbuns de até 10"
   },
   "footer": {
     "tagline": "Crie conteúdo que vende.",
@@ -200,13 +217,6 @@
         "blurb": "Para marcas que vendem.",
         "feats": [
           "30 canais",
-          "Posts ilimitados/mês"
-        ]
-      },
-      "Pro": {
-        "blurb": "Escale todos os canais.",
-        "feats": [
-          "Canais ilimitados",
           "Posts ilimitados/mês",
           "Análises de canais e publicações"
         ]

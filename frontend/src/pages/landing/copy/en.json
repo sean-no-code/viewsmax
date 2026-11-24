@@ -12,7 +12,8 @@
     "resources": "Resources",
     "logIn": "Log in",
     "start": "Start for $0",
-    "language": "Language"
+    "language": "Language",
+    "allChannels": "See all channels"
   },
   "resources": {
     "api": {
@@ -62,12 +63,27 @@
       "desc": "Estimate your YouTube earnings"
     }
   },
+  "agentGroups": {
+    "claude": "Claude",
+    "openai": "OpenAI",
+    "assistants": "More assistants",
+    "builders": "Coding & agent tools",
+    "all": "See all AI agents"
+  },
   "agentCards": {
     "claude": "One connector across all of Claude's apps",
     "claude-cowork": "Same connector as Claude, used by the desktop agent",
+    "claude-duet": "Same connector as Claude, for the always-on agent",
     "claude-code": "One terminal command, sign in over OAuth",
-    "chatgpt": "Custom connector in Developer mode",
+    "chatgpt": "One-click plugin from the ChatGPT directory",
     "codex": "Two commands in the Codex CLI",
+    "muse": "Paste one setup prompt, sign in over OAuth",
+    "deepseek": "DeepSeek Harness with a ViewsMax API key",
+    "instinct": "Text it one setup prompt",
+    "paperclip": "Add ViewsMax under Connectors, for the agents you pick",
+    "perplexity": "Custom connector on the Plugins page",
+    "gemini": "Custom app in Gemini, or one command in the CLI",
+    "chatgpt-dots": "Same plugin as ChatGPT, for your always-on dot",
     "cursor": "MCP config with an API key",
     "openclaw": "ViewsMax skill with an API key",
     "hermes": "MCP server in config.yaml, sign in over OAuth"
@@ -80,7 +96,8 @@
     "linkedin": "Posts with an image & first comment",
     "threads": "Text, photo or video posts",
     "bluesky": "Posts with up to 4 images",
-    "pinterest": "Image & video Pins to any board"
+    "pinterest": "Image & video Pins to any board",
+    "telegram": "Channel & group posts, albums up to 10"
   },
   "footer": {
     "tagline": "Make content that makes sales.",
@@ -200,13 +217,6 @@
         "blurb": "For brands that sell.",
         "feats": [
           "30 channels",
-          "Unlimited posts/mo"
-        ]
-      },
-      "Pro": {
-        "blurb": "Scale every channel.",
-        "feats": [
-          "Unlimited channels",
           "Unlimited posts/mo",
           "Channel & post analytics"
         ]

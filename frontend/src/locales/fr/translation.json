@@ -400,7 +400,6 @@
       "prorated": "Changements de forfait calculés au prorata",
       "renews": "Renouvellement le <0>{{date}}</0>",
       "trialEndedIntro": "Votre essai gratuit est terminé. Choisissez le forfait adapté à votre croissance.",
-      "trialEnds": "Essai gratuit · se termine le <0>{{date}}</0>",
       "trialIntro": "Essai gratuit de 7 jours à $0, puis choisissez le forfait adapté à votre croissance.",
       "trialIntroNoCard": "Essai gratuit de 7 jours, sans carte, puis choisissez le forfait adapté à votre croissance.",
       "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",
@@ -408,11 +407,17 @@
       "unlimitedOffers": "Offres illimitées",
       "unlimitedPostsPerMonth": "Publications illimitées/mois",
       "updatePayment": "Mettre à jour le paiement",
-      "upgradeBody": "Vous passerez immédiatement à {{plan}} (${{price}}/mois). Stripe facture un montant au prorata pour le reste de la période en cours.",
+      "upgradeBody": "Vous passerez immédiatement à {{plan}} (${{price}}/mois). La différence au prorata pour le reste de la période en cours est ajoutée à votre prochaine facture.",
       "upgradeTitle": "Passer à {{plan}} ?",
       "yesCancel": "Oui, annuler",
       "yesDowngrade": "Oui, rétrograder",
-      "yesUpgrade": "Oui, passer au forfait"
+      "yesUpgrade": "Oui, passer au forfait",
+      "pastDueCancel": "Annuler l'abonnement",
+      "pastDueCancelTitle": "Annuler votre abonnement ?",
+      "pastDueCancelBody": "Votre dernier paiement n'a pas abouti : il ne vous reste donc aucune période payée. L'annulation met fin à votre abonnement immédiatement. Vous pouvez vous réabonner à tout moment.",
+      "billingHistory": "Historique de facturation et moyen de paiement",
+      "trialEndsThenPrice": "Essai gratuit · se termine le <0>{{date}}</0>, puis {{price}} est facturé",
+      "changeKeepsCancellation": "Votre abonnement reste annulé et prend fin le {{date}}."
     }
   },
   "boosts": {
@@ -596,6 +601,24 @@
       "groupsEyebrow": "GROUPES",
       "intro": "Connectez les plateformes sur lesquelles vous publiez. Une fois liées, elles apparaissent comme destinations dans Nouvelle publication et comme sources dans Analytique.",
       "title": "Connexions."
+    },
+    "telegram": {
+      "cancel": "Annuler",
+      "checkAgain": "Vérifier à nouveau",
+      "codeExpired": "Ce code a expiré. Obtenez-en un nouveau.",
+      "codeFailed": "Impossible d'obtenir un code. Réessayez.",
+      "connectFailed": "Échec de la connexion à Telegram.",
+      "connected": "Telegram connecté !",
+      "copy": "Copier",
+      "description": "Publiez dans un canal ou un groupe Telegram via le bot ViewsMax. Prouvez que le chat vous appartient en y publiant un code à usage unique.",
+      "newCode": "Obtenir un nouveau code",
+      "openBot": "Ouvrir {{bot}}",
+      "paused": "Vérification arrêtée. Vous avez publié le code ? Cliquez sur « Vérifier à nouveau ».",
+      "stepAddBot": "Ajoutez {{bot}} à votre canal ou groupe en tant qu'administrateur. Dans un canal, activez son droit « Publier des messages ».",
+      "stepPost": "Publiez ce message dans ce canal ou ce groupe :",
+      "stepWait": "Revenez ici. ViewsMax repère le message, associe le chat et supprime le message. Le code est valable 15 minutes.",
+      "title": "Connecter Telegram",
+      "waitingNote": "En attente de l'apparition du code dans votre canal ou groupe…"
     }
   },
   "dashboard": {
@@ -1405,6 +1428,10 @@
       "selectWhoCanView": "Choisir qui peut voir…",
       "shortenLinks": "Raccourcir et suivre les liens",
       "shortenLinksHint": "Les URL de votre légende et de vos commentaires sont remplacées par des liens courts ViewsMax à l'enregistrement de la publication, pour que chaque clic soit comptabilisé.",
+      "telegram": {
+        "textAfterMedia": "Les légendes Telegram sont limitées à {{max}} caractères : sur Telegram, ce texte est donc envoyé dans un message séparé juste après les médias.",
+        "tooManyMedia": "Telegram accepte jusqu'à {{max}} photos et vidéos par publication. Retirez-en pour y publier."
+      },
       "textPost": "Publication texte",
       "textPostHint": "Texte uniquement. Seules les plateformes acceptant les publications sans média sont affichées.",
       "threadLimit": "Les fils sont limités à 25 tweets.",

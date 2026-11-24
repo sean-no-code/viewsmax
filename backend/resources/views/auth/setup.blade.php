@@ -62,7 +62,20 @@
                             @endforeach
                         </div>
                     @endif
-                    @if (! $p['uses_oauth'])
+                    @if ($p['platform'] === 'telegram' && $telegram)
+                        <form method="post" action="{{ route('connect.credentials', 'telegram') }}" class="platform-credentials">
+                            @csrf
+                            <input type="hidden" name="code" value="{{ $telegram['code'] }}">
+                            <ol class="muted platform-steps">
+                                <li>Add <a href="https://t.me/{{ $telegram['bot'] }}" target="_blank" rel="noopener">&#64;{{ $telegram['bot'] }}</a> to your channel or group as an admin that can post messages.</li>
+                                <li>Post <code>/connect {{ $telegram['code'] }}</code> in that channel or group.</li>
+                                <li>Press Check. The code works for 15 minutes.</li>
+                            </ol>
+                            <div class="platform-connect">
+                                <button type="submit" class="btn btn-primary btn-sm">Check</button>
+                            </div>
+                        </form>
+                    @elseif (! $p['uses_oauth'])
                         <form method="post" action="{{ route('connect.credentials', $p['platform']) }}" class="platform-credentials">
                             @csrf
                             <input type="text" name="identifier" value="{{ old('identifier') }}" placeholder="Handle, e.g. you.bsky.social" required>
@@ -134,6 +147,8 @@
         .platform-connected { font-size: 12.5px; font-weight: 600; color: #16A34A; white-space: nowrap; }
         .platform-credentials { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
         .platform-credentials input { margin: 0; }
+        .platform-steps { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+        .platform-steps code { font-size: 12px; }
         /* Credentials row: follow-us left (wrapping on a phone), Connect right — never wider than the card. */
         .platform-credentials .platform-connect { justify-content: space-between; flex-wrap: wrap; row-gap: 8px; flex-shrink: 1; }
         .platform-credentials .checkbox-row { flex: 1; min-width: 0; }

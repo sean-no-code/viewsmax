@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { CalendarIcon, Plus, Eye, Phone, Mail, DollarSign, Youtube, Music2, Twitter, Linkedin, Instagram, Mic, Globe, Megaphone, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { CalendarIcon, Plus, Eye, Phone, Mail, DollarSign, Mic, Globe, Megaphone, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { BrandGlyph } from "@/components/post/brand-icons";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { EventsList } from "@/components/tracking/EventsList";
@@ -368,13 +369,13 @@ const Tracking = () => {
 
                       const getIcon = () => {
                         switch (link.placement) {
-                          case 'video': return <Youtube className={`${iconSize} text-red-600`} />;
+                          case 'video': return <BrandGlyph platform="youtube" className={`${iconSize} text-red-600`} />;
                           case 'email': return <Mail className={`${iconSize} text-blue-500`} />;
-                          case 'tiktok': return <Music2 className={`${iconSize} text-pink-500`} />;
+                          case 'tiktok': return <BrandGlyph platform="tiktok" className={`${iconSize} text-foreground`} />;
                           case 'x':
-                          case 'twitter': return <Twitter className={`${iconSize} text-sky-500`} />;
-                          case 'linkedin': return <Linkedin className={`${iconSize} text-blue-700`} />;
-                          case 'instagram': return <Instagram className={`${iconSize} text-purple-500`} />;
+                          case 'twitter': return <BrandGlyph platform="x" className={`${iconSize} text-foreground`} />;
+                          case 'linkedin': return <BrandGlyph platform="linkedin" className={`${iconSize} text-blue-700`} />;
+                          case 'instagram': return <BrandGlyph platform="instagram" className={`${iconSize} text-purple-500`} />;
                           case 'podcast': return <Mic className={`${iconSize} text-orange-500`} />;
                           case 'website':
                           case 'blog': return <Globe className={`${iconSize} text-slate-500`} />;

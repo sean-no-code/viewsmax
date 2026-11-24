@@ -47,7 +47,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
 const SYSTEM = `You translate user-interface text for ViewsMax, a web app for creators and marketers. ViewsMax schedules social posts to YouTube, TikTok, Instagram, X, LinkedIn, Threads and Bluesky, tracks which posts drive clicks and sales, and finds outlier videos worth copying.
 
 Rules:
-- Keep brand, product and platform names exactly as written: ViewsMax, YouTube, TikTok, Instagram, X, LinkedIn, Threads, Bluesky, Beehiiv, Discord, GitHub, Claude, ChatGPT, Codex, Cursor, OpenClaw, Hermes, MCP, API, CLI, SDK, OAuth, Reels, the plan names Starter, Creator, Pro and Agency, and TikTok's policy titles "Branded Content Policy" and "Music Usage Confirmation" (TikTok's posting rules require them as written).
+- Keep brand, product and platform names exactly as written: ViewsMax, YouTube, TikTok, Instagram, X, LinkedIn, Threads, Bluesky, Beehiiv, Discord, GitHub, Claude, ChatGPT, Codex, Cursor, OpenClaw, Hermes, MCP, API, CLI, SDK, OAuth, Reels, the plan names Starter, Creator and Agency, and TikTok's policy titles "Branded Content Policy" and "Music Usage Confirmation" (TikTok's posting rules require them as written).
 - Keep every {{placeholder}} exactly as written, untranslated.
 - Keep prices and figures as written ($0, $4,280).
 - Consecutive items whose ids end in .0, .1, ... are parts of one sentence or list, split for layout. Translate them so they read correctly in order.

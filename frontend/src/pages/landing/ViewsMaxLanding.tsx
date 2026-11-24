@@ -4,7 +4,7 @@
 // demos (tabbed videos) → Features → Monetize → Pricing → CTA → Footer. Uses the design-system
 // tokens already in index.css (--vm-*, --ink-*, --paper-*, fonts) + lucide-react.
 // The prototype's per-hero switcher is dropped; Hero A is the production hero.
-// Pricing keeps the real 4-tier plan (not the design's placeholder tiers).
+// Pricing keeps the real plan tiers (not the design's placeholder tiers).
 import { useEffect, useState, type CSSProperties, type ReactNode, type ComponentType } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -258,15 +258,18 @@ function FeatureDemos() {
 // Posting channels link to their guide (/channels/<key>, src/lib/channel-pages.ts);
 // Beehiiv is a newsletter integration with no page of its own.
 const page = (key: keyof typeof CHANNEL_PAGES) => ({ name: CHANNEL_PAGES[key].name, slug: CHANNEL_PAGES[key].slug });
+// Every posting channel uses its real mark (components/post/brand-icons.tsx), white on the brand colour.
+const logo = (key: string) => <path d={brandIconPath(key)} fill="#fff" transform="translate(2.4 2.4) scale(.8)" />;
 const CHANNELS: { name: string; slug?: string; bg: string; glyph: ReactNode }[] = [
-  { ...page("youtube"), bg: "#FF0000", glyph: <path d="M9.6 7.8 L16.2 12 L9.6 16.2 Z" fill="#fff" /> },
-  { ...page("tiktok"), bg: "#0A0A0C", glyph: <g fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M13 4.5 V14.3 a3 3 0 1 1 -3 -3" /><path d="M13 4.6 c0.6 2.3 2.5 3.6 4.6 3.7" /></g> },
-  { ...page("instagram"), bg: "linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF)", glyph: <g fill="none" stroke="#fff" strokeWidth={2}><rect x="4" y="4" width="16" height="16" rx="4.7" /><circle cx="12" cy="12" r="3.7" /><circle cx="16.7" cy="7.3" r="0.5" strokeWidth={2.4} /></g> },
-  { ...page("x"), bg: "#0A0A0C", glyph: <path d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" /> },
-  { ...page("linkedin"), bg: "#0A66C2", glyph: <text x="12" y="16.6" textAnchor="middle" fontFamily="Archivo, system-ui, sans-serif" fontWeight={900} fontSize={13} fill="#fff">in</text> },
-  { ...page("threads"), bg: "#0A0A0C", glyph: <text x="12" y="17" textAnchor="middle" fontFamily="Archivo, system-ui, sans-serif" fontWeight={900} fontSize={17} fill="#fff">@</text> },
-  { ...page("bluesky"), bg: "#0085FF", glyph: <path d={brandIconPath("bluesky")} fill="#fff" transform="translate(3 3) scale(.75)" /> },
-  { ...page("pinterest"), bg: "#E60023", glyph: <path d={brandIconPath("pinterest")} fill="#fff" transform="translate(2.4 2.4) scale(.8)" /> },
+  { ...page("youtube"), bg: "#FF0000", glyph: logo("youtube") },
+  { ...page("tiktok"), bg: "#0A0A0C", glyph: logo("tiktok") },
+  { ...page("instagram"), bg: "linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF)", glyph: logo("instagram") },
+  { ...page("x"), bg: "#0A0A0C", glyph: logo("x") },
+  { ...page("linkedin"), bg: "#0A66C2", glyph: logo("linkedin") },
+  { ...page("threads"), bg: "#0A0A0C", glyph: logo("threads") },
+  { ...page("bluesky"), bg: "#0085FF", glyph: logo("bluesky") },
+  { ...page("pinterest"), bg: "#E60023", glyph: logo("pinterest") },
+  { ...page("telegram"), bg: "#26A5E4", glyph: logo("telegram") },
   { name: "Beehiiv", bg: "#111827", glyph: <path d="M12 3.4 L18.6 7.2 L18.6 16.8 L12 20.6 L5.4 16.8 L5.4 7.2 Z" fill="none" stroke="#FFD34E" strokeWidth={2} strokeLinejoin="round" /> },
 ];
 
@@ -277,7 +280,7 @@ function Channels() {
   return (
     <section id="channels" style={{ maxWidth: 1200, margin: "0 auto", padding: "104px 24px 0", scrollMarginTop: 80 }}>
       <Heading eyebrow={c.eyebrow} title={c.title} sub={c.sub} />
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 18, marginTop: 44 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, marginTop: 44 }}>
         {CHANNELS.map((ch) => {
           const inner = (
             <>
@@ -390,11 +393,10 @@ function Monetize() {
   );
 }
 
-/* ---------- Pricing (real 4-tier plan, restyled to the new design) ---------- */
+/* ---------- Pricing (the real plan tiers, restyled to the new design) ---------- */
 const TIERS = [
   { name: "Starter", price: 19, variant: "outline" as Variant, hl: false, talk: false },
   { name: "Creator", price: 39, variant: "primary" as Variant, hl: true, talk: false },
-  { name: "Pro", price: 59, variant: "dark" as Variant, hl: false, talk: false },
   { name: "Agency", price: 79, variant: "dark" as Variant, hl: false, talk: true },
 ] as const;
 
@@ -406,7 +408,7 @@ function Pricing() {
   return (
     <section id="pricing" style={{ maxWidth: 1200, margin: "0 auto", padding: "104px 24px 0", scrollMarginTop: 80 }}>
       <Heading eyebrow={c.eyebrow} title={c.title} sub={c.sub} />
-      <div className="vm-pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginTop: 44, alignItems: "start" }}>
+      <div className="vm-pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, maxWidth: 960, margin: "44px auto 0", alignItems: "start" }}>
         {tiers.map((t) => (
           <div key={t.name} style={{ background: t.hl ? "var(--ink-900)" : "var(--paper-0)", border: t.hl ? "none" : "1px solid var(--line-1)", borderRadius: 22, padding: 26, position: "relative", boxShadow: t.hl ? "var(--shadow-lg)" : "none", transform: t.hl ? "translateY(-10px)" : "none" }}>
             {t.hl && <span style={{ position: "absolute", top: 18, right: 18, background: "var(--vm-red)", color: "#fff", fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, padding: "4px 9px", borderRadius: 999 }}>{c.popular}</span>}
@@ -459,7 +461,6 @@ const LANDING_CSS = `
 .vm-landing input::placeholder { color: var(--fg-4); }
 .vm-landing .vm-feature:hover { transform: translateY(-3px); box-shadow: 6px 6px 0 0 var(--vm-red) !important; }
 @keyframes vmrise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@media (max-width: 1080px) { .vm-landing .vm-pricing-grid { grid-template-columns: repeat(2,1fr) !important; } }
 @media (max-width: 860px) {
   .vm-landing .vm-split { grid-template-columns: minmax(0,1fr) !important; }
   .vm-landing .vm-grid3 { grid-template-columns: 1fr !important; }
@@ -468,8 +469,8 @@ const LANDING_CSS = `
   .vm-landing .vm-metrics { grid-template-columns: repeat(2,1fr) !important; }
   .vm-landing .vm-metrics > div:nth-child(odd) { border-left: none !important; }
 }
+@media (max-width: 860px) { .vm-landing .vm-pricing-grid { grid-template-columns: 1fr !important; max-width: 480px !important; } }
 @media (max-width: 640px) {
-  .vm-landing .vm-pricing-grid { grid-template-columns: 1fr !important; }
   .vm-landing .vm-demo-tabs { width: 100%; }
   .vm-landing .vm-demo-tabs button { flex: 1; justify-content: center; padding: 10px 8px !important; }
   .vm-landing .vm-demo-caption { flex-direction: column; align-items: flex-start !important; }

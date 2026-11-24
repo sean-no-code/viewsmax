@@ -14,6 +14,12 @@ describe("platformLength", () => {
     expect(platformLength("threads", "a".repeat(497) + "😀")).toBe(501);
   });
 
+  it("counts Telegram in UTF-16 code units, so an emoji outside the BMP is 2", () => {
+    expect(platformLength("telegram", "😀")).toBe(2);
+    expect(platformLength("telegram", "hello")).toBe(5);
+    expect(platformLength("telegram", "a\r\nb")).toBe(3);
+  });
+
   it("counts graphemes for bluesky and code points elsewhere", () => {
     const text = `hi ${family} caf${eWithAccent}`;
     expect(plainLength(text)).toBe(3 + 5 + 1 + 3 + 2);

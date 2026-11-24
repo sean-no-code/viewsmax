@@ -390,7 +390,6 @@
       "prorated": "Upgrades & downgrades are prorated",
       "renews": "Renews <0>{{date}}</0>",
       "trialEndedIntro": "Your free trial has ended. Pick the tier that fits how you grow.",
-      "trialEnds": "Free trial · ends <0>{{date}}</0>",
       "trialIntro": "7-day free trial — add a card, nothing is charged until it ends — then pick the tier that fits how you grow.",
       "trialIntroNoCard": "7-day free trial — no card needed — then pick the tier that fits how you grow.",
       "unexpectedError": "An unexpected error occurred. Please try again.",
@@ -398,11 +397,17 @@
       "unlimitedOffers": "Unlimited offers",
       "unlimitedPostsPerMonth": "Unlimited posts/mo",
       "updatePayment": "Update payment method",
-      "upgradeBody": "You'll move to {{plan}} (${{price}}/mo) right away. Stripe charges a prorated amount for the rest of this billing period.",
+      "upgradeBody": "You'll move to {{plan}} (${{price}}/mo) right away. The prorated difference for the rest of this billing period is added to your next invoice.",
       "upgradeTitle": "Upgrade to {{plan}}?",
       "yesCancel": "Yes, Cancel",
       "yesDowngrade": "Yes, downgrade",
-      "yesUpgrade": "Yes, upgrade"
+      "yesUpgrade": "Yes, upgrade",
+      "pastDueCancel": "Cancel subscription",
+      "pastDueCancelTitle": "Cancel your subscription?",
+      "pastDueCancelBody": "Your last payment didn't go through, so there's no paid time left. Cancelling ends your subscription now. You can subscribe again at any time.",
+      "billingHistory": "Billing history & payment method",
+      "trialEndsThenPrice": "Free trial · ends <0>{{date}}</0>, then {{price}} is charged",
+      "changeKeepsCancellation": "Your subscription stays cancelled and ends on {{date}}."
     }
   },
   "boosts": {
@@ -586,6 +591,24 @@
       "groupsEyebrow": "GROUPS",
       "intro": "Connect the platforms you publish to. Once linked, they appear as targets in Create Post and as sources in Analytics.",
       "title": "Connections."
+    },
+    "telegram": {
+      "cancel": "Cancel",
+      "checkAgain": "Check again",
+      "codeExpired": "This code has expired. Get a new one.",
+      "codeFailed": "Couldn't get a code. Try again.",
+      "connectFailed": "Failed to connect Telegram.",
+      "connected": "Telegram connected!",
+      "copy": "Copy",
+      "description": "Publish to a Telegram channel or group through the ViewsMax bot. Prove the chat is yours by posting a one-time code in it.",
+      "newCode": "Get a new code",
+      "openBot": "Open {{bot}}",
+      "paused": "Stopped checking. Posted the code? Press Check again.",
+      "stepAddBot": "Add {{bot}} to your channel or group as an administrator. In a channel, turn on its \"Post messages\" right.",
+      "stepPost": "Post this message in that channel or group:",
+      "stepWait": "Come back here. ViewsMax spots the message, links the chat and removes the message. The code works for 15 minutes.",
+      "title": "Connect Telegram",
+      "waitingNote": "Waiting for the code to appear in your channel or group…"
     }
   },
   "dashboard": {
@@ -1380,6 +1403,10 @@
       "selectWhoCanView": "Select who can view…",
       "shortenLinks": "Shorten & track links",
       "shortenLinksHint": "URLs in your caption and comments are replaced with short ViewsMax links when the post is saved, so every click gets counted.",
+      "telegram": {
+        "textAfterMedia": "Telegram captions hold {{max}} characters, so on Telegram this text is sent as its own message right after the media.",
+        "tooManyMedia": "Telegram takes up to {{max}} photos and videos per post. Remove some to publish there."
+      },
       "textPost": "Text post",
       "textPostHint": "Text-only. Only platforms that can post without media are shown.",
       "threadLimit": "Threads are limited to 25 tweets.",

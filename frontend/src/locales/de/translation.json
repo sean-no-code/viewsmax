@@ -390,7 +390,6 @@
       "prorated": "Up- und Downgrades werden anteilig berechnet",
       "renews": "Verlängert sich am <0>{{date}}</0>",
       "trialEndedIntro": "Deine kostenlose Testphase ist beendet. Wähle den Tarif, der zu deinem Wachstum passt.",
-      "trialEnds": "Kostenlose Testphase · endet am <0>{{date}}</0>",
       "trialIntro": "7 Tage kostenlos testen für $0, dann wählst du den Tarif, der zu deinem Wachstum passt.",
       "trialIntroNoCard": "7 Tage kostenlos testen – ohne Karte –, dann wählst du den Tarif, der zu deinem Wachstum passt.",
       "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten. Bitte erneut versuchen.",
@@ -398,11 +397,17 @@
       "unlimitedOffers": "Unbegrenzte Angebote",
       "unlimitedPostsPerMonth": "Unbegrenzte Posts/Monat",
       "updatePayment": "Zahlungsmethode ändern",
-      "upgradeBody": "Du wechselst sofort zu {{plan}} (${{price}}/Monat). Stripe berechnet einen anteiligen Betrag für den Rest dieses Abrechnungszeitraums.",
+      "upgradeBody": "Du wechselst sofort zu {{plan}} (${{price}}/Monat). Der anteilige Differenzbetrag für den Rest dieses Abrechnungszeitraums wird deiner nächsten Rechnung hinzugefügt.",
       "upgradeTitle": "Upgrade auf {{plan}}?",
       "yesCancel": "Ja, kündigen",
       "yesDowngrade": "Ja, downgraden",
-      "yesUpgrade": "Ja, upgraden"
+      "yesUpgrade": "Ja, upgraden",
+      "pastDueCancel": "Abo kündigen",
+      "pastDueCancelTitle": "Abo kündigen?",
+      "pastDueCancelBody": "Deine letzte Zahlung ist nicht durchgegangen, daher ist kein bezahlter Zeitraum mehr übrig. Mit der Kündigung endet dein Abo sofort. Du kannst jederzeit wieder ein Abo abschließen.",
+      "billingHistory": "Rechnungsverlauf & Zahlungsmethode",
+      "trialEndsThenPrice": "Kostenlose Testphase · endet am <0>{{date}}</0>, danach werden {{price}} berechnet",
+      "changeKeepsCancellation": "Dein Abo bleibt gekündigt und endet am {{date}}."
     }
   },
   "boosts": {
@@ -585,6 +590,24 @@
       "groupsEyebrow": "GRUPPEN",
       "intro": "Verbinde die Plattformen, auf denen du veröffentlichst. Danach erscheinen sie als Ziele unter „Post erstellen“ und als Quellen in Analytics.",
       "title": "Verbindungen."
+    },
+    "telegram": {
+      "cancel": "Abbrechen",
+      "checkAgain": "Erneut prüfen",
+      "codeExpired": "Dieser Code ist abgelaufen. Hol dir einen neuen.",
+      "codeFailed": "Es konnte kein Code abgerufen werden. Versuch es noch einmal.",
+      "connectFailed": "Telegram konnte nicht verbunden werden.",
+      "connected": "Telegram verbunden!",
+      "copy": "Kopieren",
+      "description": "Veröffentliche über den ViewsMax-Bot in einem Telegram-Kanal oder einer Gruppe. Beweise, dass der Chat dir gehört, indem du dort einen Einmalcode postest.",
+      "newCode": "Neuen Code holen",
+      "openBot": "{{bot}} öffnen",
+      "paused": "Prüfung angehalten. Code gepostet? Klicke auf „Erneut prüfen“.",
+      "stepAddBot": "Füge {{bot}} deinem Kanal oder deiner Gruppe als Administrator hinzu. Aktiviere in einem Kanal das Recht „Nachrichten posten“.",
+      "stepPost": "Poste diese Nachricht in diesem Kanal oder dieser Gruppe:",
+      "stepWait": "Komm hierher zurück. ViewsMax erkennt die Nachricht, verknüpft den Chat und entfernt die Nachricht. Der Code gilt 15 Minuten.",
+      "title": "Telegram verbinden",
+      "waitingNote": "Warte darauf, dass der Code in deinem Kanal oder deiner Gruppe erscheint …"
     }
   },
   "dashboard": {
@@ -1379,6 +1402,10 @@
       "selectWhoCanView": "Auswählen, wer es sehen kann…",
       "shortenLinks": "Links kürzen & tracken",
       "shortenLinksHint": "URLs in deiner Caption und deinen Kommentaren werden beim Speichern durch kurze ViewsMax-Links ersetzt, damit jeder Klick gezählt wird.",
+      "telegram": {
+        "textAfterMedia": "Telegram-Bildunterschriften fassen {{max}} Zeichen, daher wird dieser Text auf Telegram als eigene Nachricht direkt nach den Medien gesendet.",
+        "tooManyMedia": "Telegram erlaubt bis zu {{max}} Fotos und Videos pro Beitrag. Entferne einige, um dort zu veröffentlichen."
+      },
       "textPost": "Text-Post",
       "textPostHint": "Nur Text. Angezeigt werden nur Plattformen, die ohne Medien posten können.",
       "threadLimit": "Threads sind auf 25 Tweets begrenzt.",

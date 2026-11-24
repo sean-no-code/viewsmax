@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
-import { Youtube, Instagram, Music2, Calculator, Image, ArrowRight, type LucideIcon } from "lucide-react";
+import { Calculator, Image, ArrowRight } from "lucide-react";
+import { BrandGlyph } from "@/components/post/brand-icons";
 import { LandingNav, LandingFooter } from "@/pages/landing/LandingChrome";
 import BookmarkBar from "@/components/free-tools/BookmarkBar";
 import { useSeo } from "@/hooks/useSeo";
-import { PLATFORM_LIST, HUB_SEO, type PlatformKey } from "@/lib/transcript-tools";
+import { PLATFORM_LIST, HUB_SEO } from "@/lib/transcript-tools";
 
-const ICONS: Record<PlatformKey, LucideIcon> = { youtube: Youtube, tiktok: Music2, instagram: Instagram };
 
 const CARD =
   "group flex flex-col rounded-[18px] border border-line-1 bg-paper-0 p-6 text-ink-on-paper-1 transition-[box-shadow,transform,border-color] duration-200 ease-[cubic-bezier(.2,.7,.2,1)] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-ink-on-paper-1 hover:shadow-[4px_4px_0_0_var(--vm-red)]";
@@ -36,10 +36,9 @@ export default function FreeToolsHub() {
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           {PLATFORM_LIST.map((p) => {
-            const Icon = ICONS[p.key];
             return (
               <Link key={p.key} to={p.slug} className={CARD}>
-                <div className={ICON_WRAP}><Icon className="h-6 w-6" aria-hidden /></div>
+                <div className={ICON_WRAP}><BrandGlyph platform={p.key} className="h-6 w-6" /></div>
                 <div className={TITLE}>{p.name} Transcript Generator</div>
                 <div className={DESC}>Turn any {p.name} video into text — copy or download, free.</div>
                 <span className={CTA}>Open tool <ArrowRight className="h-3.5 w-3.5" aria-hidden /></span>

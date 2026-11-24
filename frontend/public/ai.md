@@ -16,8 +16,16 @@ authenticated.
 Step-by-step guides per agent: [Claude](https://viewsmax.com/claude) ·
 [Claude Code](https://viewsmax.com/claude-code) ·
 [Claude Cowork](https://viewsmax.com/claude-cowork) ·
+[Claude Duet](https://viewsmax.com/claude-duet) ·
 [ChatGPT](https://viewsmax.com/chatgpt) · [Codex](https://viewsmax.com/codex) ·
 [Cursor](https://viewsmax.com/cursor) · [OpenClaw](https://viewsmax.com/openclaw) ·
+[Meta Muse](https://viewsmax.com/muse) ·
+[ChatGPT Dots](https://viewsmax.com/chatgpt-dots) ·
+[Gemini](https://viewsmax.com/gemini) ·
+[Perplexity Computer](https://viewsmax.com/perplexity) ·
+[Paperclip](https://viewsmax.com/paperclip) ·
+[Instinct](https://viewsmax.com/instinct) ·
+[DeepSeek](https://viewsmax.com/deepseek) ·
 [Hermes Agent](https://viewsmax.com/hermes). Each has a plain-markdown setup brief at
 `/<agent>.md` (e.g. <https://viewsmax.com/claude.md>).
 

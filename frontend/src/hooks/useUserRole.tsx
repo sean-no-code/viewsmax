@@ -82,7 +82,7 @@ export const UserRoleProvider = ({ children }: UserRoleProviderProps) => {
   const { user } = useAuth();
   // Initialize from localStorage to prevent flash
   const [userRole, setUserRole] = useState<UserRoleData>(() => getInitialRole());
-  // Actual tier name for display (Starter/Creator/Pro/Agency). The role above
+  // Actual tier name for display (Starter/Creator/Agency). The role above
   // stays binary (free/pro) for feature gating; this is purely the label.
   const [planName, setPlanName] = useState<string | undefined>(() => getInitialPlanName());
 

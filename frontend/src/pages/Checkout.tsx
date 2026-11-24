@@ -37,7 +37,7 @@ const Checkout = () => {
 
   // The tier's limit lines arrive in the URL (comma-separated, from Plans);
   // the rest is what that tier includes — the `tier` param is the plan's own
-  // name ("pro"), with the display name as a fallback for older links.
+  // name ("creator"), with the display name as a fallback for older links.
   const featuresParam = searchParams.get("features");
   const tier = searchParams.get("tier") || planName;
   const features = [...(featuresParam ? featuresParam.split(",") : []), ...planIncludes(t, tier)];

@@ -170,6 +170,19 @@ return [
             'service_url' => env('BLUESKY_SERVICE_URL', 'https://bsky.social'),
         ],
 
+        'telegram' => [
+            'label' => 'Telegram',
+            'enabled' => env('TELEGRAM_ENABLED', true),
+            // One ViewsMax bot (made with @BotFather) posts to every connected
+            // channel and group; there is no per-user OAuth. The user adds the
+            // bot as an admin and proves the chat is theirs by posting a
+            // one-time code in it (TelegramProvider::connectWithCredentials).
+            // The token is a secret: it is part of every Bot API URL.
+            'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+            // Without the "@", e.g. ViewsMaxBot. Shown in the connect steps.
+            'bot_username' => env('TELEGRAM_BOT_USERNAME'),
+        ],
+
         'x' => [
             'label' => 'X',
             'enabled' => env('X_ENABLED', true),

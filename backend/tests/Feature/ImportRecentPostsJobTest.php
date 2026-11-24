@@ -181,11 +181,11 @@ class ImportRecentPostsJobTest extends TestCase
 
     public function test_the_backfill_command_skips_accounts_without_analytics(): void
     {
-        // Analytics is the Pro tier upsell, and this command used to select
+        // Analytics starts at Creator, and this command used to select
         // every connected account in the database with no filter at all.
         Queue::fake();
         $mine = $this->account('youtube');
-        $creator = User::factory()->withPlan('active', $this->planNamed('creator'))->create();
+        $creator = User::factory()->withPlan('active', $this->planNamed('starter'))->create();
         SocialAccount::create([
             'user_id' => $creator->id, 'platform' => 'youtube', 'platform_account_id' => 'yt-creator',
             'name' => 'Theirs', 'access_token' => 'tok', 'status' => SocialAccount::STATUS_CONNECTED,
