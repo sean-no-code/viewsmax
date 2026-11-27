@@ -917,6 +917,21 @@ class StripeWebhookController extends Controller
             $updates['status'] = 'cancelled';
         }
 
+        // Stripe calls a subscription `active` from the moment its trial ends,
+        // about an hour before it charges the first invoice. Here `active`
+        // means paid (the trial post cap lifts on it, the Billing page says
+        // so), so a trial row is left as it is, due at the end of the trial,
+        // until that invoice settles: invoice.paid makes it active with the
+        // new date, a failed charge past_due. Keeping the old date keeps the
+        // row overdue, so stripe:sync-overdue finds it if those are missed.
+        $awaitingFirstPayment = $status === 'active' && $user->plans()
+            ->wherePivot('stripe_subscription_id', $subscriptionId)
+            ->wherePivot('status', 'trialing')
+            ->exists();
+        if ($awaitingFirstPayment) {
+            unset($updates['status'], $updates['expires_at']);
+        }
+
         if ($updates) {
             $this->updateSubscriptionRows($user, $subscriptionId, $updates);
         }
@@ -943,7 +958,13 @@ class StripeWebhookController extends Controller
             'updates' => $updates,
             'stripe_status' => $status,
         ]);
-        $this->did('subscription updated'.(isset($updates['status']) ? ", status {$updates['status']}" : ''), true, $user);
+        $this->did(
+            $awaitingFirstPayment
+                ? 'trial ended, plan stays trialing until its first invoice is paid'
+                : 'subscription updated'.(isset($updates['status']) ? ", status {$updates['status']}" : ''),
+            true,
+            $user,
+        );
     }
 
     private function handleSubscriptionCancelled(array $subscription): void

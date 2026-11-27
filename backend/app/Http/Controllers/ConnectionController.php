@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\OAuthConnectionService;
-use App\Services\Social\SocialProviderManager;
 use App\Services\Social\YouTubeDisconnector;
 use App\Services\TikTokPublishService;
 use Illuminate\Http\Request;
@@ -57,19 +56,6 @@ class ConnectionController extends Controller
     {
         if (! in_array($provider, OAuthConnectionService::PROVIDERS, true)) {
             return response()->json(['message' => 'Unsupported provider.'], 422);
-        }
-
-        // Limited release (config/social → promo_only) applies here too: this
-        // store is older than the /api/social one, but a platform in limited
-        // release must not slip the gate through it. Only the audience rule,
-        // not isAvailableTo(): this path has its own credentials, so it must
-        // not pick up a check against the social store's client_id/secret.
-        $manager = app(SocialProviderManager::class);
-        if ($manager->promoOnly($provider) && ! $manager->inLimitedReleaseAudience($request->user())) {
-            return response()->json([
-                'success' => false,
-                'message' => ucfirst($provider).' is not available on your account yet.',
-            ], 503);
         }
 
         $validator = Validator::make($request->all(), [

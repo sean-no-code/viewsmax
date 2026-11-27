@@ -75,7 +75,11 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `StripeService::invoiceOfPaymentIntent` asks Stripe, and an invoice that is paid or void by then changes nothing. Events can be
   stale (Stripe redelivers for days, a person can re-send one): a failure of an invoice already applied as paid is
   ignored, a `customer.subscription.updated` older than five minutes is re-read from Stripe, and a paid invoice applied
-  again (redelivery, `stripe:sync-invoice`) sets a row back to what Stripe says. A user can hold several `user_plans`
+  again (redelivery, `stripe:sync-invoice`) sets a row back to what Stripe says. Stripe calls a subscription `active`
+  from the moment its trial ends, about an hour before it charges the first invoice; here `active` means paid
+  (`PostAllowance` lifts on it), so `handleSubscriptionUpdated` and `stripe:sync-overdue` leave a `trialing` row as it
+  is (still due at the trial end, access carries on) until `invoice.paid` makes it `active` or a failed charge
+  `past_due` (`TrialEndPaymentPendingTest`). A user can hold several `user_plans`
   rows of one plan, so webhook writes go through `updateSubscriptionRows` (by subscription id), never
   `updateExistingPivot($planId)`. When webhooks were missed, `php artisan stripe:sync-overdue` (`--dry-run` lists
   without changing) asks Stripe about every row past its date (trialing/active with `expires_at` passed) or `past_due`

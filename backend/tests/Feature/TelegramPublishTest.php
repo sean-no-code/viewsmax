@@ -240,12 +240,12 @@ class TelegramPublishTest extends TestCase
 
     public function test_telegram_is_offered_to_mcp_only_while_configured(): void
     {
-        $this->assertContains('telegram', CreatePost::availablePlatforms($this->user));
+        $this->assertContains('telegram', CreatePost::availablePlatforms());
         $this->assertSame(4096, CreatePost::PLATFORM_CHAR_LIMITS['telegram']);
         $this->assertStringContainsString('album', CreatePost::telegramRule() ?: '');
 
         config(['social.platforms.telegram.bot_token' => '']);
-        $this->assertNotContains('telegram', CreatePost::availablePlatforms($this->user));
+        $this->assertNotContains('telegram', CreatePost::availablePlatforms());
     }
 
     public function test_a_code_is_refused_while_telegram_is_not_configured(): void

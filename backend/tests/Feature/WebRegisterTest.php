@@ -275,34 +275,22 @@ class WebRegisterTest extends TestCase
         $page->assertDontSee(route('connect.start', 'instagram'), false); // not configured in tests
     }
 
-    public function test_setup_offers_a_promo_only_platform_to_promotional_customers_only(): void
+    public function test_setup_offers_a_configured_meta_platform_to_a_normal_user(): void
     {
-        // Limited release (config/social → promo_only): Facebook, Instagram and
-        // Threads are live but connectable only by promotional customers.
         config([
             'social.platforms.threads.client_id' => 'id',
             'social.platforms.threads.client_secret' => 'secret',
-            'social.platforms.threads.promo_only' => true,
         ]);
 
-        $user = User::factory()->create();
-        $this->actingAs($user, 'web')->get(route('register.setup'))->assertOk()
-            ->assertDontSee(route('connect.start', 'threads'), false);
-
-        $user->roles()->attach(
-            Role::firstOrCreate(['name' => User::PROMO_ROLE], ['display_name' => 'Promotional customer'])->id
-        );
-
-        $this->actingAs($user->fresh(), 'web')->get(route('register.setup'))->assertOk()
+        $this->actingAs(User::factory()->create(), 'web')->get(route('register.setup'))->assertOk()
             ->assertSee(route('connect.start', 'threads'), false);
     }
 
-    public function test_connect_start_refuses_a_promo_only_platform_for_a_normal_user(): void
+    public function test_connect_start_refuses_a_platform_without_credentials(): void
     {
         config([
-            'social.platforms.threads.client_id' => 'id',
-            'social.platforms.threads.client_secret' => 'secret',
-            'social.platforms.threads.promo_only' => true,
+            'social.platforms.threads.client_id' => null,
+            'social.platforms.threads.client_secret' => null,
         ]);
 
         $this->actingAs(User::factory()->create(), 'web')

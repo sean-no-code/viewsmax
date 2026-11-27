@@ -200,9 +200,8 @@ export interface SocialPlatformInfo {
   label: string;
   enabled: boolean;
   configured: boolean;
-  // Whether THIS user may connect it: `configured` plus the limited-release
-  // audience (Facebook/Instagram/Threads are promotional-customer-only until
-  // Meta App Review lands). Optional so an older backend still works.
+  // Whether the platform can be connected. Same as `configured` today; the
+  // connect screen reads this first. Optional so an older backend still works.
   available?: boolean;
   uses_oauth: boolean;
   // Our own handle on this platform when the connect page offers "Follow us"

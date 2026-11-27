@@ -33,10 +33,10 @@ class TelegramController extends Controller
      */
     public function connectCode()
     {
-        if (! $this->manager->isAvailableTo(Auth::user(), 'telegram')) {
+        if (! $this->manager->isConfigured('telegram')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Telegram is not available on your account yet.',
+                'message' => 'Telegram is not available right now.',
             ], 503);
         }
 

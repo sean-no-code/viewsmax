@@ -9,8 +9,8 @@ use Tests\TestCase;
 
 /**
  * `users:promo` is how the promotional_customer role gets granted — the role
- * that unlocks limited-release platforms (config/social → promo_only) and,
- * when promo_expires_at is null, an open-ended free window.
+ * that exempts a user from plan and card gating and, when promo_expires_at is
+ * null, opens an open-ended free window.
  */
 class PromoRoleCommandTest extends TestCase
 {
@@ -30,7 +30,7 @@ class PromoRoleCommandTest extends TestCase
     public function test_it_warns_when_the_role_also_opens_an_endless_free_window(): void
     {
         // promo_expires_at = null + the role means hasActivePromo() is true
-        // forever, i.e. free access — not just early platform access.
+        // forever, i.e. free access with no end date.
         User::factory()->create(['email' => 'jane@example.com', 'promo_expires_at' => null]);
 
         $this->artisan('users:promo jane@example.com')

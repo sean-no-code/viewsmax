@@ -125,10 +125,9 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     return socialAcct(e.key)?.avatar_url || null;
   };
 
-  // Connectable by THIS user: the backend's `available` folds credentials in
-  // with the limited-release audience (Facebook/Instagram/Threads are
-  // promotional-customer-only for now). Falls back to `configured` so a
-  // frontend deployed ahead of the backend keeps working.
+  // Connectable: the backend's `available` says whether the platform is
+  // enabled and has credentials. Falls back to `configured` so a frontend
+  // deployed ahead of the backend keeps working.
   const isConfigured = (e: ProviderEntry): boolean => {
     if (e.system === "legacy") return isProviderConfigured(e.key as OAuthProvider) || isMockApi();
     const p = platforms.find((p) => p.platform === e.key);

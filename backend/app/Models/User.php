@@ -428,8 +428,8 @@ class User extends Authenticatable implements Wallet
             // SIGNUP_CARD_REQUIRED: the SPA offers "Skip for now" on the card step when false.
             'card_required' => \App\Support\UserAccess::cardRequired(),
             'is_admin' => $this->isAdmin(),
-            // Promotional customer: with admins, the limited-release audience
-            // (SocialProviderManager::inLimitedReleaseAudience).
+            // Promotional customer: the SPA opens early-access pages to these
+            // users and admins (inLimitedReleaseAudience in src/lib/access.ts).
             'is_promotional' => $this->isPromotional(),
             // Analytics starts at the Creator tier (App\Support\AnalyticsAccess).
             'can_use_analytics' => AnalyticsAccess::allows($this),

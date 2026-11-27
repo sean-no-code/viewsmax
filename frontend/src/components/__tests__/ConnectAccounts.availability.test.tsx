@@ -27,9 +27,9 @@ const platform = (name: string, overrides: Record<string, unknown> = {}) => ({
   uses_oauth: true, follow_us: null, ...overrides,
 });
 
-// `available` is the per-user answer: a platform in limited release (Facebook,
-// Instagram and Threads are promotional-customer-only until Meta App Review
-// lands) is configured on the backend but must still read "Coming soon" here.
+// `available` is the backend's answer to "can this be connected": a platform
+// it reports as unavailable (disabled or without credentials) must read
+// "Coming soon" here.
 describe("ConnectAccounts — platform availability", () => {
   beforeEach(() => {
     vi.clearAllMocks();

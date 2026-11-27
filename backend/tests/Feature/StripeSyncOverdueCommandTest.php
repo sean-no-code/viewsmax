@@ -166,6 +166,24 @@ class StripeSyncOverdueCommandTest extends TestCase
 
     // --- Not paid in Stripe ---------------------------------------------------
 
+    public function test_a_trial_stripe_has_not_charged_yet_is_left_a_trial(): void
+    {
+        // The hour after a trial ends: Stripe says active, the first invoice is still a draft.
+        $trialEnd = now()->subMinutes(10)->startOfSecond();
+        $user = $this->subscriber('sub_1', 'trialing', $trialEnd);
+        $this->stripeHas('sub_1', 'active', $this->invoice('in_1', 'sub_1', 'draft'));
+
+        $this->artisan('stripe:sync-overdue')
+            ->expectsOutputToContain('Stripe has not charged invoice in_1 yet')
+            ->assertSuccessful();
+
+        $row = $this->rowOf('sub_1');
+        $this->assertSame('trialing', $row->status);
+        $this->assertSame($trialEnd->timestamp, strtotime($row->expires_at));
+        $this->assertSame(0, $user->fresh()->balanceInt);
+        Mail::assertNothingSent();
+    }
+
     public function test_a_trial_whose_charge_failed_is_locked_and_the_customer_is_told(): void
     {
         $user = $this->subscriber('sub_1', 'trialing', now()->subDay());

@@ -24,6 +24,8 @@ use Throwable;
  *  - paid and never applied here: the invoice.paid logic (plan active,
  *    credits for the period, invoice email), as `stripe:sync-invoice` does;
  *  - paid and already applied: only the row's status and date are put right;
+ *  - a trial that has ended but is not charged yet (Stripe charges about an
+ *    hour after the trial ends): left a trial until it is;
  *  - payment failing: the invoice.payment_failed logic (past_due, the
  *    payment-failed email once per invoice);
  *  - ended in Stripe: the row is expired;
@@ -181,6 +183,13 @@ class StripeSyncOverdue extends Command
         if (in_array($status, User::ACTIVE_SUBSCRIPTION_STATUSES, true)) {
             if ($unapplied) {
                 return $plan(self::APPLY_PAID, "apply paid invoice {$invoiceId} ({$amount}): plan {$status}{$until}, credits for the period, invoice email");
+            }
+
+            // The hour after a trial ends: Stripe says active, the first
+            // invoice is not charged yet. The row stays a trial until it is
+            // (as the webhook leaves it): here `active` means paid.
+            if ($row->status === 'trialing' && $status === 'active' && in_array($invoiceStatus, ['draft', 'open'], true)) {
+                return $plan(self::NONE, "nothing to do: the trial has ended and Stripe has not charged invoice {$invoiceId} yet");
             }
 
             $inStep = $row->status === $status
