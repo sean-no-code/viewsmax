@@ -36,6 +36,11 @@ class EnsureWebAccess
             return $next($request);
         }
 
+        // A disabled account has nowhere to be sent: no page here fixes it.
+        if ($denial->code === UserAccess::ACCOUNT_DISABLED) {
+            abort(403, $denial->message);
+        }
+
         // Connecting channels comes before the card; consent and continue don't.
         if ($denial->code === UserAccess::PAYMENT_REQUIRED && $request->routeIs(...self::ONBOARDING_ROUTES)) {
             return $next($request);

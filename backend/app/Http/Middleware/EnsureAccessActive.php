@@ -16,7 +16,8 @@ use Symfony\Component\HttpFoundation\Response;
  * wizard calls. Everything else answers with the denial (`code`, `message`,
  * `url`): HTTP 402 with an `error` object (`code`, `message`,
  * `upgrade_url`) when paying fixes it, 403 for an unverified email
- * (AccessDenial::status). Applied after `api.auth` on the whole protected
+ * (AccessDenial::status). A disabled account (users.disabled_at) gets a 403
+ * on everything but logout. Applied after `api.auth` on the whole protected
  * group.
  */
 class EnsureAccessActive
@@ -49,13 +50,22 @@ class EnsureAccessActive
         'api/social/*/auth-url', 'api/social/*/exchange', 'api/social/*/connect',
     ];
 
+    /**
+     * All a disabled account (UserAccess::ACCOUNT_DISABLED) may still call:
+     * signing out. Nothing it can do fixes the denial, so profile, plans and
+     * billing answer with it too.
+     */
+    public const DISABLED_PATTERNS = ['api/logout'];
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
         $denial = $user ? UserAccess::denial($user) : null;
-        $allowed = $denial?->code === UserAccess::PAYMENT_REQUIRED
-            ? [...self::ALLOWED_PATTERNS, ...self::ONBOARDING_PATTERNS]
-            : self::ALLOWED_PATTERNS;
+        $allowed = match ($denial?->code) {
+            UserAccess::ACCOUNT_DISABLED => self::DISABLED_PATTERNS,
+            UserAccess::PAYMENT_REQUIRED => [...self::ALLOWED_PATTERNS, ...self::ONBOARDING_PATTERNS],
+            default => self::ALLOWED_PATTERNS,
+        };
 
         if ($denial && ! $request->is(...$allowed)) {
             return response()->json($denial->toArray(), $denial->status());

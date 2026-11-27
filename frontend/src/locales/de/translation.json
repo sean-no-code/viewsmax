@@ -406,6 +406,7 @@
       "pastDueCancelTitle": "Abo kündigen?",
       "pastDueCancelBody": "Deine letzte Zahlung ist nicht durchgegangen, daher ist kein bezahlter Zeitraum mehr übrig. Mit der Kündigung endet dein Abo sofort. Du kannst jederzeit wieder ein Abo abschließen.",
       "billingHistory": "Rechnungsverlauf & Zahlungsmethode",
+      "trialCancelConfirmBody": "Mit der Kündigung endet deine kostenlose Testphase sofort. Du verlierst den Zugriff direkt und es wird nichts abgebucht. Du kannst jederzeit wieder ein Abo abschließen, die kostenlose Testphase beginnt aber nicht erneut.",
       "trialEndsThenPrice": "Kostenlose Testphase · endet am <0>{{date}}</0>, danach werden {{price}} berechnet",
       "changeKeepsCancellation": "Dein Abo bleibt gekündigt und endet am {{date}}."
     }

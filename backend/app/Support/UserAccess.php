@@ -19,13 +19,22 @@ use App\Models\User;
  *               when a command selects records in bulk (never act for a
  *               user who couldn't do it themselves)
  *
- * Checks run in order and the first failure wins: an unverified user is told
- * to verify before being told to pay. Admins and promotional customers are
- * exempt from everything after verification. Callers decide only how to
- * deliver the answer; add a new rule here and every entry point enforces it.
+ * Checks run in order and the first failure wins: a disabled account
+ * (users.disabled_at) is told so before anything else, and an unverified user
+ * is told to verify before being told to pay. Admins and promotional
+ * customers are exempt from everything after verification, never from being
+ * disabled. Callers decide only how to deliver the answer; add a new rule
+ * here and every entry point enforces it.
  */
 final class UserAccess
 {
+    /**
+     * Switched off by an admin (users.disabled_at). Nothing the user can do
+     * fixes it, so there is no link: REST answers 403 on everything but
+     * logout, login is refused, the web guard shows a 403 page.
+     */
+    public const ACCOUNT_DISABLED = 'account_disabled';
+
     public const EMAIL_UNVERIFIED = 'email_unverified';
 
     /** The free window closed and the user never subscribed. */
@@ -40,6 +49,14 @@ final class UserAccess
     /** Why this user can't use ViewsMax right now, or null when they can. */
     public static function denial(User $user): ?AccessDenial
     {
+        if ($user->isDisabled()) {
+            return new AccessDenial(
+                self::ACCOUNT_DISABLED,
+                'Your ViewsMax account has been disabled. Please contact support.',
+                '',
+            );
+        }
+
         if (is_null($user->email_verified_at)) {
             $url = self::verifyUrl($user);
 

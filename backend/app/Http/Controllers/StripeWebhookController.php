@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\Billing\BillingEmails;
 use App\Services\Billing\BillingLog;
+use App\Services\Billing\UnpaidTrial;
 use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
@@ -899,6 +900,28 @@ class StripeWebhookController extends Controller
         $status = $subscription['status'] ?? null;
         $cancelAtPeriodEnd = ! empty($subscription['cancel_at_period_end']);
 
+        // A trial cancelled outside the app (the Stripe portal) arrives as
+        // "cancel at period end". Nothing was charged, so there is no period to
+        // run out: end it on Stripe now and close it here (UnpaidTrial). The
+        // customer.subscription.deleted that follows finds it already closed.
+        $unpaidTrialCancelled = $cancelAtPeriodEnd && $status === 'trialing' && $user->plans()
+            ->wherePivot('stripe_subscription_id', $subscriptionId)
+            ->wherePivot('status', 'trialing')
+            ->exists();
+        if ($unpaidTrialCancelled) {
+            $this->stripeService->cancelSubscription($subscriptionId, null, true);
+            $this->stripeService->voidOpenInvoices($subscriptionId);
+            UnpaidTrial::close($user, $subscriptionId);
+
+            Log::info('Stripe webhook: Unpaid trial cancelled, ended now', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscriptionId,
+            ]);
+            $this->did('unpaid trial cancelled, subscription ended and access closed', true, $user);
+
+            return;
+        }
+
         $updates = [];
         if ($priceId) {
             $updates['stripe_price_id'] = $priceId;
@@ -1005,6 +1028,19 @@ class StripeWebhookController extends Controller
             $this->stripeService->keepCardOfUnpaidInvoices($subscriptionId);
         } else {
             $this->stripeService->voidOpenInvoices($subscriptionId);
+        }
+
+        // An unpaid trial has no paid period to run out: it closes now, with
+        // the free window it ran on (UnpaidTrial). False when the app's cancel
+        // endpoint or the updated webhook already closed it.
+        if (UnpaidTrial::close($user, $subscriptionId)) {
+            Log::info('Stripe webhook: Unpaid trial ended', [
+                'user_id' => $user->id,
+                'subscription_id' => $subscriptionId,
+            ]);
+            $this->did('unpaid trial ended, access closed', true, $user);
+
+            return;
         }
 
         $updates = [];

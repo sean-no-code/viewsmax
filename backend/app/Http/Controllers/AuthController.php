@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\PasswordResetMail;
 use App\Models\User;
 use App\Services\Registration;
+use App\Support\UserAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -103,6 +104,12 @@ class AuthController extends Controller
                     'success' => false,
                     'message' => 'Invalid credentials',
                 ], 401);
+            }
+
+            // A disabled account (users.disabled_at) gets no token. Asked only
+            // after the password matched, so nobody else learns its state.
+            if ($user->isDisabled()) {
+                return response()->json(UserAccess::denial($user)->toArray(), 403);
             }
 
             // Block unverified users so the SPA can surface a "resend" affordance.

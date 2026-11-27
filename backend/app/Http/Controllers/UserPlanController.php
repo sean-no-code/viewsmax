@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserEvent;
 use App\Services\Billing\BillingEmails;
+use App\Services\Billing\UnpaidTrial;
 use App\Support\AnalyticsAccess;
 use App\Services\CreditService;
 use App\Services\StripeService;
@@ -420,6 +421,9 @@ class UserPlanController extends Controller
             }
 
             $isPastDue = $userPlan->pivot->status === 'past_due';
+            // Nothing has been charged yet (the row turns `active` on its first
+            // paid invoice): see UnpaidTrial.
+            $isUnpaidTrial = $userPlan->pivot->status === 'trialing';
 
             if ($userPlan->pivot->cancelled_at && ! $isPastDue) {
                 return response()->json([
@@ -428,9 +432,9 @@ class UserPlanController extends Controller
                 ], 422);
             }
 
-            // A past-due subscription has no paid period left to run out, so it
-            // ends now rather than at period end.
-            $immediately = $immediately || $isPastDue;
+            // A past-due subscription has no paid period left to run out, and an
+            // unpaid trial never had one, so both end now rather than at period end.
+            $immediately = $immediately || $isPastDue || $isUnpaidTrial;
 
             $stripeService = app(StripeService::class);
             $cancelled = $stripeService->cancelSubscription($subscriptionId, $reason, $immediately, $feedback);
@@ -441,10 +445,15 @@ class UserPlanController extends Controller
                 $stripeService->voidOpenInvoices($subscriptionId);
             }
 
-            $user->plans()->updateExistingPivot($userPlan->id, array_filter([
-                'cancelled_at' => now(),
-                'status' => $isPastDue ? 'expired' : null,
-            ]));
+            if ($isUnpaidTrial) {
+                // Closes the row and the free window the trial ran on: access ends here.
+                UnpaidTrial::close($user, $subscriptionId);
+            } else {
+                $user->plans()->updateExistingPivot($userPlan->id, array_filter([
+                    'cancelled_at' => now(),
+                    'status' => $isPastDue ? 'expired' : null,
+                ]));
+            }
 
             UserEvent::record($user, UserEvent::SUBSCRIPTION_CANCELLED, [
                 'feedback' => $feedback,

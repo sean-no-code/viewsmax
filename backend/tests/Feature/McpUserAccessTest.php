@@ -78,6 +78,25 @@ class McpUserAccessTest extends TestCase
         );
     }
 
+    /** A trial cancelled before any payment: refused at once, not at the end of the window. */
+    public function test_a_cancelled_unpaid_trial_is_refused_straight_away(): void
+    {
+        config(['app.frontend_url' => 'https://app.example.com/']);
+        $user = User::factory()->withPlan('trialing')->create();
+        $key = $this->mcpKey($user);
+        $subscriptionId = $user->plans()->first()->pivot->stripe_subscription_id;
+
+        \App\Services\Billing\UnpaidTrial::close($user, $subscriptionId);
+
+        $response = $this->rpc($key, 'tools/call', ['name' => 'list_connected_accounts', 'arguments' => []]);
+
+        $this->assertSame(
+            'Your ViewsMax subscription has ended. Reactivate it to continue using ViewsMax: https://app.example.com/dashboard/billing',
+            $this->assertToldInsteadOfRun($response, $user->fresh()),
+        );
+        $this->assertTrue((bool) McpToolInvocation::where('user_id', $user->id)->sole()->is_error);
+    }
+
     public function test_expired_trial_gets_an_upgrade_message_with_the_billing_link(): void
     {
         config(['app.frontend_url' => 'https://app.example.com/']);

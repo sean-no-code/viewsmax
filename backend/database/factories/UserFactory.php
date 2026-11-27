@@ -52,6 +52,12 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => ['promo_expires_at' => null]);
     }
 
+    /** Switched off by an admin (users.disabled_at): refused everywhere, whatever else is true of the account. */
+    public function disabled(): static
+    {
+        return $this->state(fn (array $attributes) => ['disabled_at' => now()]);
+    }
+
     public function promotional(): static
     {
         return $this->afterCreating(fn (User $user) => $user->roles()->attach(

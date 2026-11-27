@@ -118,7 +118,7 @@ const Plans = () => {
 	const { t } = useTranslation();
 	const ctaLabel = ctaLabels(t);
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user, refreshUser } = useAuth();
 	// Free window closed: subscribing now charges today, so don't promise a trial.
 	const trialUsed = checkoutTerms(user).kind === "charge-now";
 
@@ -343,7 +343,17 @@ const Plans = () => {
 		setIsCancelling(true);
 		try {
 			const result = await viewsMaxApi.cancelSubscription(active.subscriptionId, cancelFeedback, cancelComment);
-			if (result.success) {
+			if (result.success && isTrialing) {
+				// Nothing was charged, so the backend ended the trial and the free
+				// window with it: no plan is left, and the re-read user locks the
+				// app to this page.
+				setActive(null);
+				localStorage.removeItem("active_subscription");
+				localStorage.setItem("subscription_last_check", Date.now().toString());
+				window.dispatchEvent(new CustomEvent("subscriptionUpdated"));
+				await refreshUser();
+				toast.success(t("billing.plans.cancelled", "Subscription cancelled successfully."));
+			} else if (result.success) {
 				try {
 					const refreshed = await viewsMaxApi.getCurrentPlan();
 					if (refreshed.success && (refreshed.data?.pivot?.stripe_subscription_id || refreshed.data?.pivot?.paypal_subscription_id)) {
@@ -587,7 +597,9 @@ const Plans = () => {
 																	{t("billing.plans.cancelConfirmTitle", "Are you sure you want to cancel?")}
 																</AlertDialogTitle>
 																<AlertDialogDescription>
-																	{t("billing.plans.cancelConfirmBody", "You'll keep access to {{plan}} until your billing period ends, then move to the Free plan.", { plan: plan.display_name })}
+																	{isTrialing
+																		? t("billing.plans.trialCancelConfirmBody", "Cancelling ends your free trial now. You'll lose access straight away and you won't be charged. You can subscribe again at any time, but the free trial won't restart.")
+																		: t("billing.plans.cancelConfirmBody", "You'll keep access to {{plan}} until your billing period ends, then move to the Free plan.", { plan: plan.display_name })}
 																</AlertDialogDescription>
 															</AlertDialogHeader>
 															<CancelReasonFields feedback={cancelFeedback} onFeedback={setCancelFeedback} comment={cancelComment} onComment={setCancelComment} disabled={isCancelling} />

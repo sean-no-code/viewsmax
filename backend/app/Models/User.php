@@ -123,6 +123,7 @@ class User extends Authenticatable implements Wallet
             'onboarding_completed_at' => 'datetime',
             'card_added_at' => 'datetime',
             'promo_expires_at' => 'datetime',
+            'disabled_at' => 'datetime',
             'free_trial_reminder_sent_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
@@ -255,9 +256,21 @@ class User extends Authenticatable implements Wallet
     }
 
     /**
+     * Switched off (users.disabled_at set): UserAccess::denial refuses the
+     * account everywhere, admins and promotional customers included, until
+     * the column is null again. Deliberately not in $fillable: it is set with
+     * forceFill, never from request input.
+     */
+    public function isDisabled(): bool
+    {
+        return ! is_null($this->disabled_at);
+    }
+
+    /**
      * Admins and promotional customers are never gated: no plan, card or
      * window is required of them, anywhere (UserAccess, the SPA's billing
-     * pin, and every scheduled command / job).
+     * pin, and every scheduled command / job). A disabled account is the
+     * one exception (isDisabled).
      */
     public function isExemptFromAccessRules(): bool
     {
@@ -319,15 +332,16 @@ class User extends Authenticatable implements Wallet
     /**
      * Users UserAccess::denial() would allow, as a query — for commands and
      * jobs that pick records in bulk (publish-due, syncs, metrics) so lapsed
-     * users cost nothing. Mirrors denial(): verified, and either an exempt
-     * role, or (a live plan or an open window) plus finished onboarding (or
-     * a live plan). Soft-deleted users are excluded by the model's scope.
+     * users cost nothing. Mirrors denial(): not disabled, verified, and either
+     * an exempt role, or (a live plan or an open window) plus finished
+     * onboarding (or a live plan). Soft-deleted users are excluded by the
+     * model's scope.
      */
     public function scopeWithAccess(Builder $query): Builder
     {
         $livePlan = fn (Builder $q) => $q->whereIn('user_plans.status', self::ACTIVE_SUBSCRIPTION_STATUSES);
 
-        return $query->whereNotNull('email_verified_at')->where(function (Builder $q) use ($livePlan) {
+        return $query->whereNull('disabled_at')->whereNotNull('email_verified_at')->where(function (Builder $q) use ($livePlan) {
             $q->whereHas('roles', fn (Builder $r) => $r->whereIn('name', [self::ADMIN_ROLE, self::PROMO_ROLE]))
                 ->orWhere(function (Builder $q) use ($livePlan) {
                     $q->where(fn (Builder $q) => $q->whereHas('plans', $livePlan)->orWhere('promo_expires_at', '>', now()));

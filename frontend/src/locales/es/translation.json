@@ -416,6 +416,7 @@
       "pastDueCancelTitle": "¿Cancelar tu suscripción?",
       "pastDueCancelBody": "Tu último pago no se completó, así que no te queda tiempo pagado. Si cancelas, tu suscripción termina ahora. Puedes volver a suscribirte cuando quieras.",
       "billingHistory": "Historial de facturación y método de pago",
+      "trialCancelConfirmBody": "Si cancelas, tu prueba gratuita termina ahora. Perderás el acceso de inmediato y no se te cobrará nada. Puedes volver a suscribirte cuando quieras, pero la prueba gratuita no se reinicia.",
       "trialEndsThenPrice": "Prueba gratuita · termina el <0>{{date}}</0>; después se cobra {{price}}",
       "changeKeepsCancellation": "Tu suscripción sigue cancelada y termina el {{date}}."
     }

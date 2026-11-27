@@ -292,6 +292,48 @@ class SubscriptionLifecycleTest extends TestCase
         $this->assertNotNull($pivot->cancelled_at);
     }
 
+    // --- Unpaid trial cancel ------------------------------------------------
+
+    /**
+     * A trial that is cancelled before anything was charged ends there: no
+     * free use of the rest of the window. A paid plan keeps the graceful
+     * cancel (test_graceful_cancel_marks_cancelled_but_keeps_access).
+     */
+    public function test_cancelling_an_unpaid_trial_ends_access_now(): void
+    {
+        $user = User::factory()->create(['promo_expires_at' => now()->addDays(5)]);
+        $plan = $this->plan('pro');
+        $this->subscribe($user, $plan, 'trialing', now()->addDays(5), 'sub_trial');
+
+        $this->mock(StripeService::class, function ($mock) {
+            // Ended on Stripe now, not at the end of the trial.
+            $mock->shouldReceive('cancelSubscription')->once()
+                ->with('sub_trial', null, true, 'too_expensive')
+                ->andReturn(['status' => 'canceled', 'ended_at' => now()->timestamp]);
+            $mock->shouldReceive('voidOpenInvoices')->once()->with('sub_trial')->andReturn(0);
+        });
+
+        $headers = $this->authHeaders($user);
+        $this->withHeaders($headers)
+            ->postJson('/api/subscriptions/sub_trial/cancel', ['feedback' => 'too_expensive'])
+            ->assertOk();
+
+        $pivot = $this->pivot($user, $plan);
+        $this->assertSame('expired', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+        $this->assertFalse(\Illuminate\Support\Carbon::parse($pivot->expires_at)->isFuture());
+
+        // The free window the trial ran on is closed with it.
+        $user->refresh();
+        $this->assertFalse($user->freeWindowOpen());
+        $this->assertSame(\App\Support\UserAccess::SUBSCRIPTION_INACTIVE, \App\Support\UserAccess::denial($user)?->code);
+
+        // Every query after that is refused with the link to pay.
+        $this->withHeaders($headers)->getJson('/api/social/posts')
+            ->assertStatus(402)
+            ->assertJsonPath('error.code', 'subscription_inactive');
+    }
+
     public function test_immediate_cancel_voids_open_invoices(): void
     {
         $user = User::factory()->create();

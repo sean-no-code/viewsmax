@@ -416,6 +416,7 @@
       "pastDueCancelTitle": "Annuler votre abonnement ?",
       "pastDueCancelBody": "Votre dernier paiement n'a pas abouti : il ne vous reste donc aucune période payée. L'annulation met fin à votre abonnement immédiatement. Vous pouvez vous réabonner à tout moment.",
       "billingHistory": "Historique de facturation et moyen de paiement",
+      "trialCancelConfirmBody": "L'annulation met fin à votre essai gratuit immédiatement. Vous perdez l'accès tout de suite et rien ne vous est facturé. Vous pouvez vous réabonner à tout moment, mais l'essai gratuit ne redémarre pas.",
       "trialEndsThenPrice": "Essai gratuit · se termine le <0>{{date}}</0>, puis {{price}} est facturé",
       "changeKeepsCancellation": "Votre abonnement reste annulé et prend fin le {{date}}."
     }

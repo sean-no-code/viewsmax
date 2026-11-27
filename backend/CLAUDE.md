@@ -59,7 +59,14 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   (`StripeWebhookController::resubscribeAfterLatePayment`, guards in `latePaymentRefusal`; anything that does
   not qualify grants nothing and logs an error for a manual refund). A subscription cancelled on purpose has
   its open invoices voided (`StripeService::voidOpenInvoices`, never throws), as do ended subscriptions when
-  the customer starts a new one. Either way a `past_due` row becomes `expired`. Customer emails (invoice per paid cycle with Stripe's PDF attached, cancel confirmation, payment failed — once per invoice via
+  the customer starts a new one. Either way a `past_due` row becomes `expired`. A paid (`active`) subscription
+  that is cancelled runs to the end of its period (`cancel_at_period_end`, row stays `active` with `cancelled_at`).
+  An unpaid trial (`trialing`: nothing charged yet) that is cancelled ends at once:
+  `App\Services\Billing\UnpaidTrial::close` sets its rows `expired` and closes the free window
+  (`promo_expires_at = now`), so `UserAccess::denial` refuses from then on and subscribing again charges straight
+  away. Called by the cancel endpoint (which ends it on Stripe now), by `customer.subscription.updated` with
+  `cancel_at_period_end` on a trial (a portal cancel; the handler ends it on Stripe) and by
+  `customer.subscription.deleted`; a new path that cancels a subscription must call it for a `trialing` row. Customer emails (invoice per paid cycle with Stripe's PDF attached, cancel confirmation, payment failed — once per invoice via
   `user_plans.payment_failed_notified_invoice_id`) go through
   `App\Services\Billing\BillingEmails` (`config/billing.php` switches; never throw) and log to
   `storage/logs/billing-YYYY-MM-DD.log` (`BillingLog`, `BILLING_LOG_ENABLED`). Every Stripe webhook writes two
@@ -105,7 +112,9 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   same account gets `HandleClaimedException` ("sign in with that account"). New connect paths must call it too.
 
 - **Access gating.** `App\Support\UserAccess::denial($user)` is the single rule set for "may this user use
-  ViewsMax right now" (unverified email, then `access_expired`: no active/trialing plan and no open free
+  ViewsMax right now" (`account_disabled` first of all: `users.disabled_at` is set — the admin off-switch, which
+  nothing exempts, admins and `promotional_customer` included; null again and the account is back as it was. The
+  column is not fillable, set it with `forceFill`. Then unverified email, then `access_expired`: no active/trialing plan and no open free
   window — a user with no window at all is expired too; `subscription_inactive` instead when they have held a
   plan — then the paywall: onboarding not finished and no
   card — `payment_required`; skipped when `SIGNUP_CARD_REQUIRED=false`, which makes the window a card-free trial — `UserAccess::cardRequired()`, mirrored in `User::canCompleteOnboarding`, `scopeWithAccess` and the SPA's `cardOptional`). Admins and `promotional_customer` role holders are exempt after verification.
@@ -113,7 +122,7 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   records in bulk use `User::withAccess()` (`->whereHas('user', fn ($u) => $u->withAccess())`), jobs that
   handle one record call `UserAccess::allowsBackgroundWork($user)`; a lapsed user's due post goes back to
   draft (`Post::revertToDraft`), never published. The factory user has an open window (has access); use
-  `User::factory()->expired()` / `->withoutWindow()` / `->withPlan('cancelled')` / `->promotional()` / `->admin()`. At the card step
+  `User::factory()->expired()` / `->withoutWindow()` / `->withPlan('cancelled')` / `->promotional()` / `->admin()` / `->disabled()`. At the card step
   the deliveries keep the pre-card endpoints open (`EnsureAccessActive::ONBOARDING_PATTERNS`,
   `EnsureWebAccess::ONBOARDING_ROUTES`); agent signups add the card at `/register/billing`
   (`WebBillingController`), app signups in the SPA's onboarding. Both go through `SubscriptionStarter`. Delivery differs per entry point, and
@@ -125,7 +134,11 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   REST only — an HTTP 402 on MCP, tried 2026-11-23 to 27, is a failed request to the client and was withdrawn when
   the Claude connector directory showed a 20% request-error rate),
   `EnsureWebAccess` (web redirect). Console code calls `denial()`
-  directly.
+  directly. A disabled account ("Your ViewsMax account has been disabled. Please contact support.", no link) gets a
+  403 from every REST endpoint but `api/logout` (`EnsureAccessActive::DISABLED_PATTERNS`: not profile, plans or
+  billing), a 403 from `POST /api/login` once the password matched (no token), the message as the MCP tool result, and
+  a 403 page on the web guard, consent screen included. Disabling does not cancel the Stripe subscription or revoke
+  tokens (`AccountDisabledTest`).
 
 - **Post allowance.** `App\Support\PostAllowance::refusal($user)` caps an account that hasn't paid yet — the
   card-free window or the $0 Stripe trial (`trialing`) — at `config('publishing.trial_posts')` posts

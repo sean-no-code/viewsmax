@@ -416,6 +416,7 @@
       "pastDueCancelTitle": "Cancelar sua assinatura?",
       "pastDueCancelBody": "Seu último pagamento não foi aprovado, então não resta nenhum período pago. Ao cancelar, sua assinatura termina agora. Você pode assinar novamente quando quiser.",
       "billingHistory": "Histórico de cobranças e forma de pagamento",
+      "trialCancelConfirmBody": "Ao cancelar, seu teste gratuito termina agora. Você perde o acesso imediatamente e nada é cobrado. Você pode assinar novamente quando quiser, mas o teste gratuito não recomeça.",
       "trialEndsThenPrice": "Teste grátis · termina em <0>{{date}}</0>, depois será cobrado {{price}}",
       "changeKeepsCancellation": "Sua assinatura continua cancelada e termina em {{date}}."
     }

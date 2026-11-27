@@ -34,6 +34,8 @@ class UserWithAccessScopeTest extends TestCase
             'not onboarded, window open' => [fn () => User::factory()->create(['onboarding_completed_at' => null]), false],
             'not onboarded, trialing plan' => [fn () => User::factory()->withPlan('trialing')->create(['onboarding_completed_at' => null]), true],
             'not onboarded, promo' => [fn () => User::factory()->promotional()->create(['onboarding_completed_at' => null]), true],
+            'disabled, active plan' => [fn () => User::factory()->disabled()->withPlan('active')->create(), false],
+            'disabled admin' => [fn () => User::factory()->disabled()->admin()->create(), false],
         ];
     }
 

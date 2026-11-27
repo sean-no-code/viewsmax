@@ -350,6 +350,107 @@ class StripeWebhookTest extends TestCase
         $this->assertNotNull($pivot->cancelled_at);
     }
 
+    /**
+     * An unpaid trial that Stripe ended (cancelled in the portal, by support)
+     * closes at once, and the free window it ran on closes with it: there is
+     * no paid period to run out.
+     */
+    public function test_subscription_deleted_closes_an_unpaid_trial_and_its_free_window(): void
+    {
+        $user = User::factory()->create(['promo_expires_at' => now()->addDays(5)]);
+        $plan = $this->proPlan();
+        $this->subscribeTrialing($user, $plan, 'sub_tr');
+
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('voidOpenInvoices')
+            ->once()->with('sub_tr')->andReturn(0));
+
+        $this->postJson('/api/webhooks/stripe', $this->deleteEvent('sub_tr'))->assertOk();
+
+        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
+        $this->assertSame('expired', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+        $this->assertFalse($user->fresh()->freeWindowOpen());
+        $this->assertTrue($user->fresh()->accessExpired());
+    }
+
+    /**
+     * A trial row replaced by a new subscription is `inactive` here; Stripe
+     * deleting the old one must not close the window the new trial runs on.
+     */
+    public function test_subscription_deleted_for_a_replaced_trial_leaves_the_window_open(): void
+    {
+        $user = User::factory()->create(['promo_expires_at' => now()->addDays(5)]);
+        $plan = $this->proPlan();
+        $this->attachSub($user, $plan, 'sub_old', 'inactive', ['cancelled_at' => now()]);
+        $this->subscribeTrialing($user, $plan, 'sub_new');
+
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldReceive('voidOpenInvoices')
+            ->once()->with('sub_old')->andReturn(0));
+
+        $this->postJson('/api/webhooks/stripe', $this->deleteEvent('sub_old'))->assertOk();
+
+        $this->assertTrue($user->fresh()->freeWindowOpen());
+        $this->assertTrue($user->fresh()->hasActivePlan());
+    }
+
+    /**
+     * A trial cancelled in the Stripe portal arrives as "cancel at period
+     * end". Nothing was paid, so it is ended on Stripe now and closed here.
+     */
+    public function test_a_portal_cancel_of_an_unpaid_trial_ends_it_now(): void
+    {
+        $user = User::factory()->create(['promo_expires_at' => now()->addDays(5)]);
+        $plan = $this->proPlan();
+        $this->subscribeTrialing($user, $plan, 'sub_portal');
+
+        $this->mock(StripeService::class, function ($mock) {
+            $mock->shouldReceive('cancelSubscription')->once()
+                ->withArgs(fn ($id, $reason = null, $immediately = false) => $id === 'sub_portal' && $immediately === true)
+                ->andReturn(['status' => 'canceled']);
+            $mock->shouldReceive('voidOpenInvoices')->once()->with('sub_portal')->andReturn(0);
+        });
+
+        $this->postJson('/api/webhooks/stripe', [
+            'type' => 'customer.subscription.updated',
+            'data' => ['object' => [
+                'id' => 'sub_portal',
+                'status' => 'trialing',
+                'cancel_at_period_end' => true,
+                'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
+            ]],
+        ])->assertOk();
+
+        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
+        $this->assertSame('expired', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+        $this->assertFalse($user->fresh()->freeWindowOpen());
+    }
+
+    /** A paid plan cancelled in the portal keeps running to the end of its period. */
+    public function test_a_portal_cancel_of_a_paid_plan_stays_graceful(): void
+    {
+        $user = User::factory()->create();
+        $plan = $this->proPlan();
+        $this->attachSub($user, $plan, 'sub_paid', 'active');
+
+        $this->mock(StripeService::class, fn ($mock) => $mock->shouldNotReceive('cancelSubscription'));
+
+        $this->postJson('/api/webhooks/stripe', [
+            'type' => 'customer.subscription.updated',
+            'data' => ['object' => [
+                'id' => 'sub_paid',
+                'status' => 'active',
+                'cancel_at_period_end' => true,
+                'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
+            ]],
+        ])->assertOk();
+
+        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
+        $this->assertSame('active', $pivot->status);
+        $this->assertNotNull($pivot->cancelled_at);
+        $this->assertTrue($user->fresh()->hasActivePlan());
+    }
+
     /** No local row yet: a paid invoice of a dead subscription attaches nothing. */
     public function test_invoice_paid_for_a_canceled_subscription_attaches_no_plan(): void
     {

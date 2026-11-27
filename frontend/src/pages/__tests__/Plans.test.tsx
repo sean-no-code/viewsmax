@@ -6,7 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 // The billing page's recovery paths: a past-due customer can cancel from the
 // banner (the backend ends it now), and anyone with a Stripe customer, even
 // with no live subscription, gets a link to invoices and their card.
-const authState = vi.hoisted(() => ({ user: null as null | Record<string, unknown> }));
+const authState = vi.hoisted(() => ({ user: null as null | Record<string, unknown>, refreshUser: vi.fn(async () => {}) }));
 const api = vi.hoisted(() => ({
   getPlans: vi.fn(),
   getCurrentPlan: vi.fn(),
@@ -16,7 +16,7 @@ const api = vi.hoisted(() => ({
   changePlan: vi.fn(),
 }));
 
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: authState.user, loading: false }) }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: authState.user, loading: false, refreshUser: authState.refreshUser }) }));
 vi.mock("@/lib/api-service", async (original) => ({
   ...(await original<typeof import("@/lib/api-service")>()),
   viewsMaxApi: api,
@@ -77,6 +77,31 @@ describe("Plans billing recovery", () => {
     renderPlans();
 
     expect(await screen.findByText(/then \$29\/mo is charged/)).toBeInTheDocument();
+  });
+
+  // Nothing has been charged during the trial, so the backend ends it (and
+  // access) at once: the dialog says so, and the user is re-read so the app
+  // locks to billing without waiting for the next page load.
+  it("warns a trial customer that cancelling ends access now", async () => {
+    const creator = { id: 1, name: "creator", display_name: "Creator", price: "29", currency: "USD", billing_cycle: "monthly", is_active: true, stripe_price_id: "price_creator", max_channels: 5, max_posts_per_month: 100 };
+    api.getPlans.mockResolvedValue({ success: true, data: [creator] });
+    api.getCurrentPlan.mockResolvedValue({
+      success: true,
+      data: { plan: creator, pivot: { stripe_subscription_id: "sub_t", status: "trialing", stripe_price_id: "price_creator", expires_at: "2030-01-15T12:00:00Z", cancelled_at: null } },
+    });
+    api.getBillingStatus.mockResolvedValue({ success: true, data: { has_subscription: true, status: "trialing", has_billing_account: true } });
+    api.cancelSubscription.mockResolvedValue({ success: true, data: { message: "ok" } });
+    const user = userEvent.setup();
+    renderPlans();
+
+    await user.click(await screen.findByRole("button", { name: "Cancel Subscription" }));
+    expect(screen.getByText(/ends your free trial now/)).toBeInTheDocument();
+    expect(screen.queryByText(/until your billing period ends/)).toBeNull();
+    await user.click(screen.getByRole("radio", { name: "It's too expensive" }));
+    await user.click(screen.getByRole("button", { name: "Yes, Cancel" }));
+
+    await waitFor(() => expect(api.cancelSubscription).toHaveBeenCalledWith("sub_t", "too_expensive", ""));
+    await waitFor(() => expect(authState.refreshUser).toHaveBeenCalled());
   });
 
   it("shows no billing link without a Stripe customer", async () => {

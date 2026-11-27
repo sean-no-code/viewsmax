@@ -406,6 +406,7 @@
       "pastDueCancelTitle": "Cancel your subscription?",
       "pastDueCancelBody": "Your last payment didn't go through, so there's no paid time left. Cancelling ends your subscription now. You can subscribe again at any time.",
       "billingHistory": "Billing history & payment method",
+      "trialCancelConfirmBody": "Cancelling ends your free trial now. You'll lose access straight away and you won't be charged. You can subscribe again at any time, but the free trial won't restart.",
       "trialEndsThenPrice": "Free trial · ends <0>{{date}}</0>, then {{price}} is charged",
       "changeKeepsCancellation": "Your subscription stays cancelled and ends on {{date}}."
     }
