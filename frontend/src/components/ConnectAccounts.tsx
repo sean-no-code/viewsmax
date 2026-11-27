@@ -125,8 +125,8 @@ const ConnectAccounts = ({ mode, onAnyConnected }: ConnectAccountsProps) => {
     return socialAcct(e.key)?.avatar_url || null;
   };
 
-  // Connectable: the backend's `available` says whether the platform is
-  // enabled and has credentials. Falls back to `configured` so a frontend
+  // Connectable: the backend's `available` says whether the platform has
+  // its credentials. Falls back to `configured` so a frontend
   // deployed ahead of the backend keeps working.
   const isConfigured = (e: ProviderEntry): boolean => {
     if (e.system === "legacy") return isProviderConfigured(e.key as OAuthProvider) || isMockApi();

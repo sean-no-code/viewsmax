@@ -96,7 +96,6 @@ return [
 
         'linkedin' => [
             'label' => 'LinkedIn',
-            'enabled' => env('LINKEDIN_ENABLED', true),
             'client_id' => env('LINKEDIN_CLIENT_ID'),
             'client_secret' => env('LINKEDIN_CLIENT_SECRET'),
             // LinkedIn-Version header (YYYYMM). Versioned APIs stay active ~12
@@ -112,7 +111,6 @@ return [
 
         'pinterest' => [
             'label' => 'Pinterest',
-            'enabled' => env('PINTEREST_ENABLED', true),
             'client_id' => env('PINTEREST_CLIENT_ID'),
             'client_secret' => env('PINTEREST_CLIENT_SECRET'),
             // Send every call to api-sandbox.pinterest.com. Pins made there
@@ -132,7 +130,6 @@ return [
 
         'bluesky' => [
             'label' => 'Bluesky',
-            'enabled' => env('BLUESKY_ENABLED', true),
             // Bluesky (AT Protocol) authenticates with handle + app password,
             // not OAuth. The user supplies these at connect time.
             'service_url' => env('BLUESKY_SERVICE_URL', 'https://bsky.social'),
@@ -140,7 +137,6 @@ return [
 
         'telegram' => [
             'label' => 'Telegram',
-            'enabled' => env('TELEGRAM_ENABLED', true),
             // One ViewsMax bot (made with @BotFather) posts to every connected
             // channel and group; there is no per-user OAuth. The user adds the
             // bot as an admin and proves the chat is theirs by posting a
@@ -153,7 +149,6 @@ return [
 
         'x' => [
             'label' => 'X',
-            'enabled' => env('X_ENABLED', true),
             'client_id' => env('X_CLIENT_ID'),
             'client_secret' => env('X_CLIENT_SECRET'),
             // X uses OAuth 2.0 with PKCE.
@@ -171,7 +166,6 @@ return [
 
         'tiktok' => [
             'label' => 'TikTok',
-            'enabled' => env('TIKTOK_ENABLED', true),
             'client_id' => env('TIKTOK_CLIENT_KEY'),
             'client_secret' => env('TIKTOK_CLIENT_SECRET'),
             // Audience-growth stats (follower count + per-video engagement). Off
@@ -191,7 +185,6 @@ return [
 
         'youtube' => [
             'label' => 'YouTube',
-            'enabled' => env('YOUTUBE_PUBLISH_ENABLED', true),
             // Reuses the existing Google OAuth app (config/services.php → google).
             'client_id' => env('GOOGLE_CLIENT_ID'),
             'client_secret' => env('GOOGLE_CLIENT_SECRET'),
@@ -203,7 +196,6 @@ return [
 
         'google_business' => [
             'label' => 'Google My Business',
-            'enabled' => env('GOOGLE_BUSINESS_ENABLED', true),
             'client_id' => env('GOOGLE_CLIENT_ID'),
             'client_secret' => env('GOOGLE_CLIENT_SECRET'),
             'scopes' => [

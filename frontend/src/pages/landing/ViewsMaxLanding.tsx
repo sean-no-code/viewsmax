@@ -264,6 +264,7 @@ const CHANNELS: { name: string; slug?: string; bg: string; glyph: ReactNode }[] 
   { ...page("youtube"), bg: "#FF0000", glyph: logo("youtube") },
   { ...page("tiktok"), bg: "#0A0A0C", glyph: logo("tiktok") },
   { ...page("instagram"), bg: "linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF)", glyph: logo("instagram") },
+  { ...page("facebook"), bg: "#1877F2", glyph: logo("facebook") },
   { ...page("x"), bg: "#0A0A0C", glyph: logo("x") },
   { ...page("linkedin"), bg: "#0A66C2", glyph: logo("linkedin") },
   { ...page("threads"), bg: "#0A0A0C", glyph: logo("threads") },

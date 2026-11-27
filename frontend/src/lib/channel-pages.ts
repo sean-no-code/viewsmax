@@ -13,7 +13,7 @@
 
 export const CHANNELS_PATH = "/channels";
 
-export type ChannelKey = "youtube" | "tiktok" | "instagram" | "x" | "linkedin" | "threads" | "bluesky" | "pinterest" | "telegram";
+export type ChannelKey = "youtube" | "tiktok" | "instagram" | "facebook" | "x" | "linkedin" | "threads" | "bluesky" | "pinterest" | "telegram";
 
 export interface FaqItem {
   q: string;
@@ -182,6 +182,46 @@ export const CHANNELS: Record<ChannelKey, ChannelConfig> = {
       { q: "Can I schedule a photo post?", a: "Yes. A single photo schedules with the same caption and timing options as a Reel." },
       SALES_FAQ("Instagram"),
       AGENT_FAQ("Instagram"),
+      PLAN_FAQ,
+    ],
+  },
+  facebook: {
+    key: "facebook",
+    slug: slug("facebook"),
+    name: "Facebook",
+    color: "#1877F2",
+    card: "Page posts with text, photos or video",
+    seo: {
+      title: "Facebook Scheduler — Schedule Facebook Page Posts | ViewsMax",
+      description:
+        "Schedule Facebook Page posts with text, one or more photos, or a video. Connect every Page you manage, cross-post to Instagram and Threads, and track which post made the sale.",
+      keywords:
+        "facebook scheduler, schedule facebook posts, facebook page scheduler, facebook post scheduler, facebook auto post, schedule facebook page posts, facebook social media scheduler",
+    },
+    h1: "Schedule Facebook Page posts from one calendar",
+    subhead:
+      "Connect the Pages you manage, write the post, add photos or a video and pick the time. ViewsMax publishes as the Page and the analytics show which post brought the sale.",
+    formats: ["Text", "One or more photos", "Video"],
+    captionLimit: 63206,
+    connect: "Facebook login, then the Pages you manage",
+    options: ["Every Page you manage, each as its own account", "Several photos in one post", "Per-post tracked links"],
+    steps: [
+      { title: "Connect your Pages", body: "Log in with Facebook and choose the Pages to share. Each Page connects as its own account, so you pick the Page when you schedule." },
+      { title: "Compose the post", body: "Write the text and add one photo, several photos or a video. Text-only posts work too." },
+      { title: "Schedule and track", body: "Pick the time on the calendar. Tracked links report the clicks, sign-ups and sales back to the post." },
+    ],
+    features: [
+      { title: "All your Pages", body: "Connect every Page you manage in one login and post to any of them, or to several at once." },
+      { title: "Photo sets", body: "Attach several photos and they publish together as a single post, not one post per photo." },
+      { title: "Video on the Page", body: "Upload the video once and ViewsMax publishes it to the Page with your text as the description." },
+      { title: "Same post, more places", body: "Send the same post to Instagram, Threads and LinkedIn in the same step, each trimmed to its own limit." },
+    ],
+    faq: [
+      { q: "Can ViewsMax post to my personal Facebook profile?", a: "No. Facebook only lets apps publish to Pages, so you connect a Page you manage. Personal profiles and groups are not a destination." },
+      { q: "Can I schedule to more than one Facebook Page?", a: "Yes. Every Page you share at login connects as its own account, and you choose the Page or Pages for each post." },
+      { q: "What can a Facebook post contain?", a: "Text, one photo, several photos in one post, or a video. Photos need to be JPG or PNG and under 4 MB each." },
+      SALES_FAQ("Facebook"),
+      AGENT_FAQ("Facebook"),
       PLAN_FAQ,
     ],
   },
@@ -438,7 +478,7 @@ export const CHANNEL_LIST: ChannelConfig[] = Object.values(CHANNELS);
 export const CHANNELS_HUB_SEO = {
   title: "Social Media Channels You Can Schedule With ViewsMax",
   description:
-    "Schedule and auto-post to YouTube, TikTok, Instagram, X, LinkedIn, Threads, Bluesky, Pinterest and Telegram from one calendar, and see which post on which channel made the sale.",
+    "Schedule and auto-post to YouTube, TikTok, Instagram, Facebook, X, LinkedIn, Threads, Bluesky, Pinterest and Telegram from one calendar, and see which post on which channel made the sale.",
   keywords:
     "social media scheduler channels, schedule posts youtube tiktok instagram, multi channel social media scheduler, cross post scheduler, pinterest youtube tiktok scheduler",
 };

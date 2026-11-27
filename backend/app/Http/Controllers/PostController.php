@@ -507,12 +507,6 @@ class PostController extends Controller
                         .implode(', ', PostPublishDispatcher::platforms()).'.',
                 ], 422));
             }
-            if (config("social.platforms.{$platform}.enabled", true) === false) {
-                $label = config("social.platforms.{$platform}.label", ucfirst($platform));
-                abort(response()->json([
-                    'message' => "{$label} isn't available on ViewsMax right now.",
-                ], 422));
-            }
         }
     }
 

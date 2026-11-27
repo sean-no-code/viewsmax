@@ -12,7 +12,7 @@ const sitemap = readFileSync(join(process.cwd(), "public", "sitemap-pages.xml"),
 describe("CHANNEL_LIST", () => {
   it("has a page for every posting channel a user can connect", () => {
     expect(CHANNEL_LIST.map((c) => c.slug).sort()).toEqual(
-      ["bluesky", "instagram", "linkedin", "pinterest", "telegram", "threads", "tiktok", "x", "youtube"].map((k) => `${CHANNELS_PATH}/${k}`).sort(),
+      ["bluesky", "facebook", "instagram", "linkedin", "pinterest", "telegram", "threads", "tiktok", "x", "youtube"].map((k) => `${CHANNELS_PATH}/${k}`).sort(),
     );
   });
 

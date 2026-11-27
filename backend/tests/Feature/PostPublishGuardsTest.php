@@ -131,18 +131,7 @@ class PostPublishGuardsTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_switched_off_platform_is_rejected_with_its_label(): void
-    {
-        config(['social.platforms.linkedin.enabled' => false]);
-
-        $response = $this->createPost(['caption' => 'hi', 'platforms' => ['x', 'linkedin'], 'status' => 'draft']);
-
-        $response->assertStatus(422);
-        $this->assertStringContainsString('LinkedIn', $response->json('message'));
-        $this->assertSame(0, Post::count());
-    }
-
-    public function test_every_dispatcher_platform_is_accepted_when_enabled(): void
+    public function test_every_dispatcher_platform_is_accepted(): void
     {
         $this->createPost([
             'caption' => 'hi', 'status' => 'draft',

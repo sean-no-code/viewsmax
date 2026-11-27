@@ -229,8 +229,7 @@ class TelegramPublishTest extends TestCase
         config(['social.platforms.telegram.bot_username' => 'ViewsMaxTestBot', 'social.platforms.telegram.bot_token' => '']);
         $this->assertFalse($manager->isConfigured('telegram'));
 
-        config(['social.platforms.telegram.bot_token' => self::TOKEN, 'social.platforms.telegram.enabled' => false]);
-        $this->assertFalse($manager->isConfigured('telegram'));
+        config(['social.platforms.telegram.bot_token' => self::TOKEN]);
 
         // The other credential shapes are unchanged.
         $this->assertTrue($manager->isConfigured('bluesky'));

@@ -28,7 +28,7 @@ const platform = (name: string, overrides: Record<string, unknown> = {}) => ({
 });
 
 // `available` is the backend's answer to "can this be connected": a platform
-// it reports as unavailable (disabled or without credentials) must read
+// it reports as unavailable (no credentials on the server) must read
 // "Coming soon" here.
 describe("ConnectAccounts — platform availability", () => {
   beforeEach(() => {

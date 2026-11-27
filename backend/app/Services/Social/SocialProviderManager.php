@@ -86,14 +86,15 @@ class SocialProviderManager
     }
 
     /**
-     * Whether the platform is enabled and has the credentials it needs to run.
+     * Whether the platform has the credentials it needs to run. That is the
+     * only condition: no platform has an on/off switch.
      */
     public function isConfigured(string $platform): bool
     {
         $platform = strtolower($platform);
         $config = config("social.platforms.{$platform}");
 
-        if (! $config || ($config['enabled'] ?? true) === false) {
+        if (! $config) {
             return false;
         }
 
@@ -130,7 +131,9 @@ class SocialProviderManager
             return [
                 'platform' => $platform,
                 'label' => $config['label'] ?? ucfirst($platform),
-                'enabled' => (bool) ($config['enabled'] ?? true),
+                // Always true: platforms have no off switch. Kept so the
+                // response shape API clients know stays the same.
+                'enabled' => true,
                 'configured' => $configured,
                 // What the connect screen renders "Coming soon" from. Every
                 // configured platform is open to every user, so it matches
