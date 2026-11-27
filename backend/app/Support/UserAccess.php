@@ -11,9 +11,9 @@ use App\Models\User;
  *  - REST API   EnsureAccessActive   -> the denial as JSON: HTTP 402 when
  *               paying fixes it (subscription ended, trial over, no card),
  *               403 for an unverified email (AccessDenial::status)
- *  - MCP        EnsureMcpAccess      -> the same 402 on tools/call, as a
- *               JSON-RPC error; SafeCallTool relays an unverified email as
- *               a plain tool result (HTTP 200)
+ *  - MCP        SafeCallTool         -> every denial as a plain tool result
+ *               on tools/call (HTTP 200, not isError): no HTTP error status
+ *               on MCP, connector directories count it against the server
  *  - Web        EnsureWebAccess      -> redirect to the denial's url
  *  - Console    allowsBackgroundWork() per record in jobs; User::withAccess()
  *               when a command selects records in bulk (never act for a

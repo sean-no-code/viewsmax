@@ -107,10 +107,10 @@ class AccessExpiredSweepTest extends TestCase
         $failures = $tools->reject(function (string $name) use ($rpc, $denial) {
             $response = $rpc('tools/call', ['name' => $name, 'arguments' => []]);
 
-            return $response->status() === 402
-                && $response->json('result') === null
-                && $response->json('error.message') === $denial->message
-                && $response->json('error.data') === $denial->error();
+            return $response->status() === 200
+                && $response->json('error') === null
+                && $response->json('result.isError') === false
+                && $response->json('result.content.0.text') === $denial->message;
         })->values()->all();
 
         $this->assertSame([], $failures, 'Tools that did not answer with the upgrade message');

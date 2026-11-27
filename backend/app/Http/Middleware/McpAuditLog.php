@@ -11,19 +11,23 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 /**
  * Audit-logs every MCP tools/call after it completes: the authenticated
  * user, tool name, arguments, and whether (and why) the tool returned an
- * error. Runs
- * after McpAuth so the user is resolved. Logging failures are reported but
- * never break the tool call itself.
+ * error. A call SafeCallTool refused (the account can't use ViewsMax right
+ * now) is logged as an error too, although the client got a normal result.
+ * Runs after McpAuth so the user is resolved. Logging failures are reported
+ * but never break the tool call itself.
  */
 class McpAuditLog
 {
+    /** Request attribute SafeCallTool sets to the denial message when it refuses a call. */
+    public const REFUSAL_ATTRIBUTE = 'mcp_refusal';
+
     public function handle(LaravelRequest $request, Closure $next): SymfonyResponse
     {
         $response = $next($request);
 
         if ($request->input('method') === 'tools/call' && $request->user()) {
             try {
-                $error = $this->errorMessage($response);
+                $error = $request->attributes->get(self::REFUSAL_ATTRIBUTE) ?? $this->errorMessage($response);
 
                 McpToolInvocation::create([
                     'user_id' => $request->user()->id,

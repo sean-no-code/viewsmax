@@ -8,7 +8,7 @@ namespace App\Support;
  */
 final readonly class AccessDenial
 {
-    /** Denials that paying fixes: delivered as HTTP 402 Payment Required. */
+    /** Denials that paying fixes: delivered as HTTP 402 Payment Required on the REST API. */
     private const PAYMENT_CODES = [
         UserAccess::SUBSCRIPTION_INACTIVE,
         UserAccess::ACCESS_EXPIRED,
@@ -21,7 +21,7 @@ final readonly class AccessDenial
         public string $url,
     ) {}
 
-    /** The HTTP status that delivers this denial: 402 when paying fixes it, else 403. */
+    /** The HTTP status that delivers this denial on the REST API: 402 when paying fixes it, else 403. */
     public function status(): int
     {
         return in_array($this->code, self::PAYMENT_CODES, true) ? 402 : 403;

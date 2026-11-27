@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Methods;
 
+use App\Http\Middleware\McpAuditLog;
 use App\Support\Quota\Source;
 use App\Support\UserAccess;
 use App\Support\UserSafeError;
@@ -42,13 +43,19 @@ class SafeCallTool extends CallTool
             Source::set('mcp:'.$tool);
         }
 
-        // A user who can't use ViewsMax right now (see UserAccess) never runs
-        // a tool. Denials that paying fixes (subscription ended, trial over,
-        // no card) were already answered with HTTP 402 by EnsureMcpAccess;
-        // what reaches here is an unverified email, relayed as a plain tool
-        // result the AI can pass on. Checked for every denial all the same,
-        // so a tool can't run if that middleware is ever missing.
+        // A user who can't use ViewsMax right now (unverified email,
+        // subscription ended, trial over, no card — see UserAccess) gets that
+        // answer, with the link that fixes it, from every tools/call as a
+        // plain tool result the AI can relay. HTTP 200 and not isError: the
+        // tool didn't fail, the account needs action. To an MCP client an
+        // HTTP 402 (tried 2026-11-23 to 27) is a failed request and an
+        // isError result a failed tool, and Claude's connector directory
+        // reports both rates against the server. Our own audit log
+        // (McpAuditLog) still records the call as refused.
+        // initialize and tools/list still work so the connector stays attached.
         if (($user = request()->user()) && ($denial = UserAccess::denial($user))) {
+            request()->attributes->set(McpAuditLog::REFUSAL_ATTRIBUTE, $denial->message);
+
             return JsonRpcResponse::create($request->id, ToolResult::text($denial->message));
         }
 

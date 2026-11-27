@@ -120,9 +120,11 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `AccessDenial::status()` picks the HTTP status: **402** when paying fixes it (`subscription_inactive` — a lapsed
   user who has held a plan, "your subscription has ended" — `access_expired`, `payment_required`), 403 for
   `email_unverified`. `EnsureAccessActive` (REST: the denial as JSON, plus `error {code, message, upgrade_url}` on a
-  402), `EnsureMcpAccess` (MCP `tools/call`: the same HTTP 402 as a JSON-RPC error with the denial in `error.data`,
-  logged by `McpAuditLog` as a failed call; `initialize` / `tools/list` stay 200), `SafeCallTool` (MCP, an unverified
-  email only: a plain tool result at HTTP 200), `EnsureWebAccess` (web redirect). Console code calls `denial()`
+  402), `SafeCallTool` (MCP `tools/call`, every denial: the message with its link as a plain tool result at HTTP 200,
+  not `isError`; `McpAuditLog` still records the call as refused; `initialize` / `tools/list` work as usual. The status applies to
+  REST only — an HTTP 402 on MCP, tried 2026-11-23 to 27, is a failed request to the client and was withdrawn when
+  the Claude connector directory showed a 20% request-error rate),
+  `EnsureWebAccess` (web redirect). Console code calls `denial()`
   directly.
 
 - **Post allowance.** `App\Support\PostAllowance::refusal($user)` caps an account that hasn't paid yet — the

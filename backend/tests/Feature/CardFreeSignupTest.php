@@ -254,14 +254,10 @@ class CardFreeSignupTest extends TestCase
             $response = $this->withHeaders(['Authorization' => 'Bearer '.$key, 'Accept' => 'application/json'])
                 ->postJson('/api/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => $tool, 'arguments' => $arguments]]);
 
-            $response->assertStatus(402)->assertJsonMissingPath('result');
+            $response->assertOk()->assertJsonMissingPath('error')->assertJsonPath('result.isError', false);
             $this->assertSame(
-                [
-                    'code' => 'access_expired',
-                    'message' => 'Your ViewsMax free trial has ended. Please upgrade to a paid subscription to continue using ViewsMax: https://app.example.com/dashboard/billing',
-                    'upgrade_url' => 'https://app.example.com/dashboard/billing',
-                ],
-                $response->json('error.data'),
+                'Your ViewsMax free trial has ended. Please upgrade to a paid subscription to continue using ViewsMax: https://app.example.com/dashboard/billing',
+                $response->json('result.content.0.text'),
                 $tool
             );
         }
