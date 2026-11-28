@@ -898,13 +898,17 @@ class StripeWebhookController extends Controller
         $priceId = $subscription['items']['data'][0]['price']['id'] ?? null;
         $nextBilling = $this->extractNextBilling($subscription);
         $status = $subscription['status'] ?? null;
-        $cancelAtPeriodEnd = ! empty($subscription['cancel_at_period_end']);
+        // A cancel scheduled for later: at period end (the portal, the app's
+        // graceful cancel) or on a date (cancel_at, e.g. the dashboard's
+        // "cancel on a date").
+        $cancelScheduled = ! empty($subscription['cancel_at_period_end']) || ! empty($subscription['cancel_at']);
 
-        // A trial cancelled outside the app (the Stripe portal) arrives as
-        // "cancel at period end". Nothing was charged, so there is no period to
-        // run out: end it on Stripe now and close it here (UnpaidTrial). The
-        // customer.subscription.deleted that follows finds it already closed.
-        $unpaidTrialCancelled = $cancelAtPeriodEnd && $status === 'trialing' && $user->plans()
+        // A trial cancelled outside the app (the Stripe portal or dashboard)
+        // arrives as a scheduled cancel. Nothing was charged, so there is no
+        // period to run out: end it on Stripe now and close it here
+        // (UnpaidTrial). The customer.subscription.deleted that follows finds
+        // it already closed.
+        $unpaidTrialCancelled = $cancelScheduled && $status === 'trialing' && $user->plans()
             ->wherePivot('stripe_subscription_id', $subscriptionId)
             ->wherePivot('status', 'trialing')
             ->exists();
@@ -929,7 +933,7 @@ class StripeWebhookController extends Controller
         if ($nextBilling) {
             $updates['expires_at'] = Carbon::parse($nextBilling);
         }
-        if ($cancelAtPeriodEnd) {
+        if ($cancelScheduled) {
             $updates['cancelled_at'] = now();
         } elseif (in_array($status, ['active', 'trialing'], true)) {
             $updates['cancelled_at'] = null;

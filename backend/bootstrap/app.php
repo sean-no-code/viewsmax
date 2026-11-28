@@ -124,6 +124,24 @@ return Application::configure(basePath: dirname(__DIR__))
         //     ->withoutOverlapping(10)
         //     ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:send-free-trial-reminders scheduled run failed'));
 
+        // A trial cancelled before anything was charged ends at once
+        // (UnpaidTrial). Catches rows a cancel path left open, and those
+        // cancelled before that rule shipped. Reads Stripe, never changes it.
+        $schedule->command('subscriptions:close-cancelled-trials')
+            ->hourly()
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('subscriptions:close-cancelled-trials scheduled run failed'));
+
+        // Audit logs (MCP tool calls, API-key REST calls) carry full response
+        // bodies; keep 30 days (see each model's prunable()).
+        $schedule->command('model:prune', ['--model' => [
+            \App\Models\McpToolInvocation::class,
+            \App\Models\ApiKeyRequest::class,
+        ]])
+            ->daily()
+            ->withoutOverlapping(30)
+            ->onFailure(fn () => \Illuminate\Support\Facades\Log::error('model:prune (audit logs) scheduled run failed'));
+
         // Queue heartbeat: dispatch a tiny job and email ADMIN_EMAIL when
         // heartbeats stop being processed (workers dead or queue wedged).
         // No overlap lock on purpose — the lock lives in the cache, and a cache
