@@ -65,12 +65,8 @@ Tests use in-memory SQLite (see `phpunit.xml`) — no external DB needed.
   `App\Services\Billing\UnpaidTrial::close` sets its rows `expired` and closes the free window
   (`promo_expires_at = now`), so `UserAccess::denial` refuses from then on and subscribing again charges straight
   away. Called by the cancel endpoint (which ends it on Stripe now), by `customer.subscription.updated` with
-  `cancel_at_period_end` or `cancel_at` on a trial (a portal/dashboard cancel; the handler ends it on Stripe) and by
-  `customer.subscription.deleted`; a new path that cancels a subscription must call it for a `trialing` row. As a
-  safety net, `subscriptions:close-cancelled-trials` (hourly, `--dry-run`) finds `trialing` rows with `cancelled_at`
-  set (cancelled before this rule shipped, or by a path that missed it), asks Stripe (read only), and if it is still
-  trialing or already ended calls `close`, leaving Stripe to end it at the trial date as scheduled; a subscription
-  Stripe has moved to `active` is left alone. Customer emails (invoice per paid cycle with Stripe's PDF attached, cancel confirmation, payment failed — once per invoice via
+  `cancel_at_period_end` on a trial (a portal cancel; the handler ends it on Stripe) and by
+  `customer.subscription.deleted`; a new path that cancels a subscription must call it for a `trialing` row. Customer emails (invoice per paid cycle with Stripe's PDF attached, cancel confirmation, payment failed — once per invoice via
   `user_plans.payment_failed_notified_invoice_id`) go through
   `App\Services\Billing\BillingEmails` (`config/billing.php` switches; never throw) and log to
   `storage/logs/billing-YYYY-MM-DD.log` (`BillingLog`, `BILLING_LOG_ENABLED`). Every Stripe webhook writes two

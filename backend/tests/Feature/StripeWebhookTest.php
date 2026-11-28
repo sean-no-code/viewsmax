@@ -426,65 +426,6 @@ class StripeWebhookTest extends TestCase
         $this->assertFalse($user->fresh()->freeWindowOpen());
     }
 
-    /**
-     * Stripe can schedule a cancel with cancel_at (a date) rather than
-     * cancel_at_period_end, e.g. "cancel on a date" in the dashboard. On an
-     * unpaid trial that is a cancel all the same: it ends now.
-     */
-    public function test_a_cancel_at_date_on_an_unpaid_trial_ends_it_now(): void
-    {
-        $user = User::factory()->create(['promo_expires_at' => now()->addDays(5)]);
-        $plan = $this->proPlan();
-        $this->subscribeTrialing($user, $plan, 'sub_cancel_at');
-
-        $this->mock(StripeService::class, function ($mock) {
-            $mock->shouldReceive('cancelSubscription')->once()
-                ->withArgs(fn ($id, $reason = null, $immediately = false) => $id === 'sub_cancel_at' && $immediately === true)
-                ->andReturn(['status' => 'canceled']);
-            $mock->shouldReceive('voidOpenInvoices')->once()->with('sub_cancel_at')->andReturn(0);
-        });
-
-        $this->postJson('/api/webhooks/stripe', [
-            'type' => 'customer.subscription.updated',
-            'data' => ['object' => [
-                'id' => 'sub_cancel_at',
-                'status' => 'trialing',
-                'cancel_at_period_end' => false,
-                'cancel_at' => now()->addDays(5)->timestamp,
-                'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
-            ]],
-        ])->assertOk();
-
-        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
-        $this->assertSame('expired', $pivot->status);
-        $this->assertFalse($user->fresh()->freeWindowOpen());
-    }
-
-    /** A paid plan with a cancel_at date is marked cancelled, not un-cancelled. */
-    public function test_a_cancel_at_date_on_a_paid_plan_marks_it_cancelled(): void
-    {
-        $user = User::factory()->create();
-        $plan = $this->proPlan();
-        $this->attachSub($user, $plan, 'sub_paid_at', 'active');
-
-        $this->mock(StripeService::class, fn ($mock) => $mock->shouldNotReceive('cancelSubscription'));
-
-        $this->postJson('/api/webhooks/stripe', [
-            'type' => 'customer.subscription.updated',
-            'data' => ['object' => [
-                'id' => 'sub_paid_at',
-                'status' => 'active',
-                'cancel_at_period_end' => false,
-                'cancel_at' => now()->addDays(3)->timestamp,
-                'items' => ['data' => [['price' => ['id' => 'price_pro']]]],
-            ]],
-        ])->assertOk();
-
-        $pivot = $user->plans()->where('plans.id', $plan->id)->first()->pivot;
-        $this->assertSame('active', $pivot->status);
-        $this->assertNotNull($pivot->cancelled_at);
-    }
-
     /** A paid plan cancelled in the portal keeps running to the end of its period. */
     public function test_a_portal_cancel_of_a_paid_plan_stays_graceful(): void
     {
