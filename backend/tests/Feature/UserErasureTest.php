@@ -122,6 +122,7 @@ class UserErasureTest extends TestCase
         DB::table('oauth_refresh_tokens')->insert(['id' => "rt-{$suffix}", 'access_token_id' => "at-{$suffix}", 'revoked' => false, 'expires_at' => now()->addMonth()]);
         DB::table('oauth_auth_codes')->insert(['id' => "ac-{$suffix}", 'user_id' => $user->id, 'client_id' => 'client', 'scopes' => '[]', 'revoked' => false, 'expires_at' => now()->addMinute()]);
         DB::table('mcp_tool_invocations')->insert(['user_id' => $user->id, 'tool' => 'list_posts', 'created_at' => now()]);
+        DB::table('api_key_requests')->insert(['user_id' => $user->id, 'method' => 'GET', 'path' => '/api/posts', 'status' => 200, 'created_at' => now()]);
         DB::table('sessions')->insert(['id' => "sess-{$suffix}", 'user_id' => $user->id, 'payload' => '', 'last_activity' => time()]);
         DB::table('password_reset_tokens')->insert(['email' => $email, 'token' => 't', 'created_at' => now()]);
 
@@ -168,7 +169,7 @@ class UserErasureTest extends TestCase
         $this->assertSame(0, DB::table('password_reset_tokens')->where('email', 'erase.me@example.com')->count());
 
         // Owned rows, on both connections.
-        foreach (['channels', 'connections', 'social_accounts', 'posts', 'tracking_events', 'brands', 'user_plans', 'mcp_tool_invocations', 'wallets'] as $table) {
+        foreach (['channels', 'connections', 'social_accounts', 'posts', 'tracking_events', 'brands', 'user_plans', 'mcp_tool_invocations', 'api_key_requests', 'wallets'] as $table) {
             $column = $table === 'wallets' ? 'holder_id' : 'user_id';
             $this->assertSame(0, DB::table($table)->where($column, $id)->count(), "{$table} still has rows");
         }

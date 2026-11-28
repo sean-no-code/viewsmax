@@ -57,6 +57,8 @@ class McpAuditLogTest extends TestCase
         $this->assertFalse($row->is_error);
         $this->assertNull($row->error);
         $this->assertSame('key', $row->auth_mode);
+        $this->assertStringContainsString('Audit me', $row->response, 'Expected the tool response to be recorded.');
+        $this->assertSame(1, json_decode($row->response, true)['id']);
     }
 
     public function test_failed_tool_calls_are_logged_as_errors(): void
@@ -76,7 +78,9 @@ class McpAuditLogTest extends TestCase
         $this->assertSame('get_offer', $row->tool);
         $this->assertTrue($row->is_error);
         $this->assertNotEmpty($row->error, 'Expected the tool error text to be recorded.');
+        $this->assertTrue(json_decode($row->response, true)['result']['isError']);
     }
+
 
     public function test_non_tool_calls_are_not_logged(): void
     {

@@ -154,6 +154,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'mcp.auth' => \App\Http\Middleware\McpAuth::class,
             'allowed-ips' => \App\Http\Middleware\RestrictToAllowedIps::class,
             'mcp.audit' => \App\Http\Middleware\McpAuditLog::class,
+            'api.audit' => \App\Http\Middleware\ApiKeyAuditLog::class,
             'mcp.notifications' => \App\Http\Middleware\McpAcceptNotifications::class,
             'check.credits' => \App\Http\Middleware\CheckCredits::class,
             'restrict.free' => \App\Http\Middleware\RestrictFreePlan::class,

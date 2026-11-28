@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\McpToolInvocation;
+use App\Support\LoggedResponse;
 use Closure;
 use Illuminate\Http\Request as LaravelRequest;
 use Illuminate\Support\Str;
@@ -10,8 +11,8 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Audit-logs every MCP tools/call after it completes: the authenticated
- * user, tool name, arguments, and whether (and why) the tool returned an
- * error. A call SafeCallTool refused (the account can't use ViewsMax right
+ * user, tool name, arguments, the response body, and whether (and why) the
+ * tool returned an error. A call SafeCallTool refused (the account can't use ViewsMax right
  * now) is logged as an error too, although the client got a normal result.
  * Runs after McpAuth so the user is resolved. Logging failures are reported
  * but never break the tool call itself.
@@ -35,6 +36,7 @@ class McpAuditLog
                     'arguments' => $request->input('params.arguments'),
                     'is_error' => $error !== null,
                     'error' => $error,
+                    'response' => LoggedResponse::body($response),
                     'auth_mode' => $request->attributes->get('mcp_auth_mode'),
                 ]);
             } catch (\Throwable $e) {

@@ -10,6 +10,9 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class ApiAuth
 {
+    /** Request attribute set when the call is authenticated with a vmx_ API key (read by ApiKeyAuditLog). */
+    public const API_KEY_ATTRIBUTE = 'api_key_request';
+
     /**
      * REST endpoints a vmx_ MCP API key may use — the mirror of the MCP tool
      * surface, so headless agents (OpenClaw skills, Hermes plugins, curl) can
@@ -92,6 +95,8 @@ class ApiAuth
                     'message' => 'This API key is read-only. Rotate it with full access to make changes.'
                 ], 403);
             }
+
+            $request->attributes->set(self::API_KEY_ATTRIBUTE, true);
         }
 
         // Set the authenticated user, carrying the token so

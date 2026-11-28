@@ -136,8 +136,10 @@ Route::post('/telegram/webhook', [\App\Http\Controllers\TelegramController::clas
 
 // Protected routes (authentication required). `access.active` locks a user
 // whose subscription has ended or whose free window has closed to the billing
-// endpoints; everything else answers HTTP 402.
-Route::middleware(['api.auth', 'access.active'])->group(function () {
+// endpoints; everything else answers HTTP 402. `api.audit` logs calls made
+// with a vmx_ API key (api_key_requests); it sits before access.active so
+// refused calls are logged too.
+Route::middleware(['api.auth', 'api.audit', 'access.active'])->group(function () {
 
     // Outlier Multiplier Endpoint
     Route::get('/multiplier/{videoId}', [OutlierController::class, 'getMultiplier']);
